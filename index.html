@@ -1,962 +1,797 @@
-<script type="text/javascript">
-        var gk_isXlsx = false;
-        var gk_xlsxFileLookup = {};
-        var gk_fileData = {};
-        function filledCell(cell) {
-          return cell !== '' && cell != null;
-        }
-        function loadFileData(filename) {
-        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-            try {
-                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-                var firstSheetName = workbook.SheetNames[0];
-                var worksheet = workbook.Sheets[firstSheetName];
-
-                // Convert sheet to JSON to filter blank rows
-                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-                // Filter out blank rows (rows where all cells are empty, null, or undefined)
-                var filteredData = jsonData.filter(row => row.some(filledCell));
-
-                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
-                var headerRowIndex = filteredData.findIndex((row, index) =>
-                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
-                );
-                // Fallback
-                if (headerRowIndex === -1 || headerRowIndex > 25) {
-                  headerRowIndex = 0;
-                }
-
-                // Convert filtered JSON back to CSV
-                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
-                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-                return csv;
-            } catch (e) {
-                console.error(e);
-                return "";
-            }
-        }
-        return gk_fileData[filename] || "";
-        }
-        </script><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZugInfoMonitor</title>
+    <title>Train Display</title>
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans+Condensed:wght@600&display=swap" rel="stylesheet">
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: midnightblue;
-            color: white;
-            font-family: 'Open Sans Condensed', sans-serif;
-            overflow-x: hidden;
-        }
-        #monitor-image {
-            max-width: 100%;
-            height: auto;
-            display: block;
-        }
-        #large-canvas {
-            display: none;
-        }
-        .settings-container {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            margin-top: 20px;
-            width: 100%;
-        }
-        .settings-frame {
-            background-color: midnightblue;
-            color: white;
-            padding: 10px;
-            width: 960px;
-            margin-bottom: 20px;
-        }
-        .settings-frame h3 {
-            margin-top: 0;
-        }
-        .settings-frame label {
-            display: inline-block;
-            margin: 5px 10px 5px 0;
-        }
-        .settings-frame input[type="text"], .settings-frame input[type="number"] {
-            background-color: white;
-            color: black;
-            border: none;
-            padding: 5px;
-            width: 200px;
-        }
-        .settings-frame input[type="radio"], .settings-frame input[type="checkbox"] {
-            margin-right: 5px;
-        }
-        .settings-frame button {
-            background-color: midnightblue;
-            color: white;
-            border: 1px solid white;
-            padding: 5px 10px;
-            cursor: pointer;
-            margin: 5px 10px 5px 0;
-        }
-        .settings-frame .form-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-        .scroll-container {
-            overflow: hidden;
-            white-space: nowrap;
-            position: absolute;
-            background-color: transparent;
-            pointer-events: none;
-        }
-        .scroll-text {
-            display: inline-block;
-            white-space: nowrap;
-            animation: scroll-left 30s linear infinite;
-        }
-        @keyframes scroll-left {
-            0% { transform: translateX(0%); }
-            100% { transform: translateX(-50%); }
-        }
-        #download-btn {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 1000;
-            background-color: midnightblue;
-            color: white;
-            border: 1px solid white;
-            padding: 5px 10px;
-            cursor: pointer;
-        }
+        body { background: black; color: white; font-family: sans-serif; }
+        canvas { border: 1px solid white; max-width: 100%; height: auto; }
+        .preview-container { position: relative; margin-bottom: 20px; }
+        .small-previews { display: flex; gap: 20px; }
     </style>
 </head>
 <body>
-    <img id="monitor-image" src="" alt="Train Monitor">
-    <canvas id="large-canvas" width="7680" height="2116"></canvas>
-    <div class="settings-container">
-        <div class="settings-frame" id="frame_links_oben">
-            <h3>Wagenreihung</h3>
-            <div class="form-row">
-                <label><input type="radio" name="wahl" value="rotierend"> Rotierend</label>
-                <label><input type="radio" name="wahl" value="wagennummern" checked> Wagennummern</label>
-                <label><input type="radio" name="wahl" value="ausstattung"> Ausstattung</label>
-                <label><input type="radio" name="wahl" value="klasse"> Klasse</label>
-            </div>
-            <h3>Bahnhof</h3>
-            <div class="form-row">
-                <label>Bahnsteiglänge: <input type="text" id="entry_bahnsteiglaenge" value="420"></label>
-                <label>Bahnhof/Station: <input type="text" id="entry_stop_name"></label>
-                <label>Gleis: <input type="text" id="entry_gleis"></label>
-            </div>
-            <h3>Datenquelle</h3>
-            <div class="form-row">
-                <label><input type="radio" name="data_source" value="xml" checked> Manuell</label>
-                <label><input type="radio" name="data_source" value="json"> Echtzeit</label>
-                <button id="fetch_data_btn">Daten abrufen</button>
-                <button id="export_all_btn">Exportieren</button>
-                <button id="import_all_btn">Importieren</button>
-            </div>
+    <h1>Train Display Editor</h1>
+
+    <!-- Shared Settings -->
+    <section>
+        <h2>Shared Settings</h2>
+        <label>Bahnsteiglänge: <input id="bahnsteiglaenge" type="number" value="420"></label>
+        <label>Bahnhof/Station: <input id="bahnhof" type="text" value="Example Station"></label>
+        <label>Gleis: <input id="gleis" type="text" value="1"></label>
+    </section>
+
+    <!-- Merkmal Selection -->
+    <section>
+        <h2>Wagenreihung View</h2>
+        <label><input type="radio" name="merkmal" value="wagennummern" checked> Wagennummern</label>
+        <label><input type="radio" name="merkmal" value="ausstattung"> Ausstattung</label>
+        <label><input type="radio" name="merkmal" value="klasse"> Klasse</label>
+        <label><input type="radio" name="merkmal" value="rotierend"> Rotierend</label>
+    </section>
+
+    <!-- Zug 1 -->
+    <section>
+        <h2>Daten Zug 1 (Full Screen)</h2>
+        <label>Zuglinie/Zugnummer: <input id="zug1-zugnummer" type="text" value="IC 123"></label>
+        <label>Abfahrt: <input id="zug1-abfahrt" type="text" value="12:34"></label>
+        <label>Abweichend: <input id="zug1-abweichend" type="text" value=""></label>
+        <label>Ziel: <input id="zug1-ziel" type="text" value="Berlin Hbf"></label>
+        <label>Via-Halte 1: <input id="zug1-via1" type="text" value="Hamburg"></label>
+        <label>Via-Halte 2: <input id="zug1-via2" type="text" value="Bremen"></label>
+        <label>Via-Halte 3: <input id="zug1-via3" type="text" value=""></label>
+        <label>Via-Halte 1 Small: <input id="zug1-via1-small" type="text" value="Hmb"></label>
+        <label>Via-Halte 2 Small: <input id="zug1-via2-small" type="text" value="Brm"></label>
+        <label>Via-Halte 3 Small: <input id="zug1-via3-small" type="text" value=""></label>
+        <label>Informationen: <input id="zug1-informationen" type="text" value="This is a long scrolling information text that needs to scroll because it's too long for the display area. Repeat for testing."></label>
+        <label>Richtung: <input type="radio" name="zug1-richtung" value="0"> Links <input type="radio" name="zug1-richtung" value="1" checked> Rechts</label>
+        <label>Startmeter: <input id="zug1-startmeter" type="number" value="0"></label>
+        <label>Skalieren: <input id="zug1-skalieren" type="checkbox"></label>
+        <label>Gleiswechsel: <input id="zug1-gleiswechsel" type="text" value="0"></label>
+        <label>Wagenreihung (JSON): <textarea id="zug1-wagenreihung" rows="5">[{"coach_type":"l","double_decker":false,"length":20,"coach_class":0,"coach_number":0,"amenities":"","start":0,"stop":20},{"coach_type":"a","double_decker":false,"length":25,"coach_class":1,"coach_number":1,"amenities":"f","start":20,"stop":45},{"coach_type":"m","double_decker":false,"length":25,"coach_class":2,"coach_number":2,"amenities":"r","start":45,"stop":70},{"coach_type":"e","double_decker":false,"length":20,"coach_class":2,"coach_number":3,"amenities":"g","start":70,"stop":90}]</textarea></label>
+        <button id="zug1-export-wagenreihung">Export Wagenreihung</button>
+        <button id="zug1-import-wagenreihung">Import Wagenreihung <input type="file" id="zug1-file" style="display:none;"></button>
+    </section>
+
+    <!-- Zug 2 -->
+    <section>
+        <h2>Daten Zug 2 (Small)</h2>
+        <label>Zuglinie/Zugnummer: <input id="zug2-zugnummer" type="text" value="RE 456"></label>
+        <label>Abfahrt: <input id="zug2-abfahrt" type="text" value="13:45"></label>
+        <label>Abweichend: <input id="zug2-abweichend" type="text" value=""></label>
+        <label>Ziel: <input id="zug2-ziel" type="text" value="Munich"></label>
+        <label>Via-Halte 1 Small: <input id="zug2-via1-small" type="text" value="Nuremberg"></label>
+        <label>Via-Halte 2 Small: <input id="zug2-via2-small" type="text" value="Augsburg"></label>
+        <label>Via-Halte 3 Small: <input id="zug2-via3-small" type="text" value=""></label>
+        <label>Informationen: <input id="zug2-informationen" type="text" value="Short info"></label>
+        <label>Richtung: <input type="radio" name="zug2-richtung" value="0"> Links <input type="radio" name="zug2-richtung" value="1" checked> Rechts</label>
+        <label>Startmeter: <input id="zug2-startmeter" type="number" value="0"></label>
+        <label>Skalieren: <input id="zug2-skalieren" type="checkbox"></label>
+        <label>Gleiswechsel: <input id="zug2-gleiswechsel" type="text" value="0"></label>
+        <label>Wagenreihung (JSON): <textarea id="zug2-wagenreihung" rows="5">[{"coach_type":"a","double_decker":false,"length":25,"coach_class":2,"coach_number":4,"amenities":"","start":0,"stop":25},{"coach_type":"e","double_decker":false,"length":25,"coach_class":2,"coach_number":5,"amenities":"m","start":25,"stop":50}]</textarea></label>
+        <button id="zug2-export-wagenreihung">Export Wagenreihung</button>
+        <button id="zug2-import-wagenreihung">Import Wagenreihung <input type="file" id="zug2-file" style="display:none;"></button>
+    </section>
+
+    <!-- Zug 3 -->
+    <section>
+        <h2>Daten Zug 3 (Small with Gleiswechsel)</h2>
+        <label>Zuglinie/Zugnummer: <input id="zug3-zugnummer" type="text" value="S 789"></label>
+        <label>Abfahrt: <input id="zug3-abfahrt" type="text" value="14:56"></label>
+        <label>Abweichend: <input id="zug3-abweichend" type="text" value="15:00"></label>
+        <label>Ziel: <input id="zug3-ziel" type="text" value="Frankfurt"></label>
+        <label>Via-Halte 1 Small: <input id="zug3-via1-small" type="text" value="Mannheim"></label>
+        <label>Via-Halte 2 Small: <input id="zug3-via2-small" type="text" value="Darmstadt"></label>
+        <label>Via-Halte 3 Small: <input id="zug3-via3-small" type="text" value=""></label>
+        <label>Informationen: <input id="zug3-informationen" type="text" value="Very long information that scrolls across the screen repeatedly for testing performance in high resolution canvas rendering."></label>
+        <label>Richtung: <input type="radio" name="zug3-richtung" value="0"> Links <input type="radio" name="zug3-richtung" value="1" checked> Rechts</label>
+        <label>Startmeter: <input id="zug3-startmeter" type="number" value="0"></label>
+        <label>Skalieren: <input id="zug3-skalieren" type="checkbox"></label>
+        <label>Gleiswechsel: <input id="zug3-gleiswechsel" type="text" value="2"></label>
+        <label>Wagenreihung (JSON): <textarea id="zug3-wagenreihung" rows="5">[{"coach_type":"l","double_decker":false,"length":20,"coach_class":0,"coach_number":0,"amenities":"","start":0,"stop":20},{"coach_type":"ma","double_decker":false,"length":25,"coach_class":1,"coach_number":6,"amenities":"f","start":20,"stop":45},{"coach_type":"me","double_decker":false,"length":25,"coach_class":2,"coach_number":7,"amenities":"","start":45,"stop":70}]</textarea></label>
+        <button id="zug3-export-wagenreihung">Export Wagenreihung</button>
+        <button id="zug3-import-wagenreihung">Import Wagenreihung <input type="file" id="zug3-file" style="display:none;"></button>
+    </section>
+
+    <!-- Previews -->
+    <div>
+        <h2>Preview Full Screen (Zug 1)</h2>
+        <div id="preview-full-container" class="preview-container"></div>
+    </div>
+    <div class="small-previews">
+        <div>
+            <h2>Preview Small Zug 2</h2>
+            <div id="preview-small1-container" class="preview-container"></div>
         </div>
-        <div class="settings-frame" id="zug1_settings">
-            <h3>Daten Zug 1</h3>
-            <div class="form-row">
-                <label>Zuglinie/Zugnummer: <input type="text" class="zug_entry" data-zug="1" data-field="Zugnummer"></label>
-                <label>Abfahrt: <input type="text" class="zug_entry" data-zug="1" data-field="Abfahrt"></label>
-                <label>Abweichend: <input type="text" class="zug_entry" data-zug="1" data-field="Abweichend"></label>
-            </div>
-            <div class="form-row">
-                <label>Ziel: <input type="text" class="zug_entry" data-zug="1" data-field="Ziel"></label>
-                <label>Via-Halte 1: <input type="text" class="zug_entry" data-zug="1" data-field="Via-Halte 1"></label>
-                <label>Via-Halte 2: <input type="text" class="zug_entry" data-zug="1" data-field="Via-Halte 2"></label>
-            </div>
-            <div class="form-row">
-                <label>Informationen: <input type="text" class="zug_entry" data-zug="1" data-field="Informationen"></label>
-                <label>Richtung: 
-                    <input type="radio" name="richtung1" value="0" class="richtung_radio" data-zug="1"> Links 
-                    <input type="radio" name="richtung1" value="1" checked class="richtung_radio" data-zug="1"> Rechts
-                </label>
-                <label>Startmeter: <input type="text" class="zug_entry" data-zug="1" data-field="TrainStart" value="0"></label>
-                <label>Skalieren: <input type="checkbox" class="zug_checkbox" data-zug="1" data-field="Skalieren"></label>
-            </div>
-            <div class="form-row">
-                <button class="export_formation" data-zug="1">Wagenreihung exportieren</button>
-                <button class="import_formation" data-zug="1">Wagenreihung importieren</button>
-            </div>
-        </div>
-        <div class="settings-frame" id="zug2_settings">
-            <h3>Daten Zug 2</h3>
-            <div class="form-row">
-                <label>Zuglinie/Zugnummer: <input type="text" class="zug_entry" data-zug="2" data-field="Zugnummer"></label>
-                <label>Abfahrt: <input type="text" class="zug_entry" data-zug="2" data-field="Abfahrt"></label>
-                <label>Abweichend: <input type="text" class="zug_entry" data-zug="2" data-field="Abweichend"></label>
-            </div>
-            <div class="form-row">
-                <label>Ziel: <input type="text" class="zug_entry" data-zug="2" data-field="Ziel"></label>
-                <label>Via-Halte 1 Small: <input type="text" class="zug_entry" data-zug="2" data-field="Via-Halte 1 Small"></label>
-                <label>Via-Halte 2 Small: <input type="text" class="zug_entry" data-zug="2" data-field="Via-Halte 2 Small"></label>
-            </div>
-            <div class="form-row">
-                <label>Via-Halte 3 Small: <input type="text" class="zug_entry" data-zug="2" data-field="Via-Halte 3 Small"></label>
-                <label>Informationen: <input type="text" class="zug_entry" data-zug="2" data-field="Informationen"></label>
-                <label>Richtung: 
-                    <input type="radio" name="richtung2" value="0" class="richtung_radio" data-zug="2"> Links 
-                    <input type="radio" name="richtung2" value="1" checked class="richtung_radio" data-zug="2"> Rechts
-                </label>
-                <label>Startmeter: <input type="text" class="zug_entry" data-zug="2" data-field="TrainStart" value="0"></label>
-                <label>Skalieren: <input type="checkbox" class="zug_checkbox" data-zug="2" data-field="Skalieren"></label>
-            </div>
-            <div class="form-row">
-                <button class="export_formation" data-zug="2">Wagenreihung exportieren</button>
-                <button class="import_formation" data-zug="2">Wagenreihung importieren</button>
-            </div>
-        </div>
-        <div class="settings-frame" id="zug3_settings">
-            <h3>Daten Zug 3</h3>
-            <div class="form-row">
-                <label>Zuglinie/Zugnummer: <input type="text" class="zug_entry" data-zug="3" data-field="Zugnummer"></label>
-                <label>Abfahrt: <input type="text" class="zug_entry" data-zug="3" data-field="Abfahrt"></label>
-                <label>Abweichend: <input type="text" class="zug_entry" data-zug="3" data-field="Abweichend"></label>
-            </div>
-            <div class="form-row">
-                <label>Ziel: <input type="text" class="zug_entry" data-zug="3" data-field="Ziel"></label>
-                <label>Via-Halte 1 Small: <input type="text" class="zug_entry" data-zug="3" data-field="Via-Halte 1 Small"></label>
-                <label>Via-Halte 2 Small: <input type="text" class="zug_entry" data-zug="3" data-field="Via-Halte 2 Small"></label>
-            </div>
-            <div class="form-row">
-                <label>Via-Halte 3 Small: <input type="text" class="zug_entry" data-zug="3" data-field="Via-Halte 3 Small"></label>
-                <label>Informationen: <input type="text" class="zug_entry" data-zug="3" data-field="Informationen"></label>
-                <label>Richtung: 
-                    <input type="radio" name="richtung3" value="0" class="richtung_radio" data-zug="3"> Links 
-                    <input type="radio" name="richtung3" value="1" checked class="richtung_radio" data-zug="3"> Rechts
-                </label>
-                <label>Startmeter: <input type="text" class="zug_entry" data-zug="3" data-field="TrainStart" value="0"></label>
-                <label>Skalieren: <input type="checkbox" class="zug_checkbox" data-zug="3" data-field="Skalieren"></label>
-                <label>Gleiswechsel: <input type="text" class="zug_entry" data-zug="3" data-field="Gleiswechsel" value="0"></label>
-            </div>
-            <div class="form-row">
-                <button class="export_formation" data-zug="3">Wagenreihung exportieren</button>
-                <button class="import_formation" data-zug="3">Wagenreihung importieren</button>
-            </div>
+        <div>
+            <h2>Preview Small Zug 3</h2>
+            <div id="preview-small2-container" class="preview-container"></div>
         </div>
     </div>
-    <button id="download-btn">Download Image</button>
-    <input type="file" id="file-input" style="display:none;" accept=".json">
+    <button id="download-highres">Download High-Res Image (Full Screen)</button>
 
     <script>
-        // Image preloading with error handling
-        const images = {};
-        const pictogramNames = [
-            'fahrrad', 'rollstuhl', 'mehrzweck', 'gastronomie',
-            'fahrradmitnahme_reservierungspflichtig', 'reservierungspflichtig',
-            'wagen_fehlen', 'zusatzhalt', 'haltentfall', 'keine_weiterfahrt',
-            'kein_gastronmisches_angebot', 'ausfall'
-        ];
-        pictogramNames.forEach(name => {
-            images[name] = new Image();
-            images[name].src = `icons/formation/${name}.png`;
-            images[name].onerror = () => {
-                console.warn(`Failed to load image: icons/formation/${name}.png`);
-                images[name].isBroken = true;
-            };
-            images[name].onload = () => {
-                images[name].isLoaded = true;
-            };
-        });
-
         class Coach {
-            constructor(coach) {
-                this.coach_type = coach.coach_type || '';
-                this.double_decker = coach.double_decker || '';
-                this.length = coach.length || 0;
-                this.coach_class = coach.coach_class !== undefined ? coach.coach_class : null;
-                this.coach_number = coach.coach_number || 0;
-                this.amenities = coach.amenities || '';
-                this.start = coach.start || 0;
-                this.stop = coach.stop || 0;
+            constructor(coach_type, double_decker, length, coach_class, coach_number, amenities, start, stop) {
+                this.coach_type = coach_type;
+                this.double_decker = double_decker;
+                this.length = length;
+                this.coach_class = coach_class;
+                this.coach_number = coach_number;
+                this.amenities = amenities;
+                this.start = start;
+                this.stop = stop;
             }
+
             is_first_class() {
-                return this.coach_class === 1;
+                return [1, 12, 21].includes(this.coach_class);
             }
+
             is_locomotive() {
                 return this.coach_type === 'l';
             }
-            has_amenity(amenity) {
-                return this.amenities === amenity;
-            }
-        }
 
-        class TrainData {
-            constructor() {
-                this.zug_daten = {1: {}, 2: {}, 3: {}};
-                this.initializeZugDaten();
-                this.current_stop = '';
-                this.current_platform = '';
-                this.eva = '';
-            }
-
-            initializeZugDaten() {
-                for (let i = 1; i <= 3; i++) {
-                    this.zug_daten[i] = {
-                        Zugnummer: '',
-                        Zugnummer_kurz: '',
-                        Abfahrt: '',
-                        Abweichend: '',
-                        Ziel: '',
-                        'Via-Halte 1': '',
-                        'Via-Halte 2': '',
-                        'Via-Halte 1 Small': '',
-                        'Via-Halte 2 Small': '',
-                        'Via-Halte 3 Small': '',
-                        Informationen: '',
-                        Richtung: 1,
-                        TrainStart: 0,
-                        Skalieren: false,
-                        Wagenreihung: [],
-                        PlatformLength: 420,
-                        PlatformSections: [['A', 69.7], ['B', 135.8], ['C', 208], ['D', 266], ['E', 315.65]],
-                        Gleiswechsel: '0',
-                        'Via-Stations-Categories': {}
-                    };
-                }
+            has_amenity(a) {
+                return this.amenities.includes(a);
             }
         }
 
         class TrainDisplay {
-            constructor(train_data) {
-                this.train_data = train_data;
-                this.y = 70;
-                this.speed = 4;
-                this.aktuelles_merkmal = 'wagennummern';
-                this.merkmale = ['wagennummern', 'ausstattung', 'klasse'];
+            constructor() {
+                this.y = 35;
+                this.speed = 2;
+                this.aktuelles_merkmal = "wagennummern";
+                this.merkmale = ["wagennummern", "ausstattung", "klasse"];
                 this.rotations_index = 0;
                 this.rotation_timer = null;
                 this.rotating = false;
-                this.scroll_divs = {};
-                this.canvas = document.getElementById('large-canvas');
-                this.ctx = this.canvas.getContext('2d');
-                // Regions for rendering (x, y, width, height)
-                this.regions = {
-                    header: { x: 0, y: 0, width: 7680, height: 120 },
-                    zug1_info: { x: 60, y: 120, width: 3760, height: 1600 },
-                    zug1_wagen: { x: 60, y: 1720, width: 3760, height: 516 },
-                    zug2_info: { x: 3860, y: 120, width: 1880, height: 1600 },
-                    zug2_wagen: { x: 3860, y: 1720, width: 1880, height: 516 },
-                    zug3_info: { x: 5740, y: 120, width: 1880, height: 1600 },
-                    zug3_wagen: { x: 5740, y: 1720, width: 1880, height: 516 },
-                    footer: { x: 0, y: 2236, width: 7680, height: 120 }
-                };
+                this.scroll_offscreens = {}; // zug_nr -> offscreen canvas for text
+                this.scroll_positions = {}; // zug_nr -> current pos
+                this.scroll_animation_ids = {}; // zug_nr -> raf id
+                this.overlay_ctxs = {}; // zug_nr -> overlay ctx
             }
 
-            print_direction(richtung, x, y, ctx) {
+            print_direction(richtung, x, ctx, scale = 1) {
                 ctx.strokeStyle = 'white';
-                ctx.lineWidth = 4;
-                ctx.beginPath();
+                ctx.lineWidth = 2 * scale;
+                x *= scale;
+                const y = this.y * scale;
                 if (richtung === 0) {
-                    ctx.moveTo(x, y + 40); ctx.lineTo(x + 20, y + 20);
-                    ctx.moveTo(x, y + 40); ctx.lineTo(x + 30, y + 40);
-                    ctx.moveTo(x, y + 40); ctx.lineTo(x + 20, y + 60);
+                    ctx.beginPath(); ctx.moveTo(x, y + 20 * scale); ctx.lineTo(x + 10 * scale, y + 10 * scale); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(x, y + 20 * scale); ctx.lineTo(x + 15 * scale, y + 20 * scale); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(x, y + 20 * scale); ctx.lineTo(x + 10 * scale, y + 30 * scale); ctx.stroke();
                 } else {
-                    ctx.moveTo(x + 30, y + 40); ctx.lineTo(x + 10, y + 20);
-                    ctx.moveTo(x + 30, y + 40); ctx.lineTo(x, y + 40);
-                    ctx.moveTo(x + 30, y + 40); ctx.lineTo(x + 10, y + 60);
+                    ctx.beginPath(); ctx.moveTo(x + 15 * scale, y + 20 * scale); ctx.lineTo(x + 5 * scale, y + 10 * scale); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(x + 15 * scale, y + 20 * scale); ctx.lineTo(x, y + 20 * scale); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(x + 15 * scale, y + 20 * scale); ctx.lineTo(x + 5 * scale, y + 30 * scale); ctx.stroke();
                 }
-                ctx.stroke();
             }
 
-            print_start_wagon(coach, x, y, ctx) {
+            print_start_wagon(coach, x, ctx, scale = 1) {
                 ctx.strokeStyle = 'white';
-                ctx.lineWidth = 6;
-                ctx.beginPath();
-                ctx.moveTo(x, y + 84); ctx.lineTo(x, y + 20);
-                ctx.moveTo(x, y + 20); ctx.lineTo(x + 12, y);
-                ctx.moveTo(x + 12, y); ctx.lineTo(x + coach.length, y);
-                ctx.moveTo(x, y + 80); ctx.lineTo(x + coach.length, y + 80);
-                ctx.stroke();
+                ctx.lineWidth = 3 * scale;
+                x *= scale;
+                const y = this.y * scale;
+                ctx.beginPath(); ctx.moveTo(x, y + 40 * scale + 2 * scale); ctx.lineTo(x, y + 10 * scale); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(x, y + 10 * scale); ctx.lineTo(x + 6 * scale, y); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(x + 6 * scale, y); ctx.lineTo(x + coach.length * scale, y); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(x, y + 40 * scale); ctx.lineTo(x + coach.length * scale, y + 40 * scale); ctx.stroke();
             }
 
-            print_middle_wagon(coach, x, y, ctx) {
+            print_middle_wagon(coach, x, ctx, scale = 1) {
                 ctx.strokeStyle = 'white';
-                ctx.lineWidth = 6;
-                ctx.beginPath();
-                ctx.moveTo(x, y); ctx.lineTo(x + coach.length, y);
-                ctx.moveTo(x, y + 80); ctx.lineTo(x + coach.length, y + 80);
+                ctx.lineWidth = 3 * scale;
+                x *= scale;
+                const y = this.y * scale;
+                ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + coach.length * scale, y); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(x, y + 40 * scale); ctx.lineTo(x + coach.length * scale, y + 40 * scale); ctx.stroke();
                 if (coach.coach_type === 'ma') {
-                    ctx.moveTo(x, y); ctx.lineTo(x, y + 84);
+                    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + 40 * scale + 2 * scale); ctx.stroke();
                 } else if (coach.coach_type === 'me') {
-                    ctx.moveTo(x + coach.length, y); ctx.lineTo(x + coach.length, y + 84);
+                    ctx.beginPath(); ctx.moveTo(x + coach.length * scale, y); ctx.lineTo(x + coach.length * scale, y + 40 * scale + 2 * scale); ctx.stroke();
                 }
-                ctx.stroke();
             }
 
-            print_end_wagon(coach, x, y, ctx) {
+            print_end_wagon(coach, x, ctx, scale = 1) {
                 ctx.strokeStyle = 'white';
-                ctx.lineWidth = 6;
-                ctx.beginPath();
-                ctx.moveTo(x, y); ctx.lineTo(x + coach.length - 12, y);
-                ctx.moveTo(x + coach.length - 12, y); ctx.lineTo(x + coach.length, y + 20);
-                ctx.moveTo(x + coach.length, y + 20); ctx.lineTo(x + coach.length, y + 84);
-                ctx.moveTo(x, y + 80); ctx.lineTo(x + coach.length, y + 80);
-                ctx.stroke();
+                ctx.lineWidth = 3 * scale;
+                x *= scale;
+                const y = this.y * scale;
+                ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + coach.length * scale - 6 * scale, y); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(x + coach.length * scale - 6 * scale, y); ctx.lineTo(x + coach.length * scale, y + 10 * scale); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(x + coach.length * scale, y + 10 * scale); ctx.lineTo(x + coach.length * scale, y + 40 * scale + 2 * scale); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(x, y + 40 * scale); ctx.lineTo(x + coach.length * scale, y + 40 * scale); ctx.stroke();
             }
 
-            print_locomotive(coach, x, y, ctx) {
+            print_locomotive(coach, x, ctx, scale = 1) {
                 ctx.strokeStyle = 'white';
-                ctx.lineWidth = 6;
-                ctx.beginPath();
-                ctx.moveTo(x, y + 84); ctx.lineTo(x, y + 32);
-                ctx.lineTo(x + 8, y + 16);
-                ctx.lineTo(x + coach.length - 8, y + 16);
-                ctx.lineTo(x + coach.length, y + 32);
-                ctx.lineTo(x + coach.length, y + 84);
-                ctx.moveTo(x, y + 80); ctx.lineTo(x + coach.length, y + 80);
-                ctx.stroke();
+                ctx.lineWidth = 3 * scale;
+                x *= scale;
+                const y = this.y * scale;
+                ctx.beginPath(); ctx.moveTo(x, y + 40 * scale + 2 * scale); ctx.lineTo(x, y + 16 * scale); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(x, y + 16 * scale); ctx.lineTo(x + 4 * scale, y + 8 * scale); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(x + 4 * scale, y + 8 * scale); ctx.lineTo(x + coach.length * scale - 4 * scale, y + 8 * scale); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(x + coach.length * scale - 4 * scale, y + 8 * scale); ctx.lineTo(x + coach.length * scale, y + 16 * scale); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(x + coach.length * scale, y + 16 * scale); ctx.lineTo(x + coach.length * scale, y + 40 * scale + 2 * scale); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(x, y + 40 * scale); ctx.lineTo(x + coach.length * scale, y + 40 * scale); ctx.stroke();
             }
 
-            print_first_class(coach, x, y, ctx, fullScreen) {
+            print_first_class(coach, x, ctx, fullScreen, scale = 1) {
                 if (coach.is_first_class()) {
                     ctx.fillStyle = 'orange';
-                    let len = coach.length;
+                    x *= scale;
+                    const y = this.y * scale;
+                    let width = coach.length * scale;
                     if (!fullScreen) {
-                        if (coach.coach_type === 'e') len += 4;
-                        else if (coach.coach_type === 'a') len -= 4;
+                        if (coach.coach_type === 'e') width += 2 * scale;
+                        if (coach.coach_type === 'a') width -= 2 * scale;
                     }
-                    ctx.fillRect(x, y + 92, len, 20);
+                    ctx.fillRect(x, y + 46 * scale, width, 10 * scale);
                 }
             }
 
-            print_class(coach, x, y, ctx) {
-                ctx.font = 'bold 32px "Open Sans Condensed"';
+            print_class(coach, x, ctx, scale = 1) {
+                ctx.font = `bold ${16 * scale}px "Open Sans Condensed"`;
                 ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
+                x = (x + (coach.length / 2)) * scale;
+                const y = this.y * scale + 20 * scale;
                 if (coach.is_first_class()) {
                     ctx.fillStyle = 'orange';
-                    ctx.fillText("1.", x + (coach.length / 2), y + 40);
+                    ctx.fillText("1.", x, y);
                 } else if (coach.coach_class === 2 && !coach.is_locomotive()) {
                     ctx.fillStyle = 'white';
-                    ctx.fillText("2.", x + (coach.length / 2), y + 40);
+                    ctx.fillText("2.", x, y);
                 }
             }
 
-            print_class_compact(scaled_coaches, ctx, y) {
+            print_class_compact(coaches, ctx, scale = 1) {
                 let group = [];
                 const process_group = () => {
-                    if (group.length === 0) return;
-                    const first = group[0];
-                    const last = group[group.length - 1];
-                    const start_pos = first.start;
-                    const end_pos = last.start + last.length;
+                    if (!group.length) return;
+                    const first_coach = group[0][0];
+                    const start_pos = group[0][1] * scale;
+                    const end_pos = (group[group.length - 1][0].start + group[group.length - 1][0].length) * scale;
                     const center = (start_pos + end_pos) / 2;
-                    const current_class = first.coach_class;
-                    ctx.font = 'bold 32px "Open Sans Condensed"';
+                    const current_class = first_coach.coach_class;
+                    ctx.font = `bold ${16 * scale}px "Open Sans Condensed"`;
                     ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
+                    const y = this.y * scale + 20 * scale;
                     if (current_class === 1) {
                         ctx.fillStyle = 'orange';
-                        ctx.fillText("1.", center, y + 40);
+                        ctx.fillText("1.", center, y);
                     } else if (current_class === 2) {
                         ctx.fillStyle = 'white';
-                        ctx.fillText("2.", center, y + 40);
+                        ctx.fillText("2.", center, y);
                     }
-                    group = [];
                 };
-                scaled_coaches.forEach(coach => {
+                for (let coach of coaches) {
                     if (['a', 'ma', 'm'].includes(coach.coach_type)) {
-                        if (group.length === 0 || coach.coach_class === group[0].coach_class) {
-                            group.push(coach);
+                        if (!group.length || coach.coach_class === group[0][0].coach_class) {
+                            group.push([coach, coach.start]);
                         } else {
                             process_group();
-                            group = [coach];
+                            group = [[coach, coach.start]];
                         }
                     } else if (['e', 'me'].includes(coach.coach_type)) {
-                        if (group.length > 0 && coach.coach_class === group[0].coach_class) {
-                            group.push(coach);
+                        if (group.length && coach.coach_class === group[0][0].coach_class) {
+                            group.push([coach, coach.start]);
+                        } else if (group.length) {
+                            process_group();
+                            group = [[coach, coach.start]];
+                        } else {
+                            group = [[coach, coach.start]];
                         }
                         process_group();
                         group = [];
                     } else {
-                        process_group();
+                        if (group.length) process_group();
+                        group = [];
                     }
-                });
-                process_group();
+                }
+                if (group.length) process_group();
             }
 
-            print_amenities(coach, x, y, ctx) {
-                let img_key;
-                if (coach.has_amenity('f')) img_key = 'fahrrad';
-                else if (coach.has_amenity('r')) img_key = 'rollstuhl';
-                else if (coach.has_amenity('m')) img_key = 'mehrzweck';
-                else if (coach.has_amenity('g')) img_key = 'gastronomie';
-                const img = images[img_key];
-                if (img && img.isLoaded && !img.isBroken) {
-                    try {
-                        ctx.drawImage(img, x + (coach.length / 2) - img.width, y + 40 - img.height, img.width * 2, img.height * 2);
-                    } catch (err) {
-                        console.warn(`Failed to draw amenity image ${img_key}:`, err);
-                    }
+            print_amenities(coach, x, ctx, scale = 1) {
+                ctx.font = `${16 * scale}px sans-serif`;
+                ctx.textAlign = 'center';
+                x = (x + (coach.length / 2)) * scale;
+                const y = this.y * scale + 20 * scale;
+                let amenity = '';
+                if (coach.has_amenity('f')) amenity = 'F';
+                else if (coach.has_amenity('r')) amenity = 'R';
+                else if (coach.has_amenity('m')) amenity = 'M';
+                else if (coach.has_amenity('g')) amenity = 'G';
+                if (amenity) {
+                    ctx.fillStyle = 'white';
+                    ctx.fillText(amenity, x, y);
                 }
             }
 
-            print_amenities_compact(scaled_coaches, ctx, y) {
+            print_amenities_compact(coaches, ctx, scale = 1) {
                 let group = [];
+                const positions = [];
                 const process_group = () => {
-                    if (group.length === 0) return;
-                    const first = group[0];
-                    const last = group[group.length - 1];
-                    const start_pos = first.start;
-                    const end_pos = last.start + last.length;
-                    const center = (start_pos + end_pos) / 2;
-                    const amenity = first.amenities;
-                    let img_key;
-                    if (amenity === 'f') img_key = 'fahrrad';
-                    else if (amenity === 'r') img_key = 'rollstuhl';
-                    else if (amenity === 'm') img_key = 'mehrzweck';
-                    else if (amenity === 'g') img_key = 'gastronomie';
-                    const img = images[img_key];
-                    if (img && img.isLoaded && !img.isBroken) {
-                        try {
-                            let adj = 0;
-                            if (amenity === 'f' || amenity === 'm') {
-                                if (last.coach_type === 'a') adj = 0;
-                                else if (last.coach_type === 'e') adj = 0;
-                            }
-                            ctx.drawImage(img, center + adj - img.width, y + 40 - img.height, img.width * 2, img.height * 2);
-                        } catch (err) {
-                            console.warn(`Failed to draw compact amenity image ${img_key}:`, err);
-                        }
+                    if (!group.length) return;
+                    const first_coach = group[0][0];
+                    const last_coach = group[group.length - 1][0];
+                    const start_pos = group[0][1] * scale;
+                    const end_pos = (last_coach.start + last_coach.length) * scale;
+                    let center = (start_pos + end_pos) / 2;
+                    const amenity = first_coach.amenities;
+                    const y = this.y * scale + 20 * scale;
+                    let shift = 0;
+                    if (amenity) {
+                        if (last_coach.coach_type === 'a') shift = 0;
+                        else if (last_coach.coach_type === 'e') shift = 0;
+                        center += shift * scale;
+                        const min_dist = 20 * scale;
+                        const prev_pos = positions[positions.length - 1];
+                        if (prev_pos && center - prev_pos < min_dist) center = prev_pos + min_dist;
+                        positions.push(center);
+                        ctx.font = `${16 * scale}px sans-serif`;
+                        ctx.textAlign = 'center';
+                        ctx.fillStyle = 'white';
+                        ctx.fillText(amenity.toUpperCase(), center, y);
                     }
-                    group = [];
                 };
-                scaled_coaches.forEach(coach => {
+                for (let coach of coaches) {
                     if (['a', 'ma', 'm'].includes(coach.coach_type)) {
-                        if (group.length === 0 || coach.amenities === group[0].amenities) {
-                            group.push(coach);
+                        if (!group.length || coach.amenities === group[0][0].amenities) {
+                            group.push([coach, coach.start]);
                         } else {
                             process_group();
-                            group = [coach];
+                            group = [[coach, coach.start]];
                         }
                     } else if (['e', 'me'].includes(coach.coach_type)) {
-                        if (group.length > 0 && coach.amenities === group[0].amenities) {
-                            group.push(coach);
+                        if (group.length && coach.amenities === group[0][0].amenities) {
+                            group.push([coach, coach.start]);
+                        } else if (group.length) {
+                            process_group();
+                            group = [[coach, coach.start]];
+                        } else {
+                            group = [[coach, coach.start]];
                         }
                         process_group();
                         group = [];
                     } else {
-                        process_group();
+                        if (group.length) process_group();
+                        group = [];
                     }
-                });
-                process_group();
+                }
+                if (group.length) process_group();
             }
 
-            print_wagon_numbers(coach, x, y, ctx) {
+            print_wagon_numbers(coach, x, ctx, scale = 1) {
                 if (coach.coach_number !== 0) {
                     ctx.fillStyle = 'white';
-                    ctx.font = '32px "Open Sans Condensed"';
+                    ctx.font = `${16 * scale}px "Open Sans Condensed"`;
                     ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(coach.coach_number.toString(), x + (coach.length / 2), y + 40);
+                    ctx.fillText(coach.coach_number.toString(), (x + (coach.length / 2)) * scale, this.y * scale + 20 * scale);
                 }
             }
 
-            print_wagon_numbers_compact(scaled_coaches, ctx, y) {
+            print_wagon_numbers_compact(coaches, ctx, scale = 1) {
                 let group = [];
-                scaled_coaches.forEach(coach => {
+                const positions = [];
+                for (let coach of coaches) {
                     if (coach.coach_number !== 0) {
-                        group.push(coach);
+                        group.push([coach, coach.start]);
                         if (['e', 'me', 'l'].includes(coach.coach_type)) {
-                            if (group.length > 0) {
-                                const first = group[0];
-                                const last = group[group.length - 1];
-                                const start_pos = first.start;
-                                const end_pos = last.start + last.length;
-                                const center = (start_pos + end_pos) / 2;
-                                const first_number = first.coach_number;
-                                const last_number = last.coach_number;
+                            if (group.length) {
+                                const first_coach = group[0][0];
+                                const last_coach = group[group.length - 1][0];
+                                const start_pos = group[0][1] * scale;
+                                const end_pos = (last_coach.start + last_coach.length) * scale;
+                                let center = (start_pos + end_pos) / 2;
+                                const first_number = first_coach.coach_number;
+                                const last_number = last_coach.coach_number;
                                 let number_text = first_number === last_number ? first_number.toString() : `${first_number} - ${last_number}`;
                                 if (number_text !== "0") {
                                     ctx.fillStyle = 'white';
-                                    ctx.font = '32px "Open Sans Condensed"';
+                                    ctx.font = `${16 * scale}px "Open Sans Condensed"`;
                                     ctx.textAlign = 'center';
-                                    ctx.textBaseline = 'middle';
-                                    ctx.fillText(number_text, center, y + 40);
+                                    const text_width = ctx.measureText(number_text).width;
+                                    const min_dist = text_width + 10 * scale;
+                                    const prev_pos = positions[positions.length - 1];
+                                    if (prev_pos && center - prev_pos < min_dist) center = prev_pos + min_dist;
+                                    positions.push(center);
+                                    ctx.fillText(number_text, center, this.y * scale + 20 * scale);
                                 }
+                                group = [];
                             }
-                            group = [];
                         }
-                    } else {
-                        if (group.length > 0 && ['e', 'me', 'l'].includes(coach.coach_type)) {
-                            const first = group[0];
-                            const last = group[group.length - 1];
-                            const start_pos = first.start;
-                            const end_pos = last.start + last.length;
-                            const center = (start_pos + end_pos) / 2;
-                            const first_number = first.coach_number;
-                            const last_number = last.coach_number;
-                            let number_text = first_number === last_number ? first_number.toString() : `${first_number} - ${last_number}`;
-                            if (number_text !== "0") {
-                                ctx.fillStyle = 'white';
-                                ctx.font = '32px "Open Sans Condensed"';
-                                ctx.textAlign = 'center';
-                                ctx.textBaseline = 'middle';
-                                ctx.fillText(number_text, center, y + 40);
-                            }
-                            group = [];
+                    } else if (group.length && ['e', 'me', 'l'].includes(coach.coach_type)) {
+                        const first_coach = group[0][0];
+                        const last_coach = group[group.length - 1][0];
+                        const start_pos = group[0][1] * scale;
+                        const end_pos = (last_coach.start + last_coach.length) * scale;
+                        let center = (start_pos + end_pos) / 2;
+                        const first_number = first_coach.coach_number;
+                        const last_number = last_coach.coach_number;
+                        let number_text = first_number === last_number ? first_number.toString() : `${first_number} - ${last_number}`;
+                        if (number_text !== "0") {
+                            ctx.fillStyle = 'white';
+                            ctx.font = `${16 * scale}px "Open Sans Condensed"`;
+                            ctx.textAlign = 'center';
+                            const text_width = ctx.measureText(number_text).width;
+                            const min_dist = text_width + 10 * scale;
+                            const prev_pos = positions[positions.length - 1];
+                            if (prev_pos && center - prev_pos < min_dist) center = prev_pos + min_dist;
+                            positions.push(center);
+                            ctx.fillText(number_text, center, this.y * scale + 20 * scale);
                         }
-                    }
-                });
-                if (group.length > 0) {
-                    const first = group[0];
-                    const last = group[group.length - 1];
-                    const start_pos = first.start;
-                    const end_pos = last.start + last.length;
-                    const center = (start_pos + end_pos) / 2;
-                    const first_number = first.coach_number;
-                    const last_number = last.coach_number;
-                    let number_text = first_number === last_number ? first_number.toString() : `${first_number} - ${last_number}`;
-                    if (number_text !== "0") {
-                        ctx.fillStyle = 'white';
-                        ctx.font = '32px "Open Sans Condensed"';
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
-                        ctx.fillText(number_text, center, y + 40);
+                        group = [];
                     }
                 }
             }
 
-            print_sectors(sectors, ctx, fullScreen, scale_factor, platform_length, x, y) {
-                const threshold = fullScreen ? 100 : 50;
+            print_sectors(sectors, ctx, fullScreen, scale_factor, platform_length, scale = 1) {
+                const threshold = (fullScreen ? 50 : 25) * scale;
                 ctx.fillStyle = 'white';
-                ctx.font = '32px "Open Sans Condensed"';
+                ctx.font = `${16 * scale}px "Open Sans Condensed"`;
                 ctx.textAlign = 'center';
-                ctx.textBaseline = 'top';
-                sectors.forEach(([name, position]) => {
-                    const display_pos = x + threshold + 50 + (position * scale_factor);
-                    ctx.fillText(name, display_pos, y + 20);
-                });
+                for (let [name, position] of sectors) {
+                    const display_pos = threshold + 25 * scale + position * scale_factor * scale;
+                    ctx.fillText(name, display_pos, 10 * scale);
+                }
             }
 
-            print_coach_sequence(zug_nr, region_info, region_wagen, fullScreen) {
-                const ctx = this.ctx;
-                const { x: info_x, y: info_y, width: info_width, height: info_height } = region_info;
-                const { x: wagen_x, y: wagen_y, width: wagen_width, height: wagen_height } = region_wagen;
-                
-                // Clear regions
-                ctx.fillStyle = 'midnightblue';
-                ctx.fillRect(info_x, info_y, info_width, info_height);
-                ctx.fillRect(wagen_x, wagen_y, wagen_width, wagen_height);
-
-                if (!this.train_data.zug_daten[zug_nr]) {
-                    console.warn(`zug_daten[${zug_nr}] is undefined`);
-                    return;
-                }
-                const coaches = this.train_data.zug_daten[zug_nr].Wagenreihung || [];
-                const platform_length = this.train_data.zug_daten[zug_nr].PlatformLength || 420;
-                const train_start = parseFloat(this.train_data.zug_daten[zug_nr].TrainStart) || 0;
-                const direction = this.train_data.zug_daten[zug_nr].Richtung;
-                const gleiswechsel = this.train_data.zug_daten[zug_nr].Gleiswechsel || "0";
-                const skalieren = this.train_data.zug_daten[zug_nr].Skalieren;
-
-                if (coaches.length === 0) return;
-
+            print_coach_sequence(coaches, ctx, gleiswechsel = "0", fullScreen = true, richtung = 1, platform_length = 420, start_meter = 0, skalieren = false, usable_display_length = 840, scale = 1) {
                 const factor = fullScreen ? 2 : 1;
-                const bahnsteiglaenge_display = 940 * factor;
-                const threshold = fullScreen ? 100 : 50;
-                let usable_display_length = fullScreen ? 1580 : 740;
-                const gap = 4;
-                let zuglaenge = coaches.reduce((sum, c) => sum + c.length, 0);
-                if (!fullScreen) {
-                    zuglaenge -= coaches.reduce((sum, c) => sum + (c.is_locomotive() ? c.length : 0), 0);
-                }
+                let bahnsteiglaenge_display = 470 * factor * scale;
+                const threshold = (fullScreen ? 50 : 25) * scale;
+                usable_display_length *= scale;
+                const gap = 2 * scale;
+                let zuglaenge = coaches.reduce((sum, coach) => sum + coach.length, 0);
+                if (!fullScreen) zuglaenge -= coaches.reduce((sum, coach) => sum + (coach.is_locomotive() ? coach.length : 0), 0);
+
                 let factor_new = usable_display_length / platform_length;
-                let display_coaches = fullScreen ? coaches : coaches.filter(c => !c.is_locomotive());
+
+                let display_coaches = fullScreen ? coaches : coaches.filter(coach => !coach.is_locomotive());
+                if (!display_coaches.length) return;
 
                 if (!fullScreen) {
                     ctx.strokeStyle = 'white';
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.moveTo(wagen_x, wagen_y); ctx.lineTo(wagen_x, wagen_y + wagen_height);
-                    ctx.stroke();
+                    ctx.lineWidth = scale;
+                    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 129 * scale); ctx.stroke();
                 }
-                let min_start = Math.min(...display_coaches.map(c => c.start));
+
+                let min_start = display_coaches.reduce((min, coach) => Math.min(min, coach.start), Infinity);
                 min_start = 0;
-                let scaled_coaches = display_coaches.map(c => {
-                    let new_start = (c.start + min_start) * factor_new + threshold + 50;
-                    let new_stop = (c.stop + min_start) * factor_new + threshold + 50;
-                    let new_length = c.length * factor_new;
-                    return new Coach({...c, start: new_start, stop: new_stop, length: new_length});
+
+                let scaled_coaches = display_coaches.map(coach => {
+                    const new_start = (coach.start + min_start) * factor_new + threshold / scale + 25;
+                    const new_stop = (coach.stop + min_start) * factor_new + threshold / scale + 25;
+                    const new_length = coach.length * factor_new;
+                    return new Coach(coach.coach_type, coach.double_decker, new_length, coach.coach_class, coach.coach_number, coach.amenities, new_start, new_stop);
                 });
+
                 for (let i = 0; i < scaled_coaches.length - 1; i++) {
                     scaled_coaches[i].length = scaled_coaches[i + 1].start - scaled_coaches[i].start;
                 }
                 scaled_coaches[scaled_coaches.length - 1].length = scaled_coaches[scaled_coaches.length - 1].stop - scaled_coaches[scaled_coaches.length - 1].start;
-                scaled_coaches.forEach(c => {
+
+                scaled_coaches.forEach(coach => {
                     if (gap > 0) {
                         if (fullScreen) {
-                            c.length -= gap * 2;
-                            c.start += gap;
+                            coach.length -= gap * 2 / scale;
+                            coach.start += gap / scale;
                         } else {
-                            if (['a', 'ma'].includes(c.coach_type)) c.start += gap;
-                            else if (['e', 'me'].includes(c.coach_type)) c.length -= gap;
+                            if (['a', 'ma'].includes(coach.coach_type)) coach.start += gap / scale;
+                            else if (['e', 'me'].includes(coach.coach_type)) coach.length -= gap / scale;
                         }
                     }
                 });
-                let zuglaenge_scaled = scaled_coaches.reduce((sum, c) => sum + c.length, 0);
-                if (zuglaenge_scaled < usable_display_length / 2 && skalieren) {
+
+                let zuglaenge_scaled = scaled_coaches.reduce((sum, coach) => sum + coach.length, 0);
+
+                if (zuglaenge_scaled < usable_display_length / 2 / scale && skalieren) {
                     factor_new *= 2;
-                    scaled_coaches = display_coaches.map(c => {
-                        let new_start = c.start * factor_new + threshold;
-                        let new_stop = c.stop * factor_new + threshold;
-                        let new_length = c.length * factor_new;
-                        return new Coach({...c, start: new_start, stop: new_stop, length: new_length});
+                    scaled_coaches = display_coaches.map(coach => {
+                        const new_start = coach.start * factor_new + threshold / scale;
+                        const new_stop = coach.stop * factor_new + threshold / scale;
+                        const new_length = coach.length * factor_new;
+                        return new Coach(coach.coach_type, coach.double_decker, new_length, coach.coach_class, coach.coach_number, coach.amenities, new_start, new_stop);
                     });
                     for (let i = 0; i < scaled_coaches.length - 1; i++) {
                         scaled_coaches[i].length = scaled_coaches[i + 1].start - scaled_coaches[i].start;
                     }
                     scaled_coaches[scaled_coaches.length - 1].length = scaled_coaches[scaled_coaches.length - 1].stop - scaled_coaches[scaled_coaches.length - 1].start;
-                    zuglaenge_scaled = scaled_coaches.reduce((sum, c) => sum + c.length, 0);
+                    zuglaenge_scaled = scaled_coaches.reduce((sum, coach) => sum + coach.length, 0);
                 }
-                let start_meter_pixel = Math.min(...scaled_coaches.map(c => c.start));
-                if (direction === 0) {
-                    let arrow_pos = start_meter_pixel - 40;
-                    this.print_direction(direction, wagen_x + arrow_pos, wagen_y, ctx);
+
+                const start_meter_pixel = scaled_coaches.reduce((min, coach) => Math.min(min, coach.start), Infinity) * scale;
+
+                if (richtung === 0) {
+                    this.print_direction(richtung, (start_meter_pixel / scale - 20), ctx, scale);
                 }
+
                 ctx.strokeStyle = 'white';
-                ctx.lineWidth = 6;
-                ctx.beginPath();
-                ctx.moveTo(wagen_x + threshold, wagen_y + 150); ctx.lineTo(wagen_x + start_meter_pixel - 10, wagen_y + 150);
-                ctx.stroke();
-                if (!fullScreen) {
-                    if (this.aktuelles_merkmal === "klasse") this.print_class_compact(scaled_coaches, ctx, wagen_y);
-                    if (this.aktuelles_merkmal === "ausstattung") this.print_amenities_compact(scaled_coaches, ctx, wagen_y);
-                    if (this.aktuelles_merkmal === "wagennummern") this.print_wagon_numbers_compact(scaled_coaches, ctx, wagen_y);
-                }
+                ctx.lineWidth = 3 * scale;
+                ctx.beginPath(); ctx.moveTo(threshold, 75 * scale); ctx.lineTo(start_meter_pixel - 5 * scale, 75 * scale); ctx.stroke();
+
                 let coach_start_positions = [];
-                scaled_coaches.forEach(c => {
-                    if (c.coach_type === 'a') this.print_start_wagon(c, wagen_x + c.start, wagen_y, ctx);
-                    else if (c.coach_type.includes('m')) this.print_middle_wagon(c, wagen_x + c.start, wagen_y, ctx);
-                    else if (c.coach_type === 'e') this.print_end_wagon(c, wagen_x + c.start, wagen_y, ctx);
-                    else if (c.coach_type === 'l' && fullScreen) this.print_locomotive(c, wagen_x + c.start, wagen_y, ctx);
-                    this.print_first_class(c, wagen_x + c.start, wagen_y, ctx, fullScreen);
-                    if (fullScreen) {
-                        if (this.aktuelles_merkmal === "klasse") this.print_class(c, wagen_x + c.start, wagen_y, ctx);
-                        if (this.aktuelles_merkmal === "ausstattung") this.print_amenities(c, wagen_x + c.start, wagen_y, ctx);
-                        if (this.aktuelles_merkmal === "wagennummern") this.print_wagon_numbers(c, wagen_x + c.start, wagen_y, ctx);
-                    }
-                    coach_start_positions.push(c.start + c.length);
+                scaled_coaches.forEach(coach => {
+                    if (coach.coach_type === 'a') this.print_start_wagon(coach, coach.start, ctx, scale);
+                    else if (coach.coach_type.startsWith('m')) this.print_middle_wagon(coach, coach.start, ctx, scale);
+                    else if (coach.coach_type === 'e') this.print_end_wagon(coach, coach.start, ctx, scale);
+                    else if (coach.coach_type === 'l' && fullScreen) this.print_locomotive(coach, coach.start, ctx, scale);
+
+                    this.print_first_class(coach, coach.start, ctx, fullScreen, scale);
+                    if (this.aktuelles_merkmal === "klasse" && fullScreen) this.print_class(coach, coach.start, ctx, scale);
+                    else if (this.aktuelles_merkmal === "ausstattung" && fullScreen) this.print_amenities(coach, coach.start, ctx, scale);
+                    else if (this.aktuelles_merkmal === "wagennummern" && fullScreen) this.print_wagon_numbers(coach, coach.start, ctx, scale);
+
+                    coach_start_positions.push((coach.start + coach.length) * scale);
                 });
-                let right_pos = Math.max(...coach_start_positions);
-                ctx.strokeStyle = 'white';
-                ctx.lineWidth = 6;
-                ctx.beginPath();
-                ctx.moveTo(wagen_x + right_pos + 10, wagen_y + 150); ctx.lineTo(wagen_x + bahnsteiglaenge_display - threshold, wagen_y + 150);
-                ctx.stroke();
-                if (direction === 1) {
-                    this.print_direction(direction, wagen_x + right_pos + 10, wagen_y, ctx);
+
+                if (!fullScreen) {
+                    if (this.aktuelles_merkmal === "klasse") this.print_class_compact(scaled_coaches, ctx, scale);
+                    else if (this.aktuelles_merkmal === "ausstattung") this.print_amenities_compact(scaled_coaches, ctx, scale);
+                    else if (this.aktuelles_merkmal === "wagennummern") this.print_wagon_numbers_compact(scaled_coaches, ctx, scale);
                 }
-                try {
-                    this.print_sectors(this.train_data.zug_daten[zug_nr].PlatformSections, ctx, fullScreen, factor_new, platform_length, wagen_x, wagen_y);
-                } catch (err) {
-                    console.warn(`Failed to print sectors for zug_${zug_nr}:`, err);
-                }
-                if (gleiswechsel !== "0" && zug_nr === 3) {
-                    ctx.fillStyle = 'orange';
-                    ctx.fillRect(wagen_x, wagen_y, wagen_width, wagen_height);
-                    ctx.fillStyle = 'white';
-                    ctx.font = '40px "Open Sans Condensed"';
-                    ctx.textAlign = 'left';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText('Neues Gleis', wagen_x + 50, wagen_y + 50);
-                    ctx.font = 'italic 40px "Open Sans Condensed"';
-                    ctx.fillText('New Track', wagen_x + 50, wagen_y + 110);
-                    ctx.font = '84px "Open Sans Condensed"';
-                    ctx.textAlign = 'right';
-                    ctx.fillText(gleiswechsel, wagen_x + wagen_width - 50, wagen_y + 80);
-                    ctx.textAlign = 'left';
-                }
+
+                const right_pos = Math.max(...coach_start_positions);
+                ctx.beginPath(); ctx.moveTo(right_pos + 5 * scale, 75 * scale); ctx.lineTo(bahnsteiglaenge_display - threshold, 75 * scale); ctx.stroke();
+
+                if (richtung === 1) this.print_direction(richtung, (right_pos / scale + 5), ctx, scale);
+
                 return factor_new;
             }
 
-            print_train_info(zug_nr, region_info, fullScreen) {
-                const ctx = this.ctx;
-                const { x: info_x, y: info_y, width: info_width, height: info_height } = region_info;
-                ctx.fillStyle = 'midnightblue';
-                ctx.fillRect(info_x, info_y, info_width, info_height);
-
-                if (!this.train_data.zug_daten[zug_nr]) {
-                    console.warn(`zug_daten[${zug_nr}] is undefined`);
-                    return;
-                }
-                const info = this.train_data.zug_daten[zug_nr].Informationen || "";
-                let nr = this.train_data.zug_daten[zug_nr].Zugnummer || "";
-                const nr_kurz = this.train_data.zug_daten[zug_nr].Zugnummer_kurz || "";
-                const abfahrt = this.train_data.zug_daten[zug_nr].Abfahrt || "";
-                const abfahrt_a = this.train_data.zug_daten[zug_nr].Abweichend || "";
-                const ziel = this.train_data.zug_daten[zug_nr].Ziel || "";
-                const via = fullScreen ? this.train_data.zug_daten[zug_nr]['Via-Halte 1'] || "" : this.train_data.zug_daten[zug_nr]['Via-Halte 1 Small'] || "";
-                const via2 = fullScreen ? this.train_data.zug_daten[zug_nr]['Via-Halte 2'] || "" : this.train_data.zug_daten[zug_nr]['Via-Halte 2 Small'] || "";
-                const via3 = this.train_data.zug_daten[zug_nr]['Via-Halte 3 Small'] || "";
-                const gleiswechsel = this.train_data.zug_daten[zug_nr].Gleiswechsel || "0";
-
-                let x = fullScreen ? 150 : 100;
-                const img_y = info_y + 50;
-                const step = 100;
-                const drawImageSafe = (img_key) => {
-                    const img = images[img_key];
-                    if (img && img.isLoaded && !img.isBroken) {
-                        try {
-                            ctx.drawImage(img, info_x + x, img_y, img.width * 2, img.height * 2);
-                            x += step;
-                        } catch (err) {
-                            console.warn(`Failed to draw pictogram ${img_key}:`, err);
-                        }
-                    }
-                };
+            print_pictograms(ctx, zug_nr, fullScreen, info, nr, scale = 1, overlay_ctx) {
+                let x = (fullScreen ? 75 : 50) * scale;
+                const step = 55 * scale;
+                const icon_y = 25 * scale;
                 if (info.includes("Zug fällt heute aus") || info.includes("Keine Weiterfahrt nach")) {
-                    drawImageSafe('ausfall');
+                    ctx.fillStyle = 'yellow';
+                    ctx.fillRect(x, icon_y - 25 * scale, 50 * scale, 50 * scale);
+                    ctx.fillStyle = 'black';
+                    ctx.font = `${20 * scale}px sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Ausfall', x + 25 * scale, icon_y);
+                    x += step;
                 }
                 if (nr.includes("FLX")) {
-                    drawImageSafe('reservierungspflichtig');
+                    ctx.fillStyle = 'yellow';
+                    ctx.fillRect(x, icon_y - 25 * scale, 50 * scale, 50 * scale);
+                    ctx.fillStyle = 'black';
+                    ctx.font = `${20 * scale}px sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.fillText('ResPf', x + 25 * scale, icon_y);
+                    x += step;
                 }
                 if (nr.includes("IC")) {
-                    drawImageSafe('fahrradmitnahme_reservierungspflichtig');
+                    ctx.fillStyle = 'yellow';
+                    ctx.fillRect(x, icon_y - 25 * scale, 50 * scale, 50 * scale);
+                    ctx.fillStyle = 'black';
+                    ctx.font = `${20 * scale}px sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.fillText('FahRes', x + 25 * scale, icon_y);
+                    x += step;
                 }
                 if (info.includes("Heute mit Halt in")) {
-                    drawImageSafe('zusatzhalt');
+                    ctx.fillStyle = 'yellow';
+                    ctx.fillRect(x, icon_y - 25 * scale, 50 * scale, 50 * scale);
+                    ctx.fillStyle = 'black';
+                    ctx.font = `${20 * scale}px sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.fillText('ZusHalt', x + 25 * scale, icon_y);
+                    x += step;
                 }
                 if (info.includes("Heute ohne Halt in")) {
-                    drawImageSafe('haltentfall');
+                    ctx.fillStyle = 'yellow';
+                    ctx.fillRect(x, icon_y - 25 * scale, 50 * scale, 50 * scale);
+                    ctx.fillStyle = 'black';
+                    ctx.font = `${20 * scale}px sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.fillText('HaltEnt', x + 25 * scale, icon_y);
+                    x += step;
                 }
                 if (info.includes("Mehrere Wagen fehlen") || info.includes("Ein Wagen fehlt")) {
-                    drawImageSafe('wagen_fehlen');
+                    ctx.fillStyle = 'yellow';
+                    ctx.fillRect(x, icon_y - 25 * scale, 50 * scale, 50 * scale);
+                    ctx.fillStyle = 'black';
+                    ctx.font = `${20 * scale}px sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.fillText('WagFehl', x + 25 * scale, icon_y);
+                    x += step;
                 }
                 if (info.includes("Kein gastronomisches Angebot")) {
-                    drawImageSafe('kein_gastronmisches_angebot');
+                    ctx.fillStyle = 'yellow';
+                    ctx.fillRect(x, icon_y - 25 * scale, 50 * scale, 50 * scale);
+                    ctx.fillStyle = 'black';
+                    ctx.font = `${20 * scale}px sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.fillText('KeinGastro', x + 25 * scale, icon_y);
+                    x += step;
                 }
 
-                let used_nr = fullScreen ? nr : nr_kurz;
-                ctx.textAlign = 'left';
-                ctx.textBaseline = 'middle';
-                if (fullScreen) {
-                    if (used_nr !== "") {
-                        ctx.fillStyle = 'white';
-                        ctx.font = '80px "Open Sans Condensed"';
-                        ctx.textAlign = 'right';
-                        ctx.fillText(used_nr, info_x + 1780, info_y + 210);
-                        const text_width = ctx.measureText(used_nr).width;
-                        const text_height = 80;
-                        const padding_x = 20;
-                        const padding_y = 20;
-                        ctx.fillStyle = 'grey';
-                        ctx.fillRect(info_x + 1780 - text_width - padding_x, info_y + 210 - (text_height / 2) + padding_y * 1.5 - padding_y, text_width + 2 * padding_x, text_height + 2 * padding_y);
-                        ctx.fillStyle = 'white';
-                        ctx.fillText(used_nr, info_x + 1780, info_y + 210);
-                    }
-                    ctx.textAlign = 'left';
-                    ctx.font = '140px "Open Sans Condensed"';
-                    ctx.fillText(abfahrt, info_x + 100, info_y + 206);
-                    if (abfahrt_a !== "") {
-                        ctx.fillStyle = 'midnightblue';
-                        ctx.font = '100px "Open Sans Condensed"';
-                        ctx.fillText(abfahrt_a, info_x + 540, info_y + 210);
-                        const text_width = ctx.measureText(abfahrt_a).width;
-                        const text_height = 100;
-                        const padding_x = 20;
-                        const padding_y = 20;
-                        ctx.fillStyle = 'white';
-                        ctx.fillRect(info_x + 540 - padding_x, info_y + 210 - (text_height / 2) + padding_y * 1.5 - padding_y, text_width + 2 * padding_x, text_height + 2 * padding_y);
-                        ctx.fillStyle = 'midnightblue';
-                        ctx.fillText(abfahrt_a, info_x + 540, info_y + 210);
-                    }
-                    ctx.fillStyle = 'white';
-                    ctx.font = '144px "Open Sans Condensed"';
-                    ctx.fillText(ziel, info_x + 100, info_y + 420);
-                    ctx.font = '50px "Open Sans Condensed"';
-                    ctx.fillText(via, info_x + 112, info_y + 620);
-                    ctx.fillText(via2, info_x + 112, info_y + 720);
-                } else {
-                    if (used_nr !== "") {
-                        ctx.fillStyle = 'white';
-                        ctx.font = '56px "Open Sans Condensed"';
-                        ctx.textAlign = 'right';
-                        ctx.fillText(used_nr, info_x + 890, info_y + 200);
-                        const text_width = ctx.measureText(used_nr).width;
-                        const text_height = 56;
-                        ctx.fillStyle = 'grey';
-                        ctx.fillRect(info_x + 890 - text_width - 10, info_y + 200 - (text_height / 2) - 10, text_width + 20, text_height + 20);
-                        ctx.fillStyle = 'white';
-                        ctx.fillText(used_nr, info_x + 890, info_y + 200);
-                    }
-                    ctx.textAlign = 'left';
-                    ctx.font = '76px "Open Sans Condensed"';
-                    ctx.fillText(abfahrt, info_x + 50, info_y + 200);
-                    if (abfahrt_a !== "") {
-                        ctx.fillStyle = 'midnightblue';
-                        ctx.font = '56px "Open Sans Condensed"';
-                        ctx.fillText(abfahrt_a, info_x + 290, info_y + 200);
-                        const text_width = ctx.measureText(abfahrt_a).width;
-                        const text_height = 56;
-                        ctx.fillStyle = 'white';
-                        ctx.fillRect(info_x + 290 - 10, info_y + 200 - (text_height / 2) - 10, text_width + 20, text_height + 20);
-                        ctx.fillStyle = 'midnightblue';
-                        ctx.fillText(abfahrt_a, info_x + 290, info_y + 200);
-                    }
-                    ctx.fillStyle = 'white';
-                    ctx.font = '68px "Open Sans Condensed"';
-                    ctx.fillText(ziel, info_x + 50, info_y + 360);
-                    ctx.font = '50px "Open Sans Condensed"';
-                    ctx.fillText(via, info_x + 56, info_y + 520);
-                    ctx.fillText(via2, info_x + 56, info_y + 620);
-                    ctx.fillText(via3, info_x + 56, info_y + 720);
-                    if (gleiswechsel !== "0" && zug_nr === 3) {
-                        ctx.fillStyle = 'orange';
-                        ctx.fillRect(info_x, info_y, info_width, 100);
-                        ctx.fillStyle = 'white';
-                        ctx.font = '40px "Open Sans Condensed"';
-                        ctx.fillText('Gleisänderung / ', info_x + 50, info_y + 50);
-                        ctx.font = 'italic 40px "Open Sans Condensed"';
-                        ctx.fillText('Track change', info_x + 420, info_y + 50);
-                        ctx.fillStyle = 'white';
-                        ctx.fillRect(info_x, info_y + 100, info_width, info_height - 100);
-                        if (used_nr !== "") {
-                            ctx.fillStyle = 'white';
-                            ctx.font = '56px "Open Sans Condensed"';
-                            ctx.textAlign = 'right';
-                            ctx.fillText(used_nr, info_x + 890, info_y + 200);
-                            const text_width = ctx.measureText(used_nr).width;
-                            const text_height = 56;
-                            ctx.fillStyle = 'grey';
-                            ctx.fillRect(info_x + 890 - text_width - 10, info_y + 200 - (text_height / 2) - 10, text_width + 20, text_height + 20);
-                            ctx.fillStyle = 'white';
-                            ctx.fillText(used_nr, info_x + 890, info_y + 200);
+                const canvas_width = fullScreen ? 940 * scale : 470 * scale;
+                const scroll_width = canvas_width - x;
+                if (info) {
+                    ctx.font = `${23 * scale}px "Open Sans Condensed"`;
+                    const text_width = ctx.measureText(info).width;
+                    if (text_width > scroll_width) {
+                        let result = '';
+                        for (let i = 0; i < Math.floor(10000 / info.length); i++) {
+                            result += info + ' +++ ';
                         }
+                        this.init_scrolling_text(zug_nr, overlay_ctx, result, scroll_width, scale);
+                    } else {
+                        ctx.fillStyle = 'midnightblue';
                         ctx.textAlign = 'left';
-                        ctx.fillStyle = 'midnightblue';
-                        ctx.font = '76px "Open Sans Condensed"';
-                        ctx.fillText(abfahrt, info_x + 50, info_y + 200);
-                        if (abfahrt_a !== "") {
-                            ctx.fillStyle = 'white';
-                            ctx.font = '56px "Open Sans Condensed"';
-                            ctx.fillText(abfahrt_a, info_x + 290, info_y + 200);
-                            const text_width = ctx.measureText(abfahrt_a).width;
-                            const text_height = 56;
-                            ctx.fillStyle = 'midnightblue';
-                            ctx.fillRect(info_x + 290 - 10, info_y + 200 - (text_height / 2) - 10, text_width + 20, text_height + 20);
-                            ctx.fillStyle = 'white';
-                            ctx.fillText(abfahrt_a, info_x + 290, info_y + 200);
-                        }
-                        ctx.fillStyle = 'midnightblue';
-                        ctx.font = '68px "Open Sans Condensed"';
-                        ctx.fillText(ziel, info_x + 50, info_y + 360);
-                        ctx.font = '50px "Open Sans Condensed"';
-                        ctx.fillText(via, info_x + 50, info_y + 520);
-                        ctx.fillText(via2, info_x + 50, info_y + 620);
-                        ctx.fillText(via3, info_x + 50, info_y + 720);
+                        ctx.fillText(info, x, 25 * scale);
                     }
                 }
+                return x;
+            }
+
+            init_scrolling_text(zug_nr, overlay_ctx, text, scroll_width, scale) {
+                if (this.scroll_animation_ids[zug_nr]) cancelAnimationFrame(this.scroll_animation_ids[zug_nr]);
+                const text_width = overlay_ctx.measureText(text).width;
+                const offscreen = document.createElement('canvas');
+                offscreen.width = text_width;
+                offscreen.height = 50 * scale;
+                const off_ctx = offscreen.getContext('2d');
+                off_ctx.font = `${23 * scale}px "Open Sans Condensed"`;
+                off_ctx.fillStyle = 'midnightblue';
+                off_ctx.textAlign = 'left';
+                off_ctx.textBaseline = 'middle';
+                off_ctx.fillText(text, 0, 25 * scale);
+                this.scroll_offscreens[zug_nr] = offscreen;
+                this.scroll_positions[zug_nr] = 0;
+                overlay_ctx.canvas.width = scroll_width;
+                overlay_ctx.canvas.height = 50 * scale;
+                this.animate_scroll(zug_nr, overlay_ctx, scale);
+            }
+
+            animate_scroll(zug_nr, overlay_ctx, scale) {
+                const offscreen = this.scroll_offscreens[zug_nr];
+                let pos = this.scroll_positions[zug_nr];
+                const width = overlay_ctx.canvas.width;
+                const height = overlay_ctx.canvas.height;
+                const text_width = offscreen.width;
+                overlay_ctx.clearRect(0, 0, width, height);
+                overlay_ctx.drawImage(offscreen, pos, 0);
+                overlay_ctx.drawImage(offscreen, pos - text_width, 0);
+                pos += this.speed * scale;
+                if (pos >= text_width) pos = 0;
+                this.scroll_positions[zug_nr] = pos;
+                this.scroll_animation_ids[zug_nr] = requestAnimationFrame(() => this.animate_scroll(zug_nr, overlay_ctx, scale));
+            }
+
+            print_train_info(info, nr, nr_kurz, abfahrt, abfahrt_a, ziel, via, via2, via3, gleiswechsel, ctx, fullScreen, scale = 1, overlay_ctx, zug_nr) {
+                if (fullScreen) {
+                    if (nr) {
+                        ctx.fillStyle = 'white';
+                        ctx.font = `${40 * scale}px "Open Sans Condensed"`;
+                        ctx.textAlign = 'right';
+                        const text_x = 890 * scale;
+                        const text_y = 105 * scale;
+                        ctx.fillText(nr, text_x, text_y);
+                        const text_width = ctx.measureText(nr).width;
+                        const text_height = 40 * scale;
+                        ctx.fillStyle = 'grey';
+                        ctx.fillRect(text_x - text_width - 10 * scale, text_y - text_height / 2 - 10 * scale, text_width + 20 * scale, text_height + 20 * scale);
+                    }
+                    ctx.font = `${70 * scale}px "Open Sans Condensed"`;
+                    ctx.textAlign = 'left';
+                    ctx.fillStyle = 'white';
+                    ctx.fillText(abfahrt, 50 * scale, 103 * scale);
+
+                    if (abfahrt_a) {
+                        ctx.font = `${50 * scale}px "Open Sans Condensed"`;
+                        ctx.fillStyle = 'midnightblue';
+                        ctx.fillText(abfahrt_a, 270 * scale, 105 * scale);
+                        const text_width = ctx.measureText(abfahrt_a).width;
+                        const text_height = 50 * scale;
+                        ctx.fillStyle = 'white';
+                        ctx.fillRect(270 * scale - 10 * scale, 105 * scale - text_height / 2 - 10 * scale, text_width + 20 * scale, text_height + 20 * scale);
+                    }
+                    ctx.font = `${72 * scale}px "Open Sans Condensed"`;
+                    ctx.fillStyle = 'white';
+                    ctx.fillText(ziel, 50 * scale, 210 * scale);
+                    ctx.font = `${25 * scale}px "Open Sans Condensed"`;
+                    ctx.fillText(via, 56 * scale, 310 * scale);
+                    ctx.fillText(via2, 56 * scale, 360 * scale);
+                } else {
+                    nr = nr_kurz;
+                    if (nr) {
+                        ctx.strokeStyle = 'white';
+                        ctx.lineWidth = scale;
+                        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 410 * scale); ctx.stroke();
+                        ctx.beginPath(); ctx.moveTo(469 * scale, 0); ctx.lineTo(469 * scale, 400 * scale); ctx.stroke();
+                        ctx.font = `${28 * scale}px "Open Sans Condensed"`;
+                        ctx.textAlign = 'right';
+                        ctx.fillStyle = 'white';
+                        ctx.fillText(nr, 445 * scale, 100 * scale);
+                        const text_width = ctx.measureText(nr).width;
+                        const text_height = 28 * scale;
+                        ctx.fillStyle = 'grey';
+                        ctx.fillRect(445 * scale - text_width - 5 * scale, 100 * scale - text_height / 2 - 5 * scale, text_width + 10 * scale, text_height + 10 * scale);
+                    }
+                    ctx.font = `${38 * scale}px "Open Sans Condensed"`;
+                    ctx.textAlign = 'left';
+                    ctx.fillStyle = 'white';
+                    ctx.fillText(abfahrt, 25 * scale, 100 * scale);
+
+                    if (abfahrt_a) {
+                        ctx.font = `${28 * scale}px "Open Sans Condensed"`;
+                        ctx.fillStyle = 'midnightblue';
+                        ctx.fillText(abfahrt_a, 145 * scale, 100 * scale);
+                        const text_width = ctx.measureText(abfahrt_a).width;
+                        const text_height = 28 * scale;
+                        ctx.fillStyle = 'white';
+                        ctx.fillRect(145 * scale - 10 * scale, 100 * scale - text_height / 2 - 10 * scale, text_width + 20 * scale, text_height + 20 * scale);
+                    }
+                    ctx.font = `${34 * scale}px "Open Sans Condensed"`;
+                    ctx.fillStyle = 'white';
+                    ctx.fillText(ziel, 25 * scale, 180 * scale);
+                    ctx.font = `${25 * scale}px "Open Sans Condensed"`;
+                    ctx.fillText(via, 28 * scale, 260 * scale);
+                    ctx.fillText(via2, 28 * scale, 310 * scale);
+                    ctx.fillText(via3, 28 * scale, 360 * scale);
+
+                    if (gleiswechsel !== "0" && ctx.canvas.parentNode.id === 'preview-small2-container') {
+                        ctx.fillStyle = 'orange';
+                        ctx.fillRect(0, 0, 470 * scale, 50 * scale);
+                        ctx.fillStyle = 'white';
+                        ctx.font = `${20 * scale}px "Open Sans Condensed"`;
+                        ctx.textAlign = 'left';
+                        ctx.fillText('Gleisänderung / ', 25 * scale, 25 * scale);
+                        ctx.font = `italic ${20 * scale}px "Open Sans Condensed"`;
+                        ctx.fillText('Track change', 210 * scale, 25 * scale);
+
+                        ctx.fillStyle = 'white';
+                        ctx.fillRect(0, 50 * scale, 470 * scale, 350 * scale);
+                        if (nr) {
+                            ctx.strokeStyle = 'white';
+                            ctx.lineWidth = scale;
+                            ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 410 * scale); ctx.stroke();
+                            ctx.font = `${28 * scale}px "Open Sans Condensed"`;
+                            ctx.textAlign = 'right';
+                            ctx.fillStyle = 'white';
+                            ctx.fillText(nr, 445 * scale, 100 * scale);
+                            const text_width = ctx.measureText(nr).width;
+                            const text_height = 28 * scale;
+                            ctx.fillStyle = 'grey';
+                            ctx.fillRect(445 * scale - text_width - 5 * scale, 100 * scale - text_height / 2 - 5 * scale, text_width + 10 * scale, text_height + 10 * scale);
+                        }
+                        ctx.font = `${38 * scale}px "Open Sans Condensed"`;
+                        ctx.fillStyle = 'midnightblue';
+                        ctx.textAlign = 'left';
+                        ctx.fillText(abfahrt, 25 * scale, 100 * scale);
+                        if (abfahrt_a) {
+                            ctx.font = `${28 * scale}px "Open Sans Condensed"`;
+                            ctx.fillStyle = 'white';
+                            ctx.fillText(abfahrt_a, 145 * scale, 100 * scale);
+                            const text_width = ctx.measureText(abfahrt_a).width;
+                            const text_height = 28 * scale;
+                            ctx.fillStyle = 'midnightblue';
+                            ctx.fillRect(145 * scale - 10 * scale, 100 * scale - text_height / 2 - 10 * scale, text_width + 20 * scale, text_height + 20 * scale);
+                        }
+                        ctx.font = `${34 * scale}px "Open Sans Condensed"`;
+                        ctx.fillStyle = 'midnightblue';
+                        ctx.fillText(ziel, 25 * scale, 180 * scale);
+                        ctx.font = `${25 * scale}px "Open Sans Condensed"`;
+                        ctx.fillText(via, 25 * scale, 260 * scale);
+                        ctx.fillText(via2, 25 * scale, 310 * scale);
+                        ctx.fillText(via3, 25 * scale, 360 * scale);
+                    }
+                }
+                const scroll_start_x = this.print_pictograms(ctx, zug_nr, fullScreen, info, nr, scale, overlay_ctx);
+                return scroll_start_x;
+            }
+
+            start_feature_rotation() {
+                if (!this.rotating) return;
+                this.aktuelles_merkmal = this.merkmale[this.rotations_index];
+                this.rotations_index = (this.rotations_index + 1) % this.merkmale.length;
+                updateDisplays();
+                if (this.rotating) this.rotation_timer = setTimeout(() => this.start_feature_rotation(), 3000);
             }
 
             on_feature_button_change(value) {
@@ -968,314 +803,223 @@
                     this.rotating = false;
                     if (this.rotation_timer) clearTimeout(this.rotation_timer);
                     this.aktuelles_merkmal = value;
-                    this.update_all_displays();
+                    updateDisplays();
                 }
             }
 
-            start_feature_rotation() {
-                if (!this.rotating) return;
-                this.aktuelles_merkmal = this.merkmale[this.rotations_index];
-                this.rotations_index = (this.rotations_index + 1) % this.merkmale.length;
-                this.update_all_displays();
-                this.rotation_timer = setTimeout(() => this.start_feature_rotation(), 3000);
+            cleanup() {
+                if (this.rotation_timer) clearTimeout(this.rotation_timer);
+                this.rotating = false;
+                Object.keys(this.scroll_animation_ids).forEach(id => cancelAnimationFrame(this.scroll_animation_ids[id]));
             }
 
-            update_train_display(zug_nr, info_region, wagen_region, fullScreen) {
-                try {
-                    this.print_coach_sequence(zug_nr, info_region, wagen_region, fullScreen);
-                    this.print_train_info(zug_nr, info_region, fullScreen);
-                } catch (err) {
-                    console.error(`Error in update_train_display for zug_${zug_nr}:`, err);
+            update_coach_sequence(zug_nr, ctx, fullScreen, scale = 1) {
+                const data = getTrainData(zug_nr);
+                const coaches = data["Wagenreihung"] || [];
+                const platform_length = data["PlatformLength"] || 420;
+                const platform_sections = [['A', 69.7], ['B', 135.8], ['C', 208], ['D', 266], ['E', 315.65]];
+                const train_start = data["Startmeter"] || 0;
+                const direction = data["Richtung"] || 1;
+                const gleiswechsel = data["Gleiswechsel"] || "0";
+                const skalieren = data["Skalieren"] || false;
+
+                if (coaches.length) {
+                    const factor_new = this.print_coach_sequence(
+                        coaches, ctx, gleiswechsel, fullScreen, direction, platform_length, train_start, skalieren, fullScreen ? 840 : 370, scale
+                    );
+                    if (platform_sections) this.print_sectors(platform_sections, ctx, fullScreen, factor_new, platform_length, scale);
+                } else if (!fullScreen && data["Zugnummer"]) {
+                    ctx.strokeStyle = 'white';
+                    ctx.lineWidth = scale;
+                    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 129 * scale); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(469 * scale, 0); ctx.lineTo(469 * scale, 129 * scale); ctx.stroke();
+                }
+
+                if (gleiswechsel !== "0" && ctx.canvas.parentNode.id === 'preview-small2-container') {
+                    ctx.fillStyle = 'orange';
+                    ctx.fillRect(0, 0, 470 * scale, 129 * scale);
+                    ctx.fillStyle = 'white';
+                    ctx.font = `${20 * scale}px "Open Sans Condensed"`;
+                    ctx.textAlign = 'left';
+                    ctx.fillText('Neues Gleis', 25 * scale, 25 * scale);
+                    ctx.font = `italic ${20 * scale}px "Open Sans Condensed"`;
+                    ctx.fillText('New Track', 25 * scale, 55 * scale);
+                    ctx.font = `${42 * scale}px "Open Sans Condensed"`;
+                    ctx.textAlign = 'right';
+                    ctx.fillText(gleiswechsel, 445 * scale, 40 * scale);
                 }
             }
 
-            update_all_displays() {
-                // Clear entire canvas
-                this.ctx.fillStyle = 'midnightblue';
-                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-                // Draw header and footer
-                this.ctx.fillStyle = 'midnightblue';
-                this.ctx.fillRect(this.regions.header.x, this.regions.header.y, this.regions.header.width, this.regions.header.height);
-                this.ctx.fillRect(this.regions.footer.x, this.regions.footer.y, this.regions.footer.width, this.regions.footer.height);
-
-                // Draw dividers
-                this.ctx.fillStyle = 'midnightblue';
-                this.ctx.fillRect(60, 120, 60, 2116); // Left divider
-                this.ctx.fillRect(3820, 120, 40, 2116); // Middle divider
-                this.ctx.fillRect(7620, 120, 60, 2116); // Right divider
-
-                // Draw each train
-                try {
-                    this.update_train_display(1, this.regions.zug1_info, this.regions.zug1_wagen, true);
-                    this.update_train_display(2, this.regions.zug2_info, this.regions.zug2_wagen, false);
-                    this.update_train_display(3, this.regions.zug3_info, this.regions.zug3_wagen, false);
-                } catch (err) {
-                    console.error('Failed to update displays:', err);
-                }
-
-                // Update image
-                try {
-                    const img = document.getElementById('monitor-image');
-                    img.src = this.canvas.toDataURL('image/png', 1.0);
-                } catch (err) {
-                    console.error('Failed to update monitor image:', err);
-                }
+            update_train_display(zug_nr, main_ctx, overlay_ctx, fullScreen, scale) {
+                main_ctx.fillStyle = 'black';
+                main_ctx.fillRect(0, 0, main_ctx.canvas.width, main_ctx.canvas.height);
+                this.update_coach_sequence(zug_nr, main_ctx, fullScreen, scale);
+                const data = getTrainData(zug_nr);
+                const scroll_start_x = this.print_train_info(
+                    data["Informationen"] || "",
+                    data["Zugnummer"] || "",
+                    data["Zugnummer kurz"] || "",
+                    data["Abfahrt"] || "",
+                    data["Abweichend"] || "",
+                    data["Ziel"] || "",
+                    fullScreen ? data["Via-Halte 1"] || "" : data["Via-Halte 1 Small"] || "",
+                    fullScreen ? data["Via-Halte 2"] || "" : data["Via-Halte 2 Small"] || "",
+                    fullScreen ? data["Via-Halte 3"] || "" : data["Via-Halte 3 Small"] || "",
+                    data["Gleiswechsel"] || "0",
+                    main_ctx,
+                    fullScreen,
+                    scale,
+                    overlay_ctx,
+                    zug_nr
+                );
+                overlay_ctx.canvas.style.left = `${scroll_start_x / scale}px`; // unscale for css px
             }
         }
 
-        const train_data = new TrainData();
-        const train_display = new TrainDisplay(train_data);
-
-        // Event listeners
-        document.querySelectorAll('input[name="wahl"]').forEach(radio => {
-            radio.addEventListener('change', () => {
-                train_display.on_feature_button_change(radio.value);
-            });
-        });
-
-        document.querySelectorAll('.zug_entry').forEach(input => {
-            input.addEventListener('input', (e) => {
-                const zug = parseInt(e.target.dataset.zug);
-                const field = e.target.dataset.field;
-                if (!train_data.zug_daten[zug]) {
-                    train_data.initializeZugDaten();
-                }
-                train_data.zug_daten[zug][field] = e.target.value;
-                if (field === "Zugnummer" && !train_data.zug_daten[zug].Zugnummer_kurz) {
-                    train_data.zug_daten[zug].Zugnummer_kurz = e.target.value;
-                }
-                train_display.update_all_displays();
-            });
-        });
-
-        document.querySelectorAll('.richtung_radio').forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                const zug = parseInt(e.target.dataset.zug);
-                if (!train_data.zug_daten[zug]) {
-                    train_data.initializeZugDaten();
-                }
-                train_data.zug_daten[zug].Richtung = parseInt(e.target.value);
-                train_display.update_all_displays();
-            });
-        });
-
-        document.querySelectorAll('.zug_checkbox').forEach(checkbox => {
-            checkbox.addEventListener('change', (e) => {
-                const zug = parseInt(e.target.dataset.zug);
-                const field = e.target.dataset.field;
-                if (!train_data.zug_daten[zug]) {
-                    train_data.initializeZugDaten();
-                }
-                train_data.zug_daten[zug][field] = e.target.checked;
-                train_display.update_all_displays();
-            });
-        });
-
-        document.getElementById('entry_bahnsteiglaenge').addEventListener('input', (e) => {
-            for (let zug in train_data.zug_daten) {
-                if (!train_data.zug_daten[zug]) {
-                    train_data.initializeZugDaten();
-                }
-                train_data.zug_daten[zug].PlatformLength = parseFloat(e.target.value) || 420;
-            }
-            train_display.update_all_displays();
-        });
-
-        document.getElementById('entry_stop_name').addEventListener('input', (e) => {
-            train_data.current_stop = e.target.value;
-            train_display.update_all_displays();
-        });
-
-        document.getElementById('entry_gleis').addEventListener('input', (e) => {
-            train_data.current_platform = e.target.value;
-            train_display.update_all_displays();
-        });
-
-        document.getElementById('import_all_btn').addEventListener('click', () => {
-            document.getElementById('file-input').click();
-        });
-
-        document.getElementById('file-input').addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                try {
-                    const data = JSON.parse(ev.target.result);
-                    train_data.initializeZugDaten();
-                    for (let key in data) {
-                        if (!key.startsWith('zug_')) continue;
-                        const zug = parseInt(key.split('_')[1]);
-                        if (!zug || zug < 1 || zug > 3) continue;
-                        const zugData = data[key];
-                        if (zugData['Zugnummer kurz'] !== undefined) {
-                            zugData.Zugnummer_kurz = zugData['Zugnummer kurz'];
-                            delete zugData['Zugnummer kurz'];
-                        }
-                        const defaultData = {
-                            Zugnummer: '',
-                            Zugnummer_kurz: '',
-                            Abfahrt: '',
-                            Abweichend: '',
-                            Ziel: '',
-                            'Via-Halte 1': '',
-                            'Via-Halte 2': '',
-                            'Via-Halte 1 Small': '',
-                            'Via-Halte 2 Small': '',
-                            'Via-Halte 3 Small': '',
-                            Informationen: '',
-                            Richtung: 1,
-                            TrainStart: 0,
-                            Skalieren: false,
-                            Wagenreihung: [],
-                            PlatformLength: 420,
-                            PlatformSections: [['A', 69.7], ['B', 135.8], ['C', 208], ['D', 266], ['E', 315.65]],
-                            Gleiswechsel: '0',
-                            'Via-Stations-Categories': {}
-                        };
-                        const mergedData = {
-                            ...defaultData,
-                            ...zugData,
-                            Wagenreihung: Array.isArray(zugData.Wagenreihung) ? zugData.Wagenreihung.map(c => new Coach(c)) : defaultData.Wagenreihung,
-                            PlatformSections: Array.isArray(zugData.PlatformSections) ? zugData.PlatformSections : defaultData.PlatformSections,
-                            'Via-Stations-Categories': zugData['Via-Stations-Categories'] && typeof zugData['Via-Stations-Categories'] === 'object' ? zugData['Via-Stations-Categories'] : defaultData['Via-Stations-Categories'],
-                            Zugnummer_kurz: zugData.Zugnummer_kurz || zugData.Zugnummer || '',
-                            Richtung: Number.isInteger(zugData.Richtung) ? zugData.Richtung : 1,
-                            Skalieren: typeof zugData.Skalieren === 'boolean' ? zugData.Skalieren : false,
-                            Gleiswechsel: zugData.Gleiswechsel || '0',
-                            TrainStart: parseFloat(zugData.TrainStart) || 0
-                        };
-                        train_data.zug_daten[zug] = mergedData;
-                        document.querySelectorAll(`.zug_entry[data-zug="${zug}"]`).forEach(input => {
-                            const field = input.dataset.field;
-                            try {
-                                if (mergedData[field] !== undefined && mergedData[field] !== null) {
-                                    input.value = mergedData[field].toString();
-                                } else {
-                                    input.value = '';
-                                }
-                            } catch (err) {
-                                console.warn(`Failed to set input for zug ${zug}, field ${field}:`, err);
-                            }
-                        });
-                        try {
-                            const richtungValue = Number.isInteger(mergedData.Richtung) ? mergedData.Richtung.toString() : '1';
-                            const richtungRadio = document.querySelector(`.richtung_radio[data-zug="${zug}"][value="${richtungValue}"]`);
-                            if (richtungRadio) richtungRadio.checked = true;
-                        } catch (err) {
-                            console.warn(`Failed to set Richtung for zug ${zug}:`, err);
-                        }
-                        try {
-                            const skalierenCheckbox = document.querySelector(`.zug_checkbox[data-zug="${zug}"][data-field="Skalieren"]`);
-                            if (skalierenCheckbox) skalierenCheckbox.checked = !!mergedData.Skalieren;
-                        } catch (err) {
-                            console.warn(`Failed to set Skalieren for zug ${zug}:`, err);
-                        }
-                        if (zug === 3) {
-                            try {
-                                const gleiswechselInput = document.querySelector(`.zug_entry[data-zug="3"][data-field="Gleiswechsel"]`);
-                                if (gleiswechselInput) gleiswechselInput.value = mergedData.Gleiswechsel || '0';
-                            } catch (err) {
-                                console.warn(`Failed to set Gleiswechsel for zug 3:`, err);
-                            }
-                        }
-                    }
-                    train_display.update_all_displays();
-                } catch (error) {
-                    console.error('Failed to load JSON:', error);
-                    alert('Error loading JSON file. Please check the file format and console for details.');
-                    train_data.initializeZugDaten();
-                    train_display.update_all_displays();
-                }
+        function debounce(func, delay) {
+            let timer;
+            return (...args) => {
+                clearTimeout(timer);
+                timer = setTimeout(() => func(...args), delay);
             };
-            reader.readAsText(file);
-        });
+        }
 
-        document.getElementById('export_all_btn').addEventListener('click', () => {
-            const data = {};
-            for (let zug in train_data.zug_daten) {
-                data[`zug_${zug}`] = train_data.zug_daten[zug];
-            }
-            const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = 'train_data.json';
-            link.click();
-            URL.revokeObjectURL(url);
-        });
-
-        document.getElementById('download-btn').addEventListener('click', () => {
+        function getTrainData(zug_nr) {
+            const prefix = `zug${zug_nr}-`;
+            const data = {
+                Zugnummer: document.getElementById(prefix + 'zugnummer').value,
+                "Zugnummer kurz": document.getElementById(prefix + 'zugnummer').value,
+                Abfahrt: document.getElementById(prefix + 'abfahrt').value,
+                Abweichend: document.getElementById(prefix + 'abweichend').value,
+                Ziel: document.getElementById(prefix + 'ziel').value,
+                "Via-Halte 1": document.getElementById(prefix + 'via1') ? document.getElementById(prefix + 'via1').value : '',
+                "Via-Halte 2": document.getElementById(prefix + 'via2') ? document.getElementById(prefix + 'via2').value : '',
+                "Via-Halte 3": document.getElementById(prefix + 'via3') ? document.getElementById(prefix + 'via3').value : '',
+                "Via-Halte 1 Small": document.getElementById(prefix + 'via1-small').value,
+                "Via-Halte 2 Small": document.getElementById(prefix + 'via2-small').value,
+                "Via-Halte 3 Small": document.getElementById(prefix + 'via3-small').value,
+                Informationen: document.getElementById(prefix + 'informationen').value,
+                Richtung: parseInt(document.querySelector(`input[name="${prefix}richtung"]:checked`).value),
+                Startmeter: parseFloat(document.getElementById(prefix + 'startmeter').value) || 0,
+                Skalieren: document.getElementById(prefix + 'skalieren').checked,
+                Gleiswechsel: document.getElementById(prefix + 'gleiswechsel').value || "0",
+                PlatformLength: parseFloat(document.getElementById('bahnsteiglaenge').value) || 420,
+            };
             try {
-                train_display.update_all_displays();
-                const link = document.createElement('a');
-                link.download = 'trains_display.png';
-                link.href = train_display.canvas.toDataURL('image/png', 1.0);
-                link.click();
-            } catch (error) {
-                console.error('Screenshot failed:', error);
-                alert('Failed to generate screenshot. Check console for details.');
+                data.Wagenreihung = JSON.parse(document.getElementById(prefix + 'wagenreihung').value).map(c => new Coach(c.coach_type, c.double_decker, c.length, c.coach_class, c.coach_number, c.amenities, c.start, c.stop));
+            } catch (e) {
+                data.Wagenreihung = [];
             }
+            return data;
+        }
+
+        const td = new TrainDisplay();
+        const FULL_WIDTH = 7680;
+        const FULL_HEIGHT = 3200;
+        const SMALL_WIDTH = FULL_WIDTH / 2;
+        const SMALL_HEIGHT = FULL_HEIGHT;
+        const FULL_BASE_WIDTH = 940;
+        const SMALL_BASE_WIDTH = 470;
+        const FULL_SCALE = FULL_WIDTH / FULL_BASE_WIDTH;
+        const SMALL_SCALE = SMALL_WIDTH / SMALL_BASE_WIDTH;
+
+        const containers = {
+            1: { container: document.getElementById('preview-full-container'), width: FULL_WIDTH, height: FULL_HEIGHT, scale: FULL_SCALE, fullScreen: true },
+            2: { container: document.getElementById('preview-small1-container'), width: SMALL_WIDTH, height: SMALL_HEIGHT, scale: SMALL_SCALE, fullScreen: false },
+            3: { container: document.getElementById('preview-small2-container'), width: SMALL_WIDTH, height: SMALL_HEIGHT, scale: SMALL_SCALE, fullScreen: false }
+        };
+
+        Object.values(containers).forEach(({ container, width, height }) => {
+            const mainCanvas = document.createElement('canvas');
+            mainCanvas.width = width;
+            mainCanvas.height = height;
+            container.appendChild(mainCanvas);
+
+            const overlayCanvas = document.createElement('canvas');
+            overlayCanvas.style.position = 'absolute';
+            overlayCanvas.style.top = '0';
+            container.appendChild(overlayCanvas);
         });
 
-        document.querySelectorAll('.import_formation').forEach(button => {
-            button.addEventListener('click', (e) => {
-                const zug = parseInt(e.target.dataset.zug);
-                if (!train_data.zug_daten[zug]) {
-                    train_data.initializeZugDaten();
-                }
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.accept = '.json';
-                input.onchange = (ev) => {
-                    const file = ev.target.files[0];
-                    if (!file) return;
-                    const reader = new FileReader();
-                    reader.onload = (ev) => {
-                        try {
-                            const data = JSON.parse(ev.target.result);
-                            train_data.zug_daten[zug].Wagenreihung = data.map(c => new Coach(c));
-                            train_display.update_all_displays();
-                        } catch (error) {
-                            console.error('Failed to import formation:', error);
-                            alert('Error loading formation JSON.');
-                        }
-                    };
-                    reader.readAsText(file);
-                };
-                input.click();
+        td.overlay_ctxs[1] = containers[1].container.lastChild.getContext('2d');
+        td.overlay_ctxs[2] = containers[2].container.lastChild.getContext('2d');
+        td.overlay_ctxs[3] = containers[3].container.lastChild.getContext('2d');
+
+        const updateDisplays = debounce(() => {
+            [1, 2, 3].forEach(zug_nr => {
+                const { width, height, scale, fullScreen } = containers[zug_nr];
+                const main_ctx = containers[zug_nr].container.firstChild.getContext('2d');
+                const overlay_ctx = td.overlay_ctxs[zug_nr];
+                td.update_train_display(zug_nr, main_ctx, overlay_ctx, fullScreen, scale);
             });
+        }, 300);
+
+        const inputs = document.querySelectorAll('input, textarea');
+        inputs.forEach(input => {
+            input.addEventListener('input', updateDisplays);
+            input.addEventListener('change', updateDisplays);
         });
 
-        document.querySelectorAll('.export_formation').forEach(button => {
-            button.addEventListener('click', (e) => {
-                const zug = parseInt(e.target.dataset.zug);
-                if (!train_data.zug_daten[zug]) {
-                    console.warn(`zug_daten[${zug}] is undefined`);
-                    return;
-                }
-                const data = train_data.zug_daten[zug].Wagenreihung || [];
-                const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+        const merkmalRadios = document.querySelectorAll('input[name="merkmal"]');
+        merkmalRadios.forEach(radio => radio.addEventListener('change', () => td.on_feature_button_change(radio.value)));
+
+        function handleExport(zug_nr) {
+            const data = getTrainData(zug_nr)["Wagenreihung"].map(c => ({
+                coach_type: c.coach_type, double_decker: c.double_decker, length: c.length, coach_class: c.coach_class, coach_number: c.coach_number, amenities: c.amenities, start: c.start, stop: c.stop
+            }));
+            const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `wagenreihung_zug${zug_nr}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function handleImport(zug_nr, fileInput) {
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    document.getElementById(`zug${zug_nr}-wagenreihung`).value = ev.target.result;
+                    updateDisplays();
+                };
+                reader.readAsText(file);
+            });
+        }
+
+        [1, 2, 3].forEach(zug_nr => {
+            document.getElementById(`zug${zug_nr}-export-wagenreihung`).addEventListener('click', () => handleExport(zug_nr));
+            const importBtn = document.getElementById(`zug${zug_nr}-import-wagenreihung`);
+            const fileInput = document.getElementById(`zug${zug_nr}-file`);
+            importBtn.addEventListener('click', () => fileInput.click());
+            handleImport(zug_nr, fileInput);
+        });
+
+        document.getElementById('download-highres').addEventListener('click', () => {
+            const fullContainer = containers[1].container;
+            const mainCanvas = fullContainer.firstChild;
+            const overlayCanvas = fullContainer.lastChild;
+            const composited = document.createElement('canvas');
+            composited.width = FULL_WIDTH;
+            composited.height = FULL_HEIGHT;
+            const comp_ctx = composited.getContext('2d');
+            comp_ctx.drawImage(mainCanvas, 0, 0);
+            comp_ctx.drawImage(overlayCanvas, parseFloat(overlayCanvas.style.left) * FULL_SCALE, 0);
+            composited.toBlob(blob => {
                 const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `zug_${zug}_formation.json`;
-                link.click();
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'train_display.png';
+                a.click();
                 URL.revokeObjectURL(url);
             });
         });
 
-        // Wait for images to load before initial render
-        const checkImagesLoaded = () => {
-            const allLoaded = pictogramNames.every(name => images[name].isLoaded || images[name].isBroken);
-            if (allLoaded) {
-                train_display.update_all_displays();
-            } else {
-                setTimeout(checkImagesLoaded, 100);
-            }
-        };
-        checkImagesLoaded();
+        updateDisplays();
+
+        window.addEventListener('beforeunload', () => td.cleanup());
     </script>
 </body>
 </html>
