@@ -13,9 +13,8 @@
         .small-displays { display: flex; }
         .small-display { margin-right: 20px; }
         canvas { background: midnightblue; }
-        .header-line { position: relative; height: 200px; }
-        .ziel-line, .via-line { height: 100px; display: flex; align-items: center; }
-        .ziel-line span, .via-line span { font-size: 50px; margin-right: 10px; }
+        .header-line { position: relative; height: 100px; }
+        .ziel-line, .via-line { height: 50px; }
     </style>
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 </head>
@@ -263,16 +262,13 @@
     <div class="large">
         <h3>Large Display (Train 1 Full Screen)</h3>
         <div class="header-line">
-            <canvas id="large_number" width="1880" height="200" style="width:940px; height:100px; position: absolute; left:0;"></canvas>
-            <canvas id="large_time" width="1880" height="200" style="width:940px; height:100px; position: absolute; left:0;"></canvas> <!-- Adjusted left for time -->
+            <canvas id="large_header" width="1880" height="200" style="width:940px; height:100px; position: absolute; left:0;"></canvas>
             <div class="large_icons" style="position: absolute; right: 0; top: 0; height:100px; line-height:100px;"></div>
         </div>
         <div class="ziel-line">
-            <span style="font-size: 50px;">Ziel:</span>
             <canvas id="large_ziel" width="1880" height="100" style="width:940px; height:50px;"></canvas>
         </div>
         <div class="via-line">
-            <span style="font-size: 50px;">über</span>
             <canvas id="large_via1" width="1880" height="100" style="width:940px; height:50px;"></canvas>
         </div>
         <div class="via-line">
@@ -286,24 +282,22 @@
     <div class="small-displays">
         <div class="small-display">
             <h3>Small Display (Train 2)</h3>
-            <canvas id="small2_number" width="940" height="100" style="width:470px; height:50px;"></canvas>
-            <canvas id="small2_time" width="940" height="100" style="width:470px; height:50px;"></canvas>
-            <canvas id="small2_info" width="940" height="100" style="width:470px; height:50px;"></canvas>
-            <canvas id="small2_ziel" width="940" height="80" style="width:470px; height:40px;"></canvas>
-            <canvas id="small2_via1" width="940" height="80" style="width:470px; height:40px;"></canvas>
-            <canvas id="small2_via2" width="940" height="80" style="width:470px; height:40px;"></canvas>
-            <canvas id="small2_via3" width="940" height="80" style="width:470px; height:40px;"></canvas>
+            <canvas id="small2_header" width="940" height="60" style="width:470px; height:30px;"></canvas>
+            <canvas id="small2_info" width="940" height="60" style="width:470px; height:30px;"></canvas>
+            <canvas id="small2_ziel" width="940" height="60" style="width:470px; height:30px;"></canvas>
+            <canvas id="small2_via1" width="940" height="60" style="width:470px; height:30px;"></canvas>
+            <canvas id="small2_via2" width="940" height="60" style="width:470px; height:30px;"></canvas>
+            <canvas id="small2_via3" width="940" height="60" style="width:470px; height:30px;"></canvas>
             <canvas id="small2_formation" width="940" height="258" style="width:470px; height:129px;"></canvas>
         </div>
         <div class="small-display">
             <h3>Small Display (Train 3)</h3>
-            <canvas id="small3_number" width="940" height="100" style="width:470px; height:50px;"></canvas>
-            <canvas id="small3_time" width="940" height="100" style="width:470px; height:50px;"></canvas>
-            <canvas id="small3_info" width="940" height="100" style="width:470px; height:50px;"></canvas>
-            <canvas id="small3_ziel" width="940" height="80" style="width:470px; height:40px;"></canvas>
-            <canvas id="small3_via1" width="940" height="80" style="width:470px; height:40px;"></canvas>
-            <canvas id="small3_via2" width="940" height="80" style="width:470px; height:40px;"></canvas>
-            <canvas id="small3_via3" width="940" height="80" style="width:470px; height:40px;"></canvas>
+            <canvas id="small3_header" width="940" height="60" style="width:470px; height:30px;"></canvas>
+            <canvas id="small3_info" width="940" height="60" style="width:470px; height:30px;"></canvas>
+            <canvas id="small3_ziel" width="940" height="60" style="width:470px; height:30px;"></canvas>
+            <canvas id="small3_via1" width="940" height="60" style="width:470px; height:30px;"></canvas>
+            <canvas id="small3_via2" width="940" height="60" style="width:470px; height:30px;"></canvas>
+            <canvas id="small3_via3" width="940" height="60" style="width:470px; height:30px;"></canvas>
             <canvas id="small3_formation" width="940" height="258" style="width:470px; height:129px;"></canvas>
         </div>
     </div>
@@ -446,11 +440,12 @@ function startScroll(canvasId, text, font, color, startX, y, speed = 2, bg = nul
     ctx.scale(scale, scale);
     ctx.font = font;
     const textWidth = ctx.measureText(text).width;
-    if (textWidth <= canvas.width / scale - startX) {
-        ctx.clearRect(0, 0, canvas.width / scale, canvas.height / scale);
+    const canvasWidth = canvas.width / scale;
+    if (textWidth <= canvasWidth - startX) {
+        ctx.clearRect(0, 0, canvasWidth, canvas.height / scale);
         if (bg) {
             ctx.fillStyle = bg;
-            ctx.fillRect(0, 0, canvas.width / scale, canvas.height / scale);
+            ctx.fillRect(0, 0, canvasWidth, canvas.height / scale);
         }
         ctx.fillStyle = color;
         ctx.fillText(text, startX, y);
@@ -459,15 +454,15 @@ function startScroll(canvasId, text, font, color, startX, y, speed = 2, bg = nul
     let x = startX;
     if (scrollIntervals[canvasId]) clearInterval(scrollIntervals[canvasId]);
     scrollIntervals[canvasId] = setInterval(() => {
-        ctx.clearRect(0, 0, canvas.width / scale, canvas.height / scale);
+        ctx.clearRect(0, 0, canvasWidth, canvas.height / scale);
         if (bg) {
             ctx.fillStyle = bg;
-            ctx.fillRect(0, 0, canvas.width / scale, canvas.height / scale);
+            ctx.fillRect(0, 0, canvasWidth, canvas.height / scale);
         }
         ctx.fillStyle = color;
         ctx.fillText(text, x, y);
         x -= speed;
-        if (x < -textWidth) x = canvas.width / scale;
+        if (x < -textWidth) x = canvasWidth;
     }, 30);
 }
 
@@ -493,460 +488,154 @@ function updateCoachSequence(zug_nr, canvasId, fullScreen) {
     const ctx = canvas.getContext('2d');
     ctx.scale(scale, scale);
     const draw_width = fullScreen ? 940 : 470;
-    ctx.clearRect(0, 0, draw_width, canvas.height / scale);
-    let coaches = trainData.zug_daten[zug_nr].Wagenreihung || [];
-    const platform_length = trainData.zug_daten[zug_nr].PlatformLength || 420;
-    const platform_sections = trainData.zug_daten[zug_nr].PlatformSections || [];
+    const draw_height = fullScreen ? 129 : 129;
+    ctx.clearRect(0, 0, draw_width, draw_height);
+    let coaches = trainData.zug_daten[zug_nr].Wagenreihung.slice() || [];
+    let platform_length = trainData.zug_daten[zug_nr].PlatformLength || 420;
+    let platform_sections = trainData.zug_daten[zug_nr].PlatformSections.slice() || [];
     const train_start = trainData.zug_daten[zug_nr].TrainStart || 0;
     const richtung = trainData.zug_daten[zug_nr].Richtung || 0;
     const skalieren = trainData.zug_daten[zug_nr].Skalieren || false;
     const gleiswechsel = trainData.zug_daten[zug_nr].Gleiswechsel || "0";
+    const nr = trainData.zug_daten[zug_nr]["Zugnummer"] || "";
+    if (gleiswechsel !== "0" && canvasId === 'small3_formation') {
+        ctx.fillStyle = 'orange';
+        ctx.fillRect(0, 0, draw_width, draw_height);
+        ctx.fillStyle = 'white';
+        ctx.font = '20px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('Neues Gleis', 25, 25);
+        ctx.font = 'italic 20px sans-serif';
+        ctx.fillText('New Track', 25, 55);
+        ctx.font = '42px sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText(gleiswechsel, 445, 40);
+        return;
+    }
+    if (coaches.length === 0 && nr && !fullScreen) {
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(0, 129);
+        ctx.moveTo(draw_width, 0);
+        ctx.lineTo(draw_width, 129);
+        ctx.stroke();
+        return;
+    }
     if (coaches.length > 0) {
+        if (richtung === 1) {
+            coaches.forEach(coach => {
+                if (coach.coach_type === 'a') coach.coach_type = 'e';
+                else if (coach.coach_type === 'e') coach.coach_type = 'a';
+                if (coach.coach_type === 'ma') coach.coach_type = 'me';
+                else if (coach.coach_type === 'me') coach.coach_type = 'ma';
+                const old_start = coach.start;
+                coach.start = platform_length - coach.stop;
+                coach.stop = coach.start + coach.length;
+            });
+            coaches.reverse();
+            platform_sections.reverse();
+            platform_sections.forEach(s => s[1] = platform_length - s[1]);
+        }
         let min_start = Math.min(...coaches.map(c => c.start));
         let max_stop = Math.max(...coaches.map(c => c.stop));
         let train_length = max_stop - min_start;
-        let factor;
-        if (skalieren) {
-            factor = draw_width / train_length;
-        } else {
-            factor = draw_width / platform_length;
+        let factor = skalieren ? draw_width / train_length : draw_width / platform_length;
+        coaches.forEach(coach => {
+            coach.start = (coach.start - min_start - train_start) * factor;
+            coach.stop = coach.start + (coach.stop - coach.start) * factor; // recalculate based on original length * factor? But original length is stop - start
+            coach.length = coach.stop - coach.start;
+        });
+        printDirection(richtung, fullScreen ? 20 : 5, ctx);
+        coaches.forEach(coach => {
+            let x = coach.start;
+            if (coach.is_locomotive()) {
+                printLocomotive(coach, x, ctx);
+            } else if (['a', 'ma'].includes(coach.coach_type)) {
+                printStartWagon(coach, x, ctx);
+            } else if (coach.coach_type === 'm') {
+                printMiddleWagon(coach, x, ctx);
+            } else if (['e', 'me'].includes(coach.coach_type)) {
+                printEndWagon(coach, x, ctx);
+            }
+            printFirstClass(coach, x, ctx, fullScreen);
+        });
+        if (aktuelles_merkmal === 'klasse') {
+            if (fullScreen) {
+                printClassCompact(coaches, ctx);
+            } else {
+                coaches.forEach(coach => printClass(coach, coach.start, ctx));
+            }
+        } else if (aktuelles_merkmal === 'ausstattung') {
+            if (fullScreen) {
+                printAmenitiesCompact(coaches, ctx);
+            } else {
+                coaches.forEach(coach => printAmenities(coach, coach.start, ctx));
+            }
+        } else if (aktuelles_merkmal === 'wagennummern') {
+            if (fullScreen) {
+                printWagonNumbersCompact(coaches, ctx);
+            } else {
+                coaches.forEach(coach => printWagonNumbers(coach, coach.start, ctx));
+            }
         }
-        printCoachSequence(coaches, richtung, platform_length, train_start, factor, ctx, fullScreen, min_start, skalieren);
         if (!skalieren && platform_sections.length > 0) {
             printSectors(platform_sections, ctx, fullScreen, factor, platform_length);
         }
     }
-    if (gleiswechsel !== "0" && canvasId === 'small3_formation') {
-        ctx.save();
-        ctx.resetTransform();
-        ctx.fillStyle = 'orange';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.scale(scale, scale);
-        ctx.fillStyle = 'white';
-        ctx.font = '20px sans-serif';
-        ctx.textAlign = 'left';
-        ctx.fillText('Neues Gleis', 25 / scale, 25 / scale);
-        ctx.font = 'italic 20px sans-serif';
-        ctx.fillText('New Track', 25 / scale, 55 / scale);
-        ctx.font = '42px sans-serif';
-        ctx.textAlign = 'right';
-        ctx.fillText(gleiswechsel, 445 / scale, 40 / scale);
-        ctx.restore();
-    }
 }
 
-function printCoachSequence(coaches, richtung, platform_length, start_meter, factor, ctx, fullScreen, min_start, skalieren) {
-    let x = 0;
-    printDirection(richtung, x, ctx);
-    coaches.forEach(coach => {
-        coach.start = (coach.start - min_start - start_meter) * factor;
-        coach.stop = coach.start + coach.length * factor;
-        coach.length = coach.stop - coach.start;
-        x = coach.start;
-        if (coach.is_locomotive()) {
-            printLocomotive(coach, x, ctx);
-        } else if (coach.coach_type === 'a' || coach.coach_type === 'ma') {
-            printStartWagon(coach, x, ctx);
-        } else if (coach.coach_type === 'm') {
-            printMiddleWagon(coach, x, ctx);
-        } else if (coach.coach_type === 'e' || coach.coach_type === 'me') {
-            printEndWagon(coach, x, ctx);
-        }
-        printFirstClass(coach, x, ctx, fullScreen);
-    });
-    if (aktuelles_merkmal === 'klasse') {
-        if (fullScreen) {
-            printClassCompact(coaches, ctx);
-        } else {
-            coaches.forEach(coach => printClass(coach, coach.start, ctx));
-        }
-    } else if (aktuelles_merkmal === 'ausstattung') {
-        coaches.forEach(coach => printAmenities(coach, coach.start, ctx));
-    } else if (aktuelles_merkmal === 'wagennummern') {
-        coaches.forEach(coach => printWagonNumbers(coach, coach.start, ctx));
-    }
-}
-
-function printDirection(richtung, x, ctx) {
-    const y = 35;
-    ctx.strokeStyle = 'white';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    if (richtung === 0) {
-        ctx.moveTo(x, y + 20);
-        ctx.lineTo(x + 10, y + 10);
-        ctx.moveTo(x, y + 20);
-        ctx.lineTo(x + 15, y + 20);
-        ctx.moveTo(x, y + 20);
-        ctx.lineTo(x + 10, y + 30);
-    } else {
-        ctx.moveTo(x + 15, y + 20);
-        ctx.lineTo(x + 5, y + 10);
-        ctx.moveTo(x + 15, y + 20);
-        ctx.lineTo(x, y + 20);
-        ctx.moveTo(x + 15, y + 20);
-        ctx.lineTo(x + 5, y + 30);
-    }
-    ctx.stroke();
-}
-
-function printStartWagon(coach, x, ctx) {
-    const y = 35;
-    ctx.strokeStyle = 'white';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(x, y + 40 + 2);
-    ctx.lineTo(x, y + 10);
-    ctx.lineTo(x + 6, y);
-    ctx.lineTo(x + coach.length, y);
-    ctx.moveTo(x, y + 40);
-    ctx.lineTo(x + coach.length, y + 40);
-    ctx.stroke();
-}
-
-function printMiddleWagon(coach, x, ctx) {
-    const y = 35;
-    ctx.strokeStyle = 'white';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x + coach.length, y);
-    ctx.moveTo(x, y + 40);
-    ctx.lineTo(x + coach.length, y + 40);
-    if (coach.coach_type === 'ma') {
-        ctx.moveTo(x, y);
-        ctx.lineTo(x, y + 40 + 2);
-    } else if (coach.coach_type === 'me') {
-        ctx.moveTo(x + coach.length, y);
-        ctx.lineTo(x + coach.length, y + 40 + 2);
-    }
-    ctx.stroke();
-}
-
-function printEndWagon(coach, x, ctx) {
-    const y = 35;
-    ctx.strokeStyle = 'white';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x + coach.length - 6, y);
-    ctx.lineTo(x + coach.length, y + 10);
-    ctx.lineTo(x + coach.length, y + 40 + 2);
-    ctx.moveTo(x, y + 40);
-    ctx.lineTo(x + coach.length, y + 40);
-    ctx.stroke();
-}
-
-function printLocomotive(coach, x, ctx) {
-    const y = 35;
-    ctx.strokeStyle = 'white';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(x, y + 40 + 2);
-    ctx.lineTo(x, y + 16);
-    ctx.lineTo(x + 4, y + 8);
-    ctx.lineTo(x + coach.length - 4, y + 8);
-    ctx.lineTo(x + coach.length, y + 16);
-    ctx.lineTo(x + coach.length, y + 40 + 2);
-    ctx.moveTo(x, y + 40);
-    ctx.lineTo(x + coach.length, y + 40);
-    ctx.stroke();
-}
-
-function printFirstClass(coach, x, ctx, fullScreen) {
-    const y = 35;
-    if (coach.is_first_class()) {
-        ctx.fillStyle = 'orange';
-        let end = x + coach.length;
-        if (!fullScreen) {
-            if (coach.coach_type === 'e') end += 2;
-            else if (coach.coach_type === 'a') end -= 2;
-        }
-        ctx.fillRect(x, y + 46, end - x, 10);
-    }
-}
-
-function printClass(coach, x, ctx) {
-    const y = 35;
-    ctx.textAlign = 'center';
-    if (coach.is_first_class()) {
-        ctx.fillStyle = 'orange';
-        ctx.font = 'bold 16px sans-serif';
-        ctx.fillText("1.", x + (coach.length / 2), y + 20);
-    } else if (coach.coach_class === 2 && !coach.is_locomotive()) {
-        ctx.fillStyle = 'white';
-        ctx.font = '16px sans-serif';
-        ctx.fillText("2.", x + (coach.length / 2), y + 20);
-    }
-}
-
-function printClassCompact(coaches, ctx) {
-    let group = [];  // Stores coaches with same class
+function printAmenitiesCompact(coaches, ctx) {
+    let group = [];
     function processGroup(group) {
         if (!group.length) return;
         const first = group[0];
         const last = group[group.length - 1];
-        const start_pos = first.start;
-        const end_pos = last.start + last.length;
-        const center = (start_pos + end_pos) / 2;
-        const current_class = first.coach_class;
-        ctx.textAlign = 'center';
-        if (current_class === 1) {
-            ctx.fillStyle = 'orange';
-            ctx.font = 'bold 16px sans-serif';
-            ctx.fillText("1.", center, 35 + 20);
-        } else if (current_class === 2) {
-            // Optionally draw "2."
+        const center = (first.start + last.stop) / 2;
+        const amenity = first.amenities;
+        if (amenity) {
+            ctx.fillStyle = 'white';
+            ctx.font = '16px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(amenity, center, 35 + 20);
         }
     }
     coaches.forEach(coach => {
-        if (coach.coach_type in ['a', 'ma', 'm']) {
-            if (!group.length || coach.coach_class === group[0].coach_class) {
-                group.push(coach);
-            } else {
-                processGroup(group);
-                group = [coach];
-            }
-        } else if (coach.coach_type in ['e', 'me']) {
-            if (group.length && coach.coach_class === group[0].coach_class) {
-                group.push(coach);
-            } else if (group.length) {
-                processGroup(group);
-                group = [coach];
-            } else {
-                group = [coach];
-            }
+        if (!group.length || coach.amenities === group[0].amenities) {
+            group.push(coach);
+        } else {
             processGroup(group);
-            group = [];
-        } else {  // e.g., 'l' for locomotive
-            processGroup(group);
-            group = [];
+            group = [coach];
         }
     });
     processGroup(group);
 }
 
-function printAmenities(coach, x, ctx) {
-    const y = 35;
-    if (coach.has_amenity('f')) {
-        // draw bike icon or text
-        ctx.fillStyle = 'white';
-        ctx.font = '16px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('f', x + (coach.length / 2), y + 20);
-    } else if (coach.has_amenity('r')) {
-        ctx.fillStyle = 'white';
-        ctx.font = '16px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('r', x + (coach.length / 2), y + 20);
-    } else if (coach.has_amenity('m')) {
-        ctx.fillStyle = 'white';
-        ctx.font = '16px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('m', x + (coach.length / 2), y + 20);
-    } else if (coach.has_amenity('g')) {
-        ctx.fillStyle = 'white';
-        ctx.font = '16px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('g', x + (coach.length / 2), y + 20);
+function printWagonNumbersCompact(coaches, ctx) {
+    let group = [];
+    function processGroup(group) {
+        if (!group.length) return;
+        const first = group[0];
+        const last = group[group.length - 1];
+        const center = (first.start + last.stop) / 2;
+        if (first.coach_number && last.coach_number) {
+            let text = first.coach_number === last.coach_number ? first.coach_number.toString() : first.coach_number + '-' + last.coach_number;
+            ctx.fillStyle = 'white';
+            ctx.font = '16px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(text, center, 35 - 10);
+        }
     }
-    // Add more if needed
-}
-
-function printWagonNumbers(coach, x, ctx) {
-    const y = 35;
-    if (coach.coach_number) {
-        ctx.fillStyle = 'white';
-        ctx.font = '16px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(coach.coach_number, x + (coach.length / 2), y - 10);
-    }
-}
-
-function printSectors(platform_sections, ctx, fullScreen, factor, platform_length) {
-    platform_sections.forEach(section => {
-        const pos = section[1] * factor;
-        ctx.strokeStyle = 'white';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(pos, 0);
-        ctx.lineTo(pos, 80);
-        ctx.stroke();
-        ctx.fillStyle = 'white';
-        ctx.font = '12px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(section[0], pos, 90);
+    coaches.forEach(coach, i => {
+        if (!group.length || (coach.coach_number === group[group.length-1].coach_number + 1)) {
+            group.push(coach);
+        } else {
+            processGroup(group);
+            group = [coach];
+        }
     });
-}
-
-function updateTrainDisplay(zug_nr, prefix, fullScreen) {
-    const nr = trainData.zug_daten[zug_nr]["Zugnummer"] || "";
-    const nr_kurz = trainData.zug_daten[zug_nr]["Zugnummer kurz"] || "";
-    const abfahrt = trainData.zug_daten[zug_nr]["Abfahrt"] || "";
-    const abfahrt_a = trainData.zug_daten[zug_nr]["Abweichend"] || "";
-    const ziel = trainData.zug_daten[zug_nr]["Ziel"] || "";
-    const info = trainData.zug_daten[zug_nr]["Informationen"] || "";
-    const via = fullScreen ? trainData.zug_daten[zug_nr]["Via-Halte 1"] || "" : trainData.zug_daten[zug_nr]["Via-Halte 1 Small"] || "";
-    const via2 = fullScreen ? trainData.zug_daten[zug_nr]["Via-Halte 2"] || "" : trainData.zug_daten[zug_nr]["Via-Halte 2 Small"] || "";
-    const via3 = fullScreen ? trainData.zug_daten[zug_nr]["Via-Halte 3"] || "" : trainData.zug_daten[zug_nr]["Via-Halte 3 Small"] || "";
-    const gleiswechsel = trainData.zug_daten[zug_nr]["Gleiswechsel"] || "0";
-
-    // Number
-    let numberCanvas = document.getElementById(prefix + '_number');
-    let ctxNumber = numberCanvas.getContext('2d');
-    ctxNumber.scale(scale, scale);
-    ctxNumber.clearRect(0, 0, numberCanvas.width / scale, numberCanvas.height / scale);
-    ctxNumber.fillStyle = 'white';
-    if (fullScreen) {
-        ctxNumber.font = 'bold 42px sans-serif';
-        ctxNumber.fillText(nr_kurz, 25, 80 / scale);
-    } else {
-        ctxNumber.font = 'bold 23px sans-serif';
-        ctxNumber.fillText(nr, 5, 25);
-    }
-
-    // Time
-    let timeCanvas = document.getElementById(prefix + '_time');
-    let ctxTime = timeCanvas.getContext('2d');
-    ctxTime.scale(scale, scale);
-    ctxTime.clearRect(0, 0, timeCanvas.width / scale, timeCanvas.height / scale);
-    let timeX = fullScreen ? 200 : 5;
-    if (fullScreen) {
-        ctxTime.font = 'bold 60px sans-serif';
-        ctxTime.fillStyle = 'white';
-        ctxTime.fillText(abfahrt, timeX, 100 / scale);
-        if (abfahrt_a) {
-            ctxTime.font = '42px sans-serif';
-            ctxTime.fillText('+', timeX + 100, 100 / scale);
-            ctxTime.fillStyle = 'red';
-            ctxTime.fillText(abfahrt_a, timeX + 120, 100 / scale);
-        }
-    } else {
-        ctxTime.font = 'bold 25px sans-serif';
-        ctxTime.fillStyle = 'white';
-        ctxTime.fillText(abfahrt, timeX, 25);
-        if (abfahrt_a) {
-            ctxTime.font = '25px sans-serif';
-            ctxTime.fillText('+', timeX + 50, 25);
-            ctxTime.fillStyle = 'red';
-            ctxTime.fillText(abfahrt_a, timeX + 70, 25);
-        }
-    }
-
-    // Info
-    if (fullScreen) {
-        const iconsDiv = document.querySelector('.large_icons');
-        iconsDiv.innerHTML = '';
-        const messages = info.split(' +++ ');
-        const iconMap = {
-            'Zug fällt heute aus': 'icons/ausfall.png',
-            'Keine Weiterfahrt bis': 'icons/keine_weiterfahrt.png',
-            'Halt entfällt in': 'icons/haltentfall.png',
-            'Zusätzlicher Halt in': 'icons/zusatzhalt.png',
-            'Wagen fehlen': 'icons/wagen_fehlen.png',
-            'Reservierungspflichtig': 'icons/reservierungspflichtig.png',
-            'Fahrradmitnahme reservierungspflichtig': 'icons/fahrradmitnahme_reservierungspflichtig.png',
-            'Kein gastronomisches Angebot': 'icons/kein_gastronmisches_angebot.png'
-        };
-        messages.forEach(msg => {
-            for (let key in iconMap) {
-                if (msg.includes(key)) {
-                    const img = document.createElement('img');
-                    img.src = iconMap[key];
-                    img.style.width = '50px';
-                    iconsDiv.appendChild(img);
-                    break;
-                }
-            }
-        });
-    } else {
-        let infoCanvas = document.getElementById(prefix + '_info');
-        let ctxInfo = infoCanvas.getContext('2d');
-        ctxInfo.scale(scale, scale);
-        ctxInfo.clearRect(0, 0, infoCanvas.width / scale, infoCanvas.height / scale);
-        stopScroll(prefix + '_info');
-        if (info) {
-            const font = '25px sans-serif';
-            const startX = 5;
-            const y = 25;
-            const maxLen = 60; // approximate
-            if (info.length > maxLen) {
-                startScroll(prefix + '_info', info, font, 'white', startX, y, 2, 'orange');
-            } else {
-                ctxInfo.fillStyle = 'white';
-                ctxInfo.font = font;
-                ctxInfo.fillText(info, startX, y);
-            }
-        }
-    }
-
-    // Ziel
-    let zielCanvas = document.getElementById(prefix + '_ziel');
-    let ctxZiel = zielCanvas.getContext('2d');
-    ctxZiel.scale(scale, scale);
-    ctxZiel.clearRect(0, 0, zielCanvas.width / scale, zielCanvas.height / scale);
-    stopScroll(prefix + '_ziel');
-    const zielFont = fullScreen ? 'bold 25px sans-serif' : '20px sans-serif';
-    const zielX = fullScreen ? 100 : 5;
-    const zielY = fullScreen ? 40 : 20;
-    const maxZielLen = fullScreen ? 45 : 30;
-    if (ziel.length > maxZielLen) {
-        startScroll(prefix + '_ziel', ziel, zielFont, 'white', zielX, zielY, 2);
-    } else {
-        ctxZiel.fillStyle = 'white';
-        ctxZiel.font = zielFont;
-        ctxZiel.fillText(ziel, zielX, zielY);
-    }
-
-    // Via1
-    let via1Canvas = document.getElementById(prefix + '_via1');
-    let ctxVia1 = via1Canvas.getContext('2d');
-    ctxVia1.scale(scale, scale);
-    ctxVia1.clearRect(0, 0, via1Canvas.width / scale, via1Canvas.height / scale);
-    stopScroll(prefix + '_via1');
-    const viaFont = fullScreen ? 'bold 25px sans-serif' : '20px sans-serif';
-    const viaX = fullScreen ? 100 : 5;
-    const viaY = fullScreen ? 40 : 20;
-    const maxViaLen = fullScreen ? 45 : 30;
-    if (via.length > maxViaLen) {
-        startScroll(prefix + '_via1', via, viaFont, 'white', viaX, viaY, 2);
-    } else {
-        ctxVia1.fillStyle = 'white';
-        ctxVia1.font = viaFont;
-        ctxVia1.fillText(via, viaX, viaY);
-    }
-
-    // Via2
-    let via2Canvas = document.getElementById(prefix + '_via2');
-    let ctxVia2 = via2Canvas.getContext('2d');
-    ctxVia2.scale(scale, scale);
-    ctxVia2.clearRect(0, 0, via2Canvas.width / scale, via2Canvas.height / scale);
-    stopScroll(prefix + '_via2');
-    const via2Font = fullScreen ? 'bold 25px sans-serif' : 'italic 20px sans-serif';
-    if (via2.length > maxViaLen) {
-        startScroll(prefix + '_via2', via2, via2Font, 'white', viaX, viaY, 2);
-    } else {
-        ctxVia2.fillStyle = 'white';
-        ctxVia2.font = via2Font;
-        ctxVia2.fillText(via2, viaX, viaY);
-    }
-
-    // Via3
-    let via3Canvas = document.getElementById(prefix + '_via3');
-    let ctxVia3 = via3Canvas.getContext('2d');
-    ctxVia3.scale(scale, scale);
-    ctxVia3.clearRect(0, 0, via3Canvas.width / scale, via3Canvas.height / scale);
-    stopScroll(prefix + '_via3');
-    const via3Font = fullScreen ? 'bold 25px sans-serif' : 'italic 20px sans-serif';
-    if (via3.length > maxViaLen) {
-        startScroll(prefix + '_via3', via3, via3Font, 'white', viaX, viaY, 2);
-    } else {
-        ctxVia3.fillStyle = 'white';
-        ctxVia3.font = via3Font;
-        ctxVia3.fillText(via3, viaX, viaY);
-    }
-
-    updateCoachSequence(zug_nr, prefix + '_formation', fullScreen);
+    processGroup(group);
 }
 
 function loadJsonData() {
