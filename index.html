@@ -17,6 +17,7 @@
         .ziel-line, .via-line { height: 100px; display: flex; align-items: center; }
         .ziel-line span, .via-line span { font-size: 50px; margin-right: 10px; }
     </style>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 </head>
 <body>
 
@@ -40,6 +41,12 @@
         <div>
             <label class="input-label">Gleis</label><input type="text" id="gleis" value="">
         </div>
+    </div>
+
+    <div class="section">
+        <h2>Data Load</h2>
+        <input type="file" id="load_json" accept=".json">
+        <button onclick="loadJsonData()">Load All Data from JSON</button>
     </div>
 
     <div class="section">
@@ -96,7 +103,18 @@
             <label class="input-label">TrainStart</label><input type="text" data-train="1" data-field="TrainStart" value="0">
         </div>
         <div>
-            <label class="input-label">Direction</label><input type="text" data-train="1" data-field="Direction" value="0">
+            <label class="input-label">Direction</label>
+            <select data-train="1" data-field="Richtung">
+                <option value="0">0</option>
+                <option value="1">1</option>
+            </select>
+        </div>
+        <div>
+            <label class="input-label">Skalieren</label><input type="checkbox" data-train="1" data-field="Skalieren">
+        </div>
+        <div>
+            <input type="file" id="load_form1" accept=".json">
+            <button onclick="loadFormation(1)">Load Formation Train 1</button>
         </div>
     </div>
 
@@ -154,7 +172,18 @@
             <label class="input-label">TrainStart</label><input type="text" data-train="2" data-field="TrainStart" value="0">
         </div>
         <div>
-            <label class="input-label">Direction</label><input type="text" data-train="2" data-field="Direction" value="0">
+            <label class="input-label">Direction</label>
+            <select data-train="2" data-field="Richtung">
+                <option value="0">0</option>
+                <option value="1">1</option>
+            </select>
+        </div>
+        <div>
+            <label class="input-label">Skalieren</label><input type="checkbox" data-train="2" data-field="Skalieren">
+        </div>
+        <div>
+            <input type="file" id="load_form2" accept=".json">
+            <button onclick="loadFormation(2)">Load Formation Train 2</button>
         </div>
     </div>
 
@@ -212,10 +241,23 @@
             <label class="input-label">TrainStart</label><input type="text" data-train="3" data-field="TrainStart" value="0">
         </div>
         <div>
-            <label class="input-label">Direction</label><input type="text" data-train="3" data-field="Direction" value="0">
+            <label class="input-label">Direction</label>
+            <select data-train="3" data-field="Richtung">
+                <option value="0">0</option>
+                <option value="1">1</option>
+            </select>
+        </div>
+        <div>
+            <label class="input-label">Skalieren</label><input type="checkbox" data-train="3" data-field="Skalieren">
+        </div>
+        <div>
+            <input type="file" id="load_form3" accept=".json">
+            <button onclick="loadFormation(3)">Load Formation Train 3</button>
         </div>
     </div>
 </div>
+
+<button onclick="downloadScreenshot()">Download Screenshot</button>
 
 <div class="displays">
     <div class="large">
@@ -297,52 +339,62 @@ let trainData = {
         1: {
             "Informationen": "", "Zugnummer": "", "Zugnummer kurz": "", "Abfahrt": "", "Abweichend": "", "Ziel": "", 
             "Via-Halte 1": "", "Via-Halte 2": "", "Via-Halte 3": "", "Via-Halte 1 Small": "", "Via-Halte 2 Small": "", "Via-Halte 3 Small": "", "Gleiswechsel": "0",
-            "Wagenreihung": [], "PlatformLength": 420, "PlatformSections": [["A", 69.7], ["B", 135.8], ["C", 208], ["D", 266], ["E", 315.65]], "TrainStart": 0, "Direction": 0
+            "Wagenreihung": [], "PlatformLength": 420, "PlatformSections": [["A", 69.7], ["B", 135.8], ["C", 208], ["D", 266], ["E", 315.65]], "TrainStart": 0, "Richtung": 0, "Skalieren": false
         },
         2: {
             "Informationen": "", "Zugnummer": "", "Zugnummer kurz": "", "Abfahrt": "", "Abweichend": "", "Ziel": "", 
             "Via-Halte 1": "", "Via-Halte 2": "", "Via-Halte 3": "", "Via-Halte 1 Small": "", "Via-Halte 2 Small": "", "Via-Halte 3 Small": "", "Gleiswechsel": "0",
-            "Wagenreihung": [], "PlatformLength": 420, "PlatformSections": [["A", 69.7], ["B", 135.8], ["C", 208], ["D", 266], ["E", 315.65]], "TrainStart": 0, "Direction": 0
+            "Wagenreihung": [], "PlatformLength": 420, "PlatformSections": [["A", 69.7], ["B", 135.8], ["C", 208], ["D", 266], ["E", 315.65]], "TrainStart": 0, "Richtung": 0, "Skalieren": false
         },
         3: {
             "Informationen": "", "Zugnummer": "", "Zugnummer kurz": "", "Abfahrt": "", "Abweichend": "", "Ziel": "", 
             "Via-Halte 1": "", "Via-Halte 2": "", "Via-Halte 3": "", "Via-Halte 1 Small": "", "Via-Halte 2 Small": "", "Via-Halte 3 Small": "", "Gleiswechsel": "0",
-            "Wagenreihung": [], "PlatformLength": 420, "PlatformSections": [["A", 69.7], ["B", 135.8], ["C", 208], ["D", 266], ["E", 315.65]], "TrainStart": 0, "Direction": 0
+            "Wagenreihung": [], "PlatformLength": 420, "PlatformSections": [["A", 69.7], ["B", 135.8], ["C", 208], ["D", 266], ["E", 315.65]], "TrainStart": 0, "Richtung": 0, "Skalieren": false
         }
     },
     current_stop: "",
     current_platform: ""
 };
 
-const inputs = document.querySelectorAll('input[data-train], textarea[data-train]');
+const inputs = document.querySelectorAll('input[data-train], textarea[data-train], select[data-train]');
 inputs.forEach(input => {
     input.addEventListener('input', () => {
         const train = input.dataset.train;
         const field = input.dataset.field;
+        let val;
+        if (input.type === 'checkbox') {
+            val = input.checked;
+        } else if (input.tagName === 'SELECT') {
+            val = parseInt(input.value);
+        } else {
+            val = input.value;
+        }
         if (field === 'Wagenreihung') {
             try {
-                const arr = JSON.parse(input.value);
-                trainData.zug_daten[train][field] = arr.map(obj => new Coach(obj.coach_type, obj.double_decker, obj.length, obj.coach_class, obj.coach_number, obj.amenities, obj.start, obj.stop));
+                val = JSON.parse(val);
+                trainData.zug_daten[train][field] = val.map(obj => new Coach(obj.coach_type, obj.double_decker, obj.length, obj.coach_class, obj.coach_number, obj.amenities, obj.start, obj.stop));
             } catch (e) {
                 console.error('Invalid Wagenreihung JSON');
             }
         } else if (field === 'PlatformSections') {
             try {
-                trainData.zug_daten[train][field] = JSON.parse(input.value);
+                trainData.zug_daten[train][field] = JSON.parse(val);
             } catch (e) {
                 console.error('Invalid PlatformSections JSON');
             }
-        } else if (['PlatformLength', 'TrainStart', 'Direction'].includes(field)) {
-            trainData.zug_daten[train][field] = parseInt(input.value) || 0;
+        } else if (['PlatformLength', 'TrainStart', 'Richtung', 'Gleiswechsel'].includes(field)) {
+            trainData.zug_daten[train][field] = parseFloat(val) || 0;
+        } else if (field === 'Skalieren') {
+            trainData.zug_daten[train][field] = val;
         } else {
-            trainData.zug_daten[train][field] = input.value;
+            trainData.zug_daten[train][field] = val;
         }
         updateAllDisplays();
     });
 });
 
 document.getElementById('bahnsteiglaenge').addEventListener('input', () => {
-    const value = parseInt(document.getElementById('bahnsteiglaenge').value) || 420;
+    const value = parseFloat(document.getElementById('bahnsteiglaenge').value) || 420;
     for (let i = 1; i <= 3; i++) {
         trainData.zug_daten[i]['PlatformLength'] = value;
     }
@@ -440,18 +492,29 @@ function updateCoachSequence(zug_nr, canvasId, fullScreen) {
     const canvas = document.getElementById(canvasId);
     const ctx = canvas.getContext('2d');
     ctx.scale(scale, scale);
-    ctx.clearRect(0, 0, canvas.width / scale, canvas.height / scale);
-    const coaches = trainData.zug_daten[zug_nr]["Wagenreihung"];
-    const platform_length = trainData.zug_daten[zug_nr]["PlatformLength"];
-    const platform_sections = trainData.zug_daten[zug_nr]["PlatformSections"];
-    const train_start = trainData.zug_daten[zug_nr]["TrainStart"];
-    const direction = trainData.zug_daten[zug_nr]["Direction"];
-    const gleiswechsel = trainData.zug_daten[zug_nr]["Gleiswechsel"];
+    const draw_width = fullScreen ? 940 : 470;
+    ctx.clearRect(0, 0, draw_width, canvas.height / scale);
+    let coaches = trainData.zug_daten[zug_nr].Wagenreihung || [];
+    const platform_length = trainData.zug_daten[zug_nr].PlatformLength || 420;
+    const platform_sections = trainData.zug_daten[zug_nr].PlatformSections || [];
+    const train_start = trainData.zug_daten[zug_nr].TrainStart || 0;
+    const richtung = trainData.zug_daten[zug_nr].Richtung || 0;
+    const skalieren = trainData.zug_daten[zug_nr].Skalieren || false;
+    const gleiswechsel = trainData.zug_daten[zug_nr].Gleiswechsel || "0";
     if (coaches.length > 0) {
-        const original_width = fullScreen ? 940 : 470;
-        const factor = original_width / platform_length;
-        printCoachSequence(coaches, direction, platform_length, train_start, factor, ctx, fullScreen);
-        printSectors(platform_sections, ctx, fullScreen, factor, platform_length);
+        let min_start = Math.min(...coaches.map(c => c.start));
+        let max_stop = Math.max(...coaches.map(c => c.stop));
+        let train_length = max_stop - min_start;
+        let factor;
+        if (skalieren) {
+            factor = draw_width / train_length;
+        } else {
+            factor = draw_width / platform_length;
+        }
+        printCoachSequence(coaches, richtung, platform_length, train_start, factor, ctx, fullScreen, min_start, skalieren);
+        if (!skalieren && platform_sections.length > 0) {
+            printSectors(platform_sections, ctx, fullScreen, factor, platform_length);
+        }
     }
     if (gleiswechsel !== "0" && canvasId === 'small3_formation') {
         ctx.save();
@@ -462,22 +525,22 @@ function updateCoachSequence(zug_nr, canvasId, fullScreen) {
         ctx.fillStyle = 'white';
         ctx.font = '20px sans-serif';
         ctx.textAlign = 'left';
-        ctx.fillText('Neues Gleis', 25, 25);
-        ctx.font = '20px italic sans-serif';
-        ctx.fillText('New Track', 25, 55);
+        ctx.fillText('Neues Gleis', 25 / scale, 25 / scale);
+        ctx.font = 'italic 20px sans-serif';
+        ctx.fillText('New Track', 25 / scale, 55 / scale);
         ctx.font = '42px sans-serif';
         ctx.textAlign = 'right';
-        ctx.fillText(gleiswechsel, 445, 40);
+        ctx.fillText(gleiswechsel, 445 / scale, 40 / scale);
         ctx.restore();
     }
 }
 
-function printCoachSequence(coaches, richtung, platform_length, start_meter, factor, ctx, fullScreen) {
+function printCoachSequence(coaches, richtung, platform_length, start_meter, factor, ctx, fullScreen, min_start, skalieren) {
     let x = 0;
     printDirection(richtung, x, ctx);
     coaches.forEach(coach => {
-        coach.start = (coach.start - start_meter) * factor;
-        coach.stop = (coach.stop - start_meter) * factor;
+        coach.start = (coach.start - min_start - start_meter) * factor;
+        coach.stop = coach.start + coach.length * factor;
         coach.length = coach.stop - coach.start;
         x = coach.start;
         if (coach.is_locomotive()) {
@@ -498,17 +561,9 @@ function printCoachSequence(coaches, richtung, platform_length, start_meter, fac
             coaches.forEach(coach => printClass(coach, coach.start, ctx));
         }
     } else if (aktuelles_merkmal === 'ausstattung') {
-        if (fullScreen) {
-            printAmenitiesCompact(coaches, ctx);
-        } else {
-            coaches.forEach(coach => printAmenities(coach, coach.start, ctx));
-        }
+        coaches.forEach(coach => printAmenities(coach, coach.start, ctx));
     } else if (aktuelles_merkmal === 'wagennummern') {
-        if (fullScreen) {
-            printWagonNumbersCompact(coaches, ctx);
-        } else {
-            coaches.forEach(coach => printWagonNumbers(coach, coach.start, ctx));
-        }
+        coaches.forEach(coach => printWagonNumbers(coach, coach.start, ctx));
     }
 }
 
@@ -517,7 +572,7 @@ function printDirection(richtung, x, ctx) {
     ctx.strokeStyle = 'white';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    if (richtung == 0) {
+    if (richtung === 0) {
         ctx.moveTo(x, y + 20);
         ctx.lineTo(x + 10, y + 10);
         ctx.moveTo(x, y + 20);
@@ -602,14 +657,12 @@ function printFirstClass(coach, x, ctx, fullScreen) {
     const y = 35;
     if (coach.is_first_class()) {
         ctx.fillStyle = 'orange';
-        if (fullScreen) {
-            ctx.fillRect(x, y + 46, x + coach.length, y + 56);
-        } else {
-            let end = x + coach.length;
+        let end = x + coach.length;
+        if (!fullScreen) {
             if (coach.coach_type === 'e') end += 2;
-            if (coach.coach_type === 'a') end -= 2;
-            ctx.fillRect(x, y + 46, end, y + 56);
+            else if (coach.coach_type === 'a') end -= 2;
         }
+        ctx.fillRect(x, y + 46, end - x, 10);
     }
 }
 
@@ -628,7 +681,7 @@ function printClass(coach, x, ctx) {
 }
 
 function printClassCompact(coaches, ctx) {
-    let group = [];
+    let group = [];  // Stores coaches with same class
     function processGroup(group) {
         if (!group.length) return;
         const first = group[0];
@@ -643,29 +696,29 @@ function printClassCompact(coaches, ctx) {
             ctx.font = 'bold 16px sans-serif';
             ctx.fillText("1.", center, 35 + 20);
         } else if (current_class === 2) {
-            // Optionally add 2.
+            // Optionally draw "2."
         }
     }
     coaches.forEach(coach => {
-        if (['a', 'ma', 'm'].includes(coach.coach_type)) {
+        if (coach.coach_type in ['a', 'ma', 'm']) {
             if (!group.length || coach.coach_class === group[0].coach_class) {
                 group.push(coach);
             } else {
                 processGroup(group);
                 group = [coach];
             }
-        } else if (['e', 'me'].includes(coach.coach_type)) {
+        } else if (coach.coach_type in ['e', 'me']) {
             if (group.length && coach.coach_class === group[0].coach_class) {
                 group.push(coach);
             } else if (group.length) {
                 processGroup(group);
                 group = [coach];
             } else {
-                group.push(coach);
+                group = [coach];
             }
             processGroup(group);
             group = [];
-        } else {
+        } else {  // e.g., 'l' for locomotive
             processGroup(group);
             group = [];
         }
@@ -675,83 +728,39 @@ function printClassCompact(coaches, ctx) {
 
 function printAmenities(coach, x, ctx) {
     const y = 35;
-    ctx.textAlign = 'center';
-    ctx.fillStyle = 'white';
-    ctx.font = '16px sans-serif';
     if (coach.has_amenity('f')) {
-        ctx.fillText('f', x + (coach.length / 2), y + 20);
-    } else if (coach.has_amenity('r')) {
-        ctx.fillText('r', x + (coach.length / 2), y + 20);
-    } else if (coach.has_amenity('m')) {
-        ctx.fillText('m', x + (coach.length / 2), y + 20);
-    } else if (coach.has_amenity('g')) {
-        ctx.fillText('g', x + (coach.length / 2), y + 20);
-    }
-}
-
-function printAmenitiesCompact(coaches, ctx) {
-    let group = [];
-    function processGroup(group) {
-        if (!group.length) return;
-        const first = group[0];
-        const last = group[group.length - 1];
-        const start_pos = first.start;
-        const end_pos = last.start + last.length;
-        const center = (start_pos + end_pos) / 2;
-        const amenity = first.amenities;
-        ctx.textAlign = 'center';
+        // draw bike icon or text
         ctx.fillStyle = 'white';
         ctx.font = '16px sans-serif';
-        if (amenity) {
-            ctx.fillText(amenity, center, 35 + 20);
-        }
+        ctx.textAlign = 'center';
+        ctx.fillText('f', x + (coach.length / 2), y + 20);
+    } else if (coach.has_amenity('r')) {
+        ctx.fillStyle = 'white';
+        ctx.font = '16px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('r', x + (coach.length / 2), y + 20);
+    } else if (coach.has_amenity('m')) {
+        ctx.fillStyle = 'white';
+        ctx.font = '16px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('m', x + (coach.length / 2), y + 20);
+    } else if (coach.has_amenity('g')) {
+        ctx.fillStyle = 'white';
+        ctx.font = '16px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('g', x + (coach.length / 2), y + 20);
     }
-    coaches.forEach(coach => {
-        if (!group.length || coach.amenities === group[0].amenities) {
-            group.push(coach);
-        } else {
-            processGroup(group);
-            group = [coach];
-        }
-    });
-    processGroup(group);
+    // Add more if needed
 }
 
 function printWagonNumbers(coach, x, ctx) {
     const y = 35;
-    ctx.textAlign = 'center';
-    ctx.fillStyle = 'white';
-    ctx.font = '16px sans-serif';
     if (coach.coach_number) {
-        ctx.fillText(coach.coach_number, x + (coach.length / 2), y - 10); // Adjusted for position
-    }
-}
-
-function printWagonNumbersCompact(coaches, ctx) {
-    let group = [];
-    function processGroup(group) {
-        if (!group.length) return;
-        const first = group[0];
-        const last = group[group.length - 1];
-        const start_pos = first.start;
-        const end_pos = last.start + last.length;
-        const center = (start_pos + end_pos) / 2;
-        ctx.textAlign = 'center';
         ctx.fillStyle = 'white';
         ctx.font = '16px sans-serif';
-        if (first.coach_number) {
-            ctx.fillText(first.coach_number + '-' + last.coach_number, center, 35 - 10); // Range for compact
-        }
+        ctx.textAlign = 'center';
+        ctx.fillText(coach.coach_number, x + (coach.length / 2), y - 10);
     }
-    coaches.forEach(coach => {
-        if (!group.length || coach.coach_class === group[0].coach_class) {
-            group.push(coach);
-        } else {
-            processGroup(group);
-            group = [coach];
-        }
-    });
-    processGroup(group);
 }
 
 function printSectors(platform_sections, ctx, fullScreen, factor, platform_length) {
@@ -771,16 +780,16 @@ function printSectors(platform_sections, ctx, fullScreen, factor, platform_lengt
 }
 
 function updateTrainDisplay(zug_nr, prefix, fullScreen) {
-    const nr = trainData.zug_daten[zug_nr]["Zugnummer"];
-    const nr_kurz = trainData.zug_daten[zug_nr]["Zugnummer kurz"];
-    const abfahrt = trainData.zug_daten[zug_nr]["Abfahrt"];
-    const abfahrt_a = trainData.zug_daten[zug_nr]["Abweichend"];
-    const ziel = trainData.zug_daten[zug_nr]["Ziel"];
-    const info = trainData.zug_daten[zug_nr]["Informationen"];
-    const via = fullScreen ? trainData.zug_daten[zug_nr]["Via-Halte 1"] : trainData.zug_daten[zug_nr]["Via-Halte 1 Small"];
-    const via2 = fullScreen ? trainData.zug_daten[zug_nr]["Via-Halte 2"] : trainData.zug_daten[zug_nr]["Via-Halte 2 Small"];
-    const via3 = fullScreen ? trainData.zug_daten[zug_nr]["Via-Halte 3"] : trainData.zug_daten[zug_nr]["Via-Halte 3 Small"];
-    const gleiswechsel = trainData.zug_daten[zug_nr]["Gleiswechsel"];
+    const nr = trainData.zug_daten[zug_nr]["Zugnummer"] || "";
+    const nr_kurz = trainData.zug_daten[zug_nr]["Zugnummer kurz"] || "";
+    const abfahrt = trainData.zug_daten[zug_nr]["Abfahrt"] || "";
+    const abfahrt_a = trainData.zug_daten[zug_nr]["Abweichend"] || "";
+    const ziel = trainData.zug_daten[zug_nr]["Ziel"] || "";
+    const info = trainData.zug_daten[zug_nr]["Informationen"] || "";
+    const via = fullScreen ? trainData.zug_daten[zug_nr]["Via-Halte 1"] || "" : trainData.zug_daten[zug_nr]["Via-Halte 1 Small"] || "";
+    const via2 = fullScreen ? trainData.zug_daten[zug_nr]["Via-Halte 2"] || "" : trainData.zug_daten[zug_nr]["Via-Halte 2 Small"] || "";
+    const via3 = fullScreen ? trainData.zug_daten[zug_nr]["Via-Halte 3"] || "" : trainData.zug_daten[zug_nr]["Via-Halte 3 Small"] || "";
+    const gleiswechsel = trainData.zug_daten[zug_nr]["Gleiswechsel"] || "0";
 
     // Number
     let numberCanvas = document.getElementById(prefix + '_number');
@@ -790,7 +799,7 @@ function updateTrainDisplay(zug_nr, prefix, fullScreen) {
     ctxNumber.fillStyle = 'white';
     if (fullScreen) {
         ctxNumber.font = 'bold 42px sans-serif';
-        ctxNumber.fillText(nr_kurz, 25, 80);
+        ctxNumber.fillText(nr_kurz, 25, 80 / scale);
     } else {
         ctxNumber.font = 'bold 23px sans-serif';
         ctxNumber.fillText(nr, 5, 25);
@@ -805,12 +814,12 @@ function updateTrainDisplay(zug_nr, prefix, fullScreen) {
     if (fullScreen) {
         ctxTime.font = 'bold 60px sans-serif';
         ctxTime.fillStyle = 'white';
-        ctxTime.fillText(abfahrt, timeX, 100);
+        ctxTime.fillText(abfahrt, timeX, 100 / scale);
         if (abfahrt_a) {
             ctxTime.font = '42px sans-serif';
-            ctxTime.fillText('+', timeX + 100, 100);
+            ctxTime.fillText('+', timeX + 100, 100 / scale);
             ctxTime.fillStyle = 'red';
-            ctxTime.fillText(abfahrt_a, timeX + 120, 100);
+            ctxTime.fillText(abfahrt_a, timeX + 120, 100 / scale);
         }
     } else {
         ctxTime.font = 'bold 25px sans-serif';
@@ -844,7 +853,7 @@ function updateTrainDisplay(zug_nr, prefix, fullScreen) {
                 if (msg.includes(key)) {
                     const img = document.createElement('img');
                     img.src = iconMap[key];
-                    img.style.width = '50px'; // Assume size
+                    img.style.width = '50px';
                     iconsDiv.appendChild(img);
                     break;
                 }
@@ -860,8 +869,9 @@ function updateTrainDisplay(zug_nr, prefix, fullScreen) {
             const font = '25px sans-serif';
             const startX = 5;
             const y = 25;
-            if (info.length > 60) {
-                startScroll(prefix + '_info', info, font, 'midnightblue', startX, y, 2, 'orange');
+            const maxLen = 60; // approximate
+            if (info.length > maxLen) {
+                startScroll(prefix + '_info', info, font, 'white', startX, y, 2, 'orange');
             } else {
                 ctxInfo.fillStyle = 'white';
                 ctxInfo.font = font;
@@ -937,6 +947,71 @@ function updateTrainDisplay(zug_nr, prefix, fullScreen) {
     }
 
     updateCoachSequence(zug_nr, prefix + '_formation', fullScreen);
+}
+
+function loadJsonData() {
+    const file = document.getElementById('load_json').files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        const data = JSON.parse(e.target.result);
+        for (let i = 1; i <= 3; i++) {
+            const zug = data[`zug_${i}`];
+            if (zug) {
+                Object.keys(zug).forEach(key => {
+                    if (key === 'Wagenreihung') {
+                        trainData.zug_daten[i][key] = zug[key].map(c => new Coach(c.coach_type, c.double_decker, c.length, c.coach_class, c.coach_number, c.amenities, c.start, c.stop));
+                    } else if (key === 'PlatformSections') {
+                        trainData.zug_daten[i][key] = zug[key];
+                    } else if (['PlatformLength', 'TrainStart', 'Richtung', 'Gleiswechsel'].includes(key)) {
+                        trainData.zug_daten[i][key] = Number(zug[key]);
+                    } else if (key === 'Skalieren') {
+                        trainData.zug_daten[i][key] = zug[key];
+                    } else {
+                        trainData.zug_daten[i][key] = zug[key];
+                    }
+                });
+                // Update inputs
+                document.querySelectorAll(`[data-train="${i}"]`).forEach(inp => {
+                    const field = inp.dataset.field;
+                    const val = trainData.zug_daten[i][field];
+                    if (inp.type === 'checkbox') {
+                        inp.checked = val;
+                    } else if (inp.tagName === 'TEXTAREA') {
+                        inp.value = JSON.stringify(val);
+                    } else if (inp.tagName === 'SELECT') {
+                        inp.value = val;
+                    } else {
+                        inp.value = val;
+                    }
+                });
+            }
+        }
+        updateAllDisplays();
+    };
+    reader.readAsText(file);
+}
+
+function loadFormation(train) {
+    const file = document.getElementById(`load_form${train}`).files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        const arr = JSON.parse(e.target.result);
+        trainData.zug_daten[train].Wagenreihung = arr.map(c => new Coach(c.coach_type, c.double_decker, c.length, c.coach_class, c.coach_number, c.amenities, c.start, c.stop));
+        document.querySelector(`[data-train="${train}"][data-field="Wagenreihung"]`).value = JSON.stringify(arr);
+        updateAllDisplays();
+    };
+    reader.readAsText(file);
+}
+
+function downloadScreenshot() {
+    html2canvas(document.querySelector('.displays'), {scale: 2}).then(canvas => {
+        let link = document.createElement('a');
+        link.download = 'zuginfo.png';
+        link.href = canvas.toDataURL();
+        link.click();
+    });
 }
 
 updateAllDisplays();
