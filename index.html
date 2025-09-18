@@ -15,6 +15,7 @@
         canvas { background: midnightblue; }
         .header-line { position: relative; height: 100px; }
         .ziel-line, .via-line { height: 50px; }
+        .large_icons { display: flex; flex-direction: row-reverse; align-items: flex-start; }
     </style>
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 </head>
@@ -263,7 +264,7 @@
         <h3>Large Display (Train 1 Full Screen)</h3>
         <div class="header-line">
             <canvas id="large_header" width="1880" height="200" style="width:940px; height:100px; position: absolute; left:0;"></canvas>
-            <div class="large_icons" style="position: absolute; right: 0; top: 0; height:100px; line-height:100px;"></div>
+            <div class="large_icons" style="position: absolute; right: 0; top: 0; height:100px; display: flex; flex-direction: row-reverse; align-items: flex-start;"></div>
         </div>
         <div class="ziel-line">
             <canvas id="large_ziel" width="1880" height="100" style="width:940px; height:50px;"></canvas>
@@ -282,7 +283,7 @@
     <div class="small-displays">
         <div class="small-display">
             <h3>Small Display (Train 2)</h3>
-            <canvas id="small2_header" width="940" height="60" style="width:470px; height:30px;"></canvas>
+            <canvas id="small2_header" width="940" height="120" style="width:470px; height:60px;"></canvas>
             <canvas id="small2_info" width="940" height="60" style="width:470px; height:30px;"></canvas>
             <canvas id="small2_ziel" width="940" height="60" style="width:470px; height:30px;"></canvas>
             <canvas id="small2_via1" width="940" height="60" style="width:470px; height:30px;"></canvas>
@@ -292,7 +293,7 @@
         </div>
         <div class="small-display">
             <h3>Small Display (Train 3)</h3>
-            <canvas id="small3_header" width="940" height="60" style="width:470px; height:30px;"></canvas>
+            <canvas id="small3_header" width="940" height="120" style="width:470px; height:60px;"></canvas>
             <canvas id="small3_info" width="940" height="60" style="width:470px; height:30px;"></canvas>
             <canvas id="small3_ziel" width="940" height="60" style="width:470px; height:30px;"></canvas>
             <canvas id="small3_via1" width="940" height="60" style="width:470px; height:30px;"></canvas>
@@ -437,7 +438,6 @@ let scrollIntervals = {};
 function startScroll(canvasId, text, font, color, startX, y, speed = 2, bg = null) {
     const canvas = document.getElementById(canvasId);
     const ctx = canvas.getContext('2d');
-    ctx.scale(scale, scale);
     ctx.font = font;
     const textWidth = ctx.measureText(text).width;
     const canvasWidth = canvas.width / scale;
@@ -488,7 +488,7 @@ function updateCoachSequence(zug_nr, canvasId, fullScreen) {
     const ctx = canvas.getContext('2d');
     ctx.scale(scale, scale);
     const draw_width = fullScreen ? 940 : 470;
-    const draw_height = fullScreen ? 129 : 129;
+    const draw_height = 129;
     ctx.clearRect(0, 0, draw_width, draw_height);
     let coaches = trainData.zug_daten[zug_nr].Wagenreihung.slice() || [];
     let platform_length = trainData.zug_daten[zug_nr].PlatformLength || 420;
@@ -544,10 +544,10 @@ function updateCoachSequence(zug_nr, canvasId, fullScreen) {
         let factor = skalieren ? draw_width / train_length : draw_width / platform_length;
         coaches.forEach(coach => {
             coach.start = (coach.start - min_start - train_start) * factor;
-            coach.stop = coach.start + (coach.stop - coach.start) * factor; // recalculate based on original length * factor? But original length is stop - start
+            coach.stop = coach.start + (coach.stop - coach.start) * factor;
             coach.length = coach.stop - coach.start;
         });
-        printDirection(richtung, fullScreen ? 20 : 5, ctx);
+        printDirection(richtung, 0, ctx);
         coaches.forEach(coach => {
             let x = coach.start;
             if (coach.is_locomotive()) {
@@ -586,6 +586,181 @@ function updateCoachSequence(zug_nr, canvasId, fullScreen) {
     }
 }
 
+function printDirection(richtung, x, ctx) {
+    const y = 35;
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    if (richtung === 0) {
+        ctx.moveTo(x, y + 20);
+        ctx.lineTo(x + 10, y + 10);
+        ctx.moveTo(x, y + 20);
+        ctx.lineTo(x + 15, y + 20);
+        ctx.moveTo(x, y + 20);
+        ctx.lineTo(x + 10, y + 30);
+    } else {
+        ctx.moveTo(x + 15, y + 20);
+        ctx.lineTo(x + 5, y + 10);
+        ctx.moveTo(x + 15, y + 20);
+        ctx.lineTo(x, y + 20);
+        ctx.moveTo(x + 15, y + 20);
+        ctx.lineTo(x + 5, y + 30);
+    }
+    ctx.stroke();
+}
+
+function printStartWagon(coach, x, ctx) {
+    const y = 35;
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x, y + 40 + 2);
+    ctx.lineTo(x, y + 10);
+    ctx.lineTo(x + 6, y);
+    ctx.lineTo(x + coach.length, y);
+    ctx.moveTo(x, y + 40);
+    ctx.lineTo(x + coach.length, y + 40);
+    ctx.stroke();
+}
+
+function printMiddleWagon(coach, x, ctx) {
+    const y = 35;
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + coach.length, y);
+    ctx.moveTo(x, y + 40);
+    ctx.lineTo(x + coach.length, y + 40);
+    if (coach.coach_type === 'ma') {
+        ctx.moveTo(x, y);
+        ctx.lineTo(x, y + 40 + 2);
+    } else if (coach.coach_type === 'me') {
+        ctx.moveTo(x + coach.length, y);
+        ctx.lineTo(x + coach.length, y + 40 + 2);
+    }
+    ctx.stroke();
+}
+
+function printEndWagon(coach, x, ctx) {
+    const y = 35;
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + coach.length - 6, y);
+    ctx.lineTo(x + coach.length, y + 10);
+    ctx.lineTo(x + coach.length, y + 40 + 2);
+    ctx.moveTo(x, y + 40);
+    ctx.lineTo(x + coach.length, y + 40);
+    ctx.stroke();
+}
+
+function printLocomotive(coach, x, ctx) {
+    const y = 35;
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x, y + 40 + 2);
+    ctx.lineTo(x, y + 16);
+    ctx.lineTo(x + 4, y + 8);
+    ctx.lineTo(x + coach.length - 4, y + 8);
+    ctx.lineTo(x + coach.length, y + 16);
+    ctx.lineTo(x + coach.length, y + 40 + 2);
+    ctx.moveTo(x, y + 40);
+    ctx.lineTo(x + coach.length, y + 40);
+    ctx.stroke();
+}
+
+function printFirstClass(coach, x, ctx, fullScreen) {
+    const y = 35;
+    if (coach.is_first_class()) {
+        ctx.fillStyle = 'orange';
+        let end = x + coach.length;
+        if (!fullScreen) {
+            if (coach.coach_type === 'e') end += 2;
+            else if (coach.coach_type === 'a') end -= 2;
+        }
+        ctx.fillRect(x, y + 46, end - x, 10);
+    }
+}
+
+function printClass(coach, x, ctx) {
+    const y = 35;
+    ctx.textAlign = 'center';
+    if (coach.is_first_class()) {
+        ctx.fillStyle = 'orange';
+        ctx.font = 'bold 16px sans-serif';
+        ctx.fillText("1.", x + (coach.length / 2), y + 20);
+    } else if (coach.coach_class === 2 && !coach.is_locomotive()) {
+        ctx.fillStyle = 'white';
+        ctx.font = '16px sans-serif';
+        ctx.fillText("2.", x + (coach.length / 2), y + 20);
+    }
+}
+
+function printClassCompact(coaches, ctx) {
+    let group = [];  
+    function processGroup(group) {
+        if (!group.length) return;
+        const first = group[0];
+        const last = group[group.length - 1];
+        const start_pos = first.start;
+        const end_pos = last.start + last.length;
+        const center = (start_pos + end_pos) / 2;
+        const current_class = first.coach_class;
+        ctx.textAlign = 'center';
+        if (current_class === 1) {
+            ctx.fillStyle = 'orange';
+            ctx.font = 'bold 16px sans-serif';
+            ctx.fillText("1.", center, 35 + 20);
+        } else if (current_class === 2) {
+            
+        }
+    }
+    coaches.forEach(coach => {
+        if (['a', 'ma', 'm'].includes(coach.coach_type)) {
+            if (!group.length || coach.coach_class === group[0].coach_class) {
+                group.push(coach);
+            } else {
+                processGroup(group);
+                group = [coach];
+            }
+        } else if (['e', 'me'].includes(coach.coach_type)) {
+            if (group.length && coach.coach_class === group[0].coach_class) {
+                group.push(coach);
+            } else if (group.length) {
+                processGroup(group);
+                group = [coach];
+            } else {
+                group = [coach];
+            }
+            processGroup(group);
+            group = [];
+        } else {  
+            processGroup(group);
+            group = [];
+        }
+    });
+    processGroup(group);
+}
+
+function printAmenities(coach, x, ctx) {
+    const y = 35;
+    ctx.fillStyle = 'white';
+    ctx.font = '16px sans-serif';
+    ctx.textAlign = 'center';
+    if (coach.has_amenity('f')) {
+        ctx.fillText('f', x + (coach.length / 2), y + 20);
+    } else if (coach.has_amenity('r')) {
+        ctx.fillText('r', x + (coach.length / 2), y + 20);
+    } else if (coach.has_amenity('m')) {
+        ctx.fillText('m', x + (coach.length / 2), y + 20);
+    } else if (coach.has_amenity('g')) {
+        ctx.fillText('g', x + (coach.length / 2), y + 20);
+    }
+}
+
 function printAmenitiesCompact(coaches, ctx) {
     let group = [];
     function processGroup(group) {
@@ -612,6 +787,16 @@ function printAmenitiesCompact(coaches, ctx) {
     processGroup(group);
 }
 
+function printWagonNumbers(coach, x, ctx) {
+    const y = 35;
+    if (coach.coach_number) {
+        ctx.fillStyle = 'white';
+        ctx.font = '16px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(coach.coach_number, x + (coach.length / 2), y - 10);
+    }
+}
+
 function printWagonNumbersCompact(coaches, ctx) {
     let group = [];
     function processGroup(group) {
@@ -627,8 +812,8 @@ function printWagonNumbersCompact(coaches, ctx) {
             ctx.fillText(text, center, 35 - 10);
         }
     }
-    coaches.forEach(coach, i => {
-        if (!group.length || (coach.coach_number === group[group.length-1].coach_number + 1)) {
+    coaches.forEach(coach => {
+        if (!group.length || (coach.coach_number === group[group.length - 1].coach_number + 1)) {
             group.push(coach);
         } else {
             processGroup(group);
@@ -636,6 +821,205 @@ function printWagonNumbersCompact(coaches, ctx) {
         }
     });
     processGroup(group);
+}
+
+function printSectors(platform_sections, ctx, fullScreen, factor, platform_length) {
+    platform_sections.forEach(section => {
+        const pos = section[1] * factor;
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(pos, 0);
+        ctx.lineTo(pos, 80);
+        ctx.stroke();
+        ctx.fillStyle = 'white';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(section[0], pos, 90);
+    });
+}
+
+function printCoachSequence(coaches, richtung, platform_length, start_meter, factor, ctx, fullScreen, min_start, skalieren) {
+    printDirection(richtung, 0, ctx);
+    coaches.forEach(coach => {
+        let x = coach.start;
+        if (coach.is_locomotive()) {
+            printLocomotive(coach, x, ctx);
+        } else if (['a', 'ma'].includes(coach.coach_type)) {
+            printStartWagon(coach, x, ctx);
+        } else if (coach.coach_type === 'm') {
+            printMiddleWagon(coach, x, ctx);
+        } else if (['e', 'me'].includes(coach.coach_type)) {
+            printEndWagon(coach, x, ctx);
+        }
+        printFirstClass(coach, x, ctx, fullScreen);
+    });
+}
+
+function updateTrainDisplay(zug_nr, prefix, fullScreen) {
+    const nr = trainData.zug_daten[zug_nr]["Zugnummer"] || "";
+    const nr_kurz = trainData.zug_daten[zug_nr]["Zugnummer kurz"] || "";
+    const abfahrt = trainData.zug_daten[zug_nr]["Abfahrt"] || "";
+    const abfahrt_a = trainData.zug_daten[zug_nr]["Abweichend"] || "";
+    const ziel = trainData.zug_daten[zug_nr]["Ziel"] || "";
+    const info = trainData.zug_daten[zug_nr]["Informationen"] || "";
+    const via = fullScreen ? trainData.zug_daten[zug_nr]["Via-Halte 1"] || "" : trainData.zug_daten[zug_nr]["Via-Halte 1 Small"] || "";
+    const via2 = fullScreen ? trainData.zug_daten[zug_nr]["Via-Halte 2"] || "" : trainData.zug_daten[zug_nr]["Via-Halte 2 Small"] || "";
+    const via3 = fullScreen ? trainData.zug_daten[zug_nr]["Via-Halte 3"] || "" : trainData.zug_daten[zug_nr]["Via-Halte 3 Small"] || "";
+    const gleiswechsel = trainData.zug_daten[zug_nr]["Gleiswechsel"] || "0";
+
+    // Header
+    let headerCanvas = document.getElementById(prefix + '_header');
+    let ctxHeader = headerCanvas.getContext('2d');
+    ctxHeader.scale(scale, scale);
+    ctxHeader.clearRect(0, 0, headerCanvas.width / scale, headerCanvas.height / scale);
+    if (fullScreen) {
+        ctxHeader.fillStyle = 'white';
+        ctxHeader.font = 'bold 42px sans-serif';
+        ctxHeader.textAlign = 'left';
+        ctxHeader.fillText(nr_kurz, 25, 25);
+        ctxHeader.font = 'bold 60px sans-serif';
+        ctxHeader.fillText(abfahrt, 25, 60);
+        if (abfahrt_a) {
+            ctxHeader.font = '42px sans-serif';
+            ctxHeader.fillText('+', 125, 60);
+            ctxHeader.fillStyle = 'red';
+            ctxHeader.fillText(abfahrt_a, 145, 60);
+        }
+    } else {
+        ctxHeader.fillStyle = 'white';
+        ctxHeader.font = 'bold 23px sans-serif';
+        ctxHeader.textAlign = 'left';
+        ctxHeader.fillText(nr, 5, 25);
+        ctxHeader.font = 'bold 25px sans-serif';
+        ctxHeader.fillText(abfahrt, 5, 55);
+        if (abfahrt_a) {
+            ctxHeader.font = '25px sans-serif';
+            ctxHeader.fillText('+', 55, 55);
+            ctxHeader.fillStyle = 'red';
+            ctxHeader.fillText(abfahrt_a, 75, 55);
+        }
+    }
+
+    // Info
+    if (fullScreen) {
+        const iconsDiv = document.querySelector('.large_icons');
+        iconsDiv.innerHTML = '';
+        const messages = info.split(' +++ ');
+        const iconMap = {
+            'Zug fällt heute aus': 'icons/ausfall.png',
+            'Keine Weiterfahrt bis': 'icons/keine_weiterfahrt.png',
+            'Halt entfällt in': 'icons/haltentfall.png',
+            'Zusätzlicher Halt in': 'icons/zusatzhalt.png',
+            'Wagen fehlen': 'icons/wagen_fehlen.png',
+            'Reservierungspflichtig': 'icons/reservierungspflichtig.png',
+            'Fahrradmitnahme reservierungspflichtig': 'icons/fahrradmitnahme_reservierungspflichtig.png',
+            'Kein gastronomisches Angebot': 'icons/kein_gastronmisches_angebot.png'
+        };
+        let x = 0; // Since flex reverse, add from left, but reverse will right align
+        messages.forEach(msg => {
+            for (let key in iconMap) {
+                if (msg.includes(key)) {
+                    const img = document.createElement('img');
+                    img.src = iconMap[key];
+                    img.style.width = '50px';
+                    img.style.marginLeft = '10px';
+                    iconsDiv.appendChild(img);
+                    break;
+                }
+            }
+        });
+    } else {
+        let infoCanvas = document.getElementById(prefix + '_info');
+        let ctxInfo = infoCanvas.getContext('2d');
+        ctxInfo.scale(scale, scale);
+        ctxInfo.clearRect(0, 0, infoCanvas.width / scale, infoCanvas.height / scale);
+        stopScroll(prefix + '_info');
+        const font = '20px sans-serif';
+        const startX = 5;
+        const y = 15;
+        if (info.length > 40) {
+            startScroll(prefix + '_info', info, font, 'white', startX, y, 2);
+        } else {
+            ctxInfo.fillStyle = 'white';
+            ctxInfo.font = font;
+            ctxInfo.textAlign = 'left';
+            ctxInfo.fillText(info, startX, y);
+        }
+    }
+
+    // Ziel
+    let zielCanvas = document.getElementById(prefix + '_ziel');
+    let ctxZiel = zielCanvas.getContext('2d');
+    ctxZiel.scale(scale, scale);
+    ctxZiel.clearRect(0, 0, zielCanvas.width / scale, zielCanvas.height / scale);
+    stopScroll(prefix + '_ziel');
+    let zielText = fullScreen ? "Ziel: " + ziel : ziel;
+    const zielFont = fullScreen ? 'bold 25px sans-serif' : '20px sans-serif';
+    const zielX = fullScreen ? 25 : 5;
+    const zielY = fullScreen ? 25 : 15;
+    const maxLen = fullScreen ? 60 : 40;
+    if (zielText.length > maxLen) {
+        startScroll(prefix + '_ziel', zielText, zielFont, 'white', zielX, zielY, 2);
+    } else {
+        ctxZiel.fillStyle = 'white';
+        ctxZiel.font = zielFont;
+        ctxZiel.textAlign = 'left';
+        ctxZiel.fillText(zielText, zielX, zielY);
+    }
+
+    // Via1
+    let via1Canvas = document.getElementById(prefix + '_via1');
+    let ctxVia1 = via1Canvas.getContext('2d');
+    ctxVia1.scale(scale, scale);
+    ctxVia1.clearRect(0, 0, via1Canvas.width / scale, via1Canvas.height / scale);
+    stopScroll(prefix + '_via1');
+    let via1Text = fullScreen ? "über " + via : via;
+    const via1Font = fullScreen ? 'bold 25px sans-serif' : '20px sans-serif';
+    const viaX = fullScreen ? 25 : 5;
+    const viaY = fullScreen ? 25 : 15;
+    if (via1Text.length > maxLen) {
+        startScroll(prefix + '_via1', via1Text, via1Font, 'white', viaX, viaY, 2);
+    } else {
+        ctxVia1.fillStyle = 'white';
+        ctxVia1.font = via1Font;
+        ctxVia1.textAlign = 'left';
+        ctxVia1.fillText(via1Text, viaX, viaY);
+    }
+
+    // Via2
+    let via2Canvas = document.getElementById(prefix + '_via2');
+    let ctxVia2 = via2Canvas.getContext('2d');
+    ctxVia2.scale(scale, scale);
+    ctxVia2.clearRect(0, 0, via2Canvas.width / scale, via2Canvas.height / scale);
+    stopScroll(prefix + '_via2');
+    const via2Font = fullScreen ? '25px sans-serif' : 'italic 20px sans-serif';
+    if (via2.length > maxLen) {
+        startScroll(prefix + '_via2', via2, via2Font, 'white', viaX, viaY, 2);
+    } else {
+        ctxVia2.fillStyle = 'white';
+        ctxVia2.font = via2Font;
+        ctxVia2.textAlign = 'left';
+        ctxVia2.fillText(via2, viaX, viaY);
+    }
+
+    // Via3
+    let via3Canvas = document.getElementById(prefix + '_via3');
+    let ctxVia3 = via3Canvas.getContext('2d');
+    ctxVia3.scale(scale, scale);
+    ctxVia3.clearRect(0, 0, via3Canvas.width / scale, via3Canvas.height / scale);
+    stopScroll(prefix + '_via3');
+    const via3Font = fullScreen ? '25px sans-serif' : 'italic 20px sans-serif';
+    if (via3.length > maxLen) {
+        startScroll(prefix + '_via3', via3, via3Font, 'white', viaX, viaY, 2);
+    } else {
+        ctxVia3.fillStyle = 'white';
+        ctxVia3.font = via3Font;
+        ctxVia3.textAlign = 'left';
+        ctxVia3.fillText(via3, viaX, viaY);
+    }
+
+    updateCoachSequence(zug_nr, prefix + '_formation', fullScreen);
 }
 
 function loadJsonData() {
