@@ -798,13 +798,13 @@
                         ctx.fillStyle = 'white';
                         ctx.font = '80px "Open Sans Condensed"';
                         ctx.textAlign = 'right';
-                        ctx.fillText(used_nr, 1780, 210);
+                        ctx.fillText(used_nr, 1780, 200);
                         const text_width = ctx.measureText(used_nr).width;
                         const text_height = 80;
                         ctx.fillStyle = 'grey';
-                        ctx.fillRect(1780 - text_width - 15, 210 - (text_height / 2), text_width + 30, text_height + 30);
+                        ctx.fillRect(1780 - text_width - 15, 200 - (text_height / 2), text_width + 30, text_height + 20);
                         ctx.fillStyle = 'white';
-                        ctx.fillText(used_nr, 1780, 210);
+                        ctx.fillText(used_nr, 1780, 200);
                     }
                     ctx.textAlign = 'left';
                     ctx.font = '140px "Open Sans Condensed"';
@@ -964,7 +964,7 @@
                     scroll_div.style.height = '100px';
                     const inner = document.createElement('div');
                     inner.classList.add('scroll-text');
-                    inner.style.color = 'midnightblue';
+                    inner.style.color = 'white';
                     inner.style.font = '50px "Open Sans Condensed"';
                     inner.style.lineHeight = '100px';
                     const temp_canvas = document.createElement('canvas');
