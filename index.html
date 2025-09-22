@@ -14,7 +14,6 @@
         font-style: normal;
         }
 
-
         body {
             margin: 0;
             padding: 0;
@@ -43,22 +42,14 @@
             height: 1058px;
             transform-origin: top left;
         }
-        /* Responsive scaling */
+
+        /* Responsive scaling for train display */
         @media screen and (max-width: 3840px) {
             .main-frame {
                 transform: scale(calc(100vw / 3840));
             }
         }
-        @media screen and (max-width: 1920px) {
-            .main-frame {
-                transform: scale(calc(100vw / 3840));
-            }
-        }
-        @media screen and (max-width: 1366px) {
-            .main-frame {
-                transform: scale(calc(100vw / 3840));
-            }
-        }
+       
         .display-trenner-links { grid-column: 1; grid-row: 1 / 3; }
         .display1 { grid-column: 2; grid-row: 1; }
         .display1-wagenreihung { grid-column: 2; grid-row: 2; }
@@ -74,9 +65,9 @@
             flex-direction: column;
             align-items: flex-start;
             margin-top: 20px;
-            width: 3840px;
-            transform: scale(calc(100vw / 3840));
-            transform-origin: top left;
+            width: auto;           
+            max-width: 100%;       /* prevent overflow */
+            transform: none;       /* no scaling */
         }
 
         /* Each frame box */
@@ -317,7 +308,7 @@
             </div>
         </div>
     </div>
-    <button id="download-btn">Download Image</button>
+    <button id="download-btn">Screenshot downloaden</button>
     <input type="file" id="file-input" style="display:none;" accept=".json">
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
