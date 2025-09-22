@@ -180,9 +180,9 @@
                 <label>Zuglinie/Zugnummer: <input type="text" class="zug_entry" data-zug="1" data-field="Zugnummer"></label>
                 <label>Abfahrt: <input type="text" class="zug_entry" data-zug="1" data-field="Abfahrt"></label>
                 <label>Abweichend: <input type="text" class="zug_entry" data-zug="1" data-field="Abweichend"></label>
+                <label>Ziel: <input type="text" class="zug_entry" data-zug="1" data-field="Ziel"></label>
             </div>
             <div class="form-row">
-                <label>Ziel: <input type="text" class="zug_entry" data-zug="1" data-field="Ziel"></label>
                 <label>Via-Halte 1: <input type="text" class="zug_entry" data-zug="1" data-field="Via-Halte 1"></label>
                 <label>Via-Halte 2: <input type="text" class="zug_entry" data-zug="1" data-field="Via-Halte 2"></label>
             </div>
@@ -206,14 +206,14 @@
                 <label>Zuglinie/Zugnummer: <input type="text" class="zug_entry" data-zug="2" data-field="Zugnummer"></label>
                 <label>Abfahrt: <input type="text" class="zug_entry" data-zug="2" data-field="Abfahrt"></label>
                 <label>Abweichend: <input type="text" class="zug_entry" data-zug="2" data-field="Abweichend"></label>
-            </div>
-            <div class="form-row">
                 <label>Ziel: <input type="text" class="zug_entry" data-zug="2" data-field="Ziel"></label>
-                <label>Via-Halte 1 Small: <input type="text" class="zug_entry" data-zug="2" data-field="Via-Halte 1 Small"></label>
-                <label>Via-Halte 2 Small: <input type="text" class="zug_entry" data-zug="2" data-field="Via-Halte 2 Small"></label>
             </div>
             <div class="form-row">
-                <label>Via-Halte 3 Small: <input type="text" class="zug_entry" data-zug="2" data-field="Via-Halte 3 Small"></label>
+                <label>Via-Halte 1: <input type="text" class="zug_entry" data-zug="2" data-field="Via-Halte 1 Small"></label>
+                <label>Via-Halte 2: <input type="text" class="zug_entry" data-zug="2" data-field="Via-Halte 2 Small"></label>
+                <label>Via-Halte 3: <input type="text" class="zug_entry" data-zug="2" data-field="Via-Halte 3 Small"></label>
+            </div>
+            <div class="form-row">
                 <label>Informationen: <input type="text" class="zug_entry" data-zug="2" data-field="Informationen"></label>
                 <label>Richtung: 
                     <input type="radio" name="richtung2" value="0" class="richtung_radio" data-zug="2"> Links 
@@ -233,14 +233,14 @@
                 <label>Zuglinie/Zugnummer: <input type="text" class="zug_entry" data-zug="3" data-field="Zugnummer"></label>
                 <label>Abfahrt: <input type="text" class="zug_entry" data-zug="3" data-field="Abfahrt"></label>
                 <label>Abweichend: <input type="text" class="zug_entry" data-zug="3" data-field="Abweichend"></label>
-            </div>
-            <div class="form-row">
                 <label>Ziel: <input type="text" class="zug_entry" data-zug="3" data-field="Ziel"></label>
-                <label>Via-Halte 1 Small: <input type="text" class="zug_entry" data-zug="3" data-field="Via-Halte 1 Small"></label>
-                <label>Via-Halte 2 Small: <input type="text" class="zug_entry" data-zug="3" data-field="Via-Halte 2 Small"></label>
             </div>
             <div class="form-row">
-                <label>Via-Halte 3 Small: <input type="text" class="zug_entry" data-zug="3" data-field="Via-Halte 3 Small"></label>
+                <label>Via-Halte 1: <input type="text" class="zug_entry" data-zug="3" data-field="Via-Halte 1 Small"></label>
+                <label>Via-Halte 2: <input type="text" class="zug_entry" data-zug="3" data-field="Via-Halte 2 Small"></label>
+                <label>Via-Halte 3: <input type="text" class="zug_entry" data-zug="3" data-field="Via-Halte 3 Small"></label>
+            </div>
+            <div class="form-row">
                 <label>Informationen: <input type="text" class="zug_entry" data-zug="3" data-field="Informationen"></label>
                 <label>Richtung: 
                     <input type="radio" name="richtung3" value="0" class="richtung_radio" data-zug="3"> Links 
@@ -281,7 +281,7 @@
         ];
         pictogramNames.forEach(name => {
             images[name] = new Image();
-            images[name].src = `icons/formation/${name}.png`;
+            images[name].src = `images/icons/${name}.png`;
             images[name].onerror = () => {
                 console.warn(`Failed to load image: icons/formation/${name}.png`);
                 images[name].isBroken = true;
