@@ -264,10 +264,20 @@
         // Image preloading with error handling
         const images = {};
         const pictogramNames = [
-            'fahrrad', 'rollstuhl', 'mehrzweck', 'gastronomie',
-            'fahrradmitnahme_reservierungspflichtig', 'reservierungspflichtig',
-            'wagen_fehlen', 'zusatzhalt', 'haltentfall', 'keine_weiterfahrt',
-            'kein_gastronmisches_angebot', 'ausfall'
+            'ausfall',
+            'halt_entfall',
+            'halt_zusatz',
+            'keine_fahrradmitnahme',
+            'kein_gastronomisches_angebot',
+            'kein_universal-wc',
+            'keine_weiterfahrt',
+            'reservierungspflicht',
+            'reservierungspflicht_fahrradmitnahme',
+            'wagen_fehlen',
+            'wagenreihung_fahrrad',
+            'wagenreihung_gastronomie',
+            'wagenreihung_mehrzweck',
+            'wagenreihung_rollstuhl'
         ];
         pictogramNames.forEach(name => {
             images[name] = new Image();
@@ -487,10 +497,10 @@
 
             print_amenities(coach, x, ctx) {
                 let img_key;
-                if (coach.has_amenity('f')) img_key = 'fahrrad';
-                else if (coach.has_amenity('r')) img_key = 'rollstuhl';
-                else if (coach.has_amenity('m')) img_key = 'mehrzweck';
-                else if (coach.has_amenity('g')) img_key = 'gastronomie';
+                if (coach.has_amenity('f')) img_key = 'wagenreihung_fahrrad';
+                else if (coach.has_amenity('r')) img_key = 'wagenreihung_rollstuhl';
+                else if (coach.has_amenity('m')) img_key = 'wagenreihung_mehrzweck';
+                else if (coach.has_amenity('g')) img_key = 'wagenreihung_gastronomie';
                 const img = images[img_key];
                 if (img && img.isLoaded && !img.isBroken) {
                     try {
@@ -512,10 +522,10 @@
                     const center = (start_pos + end_pos) / 2;
                     const amenity = first.amenities;
                     let img_key;
-                    if (amenity === 'f') img_key = 'fahrrad';
-                    else if (amenity === 'r') img_key = 'rollstuhl';
-                    else if (amenity === 'm') img_key = 'mehrzweck';
-                    else if (amenity === 'g') img_key = 'gastronomie';
+                    if (amenity === 'f') img_key = 'wagenreihung_fahrrad';
+                    else if (amenity === 'r') img_key = 'wagenreihung_rollstuhl';
+                    else if (amenity === 'm') img_key = 'wagenreihung_mehrzweck';
+                    else if (amenity === 'g') img_key = 'wagenreihung_gastronomie';
                     const img = images[img_key];
                     if (img && img.isLoaded && !img.isBroken) {
                         try {
@@ -928,16 +938,16 @@
                     drawImageSafe('ausfall');
                 }
                 if (nr.includes("FLX")) {
-                    drawImageSafe('reservierungspflichtig');
+                    drawImageSafe('reservierungspflicht');
                 }
                 if (nr.includes("IC")) {
-                    drawImageSafe('fahrradmitnahme_reservierungspflichtig');
+                    drawImageSafe('reservierungspflicht_fahrradmitnahme');
                 }
                 if (info.includes("Heute mit Halt in")) {
-                    drawImageSafe('zusatzhalt');
+                    drawImageSafe('halt_zusatz');
                 }
                 if (info.includes("Heute ohne Halt in")) {
-                    drawImageSafe('haltentfall');
+                    drawImageSafe('halt_entfall');
                 }
                 if (info.includes("Mehrere Wagen fehlen") || info.includes("Ein Wagen fehlen")) {
                     drawImageSafe('wagen_fehlen');
