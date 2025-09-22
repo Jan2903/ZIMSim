@@ -801,10 +801,8 @@
                         ctx.fillText(used_nr, 1780, 210);
                         const text_width = ctx.measureText(used_nr).width;
                         const text_height = 80;
-                        const padding_x = 20;
-                        const padding_y = 20;
                         ctx.fillStyle = 'grey';
-                        ctx.fillRect(1780 - text_width - padding_x, 210 - (text_height / 2) + padding_y * 1.5 - padding_y, text_width + 2 * padding_x, text_height + 2 * padding_y);
+                        ctx.fillRect(1780 - text_width - 15, 210 - (text_height / 2), text_width + 30, text_height + 30);
                         ctx.fillStyle = 'white';
                         ctx.fillText(used_nr, 1780, 210);
                     }
@@ -817,10 +815,8 @@
                         ctx.fillText(abfahrt_a, 540, 210);
                         const text_width = ctx.measureText(abfahrt_a).width;
                         const text_height = 100;
-                        const padding_x = 20;
-                        const padding_y = 20;
                         ctx.fillStyle = 'white';
-                        ctx.fillRect(540 - padding_x, 210 - (text_height / 2) + padding_y * 1.5 - padding_y, text_width + 2 * padding_x, text_height + 2 * padding_y);
+                        ctx.fillRect(540 - 15 , 210 - (text_height / 2) - 15, text_width + 30, text_height + 30);
                         ctx.fillStyle = 'midnightblue';
                         ctx.fillText(abfahrt_a, 540, 210);
                     }
