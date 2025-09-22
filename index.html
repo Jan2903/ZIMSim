@@ -138,6 +138,19 @@
             background-color: #001a4d;
         }
 
+        /* Keep radio/checkbox options inline */
+        .settings-frame label.radio-group {
+            flex-direction: row;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+        }
+
+        /* Ensure the inner text doesn't stack */
+        .settings-frame label.radio-group span {
+            margin-right: 8px;
+        }
+
         .scroll-container {
             overflow: hidden;
             white-space: nowrap;
@@ -219,7 +232,7 @@
             </div>
             <div class="form-row">
                 <label>Informationen: <input type="text" class="zug_entry" data-zug="1" data-field="Informationen"></label>
-                <label>Richtung: 
+                <label class="radio-group">Richtung:
                     <input type="radio" name="richtung1" value="0" class="richtung_radio" data-zug="1"> Links 
                     <input type="radio" name="richtung1" value="1" checked class="richtung_radio" data-zug="1"> Rechts
                 </label>
@@ -246,7 +259,7 @@
             </div>
             <div class="form-row">
                 <label>Informationen: <input type="text" class="zug_entry" data-zug="2" data-field="Informationen"></label>
-                <label>Richtung: 
+                <label class="radio-group">Richtung: 
                     <input type="radio" name="richtung2" value="0" class="richtung_radio" data-zug="2"> Links 
                     <input type="radio" name="richtung2" value="1" checked class="richtung_radio" data-zug="2"> Rechts
                 </label>
@@ -273,7 +286,7 @@
             </div>
             <div class="form-row">
                 <label>Informationen: <input type="text" class="zug_entry" data-zug="3" data-field="Informationen"></label>
-                <label>Richtung: 
+                <label class="radio-group">Richtung:
                     <input type="radio" name="richtung3" value="0" class="richtung_radio" data-zug="3"> Links 
                     <input type="radio" name="richtung3" value="1" checked class="richtung_radio" data-zug="3"> Rechts
                 </label>
