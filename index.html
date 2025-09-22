@@ -468,10 +468,7 @@
                     if (current_class === 1) {
                         ctx.fillStyle = 'orange';
                         ctx.fillText("1.", center, this.y + 40);
-                    } else if (current_class === 2) {
-                        ctx.fillStyle = 'white';
-                        ctx.fillText("2.", center, this.y + 40);
-                    }
+                    } 
                     group = [];
                 };
                 scaled_coaches.forEach(coach => {
@@ -483,7 +480,7 @@
                             group = [coach];
                         }
                     } else if (['e', 'me'].includes(coach.coach_type)) {
-                        if (group.length > 0 && coach.coach_class === group[0].coach_class) {
+                        if (group.length >= 0 && coach.coach_class === group[0].coach_class) {
                             group.push(coach);
                         }
                         process_group();
@@ -550,7 +547,7 @@
                             group = [coach];
                         }
                     } else if (['e', 'me'].includes(coach.coach_type)) {
-                        if (group.length > 0 && coach.amenities === group[0].amenities) {
+                        if (group.length >= 0 && coach.amenities === group[0].amenities) {
                             group.push(coach);
                         }
                         process_group();
