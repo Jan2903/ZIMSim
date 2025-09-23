@@ -172,7 +172,7 @@
             overflow: hidden;
             white-space: nowrap;
             position: absolute;
-            background-color: transparent;
+            background-color: white;
             pointer-events: none;
         }
         .scroll-text {
@@ -1049,7 +1049,7 @@
                     scroll_div.style.height = '100px';
                     const inner = document.createElement('div');
                     inner.classList.add('scroll-text');
-                    inner.style.color = 'white';
+                    inner.style.color = 'midnightblue';
                     inner.style.font = '50px "Open Sans Condensed"';
                     inner.style.lineHeight = '100px';
                     const temp_canvas = document.createElement('canvas');
@@ -1356,7 +1356,7 @@
             setTimeout(() => {
                 const mainFrame = document.querySelector('.main-frame');
                 html2canvas(mainFrame, {
-                    scale: 4,
+                    scale: 1,
                     useCORS: true,
                     backgroundColor: 'midnightblue',
                     width: 3840,
