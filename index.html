@@ -334,20 +334,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <script>
-        // Responsive scaling logic
-        function resizeDisplay() {
-            const container = document.querySelector('.display-container');
-            const scaleX = window.innerWidth / 3840;
-            const scaleY = window.innerHeight / 1118;
-            const scale = Math.min(scaleX, scaleY);
-            container.style.transform = `scale(${scale})`;
-            container.style.transformOrigin = "top center";
-        }
-
-        window.addEventListener('resize', resizeDisplay);
-        resizeDisplay();
-    </script>
-    <script>
 
         // Image preloading with error handling
         const images = {};
@@ -1428,6 +1414,18 @@
                 URL.revokeObjectURL(url);
             });
         });
+        // Responsive scaling logic
+        function resizeDisplay() {
+            const container = document.querySelector('.display-container');
+            const scaleX = window.innerWidth / 3840;
+            const scaleY = window.innerHeight / 1118;
+            const scale = Math.min(scaleX, scaleY);
+            container.style.transform = `scale(${scale})`;
+            container.style.transformOrigin = "top center";
+        }
+
+        window.addEventListener('resize', resizeDisplay);
+        resizeDisplay();
     </script>
 </body>
 </html>
