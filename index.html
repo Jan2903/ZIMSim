@@ -865,17 +865,17 @@
                 ctx.textBaseline = 'middle';
                 if (fullScreen) {
                     if (used_nr !== "") {
-                        ctx.fillStyle = 'white';
+                        ctx.fillStyle = 'midnightblue';
                         ctx.font = '80px "Open Sans Condensed"';
                         ctx.textAlign = 'right';
                         ctx.fillText(used_nr, 1780, 200);
                         const text_width = ctx.measureText(used_nr).width;
                         const text_height = 80;
-                        ctx.fillStyle = 'grey';
+                        ctx.fillStyle = 'white';
                         ctx.beginPath();
                         ctx.roundRect(1780 - text_width - 15, 200 - (text_height / 2), text_width + 30, text_height + 20, 10);
                         ctx.fill();
-                        ctx.fillStyle = 'white';
+                        ctx.fillStyle = 'midnightblue';
                         ctx.fillText(used_nr, 1780, 200);
                     }
                     ctx.textAlign = 'left';
@@ -900,17 +900,17 @@
                     ctx.fillText(via2, 112, 720);
                 } else {
                     if (used_nr !== "") {
-                        ctx.fillStyle = 'white';
+                        ctx.fillStyle = 'midnightblue';
                         ctx.font = '56px "Open Sans Condensed"';
                         ctx.textAlign = 'right';
                         ctx.fillText(used_nr, 890, 200);
                         const text_width = ctx.measureText(used_nr).width;
                         const text_height = 56;
-                        ctx.fillStyle = 'grey';
+                        ctx.fillStyle = 'white';
                         ctx.beginPath();
                         ctx.roundRect(890 - text_width - 10, 200 - (text_height / 2) - 10, text_width + 20, text_height + 20, 6);
                         ctx.fill();
-                        ctx.fillStyle = 'white';
+                        ctx.fillStyle = 'midnightblue';
                         ctx.fillText(used_nr, 890, 200);
                     }
                     ctx.textAlign = 'left';
