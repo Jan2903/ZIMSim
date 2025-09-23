@@ -872,7 +872,9 @@
                         const text_width = ctx.measureText(used_nr).width;
                         const text_height = 80;
                         ctx.fillStyle = 'grey';
-                        ctx.fillRect(1780 - text_width - 15, 200 - (text_height / 2), text_width + 30, text_height + 20);
+                        ctx.beginPath();
+                        ctx.roundRect(1780 - text_width - 15, 200 - (text_height / 2), text_width + 30, text_height + 20, 10);
+                        ctx.fill();
                         ctx.fillStyle = 'white';
                         ctx.fillText(used_nr, 1780, 200);
                     }
@@ -905,7 +907,9 @@
                         const text_width = ctx.measureText(used_nr).width;
                         const text_height = 56;
                         ctx.fillStyle = 'grey';
-                        ctx.fillRect(890 - text_width - 10, 200 - (text_height / 2) - 10, text_width + 20, text_height + 20);
+                        ctx.beginPath();
+                        ctx.roundRect(890 - text_width - 10, 200 - (text_height / 2) - 10, text_width + 20, text_height + 20, 6);
+                        ctx.fill();
                         ctx.fillStyle = 'white';
                         ctx.fillText(used_nr, 890, 200);
                     }
