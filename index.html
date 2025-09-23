@@ -1356,7 +1356,7 @@
             setTimeout(() => {
                 const mainFrame = document.querySelector('.main-frame');
                 html2canvas(mainFrame, {
-                    scale: 1,
+                    scale: 4,
                     useCORS: true,
                     backgroundColor: 'midnightblue',
                     width: 3840,
@@ -1369,7 +1369,7 @@
                     scrollY: 0
                 }).then(canvas => {
                     const link = document.createElement('a');
-                    link.download = 'trains_display.png';
+                    link.download = 'zim.png';
                     link.href = canvas.toDataURL('image/png', 1.0);
                     link.click();
                 }).catch(error => {
