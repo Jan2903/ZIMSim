@@ -35,9 +35,13 @@
 
         .screen-wrapper {
             transform-origin: top left;
+            width: 3840px;
+            height: 1118px; /* header + main-frame */
+            }
+
+            /* Fit horizontally by default */
+            .screen-wrapper {
             transform: scale(calc(100vw / 3840));
-            width: 3840px;   /* keep native resolution */
-            height: 1118px;  /* header (60) + frame (1058) */
             }
 
         .main-frame {
@@ -322,7 +326,23 @@
     <input type="file" id="file-input" style="display:none;" accept=".json">
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
     <script>
+        // Responsive scaling logic
+        function resizeDisplay() {
+            const wrapper = document.querySelector('.screen-wrapper');
+            const scaleX = window.innerWidth / 3840;
+            const scaleY = window.innerHeight / 1118;
+            const scale = Math.min(scaleX, scaleY);
+            wrapper.style.transform = `scale(${scale})`;
+            }
+
+        window.addEventListener('resize', resizeDisplay);
+        resizeDisplay();
+        
+    </script>
+    <script>
+
         // Image preloading with error handling
         const images = {};
         const pictogramNames = [
