@@ -177,15 +177,15 @@ class TrainDisplay {
     }
 
     print_class(coach, x, ctx) {
-        ctx.font = 'bold 36px "Open Sans Condensed"';
+        ctx.font = 'bold 40px "Open Sans Condensed"';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         if (coach.is_first_class()) {
             ctx.fillStyle = 'orange';
-            ctx.fillText("1.", x + (coach.length / 2), this.y + 40);
+            ctx.fillText("1.", x + (coach.length / 2), this.y + 45);
         } else if (coach.coach_class === 2 && !coach.is_locomotive()) {
             ctx.fillStyle = 'white';
-            ctx.fillText("2.", x + (coach.length / 2), this.y + 40);
+            ctx.fillText("2.", x + (coach.length / 2), this.y + 45);
         }
     }
 
@@ -199,12 +199,12 @@ class TrainDisplay {
             const end_pos = last.start + last.length;
             const center = (start_pos + end_pos) / 2;
             const current_class = first.coach_class;
-            ctx.font = 'bold 36px "Open Sans Condensed"';
+            ctx.font = 'bold 40px "Open Sans Condensed"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             if (current_class === 1) {
                 ctx.fillStyle = 'orange';
-                ctx.fillText("1.", center, this.y + 40);
+                ctx.fillText("1.", center, this.y + 45);
             } 
             group = [];
         };
@@ -238,7 +238,7 @@ class TrainDisplay {
         const img = images[img_key];
         if (img && img.isLoaded && !img.isBroken) {
             try {
-                const scale = 0.4; // image scaling factor
+                const scale = 0.38; // image scaling factor
                 ctx.drawImage(img, x + (coach.length / 2) - (img.width * scale / 2), this.y + 40 - (img.height * scale / 2), img.width * scale, img.height * scale);
             } catch (err) {
                 console.warn(`Failed to draw amenity image ${img_key}:`, err);
@@ -301,10 +301,10 @@ class TrainDisplay {
     print_wagon_numbers(coach, x, ctx) {
         if (coach.coach_number !== 0) {
             ctx.fillStyle = 'white';
-            ctx.font = '36px "Open Sans Condensed"';
+            ctx.font = '40px "Open Sans Condensed"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(coach.coach_number.toString(), x + (coach.length / 2), this.y + 40);
+            ctx.fillText(coach.coach_number.toString(), x + (coach.length / 2), this.y + 45);
         }
     }
 
@@ -325,10 +325,10 @@ class TrainDisplay {
                         let number_text = first_number === last_number ? first_number.toString() : `${first_number} - ${last_number}`;
                         if (number_text !== "0") {
                             ctx.fillStyle = 'white';
-                            ctx.font = '36px "Open Sans Condensed"';
+                            ctx.font = '40px "Open Sans Condensed"';
                             ctx.textAlign = 'center';
                             ctx.textBaseline = 'middle';
-                            ctx.fillText(number_text, center, this.y + 40);
+                            ctx.fillText(number_text, center, this.y + 45);
                         }
                     }
                     group = [];
@@ -548,7 +548,7 @@ class TrainDisplay {
             ctx.textAlign = 'left';
             ctx.fillStyle = 'white';
             ctx.font = '180px "Open Sans Condensed"';
-            ctx.fillText(abfahrt, 100, 210);
+            ctx.fillText(abfahrt, 100, 200);
             if (abfahrt_a !== "") {
                 ctx.fillStyle = 'midnightblue';
                 ctx.font = '110px "Open Sans Condensed"';
@@ -559,7 +559,7 @@ class TrainDisplay {
                 ctx.roundRect(512 - 15 , 210 - text_height / 2 - 15, text_width + 30, text_height + 15, 10);
                 ctx.fill();
                 ctx.fillStyle = 'midnightblue';
-                ctx.fillText(abfahrt_a, 512, 210);
+                ctx.fillText(abfahrt_a, 512, 200);
             }
             ctx.fillStyle = 'white';
             ctx.font = '180px "Open Sans Condensed"';
@@ -1133,4 +1133,5 @@ function resizeDisplay() {
 }
 
 window.addEventListener('resize', resizeDisplay);
+
 resizeDisplay();
