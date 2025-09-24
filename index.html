@@ -574,8 +574,8 @@
                 const img = images[img_key];
                 if (img && img.isLoaded && !img.isBroken) {
                     try {
-                        const scale = 0.5; // image scaling factor
-                        ctx.drawImage(img, x + (coach.length / 2) - (img.width * scale), this.y + 40 - (img.height * scale), img.width * scale, img.height * scale);
+                        const scale = 0.4; // image scaling factor
+                        ctx.drawImage(img, x + (coach.length / 2), this.y + 50, img.width * scale, img.height * scale);
                     } catch (err) {
                         console.warn(`Failed to draw amenity image ${img_key}:`, err);
                     }
@@ -605,8 +605,8 @@
                                 if (last.coach_type === 'a') adj = 0;
                                 else if (last.coach_type === 'e') adj = 0;
                             }
-                            const scale = 0.5; // image scaling factor
-                            ctx.drawImage(img, center + adj - (img.width * scale), this.y + 40 - (img.height * scale), img.width * scale, img.height * scale);
+                            const scale = 0.2; // image scaling factor
+                            ctx.drawImage(img, center + adj, this.y + 50, img.width * scale, img.height * scale);
                         } catch (err) {
                             console.warn(`Failed to draw compact amenity image ${img_key}:`, err);
                         }
@@ -862,9 +862,6 @@
                 const canvas = document.getElementById(display_id);
                 const ctx = canvas.getContext('2d');
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-              /*   ctx.fillStyle = 'white';
-                let xOffset = fullScreen ? 100 : 50;
-                if (info !== "") ctx.fillRect(xOffset, 0, canvas.width - xOffset, 100); */
                 const zug_nr = fullScreen ? 1 : display_id === 'display2_zug1' ? 2 : 3;
                 this.print_pictograms(info, nr, display_id, fullScreen, zug_nr);
                 let used_nr = nr;
