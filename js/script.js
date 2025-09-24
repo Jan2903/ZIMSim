@@ -182,10 +182,10 @@ class TrainDisplay {
         ctx.textBaseline = 'middle';
         if (coach.is_first_class()) {
             ctx.fillStyle = 'orange';
-            ctx.fillText("1.", x + (coach.length / 2), this.y + 40);
+            ctx.fillText("1.", x + (coach.length / 2), this.y + 42);
         } else if (coach.coach_class === 2 && !coach.is_locomotive()) {
             ctx.fillStyle = 'white';
-            ctx.fillText("2.", x + (coach.length / 2), this.y + 40);
+            ctx.fillText("2.", x + (coach.length / 2), this.y + 42);
         }
     }
 
@@ -204,7 +204,7 @@ class TrainDisplay {
             ctx.textBaseline = 'middle';
             if (current_class === 1) {
                 ctx.fillStyle = 'orange';
-                ctx.fillText("1.", center, this.y + 40);
+                ctx.fillText("1.", center, this.y + 42);
             } 
             group = [];
         };
@@ -304,7 +304,7 @@ class TrainDisplay {
             ctx.font = '40px "Open Sans Condensed"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(coach.coach_number.toString(), x + (coach.length / 2), this.y + 40);
+            ctx.fillText(coach.coach_number.toString(), x + (coach.length / 2), this.y + 42);
         }
     }
 
@@ -328,7 +328,7 @@ class TrainDisplay {
                             ctx.font = '40px "Open Sans Condensed"';
                             ctx.textAlign = 'center';
                             ctx.textBaseline = 'middle';
-                            ctx.fillText(number_text, center, this.y + 40);
+                            ctx.fillText(number_text, center, this.y + 42);
                         }
                     }
                     group = [];
@@ -348,7 +348,7 @@ class TrainDisplay {
                         ctx.font = '40px "Open Sans Condensed"';
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
-                        ctx.fillText(number_text, center, this.y + 40);
+                        ctx.fillText(number_text, center, this.y + 42);
                     }
                     group = [];
                 }
@@ -368,7 +368,7 @@ class TrainDisplay {
                 ctx.font = '40px "Open Sans Condensed"';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(number_text, center, this.y + 40);
+                ctx.fillText(number_text, center, this.y + 42);
             }
         }
     }
@@ -376,7 +376,7 @@ class TrainDisplay {
     print_sectors(sectors, ctx, fullScreen, scale_factor, platform_length) {
         const threshold = fullScreen ? 100 : 50;
         ctx.fillStyle = 'white';
-        ctx.font = '50px "Open Sans Condensed"';
+        ctx.font = '45px "Open Sans Condensed"';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
         sectors.forEach(([name, position]) => {
@@ -1135,4 +1135,5 @@ function resizeDisplay() {
 window.addEventListener('resize', resizeDisplay);
 
 resizeDisplay();
+
 
