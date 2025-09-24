@@ -859,7 +859,8 @@
                 const ctx = canvas.getContext('2d');
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 ctx.fillStyle = 'white';
-                if (info !== "") ctx.fillRect(100, 0, canvas.width-100, 100);
+                let xOffset = fullScreen ? 100 : 50;
+                if (info !== "") ctx.fillRect(xOffset, 0, canvas.width - xOffset, 100);
                 const zug_nr = fullScreen ? 1 : display_id === 'display2_zug1' ? 2 : 3;
                 this.print_pictograms(info, nr, display_id, fullScreen, zug_nr);
                 let used_nr = nr;
@@ -1026,7 +1027,7 @@
                 if (info.includes("Kein gastronomisches Angebot")) {
                     drawImageSafe('kein_gastronmisches_angebot');
                 }
-                const text_start_x = x - 50;
+                const text_start_x = x;
                 if (this.scroll_divs[zug_nr]) {
                     this.scroll_divs[zug_nr].remove();
                     delete this.scroll_divs[zug_nr];
@@ -1038,7 +1039,8 @@
                     scroll_div.classList.add('scroll-container');
                     scroll_div.style.left = `${canvas.offsetLeft + text_start_x}px`;
                     scroll_div.style.top = `${canvas.offsetTop}px`;
-                    scroll_div.style.width = `${canvas.width - text_start_x}px`;
+                    let xOffset = fullScreen ? 100 : 50;
+                    scroll_div.style.width = `${canvas.width - text_start_x - xOffset}px`;
                     scroll_div.style.height = '100px';
                     canvas.parentElement.appendChild(scroll_div);
                     this.scroll_divs[zug_nr] = scroll_div;
