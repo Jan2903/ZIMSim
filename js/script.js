@@ -270,7 +270,7 @@ class TrainDisplay {
                         else if (last.coach_type === 'e') adj = 0;
                     }
                     const scale = 0.32; // image scaling factor
-                    ctx.drawImage(img, center + adj - img.width, this.y + 40 - img.height, img.width * scale, img.height * scale);
+                    ctx.drawImage(img, center + adj - img.width, this.y + 40 - (img.height * scale / 2), img.width * scale, img.height * scale);
                 } catch (err) {
                     console.warn(`Failed to draw compact amenity image ${img_key}:`, err);
                 }
@@ -537,7 +537,7 @@ class TrainDisplay {
                 ctx.font = '90px "Open Sans Condensed"';
                 ctx.textAlign = 'right';
                 const text_width = ctx.measureText(used_nr).width;
-                const text_height = 80;
+                const text_height = 90;
                 ctx.fillStyle = 'white';
                 ctx.beginPath();
                 ctx.roundRect(1780 - text_width - 15, 200 - text_height / 2 - 15, text_width + 30, text_height + 15, 10);
@@ -556,10 +556,10 @@ class TrainDisplay {
                 const text_height = 100;
                 ctx.fillStyle = 'white';
                 ctx.beginPath();
-                ctx.roundRect(540 - 15 , 210 - text_height / 2 - 15, text_width + 30, text_height + 15, 10);
+                ctx.roundRect(500 - 15 , 210 - text_height / 2 - 15, text_width + 30, text_height + 15, 10);
                 ctx.fill();
                 ctx.fillStyle = 'midnightblue';
-                ctx.fillText(abfahrt_a, 360, 210);
+                ctx.fillText(abfahrt_a, 500, 210);
             }
             ctx.fillStyle = 'white';
             ctx.font = '180px "Open Sans Condensed"';
@@ -570,10 +570,10 @@ class TrainDisplay {
         } else {
             if (used_nr !== "") {
                 ctx.fillStyle = 'midnightblue';
-                ctx.font = '66px "Open Sans Condensed"';
+                ctx.font = '75px "Open Sans Condensed"';
                 ctx.textAlign = 'right';
                 const text_width = ctx.measureText(used_nr).width;
-                const text_height = 56;
+                const text_height = 75;
                 ctx.fillStyle = 'white';
                 ctx.beginPath();
                 ctx.roundRect(890 - text_width - 10, 200 - text_height / 2 - 10, text_width + 20, text_height + 10, 6);
@@ -587,15 +587,15 @@ class TrainDisplay {
             ctx.fillText(abfahrt, 50, 200);
             if (abfahrt_a !== "") {
                 ctx.fillStyle = 'midnightblue';
-                ctx.font = '86px "Open Sans Condensed"';
+                ctx.font = '100px "Open Sans Condensed"';
                 const text_width = ctx.measureText(abfahrt_a).width;
-                const text_height = 56;
+                const text_height = 100;
                 ctx.fillStyle = 'white';
                 ctx.beginPath();
-                ctx.roundRect(290 - 10, 200 - text_height / 2 - 10, text_width + 20, text_height + 10, 6);
+                ctx.roundRect(340 - 10, 200 - text_height / 2 - 10, text_width + 20, text_height + 10, 6);
                 ctx.fill();
                 ctx.fillStyle = 'midnightblue';
-                ctx.fillText(abfahrt_a, 290, 200);
+                ctx.fillText(abfahrt_a, 340, 200);
             }
             ctx.fillStyle = 'white';
             ctx.font = '120px "Open Sans Condensed"';
