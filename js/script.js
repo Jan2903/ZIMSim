@@ -692,7 +692,7 @@ class TrainDisplay {
         if (info.includes("Kein gastronomisches Angebot")) {
             drawImageSafe('kein_gastronmisches_angebot');
         }
-        const text_start_x = x + 10;
+        const text_start_x = x;
         if (this.scroll_divs[zug_nr]) {
             this.scroll_divs[zug_nr].remove();
             delete this.scroll_divs[zug_nr];
@@ -711,7 +711,7 @@ class TrainDisplay {
             const inner = document.createElement('div');
             inner.classList.add('scroll-text');
             inner.style.color = 'midnightblue';
-            inner.style.font = '50px "Open Sans Condensed"';
+            inner.style.font = '75px "Open Sans Condensed"';
             inner.style.lineHeight = '100px';
             const temp_canvas = document.createElement('canvas');
             const temp_ctx = temp_canvas.getContext('2d');
