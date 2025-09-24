@@ -270,7 +270,7 @@ class TrainDisplay {
                         else if (last.coach_type === 'e') adj = 0;
                     }
                     const scale = 0.32; // image scaling factor
-                    ctx.drawImage(img, center + adj - img.width, this.y + 40 - img.height, img.width * 2, img.height * 2);
+                    ctx.drawImage(img, center + adj - img.width, this.y + 40 - img.height, img.width * scale, img.height * scale);
                 } catch (err) {
                     console.warn(`Failed to draw compact amenity image ${img_key}:`, err);
                 }
@@ -534,7 +534,7 @@ class TrainDisplay {
         ctx.textBaseline = 'middle';
         if (fullScreen) {
             if (used_nr !== "") {
-                ctx.font = '80px "Open Sans Condensed"';
+                ctx.font = '90px "Open Sans Condensed"';
                 ctx.textAlign = 'right';
                 const text_width = ctx.measureText(used_nr).width;
                 const text_height = 80;
@@ -547,7 +547,7 @@ class TrainDisplay {
             }
             ctx.textAlign = 'left';
             ctx.fillStyle = 'white';
-            ctx.font = '140px "Open Sans Condensed"';
+            ctx.font = '180px "Open Sans Condensed"';
             ctx.fillText(abfahrt, 100, 210);
             if (abfahrt_a !== "") {
                 ctx.fillStyle = 'midnightblue';
@@ -559,18 +559,18 @@ class TrainDisplay {
                 ctx.roundRect(540 - 15 , 210 - text_height / 2 - 15, text_width + 30, text_height + 15, 10);
                 ctx.fill();
                 ctx.fillStyle = 'midnightblue';
-                ctx.fillText(abfahrt_a, 540, 210);
+                ctx.fillText(abfahrt_a, 360, 210);
             }
             ctx.fillStyle = 'white';
-            ctx.font = '144px "Open Sans Condensed"';
+            ctx.font = '180px "Open Sans Condensed"';
             ctx.fillText(ziel, 100, 420);
-            ctx.font = '50px "Open Sans Condensed"';
+            ctx.font = '70px "Open Sans Condensed"';
             ctx.fillText(via, 112, 620);
             ctx.fillText(via2, 112, 720);
         } else {
             if (used_nr !== "") {
                 ctx.fillStyle = 'midnightblue';
-                ctx.font = '56px "Open Sans Condensed"';
+                ctx.font = '66px "Open Sans Condensed"';
                 ctx.textAlign = 'right';
                 const text_width = ctx.measureText(used_nr).width;
                 const text_height = 56;
@@ -583,11 +583,11 @@ class TrainDisplay {
             }
             ctx.textAlign = 'left';
             ctx.fillStyle = 'white';
-            ctx.font = '86px "Open Sans Condensed"';
+            ctx.font = '120px "Open Sans Condensed"';
             ctx.fillText(abfahrt, 50, 200);
             if (abfahrt_a !== "") {
                 ctx.fillStyle = 'midnightblue';
-                ctx.font = '56px "Open Sans Condensed"';
+                ctx.font = '86px "Open Sans Condensed"';
                 const text_width = ctx.measureText(abfahrt_a).width;
                 const text_height = 56;
                 ctx.fillStyle = 'white';
@@ -598,9 +598,9 @@ class TrainDisplay {
                 ctx.fillText(abfahrt_a, 290, 200);
             }
             ctx.fillStyle = 'white';
-            ctx.font = '68px "Open Sans Condensed"';
+            ctx.font = '120px "Open Sans Condensed"';
             ctx.fillText(ziel, 50, 360);
-            ctx.font = '50px "Open Sans Condensed"';
+            ctx.font = '70px "Open Sans Condensed"';
             ctx.fillText(via, 56, 520);
             ctx.fillText(via2, 56, 620);
             ctx.fillText(via3, 56, 720);
