@@ -989,9 +989,9 @@
             print_pictograms(info, nr, display_id, fullScreen, zug_nr) {
                 const canvas = document.getElementById(display_id);
                 const ctx = canvas.getContext('2d');
-                let x = fullScreen ? 150 : 100;
+                let x = 0;
                 const img_y = 50;
-                const step = 100;
+                const step = 110;
                 const drawImageSafe = (img_key) => {
                     const img = images[img_key];
                     if (img && img.isLoaded && !img.isBroken) {
