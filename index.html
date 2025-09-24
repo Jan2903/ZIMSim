@@ -172,11 +172,13 @@
             background-color: transparent;
             pointer-events: none;
         }
+
         .scroll-text {
             display: inline-block;
             white-space: nowrap;
-            animation: scroll-left 30s linear infinite;
+            animation: scroll-left var(--scroll-duration, 30s) linear infinite;
         }
+
         @keyframes scroll-left {
             0% { transform: translateX(0%); }
             100% { transform: translateX(-50%); }
@@ -860,7 +862,7 @@
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 ctx.fillStyle = 'white';
                 let xOffset = fullScreen ? 100 : 50;
-                if (info !== "") ctx.fillRect(xOffset, 0, canvas.width - xOffset, 100);
+                if (info !== "") ctx.fillRect(xOffset, 0, canvas.width - 2 * xOffset, 100);
                 const zug_nr = fullScreen ? 1 : display_id === 'display2_zug1' ? 2 : 3;
                 this.print_pictograms(info, nr, display_id, fullScreen, zug_nr);
                 let used_nr = nr;
@@ -1060,6 +1062,11 @@
                             result += info + ' +++ ';
                         }
                         inner.textContent = result;
+                        // Calculate animation duration for consistent speed (e.g., 100 pixels per second)
+                        const total_text_width = temp_ctx.measureText(result).width;
+                        const scroll_speed = 100; // Pixels per second
+                        const duration = total_text_width / scroll_speed;
+                        inner.style.setProperty('--scroll-duration', `${duration}s`);
                     } else {
                         inner.textContent = info;
                         inner.style.animation = 'none';
