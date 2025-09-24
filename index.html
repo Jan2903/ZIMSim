@@ -874,7 +874,7 @@
                         const text_height = 80;
                         ctx.fillStyle = 'white';
                         ctx.beginPath();
-                        ctx.roundRect(1780 - text_width - 15, 200 - text_height / 2 - 10, text_width + 2 * 15, text_height + 2 * 10, 10);
+                        ctx.roundRect(1780 - text_width - 15, 200 - text_height / 2 - 15, text_width + 15, text_height + 15, 10);
                         ctx.fill();
                         ctx.fillStyle = 'midnightblue';
                         ctx.fillText(used_nr, 1780, 200);
@@ -886,11 +886,12 @@
                     if (abfahrt_a !== "") {
                         ctx.fillStyle = 'midnightblue';
                         ctx.font = '100px "Open Sans Condensed"';
-                        ctx.fillText(abfahrt_a, 540, 210);
                         const text_width = ctx.measureText(abfahrt_a).width;
                         const text_height = 100;
                         ctx.fillStyle = 'white';
-                        ctx.fillRect(540 - 15 , 210 - (text_height / 2) - 15, text_width + 30, text_height + 30);
+                        ctx.beginPath();
+                        ctx.roundRect(540 - 15 , 210 - text_height / 2 - 15, text_width + 15, text_height + 15, 10);
+                        ctx.fill();
                         ctx.fillStyle = 'midnightblue';
                         ctx.fillText(abfahrt_a, 540, 210);
                     }
@@ -905,12 +906,11 @@
                         ctx.fillStyle = 'midnightblue';
                         ctx.font = '56px "Open Sans Condensed"';
                         ctx.textAlign = 'right';
-                        ctx.fillText(used_nr, 890, 200);
                         const text_width = ctx.measureText(used_nr).width;
                         const text_height = 56;
                         ctx.fillStyle = 'white';
                         ctx.beginPath();
-                        ctx.roundRect(890 - text_width - 10, 200 - (text_height / 2) - 10, text_width + 20, text_height + 20, 6);
+                        ctx.roundRect(890 - text_width - 10, 200 - text_height / 2 - 10, text_width + 10, text_height + 10, 6);
                         ctx.fill();
                         ctx.fillStyle = 'midnightblue';
                         ctx.fillText(used_nr, 890, 200);
@@ -922,11 +922,12 @@
                     if (abfahrt_a !== "") {
                         ctx.fillStyle = 'midnightblue';
                         ctx.font = '56px "Open Sans Condensed"';
-                        ctx.fillText(abfahrt_a, 290, 200);
                         const text_width = ctx.measureText(abfahrt_a).width;
                         const text_height = 56;
                         ctx.fillStyle = 'white';
-                        ctx.fillRect(290 - 10, 200 - (text_height / 2) - 10, text_width + 20, text_height + 20);
+                        ctx.beginPath();
+                        ctx.roundRect(290 - 10, 200 - text_height / 2 - 10, text_width + 10, text_height + 10, 6);
+                        ctx.fill();
                         ctx.fillStyle = 'midnightblue';
                         ctx.fillText(abfahrt_a, 290, 200);
                     }
