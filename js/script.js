@@ -239,7 +239,7 @@ class TrainDisplay {
         if (img && img.isLoaded && !img.isBroken) {
             try {
                 const scale = 0.4; // image scaling factor
-                ctx.drawImage(img, x + (coach.length / 2) - (img.width * scale / 2), this.y + 45 - (img.height * scale / 2), img.width * scale, img.height * scale);
+                ctx.drawImage(img, x + (coach.length / 2) - (img.width * scale / 2), this.y + 40 - (img.height * scale / 2), img.width * scale, img.height * scale);
             } catch (err) {
                 console.warn(`Failed to draw amenity image ${img_key}:`, err);
             }
@@ -270,7 +270,7 @@ class TrainDisplay {
                         else if (last.coach_type === 'e') adj = 0;
                     }
                     const scale = 0.32; // image scaling factor
-                    ctx.drawImage(img, center + adj, this.y + 40, img.width * scale, img.height * scale);
+                    ctx.drawImage(img, center + adj - img.width, this.y + 40 - img.height, img.width * 2, img.height * 2);
                 } catch (err) {
                     console.warn(`Failed to draw compact amenity image ${img_key}:`, err);
                 }
@@ -548,7 +548,7 @@ class TrainDisplay {
             ctx.textAlign = 'left';
             ctx.fillStyle = 'white';
             ctx.font = '140px "Open Sans Condensed"';
-            ctx.fillText(abfahrt, 100, 206);
+            ctx.fillText(abfahrt, 100, 210);
             if (abfahrt_a !== "") {
                 ctx.fillStyle = 'midnightblue';
                 ctx.font = '100px "Open Sans Condensed"';
@@ -583,7 +583,7 @@ class TrainDisplay {
             }
             ctx.textAlign = 'left';
             ctx.fillStyle = 'white';
-            ctx.font = '76px "Open Sans Condensed"';
+            ctx.font = '86px "Open Sans Condensed"';
             ctx.fillText(abfahrt, 50, 200);
             if (abfahrt_a !== "") {
                 ctx.fillStyle = 'midnightblue';
