@@ -239,7 +239,7 @@ class TrainDisplay {
         if (img && img.isLoaded && !img.isBroken) {
             try {
                 const scale = 0.4; // image scaling factor
-                ctx.drawImage(img, x + (coach.length / 2), this.y + 40, img.width * scale, img.height * scale);
+                ctx.drawImage(img, x + (coach.length / 2) - (img.width * scale / 2), this.y + 45 - (img.height * scale / 2), img.width * scale, img.height * scale);
             } catch (err) {
                 console.warn(`Failed to draw amenity image ${img_key}:`, err);
             }
@@ -711,7 +711,7 @@ class TrainDisplay {
             const inner = document.createElement('div');
             inner.classList.add('scroll-text');
             inner.style.color = 'midnightblue';
-            inner.style.font = '75px "Open Sans Condensed"';
+            inner.style.font = '67px "Open Sans Condensed"';
             inner.style.lineHeight = '100px';
             const temp_canvas = document.createElement('canvas');
             const temp_ctx = temp_canvas.getContext('2d');
