@@ -270,7 +270,7 @@ class TrainDisplay {
                         else if (last.coach_type === 'e') adj = 0;
                     }
                     const scale = 0.32; // image scaling factor
-                    ctx.drawImage(img, center + adj - img.width, this.y + 40 - (img.height * scale / 2), img.width * scale, img.height * scale);
+                    ctx.drawImage(img, center + adj - (img.width * scale / 2), this.y + 40 - (img.height * scale / 2), img.width * scale, img.height * scale);
                 } catch (err) {
                     console.warn(`Failed to draw compact amenity image ${img_key}:`, err);
                 }
@@ -551,15 +551,15 @@ class TrainDisplay {
             ctx.fillText(abfahrt, 100, 210);
             if (abfahrt_a !== "") {
                 ctx.fillStyle = 'midnightblue';
-                ctx.font = '100px "Open Sans Condensed"';
+                ctx.font = '110px "Open Sans Condensed"';
                 const text_width = ctx.measureText(abfahrt_a).width;
-                const text_height = 100;
+                const text_height = 110;
                 ctx.fillStyle = 'white';
                 ctx.beginPath();
-                ctx.roundRect(500 - 15 , 210 - text_height / 2 - 15, text_width + 30, text_height + 15, 10);
+                ctx.roundRect(512 - 15 , 210 - text_height / 2 - 15, text_width + 30, text_height + 15, 10);
                 ctx.fill();
                 ctx.fillStyle = 'midnightblue';
-                ctx.fillText(abfahrt_a, 500, 210);
+                ctx.fillText(abfahrt_a, 512, 210);
             }
             ctx.fillStyle = 'white';
             ctx.font = '180px "Open Sans Condensed"';
@@ -587,15 +587,15 @@ class TrainDisplay {
             ctx.fillText(abfahrt, 50, 200);
             if (abfahrt_a !== "") {
                 ctx.fillStyle = 'midnightblue';
-                ctx.font = '100px "Open Sans Condensed"';
+                ctx.font = '86px "Open Sans Condensed"';
                 const text_width = ctx.measureText(abfahrt_a).width;
-                const text_height = 100;
+                const text_height = 86;
                 ctx.fillStyle = 'white';
                 ctx.beginPath();
-                ctx.roundRect(340 - 10, 200 - text_height / 2 - 10, text_width + 20, text_height + 10, 6);
+                ctx.roundRect(330 - 10, 200 - text_height / 2 - 10, text_width + 20, text_height + 10, 6);
                 ctx.fill();
                 ctx.fillStyle = 'midnightblue';
-                ctx.fillText(abfahrt_a, 340, 200);
+                ctx.fillText(abfahrt_a, 330, 200);
             }
             ctx.fillStyle = 'white';
             ctx.font = '120px "Open Sans Condensed"';
