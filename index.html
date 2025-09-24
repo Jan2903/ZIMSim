@@ -1055,6 +1055,10 @@
                     temp_ctx.font = inner.style.font;
                     const text_width = temp_ctx.measureText(info).width;
                     const scroll_width = parseInt(scroll_div.style.width);
+                    
+                    ctx.fillStyle = 'white';
+                    if (info !== "") ctx.fillRect(text_start_x, 0, canvas.width - text_start_x, 100);
+                    
                     if (text_width > scroll_width) {
                         let result = info + ' +++ ' + info + ' +++ ';
                         for (let i = 0; i < Math.floor((scroll_width * 2) / text_width); i++) {
