@@ -575,7 +575,7 @@
                 if (img && img.isLoaded && !img.isBroken) {
                     try {
                         const scale = 0.4; // image scaling factor
-                        ctx.drawImage(img, x + (coach.length / 2), this.y + 50, img.width * scale, img.height * scale);
+                        ctx.drawImage(img, x + (coach.length / 2), this.y + 40, img.width * scale, img.height * scale);
                     } catch (err) {
                         console.warn(`Failed to draw amenity image ${img_key}:`, err);
                     }
@@ -605,8 +605,8 @@
                                 if (last.coach_type === 'a') adj = 0;
                                 else if (last.coach_type === 'e') adj = 0;
                             }
-                            const scale = 0.2; // image scaling factor
-                            ctx.drawImage(img, center + adj, this.y + 50, img.width * scale, img.height * scale);
+                            const scale = 0.32; // image scaling factor
+                            ctx.drawImage(img, center + adj, this.y + 40, img.width * scale, img.height * scale);
                         } catch (err) {
                             console.warn(`Failed to draw compact amenity image ${img_key}:`, err);
                         }
