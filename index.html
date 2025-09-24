@@ -54,6 +54,7 @@
             grid-template-columns: 30px 1880px 20px 940px 940px 30px;
             grid-template-rows: 800px 258px 60px;
             gap: 0;
+            position: relative;
             background-color: midnightblue;
             width: 3840px;
             height: 1058px;
@@ -168,7 +169,7 @@
             overflow: hidden;
             white-space: nowrap;
             position: absolute;
-            background-color: white;
+            background-color: transparent;
             pointer-events: none;
         }
         .scroll-text {
@@ -857,6 +858,8 @@
                 const canvas = document.getElementById(display_id);
                 const ctx = canvas.getContext('2d');
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, 100);
                 const zug_nr = fullScreen ? 1 : display_id === 'display2_zug1' ? 2 : 3;
                 this.print_pictograms(info, nr, display_id, fullScreen, zug_nr);
                 let used_nr = nr;
@@ -1032,10 +1035,12 @@
                     const canvas_rect = canvas.getBoundingClientRect();
                     const scroll_div = document.createElement('div');
                     scroll_div.classList.add('scroll-container');
-                    scroll_div.style.left = `${text_start_x}px`;
-                    scroll_div.style.top = `${0}px`;
+                    scroll_div.style.left = `${canvas.offsetLeft + text_start_x}px`;
+                    scroll_div.style.top = `${canvas.offsetTop}px`;
                     scroll_div.style.width = `${canvas.width - text_start_x}px`;
                     scroll_div.style.height = '100px';
+                    canvas.parentElement.appendChild(scroll_div);
+                    this.scroll_divs[zug_nr] = scroll_div;
                     const inner = document.createElement('div');
                     inner.classList.add('scroll-text');
                     inner.style.color = 'midnightblue';
