@@ -511,7 +511,7 @@
             }
 
             print_class(coach, x, ctx) {
-                ctx.font = 'bold 32px "Open Sans Condensed"';
+                ctx.font = 'bold 36px "Open Sans Condensed"';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 if (coach.is_first_class()) {
@@ -533,7 +533,7 @@
                     const end_pos = last.start + last.length;
                     const center = (start_pos + end_pos) / 2;
                     const current_class = first.coach_class;
-                    ctx.font = 'bold 32px "Open Sans Condensed"';
+                    ctx.font = 'bold 36px "Open Sans Condensed"';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     if (current_class === 1) {
@@ -633,7 +633,7 @@
             print_wagon_numbers(coach, x, ctx) {
                 if (coach.coach_number !== 0) {
                     ctx.fillStyle = 'white';
-                    ctx.font = '32px "Open Sans Condensed"';
+                    ctx.font = '36px "Open Sans Condensed"';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     ctx.fillText(coach.coach_number.toString(), x + (coach.length / 2), this.y + 40);
@@ -657,7 +657,7 @@
                                 let number_text = first_number === last_number ? first_number.toString() : `${first_number} - ${last_number}`;
                                 if (number_text !== "0") {
                                     ctx.fillStyle = 'white';
-                                    ctx.font = '32px "Open Sans Condensed"';
+                                    ctx.font = '36px "Open Sans Condensed"';
                                     ctx.textAlign = 'center';
                                     ctx.textBaseline = 'middle';
                                     ctx.fillText(number_text, center, this.y + 40);
@@ -677,7 +677,7 @@
                             let number_text = first_number === last_number ? first_number.toString() : `${first_number} - ${last_number}`;
                             if (number_text !== "0") {
                                 ctx.fillStyle = 'white';
-                                ctx.font = '32px "Open Sans Condensed"';
+                                ctx.font = '36px "Open Sans Condensed"';
                                 ctx.textAlign = 'center';
                                 ctx.textBaseline = 'middle';
                                 ctx.fillText(number_text, center, this.y + 40);
@@ -697,7 +697,7 @@
                     let number_text = first_number === last_number ? first_number.toString() : `${first_number} - ${last_number}`;
                     if (number_text !== "0") {
                         ctx.fillStyle = 'white';
-                        ctx.font = '32px "Open Sans Condensed"';
+                        ctx.font = '36px "Open Sans Condensed"';
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
                         ctx.fillText(number_text, center, this.y + 40);
@@ -708,12 +708,12 @@
             print_sectors(sectors, ctx, fullScreen, scale_factor, platform_length) {
                 const threshold = fullScreen ? 100 : 50;
                 ctx.fillStyle = 'white';
-                ctx.font = '32px "Open Sans Condensed"';
+                ctx.font = '36px "Open Sans Condensed"';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'top';
                 sectors.forEach(([name, position]) => {
                     const display_pos = threshold + 50 + (position * scale_factor);
-                    ctx.fillText(name, display_pos, 20);
+                    ctx.fillText(name, display_pos, 5);
                 });
             }
 
@@ -868,15 +868,13 @@
                 ctx.textBaseline = 'middle';
                 if (fullScreen) {
                     if (used_nr !== "") {
-                        ctx.fillStyle = 'midnightblue';
                         ctx.font = '80px "Open Sans Condensed"';
                         ctx.textAlign = 'right';
-                        ctx.fillText(used_nr, 1780, 200);
                         const text_width = ctx.measureText(used_nr).width;
                         const text_height = 80;
                         ctx.fillStyle = 'white';
                         ctx.beginPath();
-                        ctx.roundRect(1780 - text_width - 15, 200 - (text_height / 2), text_width + 30, text_height + 20, 10);
+                        ctx.roundRect(1780 - text_width - 15, 200 - text_height / 2 - 10, text_width + 2 * 15, text_height + 2 * 10, 10);
                         ctx.fill();
                         ctx.fillStyle = 'midnightblue';
                         ctx.fillText(used_nr, 1780, 200);
