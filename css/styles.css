@@ -44,7 +44,7 @@ transform-origin: top center;
 
 .main-frame {
 display: grid;
-grid-template-columns: 30px 1880px 20px 940px 940px 30px;
+grid-template-columns: 80px 1880px 60px 940px 940px 80px;
 grid-template-rows: 800px 258px 60px;
 gap: 0;
 position: relative;
