@@ -668,11 +668,28 @@ class TrainDisplay {
         const ctx = canvas.getContext('2d');
         let x = fullScreen ? 100 : 50;
         const step = 105;
-        const drawImageSafe = (img_key, scale, img_x, img_y) => {
+        const drawImageSafe = (img_key, scale, img_x, img_y, tintColor = null) => {
             const img = images[img_key];
             if (img && img.isLoaded && !img.isBroken) {
                 try {
-                    ctx.drawImage(img, img_x - (img.width * scale / 2), img_y - (img.height * scale / 2), img.width * scale, img.height * scale);
+                    let drawImg = img; // Default to original image
+                    let drawWidth = img.width * scale;
+                    let drawHeight = img.height * scale;
+                    if (tintColor) {
+                        // Create offscreen canvas for tinting if needed
+                        const offCanvas = document.createElement('canvas');
+                        offCanvas.width = img.width;
+                        offCanvas.height = img.height;
+                        const offCtx = offCanvas.getContext('2d');
+                        offCtx.drawImage(img, 0, 0);
+                        offCtx.globalCompositeOperation = 'source-in';
+                        offCtx.fillStyle = tintColor;
+                        offCtx.fillRect(0, 0, img.width, img.height);
+                        offCtx.globalCompositeOperation = 'source-over'; // Reset
+                        drawImg = offCanvas; // Use tinted version
+                    }
+                    // Draw (centered at img_x, img_y)
+                    ctx.drawImage(drawImg, img_x - (drawWidth / 2), img_y - (drawHeight / 2), drawWidth, drawHeight);
                     x += step;
                 } catch (err) {
                     console.warn(`Failed to draw pictogram ${img_key}:`, err);
@@ -729,9 +746,9 @@ class TrainDisplay {
             //Draw white filled box
             ctx.fillStyle = 'white';
             ctx.fillRect(x, 0, 100, 100);
-            drawImageSafe('wagenreihung_gastronomie',0.40 , x + 40, 50);
-            //Draw blue slash
-            ctx.strokeStyle = 'midnightblue';
+            drawImageSafe('wagenreihung_gastronomie', 0.40, x + 40, 50, 'midnightblue');
+            //Draw red  slash
+            ctx.strokeStyle = 'red';
             ctx.lineWidth = 12;
             ctx.beginPath();
             ctx.moveTo(x + 10, 90); ctx.lineTo(x + 90, 10);
@@ -1186,4 +1203,5 @@ function resizeDisplay() {
 }
 
 window.addEventListener('resize', resizeDisplay);
+
 resizeDisplay();
