@@ -701,10 +701,10 @@ class TrainDisplay {
         }
         if (nr.includes("IC")) {
             //Draw white outline box
-            ctx.lineWidth = "6";
+            ctx.lineWidth = "5";
             ctx.strokeStyle = 'white';
-            ctx.strokeRect(x, 0, x + 100, 100);
-            drawImageSafe('wagenreihung_fahrrad',0.32 , x + 50, 66);
+            ctx.strokeRect(x + 2, 2, x + 98, 98);
+            drawImageSafe('wagenreihung_fahrrad',0.40 , x + 50, 66);
         }
         if (info.includes("Heute mit Halt in")) {
             drawImageSafe('halt_zusatz',2 ,x ,0);
