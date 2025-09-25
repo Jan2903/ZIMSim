@@ -1045,7 +1045,7 @@ document.getElementById('download-btn').addEventListener('click', () => {
         const oldWrapperLeft = wrapper.style.left;
         const oldWrapperPosition = wrapper.style.position;
         // Set to full size
-        container.style.width = '3840px';
+        container.style.width = '3980px';
         container.style.height = '1118px';
         wrapper.style.position = 'static';
         wrapper.style.left = '0';
@@ -1054,9 +1054,9 @@ document.getElementById('download-btn').addEventListener('click', () => {
             scale: 1,
             useCORS: true,
             backgroundColor: 'midnightblue',
-            width: 3840,
+            width: 3980,
             height: 1118,
-            windowWidth: 3840,
+            windowWidth: 3980,
             windowHeight: 1118,
             x: 0,
             y: 0,
@@ -1136,7 +1136,7 @@ document.querySelectorAll('.export_formation').forEach(button => {
 function resizeDisplay() {
     const container = document.querySelector('.display-container');
     const wrapper = document.querySelector('.screen-wrapper');
-    const scaleX = window.innerWidth / 3840;
+    const scaleX = window.innerWidth / 3980;
     const scaleY = window.innerHeight / 1118;
     const scale = Math.min(scaleX, scaleY);
     wrapper.style.transform = `translateX(-50%) scale(${scale})`;
