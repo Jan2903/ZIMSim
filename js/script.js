@@ -119,7 +119,7 @@ class TrainDisplay {
         ctx.strokeStyle = 'white';
         ctx.lineWidth = 6;
         ctx.beginPath();
-        ctx.moveTo(x, this.y + 84); ctx.lineTo(x, this.y + 20);
+        ctx.moveTo(x, this.y + 82); ctx.lineTo(x, this.y + 20);
         ctx.moveTo(x, this.y + 20); ctx.lineTo(x + 12, this.y);
         ctx.moveTo(x + 12, this.y); ctx.lineTo(x + coach.length, this.y);
         ctx.moveTo(x, this.y + 80); ctx.lineTo(x + coach.length, this.y + 80);
@@ -133,9 +133,9 @@ class TrainDisplay {
         ctx.moveTo(x, this.y); ctx.lineTo(x + coach.length, this.y);
         ctx.moveTo(x, this.y + 80); ctx.lineTo(x + coach.length, this.y + 80);
         if (coach.coach_type === 'ma') {
-            ctx.moveTo(x, this.y); ctx.lineTo(x, this.y + 84);
+            ctx.moveTo(x, this.y); ctx.lineTo(x, this.y + 82);
         } else if (coach.coach_type === 'me') {
-            ctx.moveTo(x + coach.length, this.y); ctx.lineTo(x + coach.length, this.y + 84);
+            ctx.moveTo(x + coach.length, this.y); ctx.lineTo(x + coach.length, this.y + 82);
         }
         ctx.stroke();
     }
@@ -146,7 +146,7 @@ class TrainDisplay {
         ctx.beginPath();
         ctx.moveTo(x, this.y); ctx.lineTo(x + coach.length - 12, this.y);
         ctx.moveTo(x + coach.length - 12, this.y); ctx.lineTo(x + coach.length, this.y + 20);
-        ctx.moveTo(x + coach.length, this.y + 20); ctx.lineTo(x + coach.length, this.y + 84);
+        ctx.moveTo(x + coach.length, this.y + 20); ctx.lineTo(x + coach.length, this.y + 82);
         ctx.moveTo(x, this.y + 80); ctx.lineTo(x + coach.length, this.y + 80);
         ctx.stroke();
     }
@@ -155,11 +155,11 @@ class TrainDisplay {
         ctx.strokeStyle = 'white';
         ctx.lineWidth = 6;
         ctx.beginPath();
-        ctx.moveTo(x, this.y + 84); ctx.lineTo(x, this.y + 32);
+        ctx.moveTo(x, this.y + 82); ctx.lineTo(x, this.y + 32);
         ctx.lineTo(x + 8, this.y + 16);
         ctx.lineTo(x + coach.length - 8, this.y + 16);
         ctx.lineTo(x + coach.length, this.y + 32);
-        ctx.lineTo(x + coach.length, this.y + 84);
+        ctx.lineTo(x + coach.length, this.y + 82);
         ctx.moveTo(x, this.y + 80); ctx.lineTo(x + coach.length, this.y + 80);
         ctx.stroke();
     }
@@ -239,7 +239,7 @@ class TrainDisplay {
         if (img && img.isLoaded && !img.isBroken) {
             try {
                 const scale = 0.38; // image scaling factor
-                ctx.drawImage(img, x + (coach.length / 2) - (img.width * scale / 2), this.y + 40 - (img.height * scale / 2), img.width * scale, img.height * scale);
+                ctx.drawImage(img, x + (coach.length / 2) - (img.width * scale / 2), this.y + 42 - (img.height * scale / 2), img.width * scale, img.height * scale);
             } catch (err) {
                 console.warn(`Failed to draw amenity image ${img_key}:`, err);
             }
@@ -270,7 +270,7 @@ class TrainDisplay {
                         else if (last.coach_type === 'e') adj = 0;
                     }
                     const scale = 0.32; // image scaling factor
-                    ctx.drawImage(img, center + adj - (img.width * scale / 2), this.y + 40 - (img.height * scale / 2), img.width * scale, img.height * scale);
+                    ctx.drawImage(img, center + adj - (img.width * scale / 2), this.y + 42 - (img.height * scale / 2), img.width * scale, img.height * scale);
                 } catch (err) {
                     console.warn(`Failed to draw compact amenity image ${img_key}:`, err);
                 }
@@ -540,15 +540,15 @@ class TrainDisplay {
                 const text_height = 90;
                 ctx.fillStyle = 'white';
                 ctx.beginPath();
-                ctx.roundRect(1780 - text_width - 15, 200 - text_height / 2 - 15, text_width + 30, text_height + 15, 10);
+                ctx.roundRect(1780 - text_width - 15, 220 - text_height / 2 - 15, text_width + 30, text_height + 15, 10);
                 ctx.fill();
                 ctx.fillStyle = 'midnightblue';
-                ctx.fillText(used_nr, 1780, 200);
+                ctx.fillText(used_nr, 1780, 220);
             }
             ctx.textAlign = 'left';
             ctx.fillStyle = 'white';
             ctx.font = '180px "Open Sans Condensed"';
-            ctx.fillText(abfahrt, 100, 200);
+            ctx.fillText(abfahrt, 100, 220);
             if (abfahrt_a !== "") {
                 ctx.fillStyle = 'midnightblue';
                 ctx.font = '110px "Open Sans Condensed"';
@@ -556,10 +556,10 @@ class TrainDisplay {
                 const text_height = 110;
                 ctx.fillStyle = 'white';
                 ctx.beginPath();
-                ctx.roundRect(512 - 15 , 200 - text_height / 2 - 15, text_width + 30, text_height + 15, 10);
+                ctx.roundRect(512 - 20 , 220 - text_height / 2 - 20, text_width + 40, text_height + 20, 10);
                 ctx.fill();
                 ctx.fillStyle = 'midnightblue';
-                ctx.fillText(abfahrt_a, 512, 200);
+                ctx.fillText(abfahrt_a, 512, 220);
             }
             ctx.fillStyle = 'white';
             ctx.font = '180px "Open Sans Condensed"';
