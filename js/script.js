@@ -746,12 +746,14 @@ class TrainDisplay {
             //Draw white filled box
             ctx.fillStyle = 'white';
             ctx.fillRect(x, 0, 100, 100);
-            drawImageSafe('wagenreihung_gastronomie', 0.40, x + 40, 50, 'midnightblue');
-            //Draw red  slash
+            const iconX = x; // Save starting x for this icon
+            drawImageSafe('wagenreihung_gastronomie', 0.40, iconX + 40, 50, 'midnightblue');
+            // Draw red slash using saved iconX (over the icon box)
             ctx.strokeStyle = 'red';
             ctx.lineWidth = 12;
             ctx.beginPath();
-            ctx.moveTo(x + 10, 90); ctx.lineTo(x + 90, 10);
+            ctx.moveTo(iconX + 10, 90);
+            ctx.lineTo(iconX + 90, 10);
             ctx.stroke();
         }
         const text_start_x = x;
@@ -1205,3 +1207,4 @@ function resizeDisplay() {
 window.addEventListener('resize', resizeDisplay);
 
 resizeDisplay();
+
