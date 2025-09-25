@@ -672,7 +672,7 @@ class TrainDisplay {
             const img = images[img_key];
             if (img && img.isLoaded && !img.isBroken) {
                 try {
-                    ctx.drawImage(img, img_x, img_y, img.width * scale, img.height * scale);
+                    ctx.drawImage(img, img_x - (img.width * scale / 2), img_y - (img.height * scale / 2), img.width * scale, img.height * scale);
                     x += step;
                 } catch (err) {
                     console.warn(`Failed to draw pictogram ${img_key}:`, err);
@@ -683,11 +683,11 @@ class TrainDisplay {
         };
         
         if (info.includes("Zug fällt heute aus") || info.includes("Keine Weiterfahrt nach")) {
-            //Draw blue filled box
-            ctx.fillStyle = 'midnightblue';
+            //Draw white filled box
+            ctx.fillStyle = 'white';
             ctx.fillRect(x, 0, x + 100, 100);
-            //Draw red cross
-            ctx.strokeStyle = 'white';
+            //Draw blue cross
+            ctx.strokeStyle = 'midnightblue';
             ctx.lineWidth = 12;
             ctx.beginPath();
             ctx.moveTo(x + 28, 28); ctx.lineTo(x + 72, 72);
@@ -696,12 +696,11 @@ class TrainDisplay {
             x += step;
         }
     
-         //TODO: Implement most or all pictograms with actual print lines and scaled down images
         if (nr.includes("FLX")) {
-            drawImageSafe('reservierungspflicht',2, x ,0);
+            drawImageSafe('reservierungspflicht',2 , x ,0);
         }
         if (nr.includes("IC")) {
-            drawImageSafe('wagenreihung_fahrrad', 0.1, x, 0);
+            drawImageSafe('wagenreihung_fahrrad',0.25 , x + 50, 66);
         }
         if (info.includes("Heute mit Halt in")) {
             drawImageSafe('halt_zusatz',2 ,x ,0);
