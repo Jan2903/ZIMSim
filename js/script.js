@@ -118,19 +118,11 @@ class TrainDisplay {
     print_start_wagon(coach, x, ctx) {
         ctx.strokeStyle = 'white';
         ctx.lineWidth = 6;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
         ctx.beginPath();
-        // Bottom line
-        ctx.moveTo(x, this.y + 80);
-        ctx.lineTo(x + coach.length, this.y + 80);
-        // Top line (right to left)
-        ctx.moveTo(x + coach.length, this.y);
-        ctx.lineTo(x + 12, this.y);
-        // Rounded corner at (x + 12, this.y) to (x, this.y + 20)
-        ctx.arcTo(x + 12, this.y, x, this.y + 20, 6);
-        // Vertical line down to (x, this.y + 83)
-        ctx.lineTo(x, this.y + 83);
+        ctx.moveTo(x, this.y + 83); ctx.lineTo(x, this.y + 20);
+        ctx.moveTo(x, this.y + 20); ctx.lineTo(x + 12, this.y);
+        ctx.moveTo(x + 12, this.y); ctx.lineTo(x + coach.length, this.y);
+        ctx.moveTo(x, this.y + 80); ctx.lineTo(x + coach.length, this.y + 80);
         ctx.stroke();
     }
 
