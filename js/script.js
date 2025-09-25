@@ -747,7 +747,27 @@ class TrainDisplay {
             ctx.fillStyle = 'white';
             ctx.fillRect(x, 0, 100, 100);
             const iconX = x; // Save starting x for this icon
-            drawImageSafe('wagenreihung_gastronomie', 0.40, iconX + 40, 50, 'midnightblue');
+            drawImageSafe('wagenreihung_gastronomie', 0.64, iconX + 30, 50, 'midnightblue');
+            // Draw red slash using saved iconX (over the icon box)
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 12;
+            ctx.beginPath();
+            ctx.moveTo(iconX + 10, 90);
+            ctx.lineTo(iconX + 90, 10);
+            ctx.stroke();
+        }
+
+         if (info.includes("Universal-WC fehlt")) {
+            //Draw white filled box
+            ctx.fillStyle = 'white';
+            ctx.fillRect(x, 0, 100, 100);
+            const iconX = x; // Save starting x for this icon
+            drawImageSafe('wagenreihung_rollstuhl', 0.22, iconX + 25, 50, 'midnightblue');
+            ctx.fillStyle = 'midnightblue';
+            ctx.font = '28px "Open Sans Condensed"';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText("WC", iconX + 66, 75);
             // Draw red slash using saved iconX (over the icon box)
             ctx.strokeStyle = 'red';
             ctx.lineWidth = 12;
@@ -1207,4 +1227,5 @@ function resizeDisplay() {
 window.addEventListener('resize', resizeDisplay);
 
 resizeDisplay();
+
 
