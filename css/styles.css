@@ -51,7 +51,7 @@ position: relative;
 background-color: midnightblue;
 width: 3980px;
 height: 1058px;
-transform-origin: top left;
+transform-origin: top center;
 }
 
 .display-trenner-links { grid-column: 1; grid-row: 1 / 3; }
