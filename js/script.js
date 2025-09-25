@@ -560,10 +560,10 @@ class TrainDisplay {
                 const text_height = 120;
                 ctx.fillStyle = 'white';
                 ctx.beginPath();
-                ctx.roundRect(512 - 20 , 210 - text_height / 2 - 20, text_width + 40, text_height + 20, 10);
+                ctx.roundRect(520 - 20 , 215 - text_height / 2 - 20, text_width + 40, text_height + 20, 10);
                 ctx.fill();
                 ctx.fillStyle = 'midnightblue';
-                ctx.fillText(abfahrt_a, 512, 210);
+                ctx.fillText(abfahrt_a, 520, 215);
             }
             ctx.fillStyle = 'white';
             ctx.font = '180px "Open Sans Condensed"';
@@ -576,7 +576,7 @@ class TrainDisplay {
             ctx.strokeStyle = 'white';
             ctx.lineWidth = 3;
             ctx.beginPath();
-            ctx.moveTo(0, 0); ctx.lineTo(0, 258);
+            ctx.moveTo(0, 0); ctx.lineTo(0, 800);
             ctx.stroke();
             
             if (used_nr !== "") {
