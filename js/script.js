@@ -1064,7 +1064,15 @@ document.getElementById('download-btn').addEventListener('click', () => {
             scrollY: 0
         }).then(canvas => {
             const link = document.createElement('a');
-            link.download = 'zim.png';
+            // Dynamic filename with timestamp
+            const now = new Date();
+            const timestamp = now.getDate().toString().padStart(2, '0') + '.' + 
+            (now.getMonth() + 1).toString().padStart(2, '0') + '.' + 
+            now.getFullYear() + '.' + 
+            now.getHours().toString().padStart(2, '0') + '.' + 
+            now.getMinutes().toString().padStart(2, '0') + '.' + 
+            now.getSeconds().toString().padStart(2, '0');
+            link.download = `zim_${timestamp}.png`;
             link.href = canvas.toDataURL('image/png', 1.0);
             link.click();
             // Restore styles
