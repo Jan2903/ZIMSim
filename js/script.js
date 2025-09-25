@@ -701,7 +701,7 @@ class TrainDisplay {
         }
         if (nr.includes("IC")) {
             //Draw white outline box
-            ctx.lineWidth = "5";
+            ctx.lineWidth = "2";
             ctx.strokeStyle = 'white';
             ctx.strokeRect(x + 2, 2, x + 98, 98);
             drawImageSafe('wagenreihung_fahrrad',0.40 , x + 50, 66);
