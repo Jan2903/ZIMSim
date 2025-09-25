@@ -36,7 +36,7 @@ overflow: visible;
 position: absolute;
 top: 0;
 left: 50%;
-width: 3840px;
+width: 3980px;
 height: 1118px;
 box-sizing: border-box;
 transform-origin: top center;
@@ -49,7 +49,7 @@ grid-template-rows: 800px 258px 60px;
 gap: 0;
 position: relative;
 background-color: midnightblue;
-width: 3840px;
+width: 3980px;
 height: 1058px;
 transform-origin: top left;
 }
