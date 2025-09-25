@@ -697,26 +697,45 @@ class TrainDisplay {
         }
     
         if (nr.includes("FLX")) {
+            //Draw white outline box
+            ctx.lineWidth = "6";
+            ctx.strokeStyle = 'white';
+            ctx.strokeRect(x + 3, 3, 94, 94); // keep it inside 100×100
             drawImageSafe('reservierungspflicht',2 , x ,0);
         }
         if (nr.includes("IC")) {
             //Draw white outline box
-            ctx.lineWidth = "5";
+            ctx.lineWidth = "6";
             ctx.strokeStyle = 'white';
-            ctx.strokeRect(x + 2.5, 2.5, 95, 95); // keeps it inside 100×100
+            ctx.strokeRect(x + 3, 3, 94, 94); // keep it inside 100×100
             drawImageSafe('wagenreihung_fahrrad',0.40 , x + 50, 66);
         }
         if (info.includes("Heute mit Halt in")) {
+            //Draw white filled box
+            ctx.fillStyle = 'white';
+            ctx.fillRect(x, 0, 100, 100);
             drawImageSafe('halt_zusatz',2 ,x ,0);
         }
         if (info.includes("Heute ohne Halt in")) {
+            //Draw white filled box
+            ctx.fillStyle = 'white';
+            ctx.fillRect(x, 0, 100, 100);
             drawImageSafe('halt_entfall',2 ,x ,0);
         }
         if (info.includes("Mehrere Wagen fehlen") || info.includes("Ein Wagen fehlen")) {
             drawImageSafe('wagen_fehlen',2 ,x ,0);
         }
         if (info.includes("Kein gastronomisches Angebot")) {
-            drawImageSafe('kein_gastronmisches_angebot',2 ,x ,0);
+            //Draw white filled box
+            ctx.fillStyle = 'white';
+            ctx.fillRect(x, 0, 100, 100);
+            drawImageSafe('wagenreihung_gastronomie',0.40 , x + 40, 50);
+            //Draw blue slash
+            ctx.strokeStyle = 'midnightblue';
+            ctx.lineWidth = 12;
+            ctx.beginPath();
+            ctx.moveTo(x + 10, 90); ctx.lineTo(x + 90, 10);
+            ctx.stroke();
         }
         const text_start_x = x;
         if (this.scroll_divs[zug_nr]) {
