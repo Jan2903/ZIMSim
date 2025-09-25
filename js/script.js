@@ -667,13 +667,12 @@ class TrainDisplay {
         const canvas = document.getElementById(display_id);
         const ctx = canvas.getContext('2d');
         let x = fullScreen ? 100 : 50;
-        const img_y = 0;
         const step = 105;
-        const drawImageSafe = (img_key) => {
+        const drawImageSafe = (img_key, scale, img_x, img_y) => {
             const img = images[img_key];
             if (img && img.isLoaded && !img.isBroken) {
                 try {
-                    ctx.drawImage(img, x, img_y, img.width * 2, img.height * 2);
+                    ctx.drawImage(img, img_x, img_y, img.width * scale, img.height * scale);
                     x += step;
                 } catch (err) {
                     console.warn(`Failed to draw pictogram ${img_key}:`, err);
@@ -682,26 +681,39 @@ class TrainDisplay {
                 console.warn(`Pictogram ${img_key} not loaded or broken`);
             }
         };
+        
         if (info.includes("Zug fällt heute aus") || info.includes("Keine Weiterfahrt nach")) {
-            drawImageSafe('ausfall');
+            //Draw blue filled box
+            ctx.fillStyle = 'midnightblue';
+            ctx.fillRect(x, 0, x + 100, 100);
+            //Draw red cross
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 12;
+            ctx.beginPath();
+            ctx.moveTo(x + 28, 28); ctx.lineTo(x + 72, 72);
+            ctx.moveTo(x + 72, 28); ctx.lineTo(x + 28, 72);
+            ctx.stroke();
+            x += step;
         }
+    
+         //TODO: Implement most or all pictograms with actual print lines and scaled down images
         if (nr.includes("FLX")) {
-            drawImageSafe('reservierungspflicht');
+            drawImageSafe('reservierungspflicht',2, x ,0);
         }
         if (nr.includes("IC")) {
-            drawImageSafe('reservierungspflicht_fahrradmitnahme');
+            drawImageSafe('wagenreihung_fahrrad', 0.1, x, 0);
         }
         if (info.includes("Heute mit Halt in")) {
-            drawImageSafe('halt_zusatz');
+            drawImageSafe('halt_zusatz',2 ,x ,0);
         }
         if (info.includes("Heute ohne Halt in")) {
-            drawImageSafe('halt_entfall');
+            drawImageSafe('halt_entfall',2 ,x ,0);
         }
         if (info.includes("Mehrere Wagen fehlen") || info.includes("Ein Wagen fehlen")) {
-            drawImageSafe('wagen_fehlen');
+            drawImageSafe('wagen_fehlen',2 ,x ,0);
         }
         if (info.includes("Kein gastronomisches Angebot")) {
-            drawImageSafe('kein_gastronmisches_angebot');
+            drawImageSafe('kein_gastronmisches_angebot',2 ,x ,0);
         }
         const text_start_x = x;
         if (this.scroll_divs[zug_nr]) {
@@ -1152,7 +1164,4 @@ function resizeDisplay() {
 }
 
 window.addEventListener('resize', resizeDisplay);
-
 resizeDisplay();
-
-
