@@ -700,7 +700,11 @@ class TrainDisplay {
             drawImageSafe('reservierungspflicht',2 , x ,0);
         }
         if (nr.includes("IC")) {
-            drawImageSafe('wagenreihung_fahrrad',0.25 , x + 50, 66);
+            //Draw white outline box
+            ctx.lineWidth = "6";
+            ctx.strokeStyle = 'white';
+            ctx.strokeRect(x, 0, x + 100, 100);
+            drawImageSafe('wagenreihung_fahrrad',0.32 , x + 50, 66);
         }
         if (info.includes("Heute mit Halt in")) {
             drawImageSafe('halt_zusatz',2 ,x ,0);
