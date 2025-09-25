@@ -685,7 +685,7 @@ class TrainDisplay {
         if (info.includes("Zug fällt heute aus") || info.includes("Keine Weiterfahrt nach")) {
             //Draw white filled box
             ctx.fillStyle = 'white';
-            ctx.fillRect(x, 0, x + 100, 100);
+            ctx.fillRect(x, 0, 100, 100);
             //Draw blue cross
             ctx.strokeStyle = 'midnightblue';
             ctx.lineWidth = 12;
@@ -703,7 +703,7 @@ class TrainDisplay {
             //Draw white outline box
             ctx.lineWidth = "5";
             ctx.strokeStyle = 'white';
-            ctx.strokeRect(x, 0, x + 100, 100);
+            ctx.strokeRect(x + 2.5, 2.5, 95, 95); // keeps it inside 100×100
             drawImageSafe('wagenreihung_fahrrad',0.40 , x + 50, 66);
         }
         if (info.includes("Heute mit Halt in")) {
