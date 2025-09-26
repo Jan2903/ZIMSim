@@ -717,8 +717,7 @@ class TrainDisplay {
             ctx.lineWidth = "6";
             ctx.strokeStyle = 'white';
             ctx.strokeRect(x + 3, 3, 94, 94); // keep it inside 100×100
-            drawImageSafe('reservierungspflicht',2 , x ,0);
-
+          
             //Move to the right for next icon or scrolling text start
             x += step;
         }
@@ -737,7 +736,7 @@ class TrainDisplay {
             //Draw white filled box
             ctx.fillStyle = 'white';
             ctx.fillRect(x, 0, 100, 100);
-            drawImageSafe('halt_zusatz',2 ,x ,0);
+            drawImageSafe('halt_zusatz',2 ,x + 50, 50);
 
             //Move to the right for next icon or scrolling text start
             x += step;
@@ -747,7 +746,7 @@ class TrainDisplay {
             //Draw white filled box
             ctx.fillStyle = 'white';
             ctx.fillRect(x, 0, 100, 100);
-            drawImageSafe('halt_entfall',2 ,x ,0);
+    
 
             //Move to the right for next icon or scrolling text start
             x += step;
@@ -764,7 +763,7 @@ class TrainDisplay {
             //Draw white filled box
             ctx.fillStyle = 'white';
             ctx.fillRect(x, 0, 100, 100);
-            drawImageSafe('wagenreihung_gastronomie', 0.64, iconX + 30, 50, 'midnightblue');
+            drawImageSafe('wagenreihung_gastronomie', 0.44, x + 30, 50, 'midnightblue');
             // Draw red slash (over the icon box)
             ctx.strokeStyle = 'red';
             ctx.lineWidth = 12;
@@ -781,9 +780,9 @@ class TrainDisplay {
             //Draw white filled box
             ctx.fillStyle = 'white';
             ctx.fillRect(x, 0, 100, 100);
-            drawImageSafe('wagenreihung_rollstuhl', 0.22, x + 25, 50, 'midnightblue');
+            drawImageSafe('wagenreihung_rollstuhl', 0.22, x + 32, 32, 'midnightblue');
             ctx.fillStyle = 'midnightblue';
-            ctx.font = '28px "Open Sans Condensed"';
+            ctx.font = '38px "Open Sans Condensed"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText("WC", x + 66, 75);
