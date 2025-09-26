@@ -799,8 +799,6 @@ class TrainDisplay {
             x += step;
         }
         
-        const x
- = x;
         if (this.scroll_divs[zug_nr]) {
             this.scroll_divs[zug_nr].remove();
             delete this.scroll_divs[zug_nr];
@@ -810,11 +808,9 @@ class TrainDisplay {
             const canvas_rect = canvas.getBoundingClientRect();
             const scroll_div = document.createElement('div');
             scroll_div.classList.add('scroll-container');
-            scroll_div.style.left = `${canvas.offsetLeft + x
-}px`;
+            scroll_div.style.left = `${canvas.offsetLeft + x}px`;
             scroll_div.style.top = `${canvas.offsetTop}px`;
-            scroll_div.style.width = `${canvas.width - x
-}px`;
+            scroll_div.style.width = `${canvas.width - x}px`;
             scroll_div.style.height = '100px';
             canvas.parentElement.appendChild(scroll_div);
             this.scroll_divs[zug_nr] = scroll_div;
@@ -830,9 +826,7 @@ class TrainDisplay {
             const scroll_width = parseInt(scroll_div.style.width);
             
             ctx.fillStyle = 'white';
-            if (info !== "") ctx.fillRect(x
-, 0, canvas.width - x
-, 100);
+            if (info !== "") ctx.fillRect(x, 0, canvas.width - x, 100);
             
             if (text_width > scroll_width) {
                 let result = info + ' +++ ' + info + ' +++ ';
