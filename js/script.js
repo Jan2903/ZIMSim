@@ -815,6 +815,22 @@ class TrainDisplay {
             x += step;
         }
 
+        if (info.includes("Defekte fahrzeuggebundene Einstiegshilfe")) {
+            //Draw white filled box
+            ctx.fillStyle = 'white';
+            ctx.fillRect(x, 0, 100, 100);
+            //Draw wheelchair icon
+            drawImageSafe('wagenreihung_rollstuhl', 0.5, x + 50, 50, 'midnightblue');
+            //Draw exclamation mark on the top right corner
+            ctx.fillStyle = 'midnightblue';
+            ctx.font = 'bold 56px "Open Sans Condensed"';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText("!", x + 80, 36);
+            //Move to the right for next icon or scrolling text start
+            x += step;
+        }
+
         if (info.includes("Eingeschränkte Fahrradbeförderung")) {
             //Draw white outline box
             ctx.lineWidth = "4";
@@ -823,7 +839,7 @@ class TrainDisplay {
             //Draw bicycle icon
             drawImageSafe('wagenreihung_fahrrad',0.40 , x + 50, 66);
             //Draw exclamation mark on the top right corner
-            ctx.fillStyle = 'midnightblue';
+            ctx.fillStyle = 'white';
             ctx.font = 'bold 56px "Open Sans Condensed"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
