@@ -503,13 +503,13 @@ class TrainDisplay {
             ctx.fillStyle = 'orange';
             ctx.fillRect(0, 0, 940, 258);
             ctx.fillStyle = 'white';
-            ctx.font = '40px "Open Sans Condensed"';
+            ctx.font = '67px "Open Sans Condensed"';
             ctx.textAlign = 'left';
             ctx.textBaseline = 'middle';
             ctx.fillText('Neues Gleis', 50, 50);
-            ctx.font = 'italic 40px "Open Sans Condensed"';
-            ctx.fillText('New Track', 50, 110);
-            ctx.font = '84px "Open Sans Condensed"';
+            ctx.font = 'italic 67px "Open Sans Condensed"';
+            ctx.fillText('New Track', 50, 140);
+            ctx.font = '86px "Open Sans Condensed"';
             ctx.textAlign = 'right';
             ctx.fillText(gleiswechsel, 890, 80);
             ctx.textAlign = 'left';
@@ -606,14 +606,14 @@ class TrainDisplay {
             ctx.fillText(via, 56, 520);
             ctx.fillText(via2, 56, 620);
             ctx.fillText(via3, 56, 720);
-            if (gleiswechsel !== "0" && display_id === "display2_zug2") {
+            if (gleiswechsel !== "0" && display_id === "display2_zug2") {//Gleichswechsel / Ausfall /Verkehrt heute ab
                 ctx.fillStyle = 'orange';
                 ctx.fillRect(0, 0, 940, 100);
                 ctx.fillStyle = 'white';
                 ctx.font = '67px "Open Sans Condensed"';
                 ctx.fillText('Gleisänderung / ', 50, 50);
                 ctx.font = 'italic 67px "Open Sans Condensed"';
-                ctx.fillText('Track change', 420, 50);
+                ctx.fillText('Track change', 470, 50);
                 ctx.fillStyle = 'white';
                 ctx.fillRect(0, 100, 940, 700);
                 if (used_nr !== "") {
@@ -624,7 +624,7 @@ class TrainDisplay {
                     const text_height = 75;
                     ctx.fillStyle = 'midnightblue';
                     ctx.beginPath();
-                    ctx.roundRect(890 - text_width - 10, 200 - text_height / 2 - 10, text_width + 20, text_height + 20, 6);
+                    ctx.roundRect(890 - text_width - 10, 200 - text_height / 2 - 10, text_width + 20, text_height + 10, 6);
                     ctx.fill();
                     ctx.fillStyle = 'white';
                     ctx.fillText(used_nr, 890, 200);
@@ -637,7 +637,7 @@ class TrainDisplay {
                     ctx.fillStyle = 'white';
                     ctx.font = '90px "Open Sans Condensed"';
                     const text_width = ctx.measureText(abfahrt_a).width;
-                    const text_height = 56;
+                    const text_height = 90;
                     ctx.fillStyle = 'midnightblue';
                     ctx.beginPath();
                     ctx.roundRect(330 - 10, 195 - text_height / 2 - 10, text_width + 20, text_height + 10, 6);
