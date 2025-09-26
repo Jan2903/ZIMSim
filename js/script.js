@@ -1,15 +1,6 @@
 // Image preloading with error handling
 const images = {};
 const pictogramNames = [
-    'ausfall',
-    'halt_entfall',
-    'halt_zusatz',
-    'keine_fahrradmitnahme',
-    'kein_gastronomisches_angebot',
-    'kein_universal-wc',
-    'keine_weiterfahrt',
-    'reservierungspflicht',
-    'reservierungspflicht_fahrradmitnahme',
     'wagen_fehlen',
     'wagenreihung_fahrrad',
     'wagenreihung_gastronomie',
@@ -776,8 +767,10 @@ class TrainDisplay {
         }
 
         if (info.includes("Mehrere Wagen fehlen") || info.includes("Ein Wagen fehlt")) {
-            drawImageSafe('wagen_fehlen',2 ,x ,0);
-            
+            //Draw white filled box
+            ctx.fillStyle = 'white';
+            ctx.fillRect(x, 0, 100, 100);
+            drawImageSafe('wagen_fehlen',2 ,x + 50 ,50);
             //Move to the right for next icon or scrolling text start
             x += step;
         }
@@ -789,10 +782,10 @@ class TrainDisplay {
             drawImageSafe('wagenreihung_gastronomie', 0.5, x + 30, 50, 'midnightblue');
             //Draw exclamation mark on the top right corner
             ctx.fillStyle = 'midnightblue';
-            ctx.font = 'bold 48px "Open Sans Condensed"';
+            ctx.font = 'bold 56px "Open Sans Condensed"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText("!", x + 80, 20);
+            ctx.fillText("!", x + 80, 36);
             //Move to the right for next icon or scrolling text start
             x += step;
         }
