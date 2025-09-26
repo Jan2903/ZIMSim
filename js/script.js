@@ -705,10 +705,10 @@ class TrainDisplay {
     
         if (nr.includes("FLX")) {
             //Draw white outline box
-            ctx.lineWidth = "6";
+            ctx.lineWidth = "4";
             ctx.strokeStyle = 'white';
-            ctx.strokeRect(x + 3, 3, 94, 94); // keep it inside 100×100
-
+            ctx.strokeRect(x + 2, 2, 96, 96); 
+            //Draw R text
             ctx.fillStyle = 'white';
             ctx.font = '48px "Open Sans Condensed"';
             ctx.textAlign = 'center';
@@ -721,10 +721,12 @@ class TrainDisplay {
 
         if (nr.includes("IC")) {
             //Draw white outline box
-            ctx.lineWidth = "6";
+            ctx.lineWidth = "4";
             ctx.strokeStyle = 'white';
-            ctx.strokeRect(x + 3, 3, 94, 94); // keep it inside 100×100
+            ctx.strokeRect(x + 2, 2, 96, 96); 
+
             drawImageSafe('wagenreihung_fahrrad',0.40 , x + 50, 66);
+             //Draw R text
             ctx.fillStyle = 'white';
             ctx.font = '48px "Open Sans Condensed"';
             ctx.textAlign = 'center';
@@ -770,7 +772,7 @@ class TrainDisplay {
             //Draw white filled box
             ctx.fillStyle = 'white';
             ctx.fillRect(x, 0, 100, 100);
-            drawImageSafe('wagen_fehlen',2 ,x + 50 ,50);
+            drawImageSafe('wagen_fehlen',2 ,x + 50 ,50 , 'midnightblue');
             //Move to the right for next icon or scrolling text start
             x += step;
         }
