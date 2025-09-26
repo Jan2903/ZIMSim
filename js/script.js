@@ -522,7 +522,7 @@ class TrainDisplay {
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         const zug_nr = fullScreen ? 1 : display_id === 'display2_zug1' ? 2 : 3;
-        this.print_pictograms(info, nr, display_id, fullScreen, zug_nr);
+        this.print_pictograms(info, nr, display_id, fullScreen, zug_nr, gleiswechsel);
         let used_nr = nr;
         if (!fullScreen) used_nr = nr_kurz;
         ctx.textAlign = 'left';
@@ -610,43 +610,45 @@ class TrainDisplay {
                 ctx.fillStyle = 'orange';
                 ctx.fillRect(0, 0, 940, 100);
                 ctx.fillStyle = 'white';
-                ctx.font = '40px "Open Sans Condensed"';
+                ctx.font = '67px "Open Sans Condensed"';
                 ctx.fillText('Gleisänderung / ', 50, 50);
-                ctx.font = 'italic 40px "Open Sans Condensed"';
+                ctx.font = 'italic 67px "Open Sans Condensed"';
                 ctx.fillText('Track change', 420, 50);
                 ctx.fillStyle = 'white';
                 ctx.fillRect(0, 100, 940, 700);
                 if (used_nr !== "") {
                     ctx.fillStyle = 'white';
-                    ctx.font = '56px "Open Sans Condensed"';
+                    ctx.font = '75px "Open Sans Condensed"';
                     ctx.textAlign = 'right';
-                    ctx.fillText(used_nr, 890, 200);
                     const text_width = ctx.measureText(used_nr).width;
-                    const text_height = 56;
-                    ctx.fillStyle = 'grey';
-                    ctx.fillRect(890 - text_width - 10, 200 - (text_height / 2) - 10, text_width + 20, text_height + 20);
+                    const text_height = 75;
+                    ctx.fillStyle = 'midnightblue';
+                    ctx.beginPath();
+                    ctx.roundRect(890 - text_width - 10, 200 - text_height / 2 - 10, text_width + 20, text_height + 20, 6);
+                    ctx.fill();
                     ctx.fillStyle = 'white';
                     ctx.fillText(used_nr, 890, 200);
                 }
                 ctx.textAlign = 'left';
                 ctx.fillStyle = 'midnightblue';
-                ctx.font = '76px "Open Sans Condensed"';
+                ctx.font = '120px "Open Sans Condensed"';
                 ctx.fillText(abfahrt, 50, 200);
                 if (abfahrt_a !== "") {
                     ctx.fillStyle = 'white';
-                    ctx.font = '56px "Open Sans Condensed"';
-                    ctx.fillText(abfahrt_a, 290, 200);
+                    ctx.font = '90px "Open Sans Condensed"';
                     const text_width = ctx.measureText(abfahrt_a).width;
                     const text_height = 56;
                     ctx.fillStyle = 'midnightblue';
-                    ctx.fillRect(290 - 10, 200 - (text_height / 2) - 10, text_width + 20, text_height + 20);
+                    ctx.beginPath();
+                    ctx.roundRect(330 - 10, 195 - text_height / 2 - 10, text_width + 20, text_height + 10, 6);
+                    ctx.fill();
                     ctx.fillStyle = 'white';
-                    ctx.fillText(abfahrt_a, 290, 200);
+                    ctx.fillText(abfahrt_a, 330, 195);
                 }
                 ctx.fillStyle = 'midnightblue';
-                ctx.font = '68px "Open Sans Condensed"';
+                ctx.font = '120px "Open Sans Condensed"';
                 ctx.fillText(ziel, 50, 360);
-                ctx.font = '50px "Open Sans Condensed"';
+                ctx.font = '70px "Open Sans Condensed"';
                 ctx.fillText(via, 50, 520);
                 ctx.fillText(via2, 50, 620);
                 ctx.fillText(via3, 50, 720);
@@ -654,7 +656,7 @@ class TrainDisplay {
         }
     }
 
-    print_pictograms(info, nr, display_id, fullScreen, zug_nr) {
+    print_pictograms(info, nr, display_id, fullScreen, zug_nr, gleiswechsel) {
         const canvas = document.getElementById(display_id);
         const ctx = canvas.getContext('2d');
         let x = fullScreen ? 100 : 50;
@@ -869,7 +871,7 @@ class TrainDisplay {
             this.scroll_divs[zug_nr].remove();
             delete this.scroll_divs[zug_nr];
         }
-        if (info !== "") {
+        if (info !== "" && gleiswechsel === "0") {
             const mainFrame = document.querySelector('.main-frame');
             const canvas_rect = canvas.getBoundingClientRect();
             const scroll_div = document.createElement('div');
