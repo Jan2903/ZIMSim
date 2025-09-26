@@ -746,7 +746,7 @@ class TrainDisplay {
             ctx.font = 'bold 68px "Open Sans Condensed"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText("H+", x + 30, 50);
+            ctx.fillText("H-", x + 30, 50);
      
             //Move to the right for next icon or scrolling text start
             x += step;
@@ -762,7 +762,7 @@ class TrainDisplay {
             ctx.font = 'bold 68px "Open Sans Condensed"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText("H-", x + 30, 50);
+            ctx.fillText("H", x + 30, 50);
     
             //Move to the right for next icon or scrolling text start
             x += step;
@@ -772,7 +772,7 @@ class TrainDisplay {
             //Draw white filled box
             ctx.fillStyle = 'white';
             ctx.fillRect(x, 0, 100, 100);
-            drawImageSafe('wagen_fehlen',2 ,x + 50 ,50 , 'midnightblue');
+            drawImageSafe('wagen_fehlen',1 ,x + 50 ,50 , 'midnightblue');
             //Move to the right for next icon or scrolling text start
             x += step;
         }
