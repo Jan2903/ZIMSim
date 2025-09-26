@@ -700,10 +700,11 @@ class TrainDisplay {
             ctx.moveTo(x + 28, 28); ctx.lineTo(x + 72, 72);
             ctx.moveTo(x + 72, 28); ctx.lineTo(x + 28, 72);
             ctx.stroke();
+            //Move to the right for next icon or scrolling text start
             x += step;
         }
     
-        if (nr.includes("FLX")) {
+        if (nr.includes("FLX")) { //Reservierungspflicht Flixtrain
             //Draw white outline box
             ctx.lineWidth = "4";
             ctx.strokeStyle = 'white';
@@ -714,17 +715,16 @@ class TrainDisplay {
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText("R", x + 75, 28);
-          
             //Move to the right for next icon or scrolling text start
             x += step;
         }
 
-        if (nr.includes("IC")) {
+        if (nr.includes("IC")) { //Reservierungspflicht Fahrrad
             //Draw white outline box
             ctx.lineWidth = "4";
             ctx.strokeStyle = 'white';
-            ctx.strokeRect(x + 2, 2, 96, 96); 
-
+            ctx.strokeRect(x + 2, 2, 96, 96);
+            //Draw bicycle icon
             drawImageSafe('wagenreihung_fahrrad',0.40 , x + 50, 66);
              //Draw R text
             ctx.fillStyle = 'white';
@@ -732,22 +732,20 @@ class TrainDisplay {
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText("R", x + 75, 28);
-
             //Move to the right for next icon or scrolling text start
             x += step;
         }
+
         if (info.includes("Heute mit Halt in")) {
             //Draw white filled box
             ctx.fillStyle = 'white';
             ctx.fillRect(x, 0, 100, 100);
-           
             //Draw H+ text
             ctx.fillStyle = 'midnightblue';
             ctx.font = 'bold 68px "Open Sans Condensed"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText("H-", x + 30, 50);
-     
+            ctx.fillText("H", x + 30, 60);
             //Move to the right for next icon or scrolling text start
             x += step;
         }
@@ -756,14 +754,12 @@ class TrainDisplay {
             //Draw white filled box
             ctx.fillStyle = 'white';
             ctx.fillRect(x, 0, 100, 100);
-
             //Draw H- text
             ctx.fillStyle = 'midnightblue';
             ctx.font = 'bold 68px "Open Sans Condensed"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText("H", x + 30, 50);
-    
+            ctx.fillText("H", x + 30, 60);
             //Move to the right for next icon or scrolling text start
             x += step;
         }
@@ -772,22 +768,8 @@ class TrainDisplay {
             //Draw white filled box
             ctx.fillStyle = 'white';
             ctx.fillRect(x, 0, 100, 100);
+            //Draw missing wagons icon
             drawImageSafe('wagen_fehlen',1 ,x + 50 ,50 , 'midnightblue');
-            //Move to the right for next icon or scrolling text start
-            x += step;
-        }
-
-        if (info.includes("Eingeschränktes gastronomisches Angebot")) {
-            //Draw white filled box
-            ctx.fillStyle = 'white';
-            ctx.fillRect(x, 0, 100, 100);
-            drawImageSafe('wagenreihung_gastronomie', 0.5, x + 30, 50, 'midnightblue');
-            //Draw exclamation mark on the top right corner
-            ctx.fillStyle = 'midnightblue';
-            ctx.font = 'bold 56px "Open Sans Condensed"';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText("!", x + 80, 36);
             //Move to the right for next icon or scrolling text start
             x += step;
         }
@@ -796,8 +778,9 @@ class TrainDisplay {
             //Draw white filled box
             ctx.fillStyle = 'white';
             ctx.fillRect(x, 0, 100, 100);
+            //Draw gastronomy icon
             drawImageSafe('wagenreihung_gastronomie', 0.5, x + 30, 50, 'midnightblue');
-            // Draw red slash (over the icon box)
+            // Draw red slash over the icon
             ctx.strokeStyle = 'red';
             ctx.lineWidth = 12;
             ctx.beginPath();
@@ -813,24 +796,59 @@ class TrainDisplay {
             //Draw white filled box
             ctx.fillStyle = 'white';
             ctx.fillRect(x, 0, 100, 100);
+            //Draw wheelchair icon
             drawImageSafe('wagenreihung_rollstuhl', 0.32, x + 32, 28, 'midnightblue');
+            //Draw WC text
             ctx.fillStyle = 'midnightblue';
             ctx.font = '48px "Open Sans Condensed"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText("WC", x + 66, 75);
-            // Draw red slash (over the icon box)
+            // Draw red slash over the icon
             ctx.strokeStyle = 'red';
             ctx.lineWidth = 12;
             ctx.beginPath();
             ctx.moveTo(x + 10, 90);
             ctx.lineTo(x + 90, 10);
             ctx.stroke();
-
             //Move to the right for next icon or scrolling text start
             x += step;
         }
-        
+
+        if (info.includes("Eingeschränkte Fahrradbeförderung")) {
+            //Draw white outline box
+            ctx.lineWidth = "4";
+            ctx.strokeStyle = 'white';
+            ctx.strokeRect(x + 2, 2, 96, 96); 
+            //Draw bicycle icon
+            drawImageSafe('wagenreihung_fahrrad',0.40 , x + 50, 66);
+            //Draw exclamation mark on the top right corner
+            ctx.fillStyle = 'midnightblue';
+            ctx.font = 'bold 56px "Open Sans Condensed"';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText("!", x + 80, 36);
+            //Move to the right for next icon or scrolling text start
+            x += step;
+        }
+
+        if (info.includes("Eingeschränktes gastronomisches Angebot")) {
+            //Draw white filled box
+            ctx.fillStyle = 'white';
+            ctx.fillRect(x, 0, 100, 100);
+            //Draw gastronomy icon
+            drawImageSafe('wagenreihung_gastronomie', 0.5, x + 30, 50, 'midnightblue');
+            //Draw exclamation mark on the top right corner
+            ctx.fillStyle = 'midnightblue';
+            ctx.font = 'bold 56px "Open Sans Condensed"';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText("!", x + 80, 36);
+            //Move to the right for next icon or scrolling text start
+            x += step;
+        }
+
+        // Remove existing scroll div if any
         if (this.scroll_divs[zug_nr]) {
             this.scroll_divs[zug_nr].remove();
             delete this.scroll_divs[zug_nr];
