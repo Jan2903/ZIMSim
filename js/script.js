@@ -1209,7 +1209,7 @@ document.getElementById('download-btn').addEventListener('click', () => {
         const oldWrapperPosition = wrapper.style.position;
         // Set to full size
         container.style.width = '3980px';
-        container.style.height = '1118px';
+        container.style.height = '1178px';
         wrapper.style.position = 'static';
         wrapper.style.left = '0';
         wrapper.style.transform = 'none';
@@ -1218,9 +1218,9 @@ document.getElementById('download-btn').addEventListener('click', () => {
             useCORS: true,
             backgroundColor: 'midnightblue',
             width: 3980,
-            height: 1118,
+            height: 1178,
             windowWidth: 3980,
-            windowHeight: 1118,
+            windowHeight: 1178,
             x: 0,
             y: 0,
             scrollX: 0,
@@ -1308,10 +1308,10 @@ function resizeDisplay() {
     const container = document.querySelector('.display-container');
     const wrapper = document.querySelector('.screen-wrapper');
     const scaleX = window.innerWidth / 3980;
-    const scaleY = window.innerHeight / 1118;
+    const scaleY = window.innerHeight / 1178;
     const scale = Math.min(scaleX, scaleY);
     wrapper.style.transform = `translateX(-50%) scale(${scale})`;
-    container.style.height = `${1118 * scale}px`;
+    container.style.height = `${1178 * scale}px`;
 }
 
 window.addEventListener('resize', resizeDisplay);
