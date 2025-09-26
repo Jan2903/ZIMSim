@@ -124,9 +124,9 @@ class TrainDisplay {
         ctx.moveTo(x, this.y); ctx.lineTo(x + coach.length, this.y);
         ctx.moveTo(x, this.y + 80); ctx.lineTo(x + coach.length, this.y + 80);
         if (coach.coach_type === 'ma') {
-            ctx.moveTo(x, this.y); ctx.lineTo(x, this.y + 83);
+            ctx.moveTo(x, this.y - 1); ctx.lineTo(x, this.y + 83);
         } else if (coach.coach_type === 'me') {
-            ctx.moveTo(x + coach.length, this.y); ctx.lineTo(x + coach.length, this.y + 83);
+            ctx.moveTo(x + coach.length, this.y - 1); ctx.lineTo(x + coach.length, this.y + 83);
         }
         ctx.stroke();
     }
@@ -394,7 +394,7 @@ class TrainDisplay {
         // Display "Gleiswechsel" notification
         if (gleiswechsel !== "0" && display_id === "display2_zug2_wagenreihung") {
             ctx.fillStyle = 'orange';
-            ctx.fillRect(0, 0, 940, 258);
+            ctx.fillRect(3, 0, 940, 258);
             ctx.fillStyle = 'white';
             ctx.font = '67px "Open Sans Condensed"';
             ctx.textAlign = 'left';
@@ -406,67 +406,43 @@ class TrainDisplay {
             ctx.textAlign = 'right';
             ctx.fillText(gleiswechsel, 890, 80);
             ctx.textAlign = 'left';
-        }
-
-        // Determine zug_nr based on display_id
-        let zug_nr;
-        if (display_id === 'display1_wagenreihung') {
-            zug_nr = 1;
-        } else if (display_id === 'display2_zug1_wagenreihung') {
-            zug_nr = 2;
-        } else if (display_id === 'display2_zug2_wagenreihung') {
-            zug_nr = 3;
         } else {
-            console.warn(`Invalid display_id: ${display_id}`);
-            return;
-        }
-        if (!this.train_data.zug_daten[zug_nr]) {
-            console.warn(`zug_daten[${zug_nr}] is undefined for display_id: ${display_id}`);
-            return;
-        }
-
-        //Scaling and positioning calculations
-        const factor = fullScreen ? 2 : 1;
-        const bahnsteiglaenge_display = 940 * factor;
-        const threshold = fullScreen ? 100 : 50;
-        let usable_display_length = fullScreen ? 1580 : 740;
-        const gap = 4;
-        let zuglaenge = coaches.reduce((sum, c) => sum + c.length, 0);
-        if (!fullScreen) {
-            zuglaenge -= coaches.reduce((sum, c) => sum + (c.is_locomotive() ? c.length : 0), 0);
-        }
-        let factor_new = usable_display_length / platform_length;
-        let display_coaches = fullScreen ? coaches : coaches.filter(c => !c.is_locomotive());
-        if (display_coaches.length === 0) return;
-
-        let min_start = Math.min(...display_coaches.map(c => c.start));
-        min_start = 0;
-        let scaled_coaches = display_coaches.map(c => {
-            let new_start = (c.start + min_start) * factor_new + threshold + 50;
-            let new_stop = (c.stop + min_start) * factor_new + threshold + 50;
-            let new_length = c.length * factor_new;
-            return new Coach({...c, start: new_start, stop: new_stop, length: new_length});
-        });
-        for (let i = 0; i < scaled_coaches.length - 1; i++) {
-            scaled_coaches[i].length = scaled_coaches[i + 1].start - scaled_coaches[i].start;
-        }
-        scaled_coaches[scaled_coaches.length - 1].length = scaled_coaches[scaled_coaches.length - 1].stop - scaled_coaches[scaled_coaches.length - 1].start;
-        scaled_coaches.forEach(c => {
-            if (fullScreen) {
-                c.length -= gap * 2;
-                c.start += gap;
+            // Determine zug_nr based on display_id
+            let zug_nr;
+            if (display_id === 'display1_wagenreihung') {
+                zug_nr = 1;
+            } else if (display_id === 'display2_zug1_wagenreihung') {
+                zug_nr = 2;
+            } else if (display_id === 'display2_zug2_wagenreihung') {
+                zug_nr = 3;
             } else {
-                if (['a', 'ma'].includes(c.coach_type)) c.start += gap;
-                else if (['e', 'me'].includes(c.coach_type)) c.length -= gap;
-                else if (['m'].includes(c.coach_type)) c.length += gap;
+                console.warn(`Invalid display_id: ${display_id}`);
+                return;
             }
-        });
-        let zuglaenge_scaled = scaled_coaches.reduce((sum, c) => sum + c.length, 0);
-        if (zuglaenge_scaled < usable_display_length / 2 && skalieren) {
-            factor_new *= 2;
-            scaled_coaches = display_coaches.map(c => {
-                let new_start = c.start * factor_new + threshold;
-                let new_stop = c.stop * factor_new + threshold;
+            if (!this.train_data.zug_daten[zug_nr]) {
+                console.warn(`zug_daten[${zug_nr}] is undefined for display_id: ${display_id}`);
+                return;
+            }
+
+            //Scaling and positioning calculations
+            const factor = fullScreen ? 2 : 1;
+            const bahnsteiglaenge_display = 940 * factor;
+            const threshold = fullScreen ? 100 : 50;
+            let usable_display_length = fullScreen ? 1580 : 740;
+            const gap = 4;
+            let zuglaenge = coaches.reduce((sum, c) => sum + c.length, 0);
+            if (!fullScreen) {
+                zuglaenge -= coaches.reduce((sum, c) => sum + (c.is_locomotive() ? c.length : 0), 0);
+            }
+            let factor_new = usable_display_length / platform_length;
+            let display_coaches = fullScreen ? coaches : coaches.filter(c => !c.is_locomotive());
+            if (display_coaches.length === 0) return;
+
+            let min_start = Math.min(...display_coaches.map(c => c.start));
+            min_start = 0;
+            let scaled_coaches = display_coaches.map(c => {
+                let new_start = (c.start + min_start) * factor_new + threshold + 50;
+                let new_stop = (c.stop + min_start) * factor_new + threshold + 50;
                 let new_length = c.length * factor_new;
                 return new Coach({...c, start: new_start, stop: new_stop, length: new_length});
             });
@@ -474,50 +450,74 @@ class TrainDisplay {
                 scaled_coaches[i].length = scaled_coaches[i + 1].start - scaled_coaches[i].start;
             }
             scaled_coaches[scaled_coaches.length - 1].length = scaled_coaches[scaled_coaches.length - 1].stop - scaled_coaches[scaled_coaches.length - 1].start;
-            zuglaenge_scaled = scaled_coaches.reduce((sum, c) => sum + c.length, 0);
-        }
-        let start_meter_pixel = Math.min(...scaled_coaches.map(c => c.start));
-        if (richtung === 0) {
-            let arrow_pos = start_meter_pixel - 40;
-            this.print_direction(richtung, arrow_pos, ctx);
-        }
-        ctx.strokeStyle = 'white';
-        ctx.lineWidth = 6;
-        ctx.beginPath();
-        ctx.moveTo(threshold, 150); ctx.lineTo(start_meter_pixel - 10, 150);
-        ctx.stroke();
-        if (!fullScreen) {
-            if (this.aktuelles_merkmal === "klasse") this.print_class_compact(scaled_coaches, ctx);
-            if (this.aktuelles_merkmal === "ausstattung") this.print_amenities_compact(scaled_coaches, ctx);
-            if (this.aktuelles_merkmal === "wagennummern") this.print_wagon_numbers_compact(scaled_coaches, ctx);
-        }
-        let coach_start_positions = [];
-        scaled_coaches.forEach(c => {
-            if (c.coach_type === 'a') this.print_start_wagon(c, c.start, ctx);
-            else if (c.coach_type.includes('m')) this.print_middle_wagon(c, c.start, ctx);
-            else if (c.coach_type === 'e') this.print_end_wagon(c, c.start, ctx);
-            else if (c.coach_type === 'l' && fullScreen) this.print_locomotive(c, c.start, ctx);
-            this.print_first_class(c, c.start, ctx, fullScreen);
-            if (fullScreen) {
-                if (this.aktuelles_merkmal === "klasse") this.print_class(c, c.start, ctx);
-                if (this.aktuelles_merkmal === "ausstattung") this.print_amenities(c, c.start, ctx);
-                if (this.aktuelles_merkmal === "wagennummern") this.print_wagon_numbers(c, c.start, ctx);
+            scaled_coaches.forEach(c => {
+                if (fullScreen) {
+                    c.length -= gap * 2;
+                    c.start += gap;
+                } else {
+                    if (['a', 'ma'].includes(c.coach_type)) c.start += gap;
+                    else if (['e', 'me'].includes(c.coach_type)) c.length -= gap;
+                    else if (['m'].includes(c.coach_type)) c.length += gap;
+                }
+            });
+            let zuglaenge_scaled = scaled_coaches.reduce((sum, c) => sum + c.length, 0);
+            if (zuglaenge_scaled < usable_display_length / 2 && skalieren) {
+                factor_new *= 2;
+                scaled_coaches = display_coaches.map(c => {
+                    let new_start = c.start * factor_new + threshold;
+                    let new_stop = c.stop * factor_new + threshold;
+                    let new_length = c.length * factor_new;
+                    return new Coach({...c, start: new_start, stop: new_stop, length: new_length});
+                });
+                for (let i = 0; i < scaled_coaches.length - 1; i++) {
+                    scaled_coaches[i].length = scaled_coaches[i + 1].start - scaled_coaches[i].start;
+                }
+                scaled_coaches[scaled_coaches.length - 1].length = scaled_coaches[scaled_coaches.length - 1].stop - scaled_coaches[scaled_coaches.length - 1].start;
+                zuglaenge_scaled = scaled_coaches.reduce((sum, c) => sum + c.length, 0);
             }
-            coach_start_positions.push(c.start + c.length);
-        });
-        let right_pos = Math.max(...coach_start_positions);
-        ctx.strokeStyle = 'white';
-        ctx.lineWidth = 6;
-        ctx.beginPath();
-        ctx.moveTo(right_pos + 10, 150); ctx.lineTo(bahnsteiglaenge_display - threshold, 150);
-        ctx.stroke();
-        if (richtung === 1) {
-            this.print_direction(richtung, right_pos + 10, ctx);
-        }
-        try {
-            this.print_sectors(this.train_data.zug_daten[zug_nr].PlatformSections, ctx, fullScreen, factor_new, platform_length);
-        } catch (err) {
-            console.warn(`Failed to print sectors for zug_${zug_nr} on ${display_id}:`, err);
+            let start_meter_pixel = Math.min(...scaled_coaches.map(c => c.start));
+            if (richtung === 0) {
+                let arrow_pos = start_meter_pixel - 40;
+                this.print_direction(richtung, arrow_pos, ctx);
+            }
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            ctx.moveTo(threshold, 150); ctx.lineTo(start_meter_pixel - 10, 150);
+            ctx.stroke();
+            if (!fullScreen) {
+                if (this.aktuelles_merkmal === "klasse") this.print_class_compact(scaled_coaches, ctx);
+                if (this.aktuelles_merkmal === "ausstattung") this.print_amenities_compact(scaled_coaches, ctx);
+                if (this.aktuelles_merkmal === "wagennummern") this.print_wagon_numbers_compact(scaled_coaches, ctx);
+            }
+            let coach_start_positions = [];
+            scaled_coaches.forEach(c => {
+                if (c.coach_type === 'a') this.print_start_wagon(c, c.start, ctx);
+                else if (c.coach_type.includes('m')) this.print_middle_wagon(c, c.start, ctx);
+                else if (c.coach_type === 'e') this.print_end_wagon(c, c.start, ctx);
+                else if (c.coach_type === 'l' && fullScreen) this.print_locomotive(c, c.start, ctx);
+                this.print_first_class(c, c.start, ctx, fullScreen);
+                if (fullScreen) {
+                    if (this.aktuelles_merkmal === "klasse") this.print_class(c, c.start, ctx);
+                    if (this.aktuelles_merkmal === "ausstattung") this.print_amenities(c, c.start, ctx);
+                    if (this.aktuelles_merkmal === "wagennummern") this.print_wagon_numbers(c, c.start, ctx);
+                }
+                coach_start_positions.push(c.start + c.length);
+            });
+            let right_pos = Math.max(...coach_start_positions);
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            ctx.moveTo(right_pos + 10, 150); ctx.lineTo(bahnsteiglaenge_display - threshold, 150);
+            ctx.stroke();
+            if (richtung === 1) {
+                this.print_direction(richtung, right_pos + 10, ctx);
+            }
+            try {
+                this.print_sectors(this.train_data.zug_daten[zug_nr].PlatformSections, ctx, fullScreen, factor_new, platform_length);
+            } catch (err) {
+                console.warn(`Failed to print sectors for zug_${zug_nr} on ${display_id}:`, err);
+            }
         }
        
     }
@@ -613,14 +613,14 @@ class TrainDisplay {
             ctx.fillText(via3, 56, 720);
             if (gleiswechsel !== "0" && display_id === "display2_zug2") {//Gleichswechsel / Ausfall /Verkehrt heute ab
                 ctx.fillStyle = 'orange';
-                ctx.fillRect(0, 0, 940, 100);
+                ctx.fillRect(3, 0, 940, 100);
                 ctx.fillStyle = 'white';
                 ctx.font = '67px "Open Sans Condensed"';
                 ctx.fillText('Gleisänderung / ', 50, 50);
                 ctx.font = 'italic 67px "Open Sans Condensed"';
                 ctx.fillText('Track change', 470, 50);
                 ctx.fillStyle = 'white';
-                ctx.fillRect(0, 100, 940, 700);
+                ctx.fillRect(3, 100, 940, 700);
                 if (used_nr !== "") {
                     ctx.fillStyle = 'white';
                     ctx.font = '75px "Open Sans Condensed"';
