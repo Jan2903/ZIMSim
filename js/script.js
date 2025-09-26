@@ -717,6 +717,12 @@ class TrainDisplay {
             ctx.lineWidth = "6";
             ctx.strokeStyle = 'white';
             ctx.strokeRect(x + 3, 3, 94, 94); // keep it inside 100×100
+
+            ctx.fillStyle = 'white';
+            ctx.font = '48px "Open Sans Condensed"';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText("R", x + 75, 28);
           
             //Move to the right for next icon or scrolling text start
             x += step;
@@ -728,7 +734,7 @@ class TrainDisplay {
             ctx.strokeStyle = 'white';
             ctx.strokeRect(x + 3, 3, 94, 94); // keep it inside 100×100
             drawImageSafe('wagenreihung_fahrrad',0.40 , x + 50, 66);
-            ctx.fillStyle = 'midnightblue';
+            ctx.fillStyle = 'white';
             ctx.font = '48px "Open Sans Condensed"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
@@ -744,10 +750,10 @@ class TrainDisplay {
            
             //Draw H+ text
             ctx.fillStyle = 'midnightblue';
-            ctx.font = 'bold 48px "Open Sans Condensed"';
+            ctx.font = 'bold 68px "Open Sans Condensed"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText("H+", x + 40, 50);
+            ctx.fillText("H+", x + 30, 50);
      
             //Move to the right for next icon or scrolling text start
             x += step;
@@ -760,18 +766,33 @@ class TrainDisplay {
 
             //Draw H- text
             ctx.fillStyle = 'midnightblue';
-            ctx.font = 'bold 48px "Open Sans Condensed"';
+            ctx.font = 'bold 68px "Open Sans Condensed"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText("H-", x + 40, 50);
+            ctx.fillText("H-", x + 30, 50);
     
             //Move to the right for next icon or scrolling text start
             x += step;
         }
 
-        if (info.includes("Mehrere Wagen fehlen") || info.includes("Ein Wagen fehlen")) {
+        if (info.includes("Mehrere Wagen fehlen") || info.includes("Ein Wagen fehlt")) {
             drawImageSafe('wagen_fehlen',2 ,x ,0);
             
+            //Move to the right for next icon or scrolling text start
+            x += step;
+        }
+
+        if (info.includes("Eingeschränktes gastronomisches Angebot")) {
+            //Draw white filled box
+            ctx.fillStyle = 'white';
+            ctx.fillRect(x, 0, 100, 100);
+            drawImageSafe('wagenreihung_gastronomie', 0.5, x + 30, 50, 'midnightblue');
+            //Draw exclamation mark on the top right corner
+            ctx.fillStyle = 'midnightblue';
+            ctx.font = 'bold 48px "Open Sans Condensed"';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText("!", x + 80, 20);
             //Move to the right for next icon or scrolling text start
             x += step;
         }
@@ -793,7 +814,7 @@ class TrainDisplay {
             x += step;
         }
 
-        if (info.includes("Universal-WC fehlt") || info.includes("Kein behinderdertengerechtes WC")) {
+        if (info.includes("Universal-WC fehlt") || info.includes("Kein behindertengerechtes WC")) {
             //Draw white filled box
             ctx.fillStyle = 'white';
             ctx.fillRect(x, 0, 100, 100);
