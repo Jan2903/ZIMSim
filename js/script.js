@@ -160,8 +160,9 @@ class TrainDisplay {
             ctx.fillStyle = 'orange';
             let len = coach.length;
             if (!fullScreen) {
-                if (coach.coach_type === 'e') len += 4;
-                else if (coach.coach_type === 'a') len -= 4;
+                //if (coach.coach_type === 'e') len += 4;
+                //else if (coach.coach_type === 'a') len -= 4;
+                if (coach.coach_type === 'm') len += 4;
             }
             ctx.fillRect(x, this.y + 92, len, 20);
         }
@@ -390,6 +391,24 @@ class TrainDisplay {
             ctx.stroke();
         }
 
+        // Display "Gleiswechsel" notification
+        if (gleiswechsel !== "0" && display_id === "display2_zug2_wagenreihung") {
+            ctx.fillStyle = 'orange';
+            ctx.fillRect(0, 0, 940, 258);
+            ctx.fillStyle = 'white';
+            ctx.font = '67px "Open Sans Condensed"';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('Neues Gleis', 50, 50);
+            ctx.font = 'italic 67px "Open Sans Condensed"';
+            ctx.fillText('New Track', 50, 140);
+            ctx.font = '86px "Open Sans Condensed"';
+            ctx.textAlign = 'right';
+            ctx.fillText(gleiswechsel, 890, 80);
+            ctx.textAlign = 'left';
+        }
+
+        // Determine zug_nr based on display_id
         let zug_nr;
         if (display_id === 'display1_wagenreihung') {
             zug_nr = 1;
@@ -405,6 +424,8 @@ class TrainDisplay {
             console.warn(`zug_daten[${zug_nr}] is undefined for display_id: ${display_id}`);
             return;
         }
+
+        //Scaling and positioning calculations
         const factor = fullScreen ? 2 : 1;
         const bahnsteiglaenge_display = 940 * factor;
         const threshold = fullScreen ? 100 : 50;
@@ -417,7 +438,7 @@ class TrainDisplay {
         let factor_new = usable_display_length / platform_length;
         let display_coaches = fullScreen ? coaches : coaches.filter(c => !c.is_locomotive());
         if (display_coaches.length === 0) return;
-        
+
         let min_start = Math.min(...display_coaches.map(c => c.start));
         min_start = 0;
         let scaled_coaches = display_coaches.map(c => {
@@ -431,14 +452,13 @@ class TrainDisplay {
         }
         scaled_coaches[scaled_coaches.length - 1].length = scaled_coaches[scaled_coaches.length - 1].stop - scaled_coaches[scaled_coaches.length - 1].start;
         scaled_coaches.forEach(c => {
-            if (gap > 0) {
-                if (fullScreen) {
-                    c.length -= gap * 2;
-                    c.start += gap;
-                } else {
-                    if (['a', 'ma'].includes(c.coach_type)) c.start += gap;
-                    else if (['e', 'me'].includes(c.coach_type)) c.length -= gap;
-                }
+            if (fullScreen) {
+                c.length -= gap * 2;
+                c.start += gap;
+            } else {
+                if (['a', 'ma'].includes(c.coach_type)) c.start += gap;
+                else if (['e', 'me'].includes(c.coach_type)) c.length -= gap;
+                else if (['m'].includes(c.coach_type)) c.length += gap;
             }
         });
         let zuglaenge_scaled = scaled_coaches.reduce((sum, c) => sum + c.length, 0);
@@ -499,22 +519,7 @@ class TrainDisplay {
         } catch (err) {
             console.warn(`Failed to print sectors for zug_${zug_nr} on ${display_id}:`, err);
         }
-        if (gleiswechsel !== "0" && display_id === "display2_zug2_wagenreihung") {
-            ctx.fillStyle = 'orange';
-            ctx.fillRect(0, 0, 940, 258);
-            ctx.fillStyle = 'white';
-            ctx.font = '67px "Open Sans Condensed"';
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('Neues Gleis', 50, 50);
-            ctx.font = 'italic 67px "Open Sans Condensed"';
-            ctx.fillText('New Track', 50, 140);
-            ctx.font = '86px "Open Sans Condensed"';
-            ctx.textAlign = 'right';
-            ctx.fillText(gleiswechsel, 890, 80);
-            ctx.textAlign = 'left';
-        }
-        return factor_new;
+       
     }
 
     print_train_info(info, nr, nr_kurz, abfahrt, abfahrt_a, ziel, via, via2, via3, gleiswechsel, display_id, fullScreen) {
