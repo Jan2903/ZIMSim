@@ -238,7 +238,7 @@ class TrainDisplay {
         const img = images[img_key];
         if (img && img.isLoaded && !img.isBroken) {
             try {
-                const scale = 0.38; // image scaling factor
+                const scale = 0.28; // image scaling factor
                 ctx.drawImage(img, x + (coach.length / 2) - (img.width * scale / 2), this.y + 42 - (img.height * scale / 2), img.width * scale, img.height * scale);
             } catch (err) {
                 console.warn(`Failed to draw amenity image ${img_key}:`, err);
@@ -269,7 +269,7 @@ class TrainDisplay {
                         if (last.coach_type === 'a') adj = 0;
                         else if (last.coach_type === 'e') adj = 0;
                     }
-                    const scale = 0.32; // image scaling factor
+                    const scale = 0.28; // image scaling factor
                     ctx.drawImage(img, center + adj - (img.width * scale / 2), this.y + 42 - (img.height * scale / 2), img.width * scale, img.height * scale);
                 } catch (err) {
                     console.warn(`Failed to draw compact amenity image ${img_key}:`, err);
@@ -728,6 +728,11 @@ class TrainDisplay {
             ctx.strokeStyle = 'white';
             ctx.strokeRect(x + 3, 3, 94, 94); // keep it inside 100×100
             drawImageSafe('wagenreihung_fahrrad',0.40 , x + 50, 66);
+            ctx.fillStyle = 'midnightblue';
+            ctx.font = '48px "Open Sans Condensed"';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText("R", x + 75, 28);
 
             //Move to the right for next icon or scrolling text start
             x += step;
@@ -736,8 +741,14 @@ class TrainDisplay {
             //Draw white filled box
             ctx.fillStyle = 'white';
             ctx.fillRect(x, 0, 100, 100);
-            drawImageSafe('halt_zusatz',2 ,x + 50, 50);
-
+           
+            //Draw H+ text
+            ctx.fillStyle = 'midnightblue';
+            ctx.font = 'bold 48px "Open Sans Condensed"';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText("H+", x + 40, 50);
+     
             //Move to the right for next icon or scrolling text start
             x += step;
         }
@@ -746,8 +757,14 @@ class TrainDisplay {
             //Draw white filled box
             ctx.fillStyle = 'white';
             ctx.fillRect(x, 0, 100, 100);
-    
 
+            //Draw H- text
+            ctx.fillStyle = 'midnightblue';
+            ctx.font = 'bold 48px "Open Sans Condensed"';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText("H-", x + 40, 50);
+    
             //Move to the right for next icon or scrolling text start
             x += step;
         }
@@ -763,7 +780,7 @@ class TrainDisplay {
             //Draw white filled box
             ctx.fillStyle = 'white';
             ctx.fillRect(x, 0, 100, 100);
-            drawImageSafe('wagenreihung_gastronomie', 0.44, x + 30, 50, 'midnightblue');
+            drawImageSafe('wagenreihung_gastronomie', 0.5, x + 30, 50, 'midnightblue');
             // Draw red slash (over the icon box)
             ctx.strokeStyle = 'red';
             ctx.lineWidth = 12;
@@ -780,9 +797,9 @@ class TrainDisplay {
             //Draw white filled box
             ctx.fillStyle = 'white';
             ctx.fillRect(x, 0, 100, 100);
-            drawImageSafe('wagenreihung_rollstuhl', 0.22, x + 32, 32, 'midnightblue');
+            drawImageSafe('wagenreihung_rollstuhl', 0.32, x + 32, 28, 'midnightblue');
             ctx.fillStyle = 'midnightblue';
-            ctx.font = '38px "Open Sans Condensed"';
+            ctx.font = '48px "Open Sans Condensed"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText("WC", x + 66, 75);
