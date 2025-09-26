@@ -690,7 +690,6 @@ class TrainDisplay {
                     }
                     // Draw (centered at img_x, img_y)
                     ctx.drawImage(drawImg, img_x - (drawWidth / 2), img_y - (drawHeight / 2), drawWidth, drawHeight);
-                    x += step;
                 } catch (err) {
                     console.warn(`Failed to draw pictogram ${img_key}:`, err);
                 }
@@ -719,64 +718,89 @@ class TrainDisplay {
             ctx.strokeStyle = 'white';
             ctx.strokeRect(x + 3, 3, 94, 94); // keep it inside 100×100
             drawImageSafe('reservierungspflicht',2 , x ,0);
+
+            //Move to the right for next icon or scrolling text start
+            x += step;
         }
+
         if (nr.includes("IC")) {
             //Draw white outline box
             ctx.lineWidth = "6";
             ctx.strokeStyle = 'white';
             ctx.strokeRect(x + 3, 3, 94, 94); // keep it inside 100×100
             drawImageSafe('wagenreihung_fahrrad',0.40 , x + 50, 66);
+
+            //Move to the right for next icon or scrolling text start
+            x += step;
         }
         if (info.includes("Heute mit Halt in")) {
             //Draw white filled box
             ctx.fillStyle = 'white';
             ctx.fillRect(x, 0, 100, 100);
             drawImageSafe('halt_zusatz',2 ,x ,0);
+
+            //Move to the right for next icon or scrolling text start
+            x += step;
         }
+
         if (info.includes("Heute ohne Halt in")) {
             //Draw white filled box
             ctx.fillStyle = 'white';
             ctx.fillRect(x, 0, 100, 100);
             drawImageSafe('halt_entfall',2 ,x ,0);
+
+            //Move to the right for next icon or scrolling text start
+            x += step;
         }
+
         if (info.includes("Mehrere Wagen fehlen") || info.includes("Ein Wagen fehlen")) {
             drawImageSafe('wagen_fehlen',2 ,x ,0);
+            
+            //Move to the right for next icon or scrolling text start
+            x += step;
         }
+
         if (info.includes("Kein gastronomisches Angebot")) {
             //Draw white filled box
             ctx.fillStyle = 'white';
             ctx.fillRect(x, 0, 100, 100);
-            const iconX = x; // Save starting x for this icon
             drawImageSafe('wagenreihung_gastronomie', 0.64, iconX + 30, 50, 'midnightblue');
-            // Draw red slash using saved iconX (over the icon box)
+            // Draw red slash (over the icon box)
             ctx.strokeStyle = 'red';
             ctx.lineWidth = 12;
             ctx.beginPath();
-            ctx.moveTo(iconX + 10, 90);
-            ctx.lineTo(iconX + 90, 10);
+            ctx.moveTo(x + 10, 90);
+            ctx.lineTo(x + 90, 10);
             ctx.stroke();
+
+            //Move to the right for next icon or scrolling text start
+            x += step;
         }
 
-         if (info.includes("Universal-WC fehlt")) {
+        if (info.includes("Universal-WC fehlt") || info.includes("Kein behinderdertengerechtes WC")) {
             //Draw white filled box
             ctx.fillStyle = 'white';
             ctx.fillRect(x, 0, 100, 100);
-            const iconX = x; // Save starting x for this icon
-            drawImageSafe('wagenreihung_rollstuhl', 0.22, iconX + 25, 50, 'midnightblue');
+            drawImageSafe('wagenreihung_rollstuhl', 0.22, x + 25, 50, 'midnightblue');
             ctx.fillStyle = 'midnightblue';
             ctx.font = '28px "Open Sans Condensed"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText("WC", iconX + 66, 75);
-            // Draw red slash using saved iconX (over the icon box)
+            ctx.fillText("WC", x + 66, 75);
+            // Draw red slash (over the icon box)
             ctx.strokeStyle = 'red';
             ctx.lineWidth = 12;
             ctx.beginPath();
-            ctx.moveTo(iconX + 10, 90);
-            ctx.lineTo(iconX + 90, 10);
+            ctx.moveTo(x + 10, 90);
+            ctx.lineTo(x + 90, 10);
             ctx.stroke();
+
+            //Move to the right for next icon or scrolling text start
+            x += step;
         }
-        const text_start_x = x;
+        
+        const x
+ = x;
         if (this.scroll_divs[zug_nr]) {
             this.scroll_divs[zug_nr].remove();
             delete this.scroll_divs[zug_nr];
@@ -786,9 +810,11 @@ class TrainDisplay {
             const canvas_rect = canvas.getBoundingClientRect();
             const scroll_div = document.createElement('div');
             scroll_div.classList.add('scroll-container');
-            scroll_div.style.left = `${canvas.offsetLeft + text_start_x}px`;
+            scroll_div.style.left = `${canvas.offsetLeft + x
+}px`;
             scroll_div.style.top = `${canvas.offsetTop}px`;
-            scroll_div.style.width = `${canvas.width - text_start_x}px`;
+            scroll_div.style.width = `${canvas.width - x
+}px`;
             scroll_div.style.height = '100px';
             canvas.parentElement.appendChild(scroll_div);
             this.scroll_divs[zug_nr] = scroll_div;
@@ -804,7 +830,9 @@ class TrainDisplay {
             const scroll_width = parseInt(scroll_div.style.width);
             
             ctx.fillStyle = 'white';
-            if (info !== "") ctx.fillRect(text_start_x, 0, canvas.width - text_start_x, 100);
+            if (info !== "") ctx.fillRect(x
+, 0, canvas.width - x
+, 100);
             
             if (text_width > scroll_width) {
                 let result = info + ' +++ ' + info + ' +++ ';
