@@ -1024,6 +1024,17 @@ const train_data = new TrainData();
 const train_display = new TrainDisplay(train_data);
 
 // Event listeners
+
+// Default departure time to current local time
+document.addEventListener("DOMContentLoaded", () => {
+  const departureTime = document.getElementById("departureTime");
+  if (departureTime) {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset()); // adjust for local timezone
+    departureTime.value = now.toISOString().slice(0, 16); // format YYYY-MM-DDTHH:mm
+  }
+});
+
 document.querySelectorAll('input[name="wahl"]').forEach(radio => {
     radio.addEventListener('change', () => {
         train_display.on_feature_button_change(radio.value);
