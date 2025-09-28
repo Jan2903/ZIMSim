@@ -223,14 +223,14 @@ class TrainDisplay {
 
     print_amenities(coach, x, ctx) {
         let img_key;
-        if (coach.has_amenity('f')) img_key = 'wagenreihung_fahrrad';
-        else if (coach.has_amenity('r')) img_key = 'wagenreihung_rollstuhl';
-        else if (coach.has_amenity('m')) img_key = 'wagenreihung_mehrzweck';
-        else if (coach.has_amenity('g')) img_key = 'wagenreihung_gastronomie';
+        let scale; // image scaling factor
+        if (coach.has_amenity('f')) img_key = 'wagenreihung_fahrrad', scale = 0.28;
+        else if (coach.has_amenity('r')) img_key = 'wagenreihung_rollstuhl', scale = 0.24;
+        else if (coach.has_amenity('m')) img_key = 'wagenreihung_mehrzweck', scale = 0.28;
+        else if (coach.has_amenity('g')) img_key = 'wagenreihung_gastronomie', scale = 0.32;
         const img = images[img_key];
         if (img && img.isLoaded && !img.isBroken) {
             try {
-                const scale = 0.28; // image scaling factor
                 ctx.drawImage(img, x + (coach.length / 2) - (img.width * scale / 2), this.y + 42 - (img.height * scale / 2), img.width * scale, img.height * scale);
             } catch (err) {
                 console.warn(`Failed to draw amenity image ${img_key}:`, err);
@@ -249,10 +249,11 @@ class TrainDisplay {
             const center = (start_pos + end_pos) / 2;
             const amenity = first.amenities;
             let img_key;
-            if (amenity === 'f') img_key = 'wagenreihung_fahrrad';
-            else if (amenity === 'r') img_key = 'wagenreihung_rollstuhl';
-            else if (amenity === 'm') img_key = 'wagenreihung_mehrzweck';
-            else if (amenity === 'g') img_key = 'wagenreihung_gastronomie';
+            let scale; // image scaling factor
+            if (amenity === 'f') img_key = 'wagenreihung_fahrrad', scale = 0.28;
+            else if (amenity === 'r') img_key = 'wagenreihung_rollstuhl', scale = 0.24;
+            else if (amenity === 'm') img_key = 'wagenreihung_mehrzweck', scale = 0.28;
+            else if (amenity === 'g') img_key = 'wagenreihung_gastronomie', scale = 0.32;
             const img = images[img_key];
             if (img && img.isLoaded && !img.isBroken) {
                 try {
@@ -261,7 +262,6 @@ class TrainDisplay {
                         if (last.coach_type === 'a') adj = 0;
                         else if (last.coach_type === 'e') adj = 0;
                     }
-                    const scale = 0.28; // image scaling factor
                     ctx.drawImage(img, center + adj - (img.width * scale / 2), this.y + 42 - (img.height * scale / 2), img.width * scale, img.height * scale);
                 } catch (err) {
                     console.warn(`Failed to draw compact amenity image ${img_key}:`, err);
@@ -747,12 +747,18 @@ class TrainDisplay {
             //Draw white filled box
             ctx.fillStyle = 'white';
             ctx.fillRect(x, 0, 100, 100);
-            //Draw H+ text
+            //Draw H text
             ctx.fillStyle = 'midnightblue';
             ctx.font = 'bold 68px "Open Sans Condensed"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText("H", x + 30, 60);
+            //Draw plus sign 
+            ctx.fillStyle = 'midnightblue';
+            ctx.font = 'bold 56px "Open Sans Condensed"';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText("+", x + 70, 36);
             //Move to the right for next icon or scrolling text start
             x += step;
         }
@@ -761,12 +767,18 @@ class TrainDisplay {
             //Draw white filled box
             ctx.fillStyle = 'white';
             ctx.fillRect(x, 0, 100, 100);
-            //Draw H- text
+            //Draw H text
             ctx.fillStyle = 'midnightblue';
             ctx.font = 'bold 68px "Open Sans Condensed"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText("H", x + 30, 60);
+            //Draw minus sign 
+            ctx.fillStyle = 'midnightblue';
+            ctx.font = 'bold 56px "Open Sans Condensed"';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText("-", x + 70, 36);
             //Move to the right for next icon or scrolling text start
             x += step;
         }
@@ -794,7 +806,6 @@ class TrainDisplay {
             ctx.moveTo(x + 10, 90);
             ctx.lineTo(x + 90, 10);
             ctx.stroke();
-
             //Move to the right for next icon or scrolling text start
             x += step;
         }
@@ -839,14 +850,13 @@ class TrainDisplay {
         }
 
         if (info.includes("Eingeschränkte Fahrradbeförderung")) {
-            //Draw white outline box
-            ctx.lineWidth = "4";
-            ctx.strokeStyle = 'white';
-            ctx.strokeRect(x + 2, 2, 96, 96); 
-            //Draw bicycle icon
-            drawImageSafe('wagenreihung_fahrrad',0.40 , x + 50, 66);
-            //Draw exclamation mark on the top right corner
+            //Draw white filled box
             ctx.fillStyle = 'white';
+            ctx.fillRect(x, 0, 100, 100);
+            //Draw bicycle icon
+            drawImageSafe('wagenreihung_fahrrad',0.40 , x + 50, 66, 'midnightblue');
+            //Draw exclamation mark on the top right corner
+            ctx.fillStyle = 'midnightblue';
             ctx.font = 'bold 56px "Open Sans Condensed"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
@@ -881,9 +891,9 @@ class TrainDisplay {
             const canvas_rect = canvas.getBoundingClientRect();
             const scroll_div = document.createElement('div');
             scroll_div.classList.add('scroll-container');
-            scroll_div.style.left = `${canvas.offsetLeft + x}px`;
+            scroll_div.style.left = `${canvas.offsetLeft + x + 2}px`;
             scroll_div.style.top = `${canvas.offsetTop}px`;
-            scroll_div.style.width = `${canvas.width - x}px`;
+            scroll_div.style.width = `${canvas.width - x - 2}px`;
             scroll_div.style.height = '100px';
             canvas.parentElement.appendChild(scroll_div);
             this.scroll_divs[zug_nr] = scroll_div;
