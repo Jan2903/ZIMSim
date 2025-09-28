@@ -391,7 +391,7 @@ class TrainDisplay {
             ctx.stroke();
         }
 
-        // Display "Gleiswechsel" notification
+        // Display track change notification
         if (gleiswechsel !== "0" && display_id === "display2_zug2_wagenreihung") {
             ctx.fillStyle = 'orange';
             ctx.fillRect(3, 0, 940, 258);
@@ -399,12 +399,12 @@ class TrainDisplay {
             ctx.font = '67px "Open Sans Condensed"';
             ctx.textAlign = 'left';
             ctx.textBaseline = 'middle';
-            ctx.fillText('Neues Gleis', 50, 40);
+            ctx.fillText('Neues Gleis', 50, 50);
             ctx.font = 'italic 67px "Open Sans Condensed"';
-            ctx.fillText('New Track', 50, 130);
-            ctx.font = '105px "Open Sans Condensed"';
+            ctx.fillText('New Track', 50, 125);
+            ctx.font = '128px "Open Sans Condensed"';
             ctx.textAlign = 'right';
-            ctx.fillText(gleiswechsel, 890, 60);
+            ctx.fillText(gleiswechsel, 920, 80);
             ctx.textAlign = 'left';
         } else {
             // Determine zug_nr based on display_id
@@ -618,7 +618,7 @@ class TrainDisplay {
                 ctx.font = '67px "Open Sans Condensed"';
                 ctx.fillText('Gleisänderung / ', 50, 55);
                 ctx.font = 'italic 67px "Open Sans Condensed"';
-                ctx.fillText('Track change', 420, 55);
+                ctx.fillText('Track change', 448, 55);
                 ctx.fillStyle = 'white';
                 ctx.fillRect(3, 100, 940, 700);
                 if (used_nr !== "") {
@@ -628,6 +628,7 @@ class TrainDisplay {
                     const text_width = ctx.measureText(used_nr).width;
                     const text_height = 75;
                     ctx.strokeStyle = 'midnightblue';
+                    ctx.lineWidth = 4;
                     ctx.beginPath();
                     ctx.roundRect(890 - text_width - 10, 200 - text_height / 2 - 10, text_width + 20, text_height + 10, 6);
                     ctx.stroke();
@@ -778,7 +779,7 @@ class TrainDisplay {
             ctx.font = 'bold 64px "Open Sans Condensed"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText("-", x + 60, 48);
+            ctx.fillText("-", x + 60, 36);
             //Move to the right for next icon or scrolling text start
             x += step;
         }
