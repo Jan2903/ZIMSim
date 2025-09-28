@@ -109,16 +109,20 @@ font-weight: 600;
 margin: 0;              /* reset inline spacing */
 }
 
-/* Text + number inputs */
+/* Text + number + datetime inputs */
 .settings-frame input[type="text"],
-.settings-frame input[type="number"] {
-background-color: white;
-color: black;
-border: none;
-padding: 5px;
-width: 200px;
-margin-top: 4px;        /* spacing between label text and field */
-border-radius: 3px;
+.settings-frame input[type="number"],
+.settings-frame input[type="datetime-local"] {
+  background-color: white;
+  color: black;
+  border: none;
+  padding: 5px;
+  margin-top: 4px;        /* spacing between label text and field */
+  border-radius: 3px;
+  width: auto;            /* let the input shrink/grow naturally */
+  min-width: 140px;       /* prevent it from collapsing too small */
+  max-width: 250px;       /* cap width for consistent layout */
+  box-sizing: border-box; /* include padding in width */
 }
 
 /* Radio + checkbox inline */
