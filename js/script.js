@@ -399,12 +399,12 @@ class TrainDisplay {
             ctx.font = '67px "Open Sans Condensed"';
             ctx.textAlign = 'left';
             ctx.textBaseline = 'middle';
-            ctx.fillText('Neues Gleis', 50, 50);
+            ctx.fillText('Neues Gleis', 50, 40);
             ctx.font = 'italic 67px "Open Sans Condensed"';
-            ctx.fillText('New Track', 50, 140);
-            ctx.font = '86px "Open Sans Condensed"';
+            ctx.fillText('New Track', 50, 130);
+            ctx.font = '105px "Open Sans Condensed"';
             ctx.textAlign = 'right';
-            ctx.fillText(gleiswechsel, 890, 80);
+            ctx.fillText(gleiswechsel, 890, 60);
             ctx.textAlign = 'left';
         } else {
             // Determine zug_nr based on display_id
@@ -611,27 +611,27 @@ class TrainDisplay {
             ctx.fillText(via, 56, 520);
             ctx.fillText(via2, 56, 620);
             ctx.fillText(via3, 56, 720);
-            if (gleiswechsel !== "0" && display_id === "display2_zug2") {//Gleichswechsel / Ausfall /Verkehrt heute ab
+            if (gleiswechsel !== "0" && display_id === "display2_zug2") {//Gleichswechsel / Ausfall / Verkehrt heute ab
                 ctx.fillStyle = 'orange';
                 ctx.fillRect(3, 0, 940, 100);
                 ctx.fillStyle = 'white';
                 ctx.font = '67px "Open Sans Condensed"';
-                ctx.fillText('Gleisänderung / ', 50, 50);
+                ctx.fillText('Gleisänderung / ', 50, 55);
                 ctx.font = 'italic 67px "Open Sans Condensed"';
-                ctx.fillText('Track change', 470, 50);
+                ctx.fillText('Track change', 420, 55);
                 ctx.fillStyle = 'white';
                 ctx.fillRect(3, 100, 940, 700);
                 if (used_nr !== "") {
-                    ctx.fillStyle = 'white';
+                    ctx.fillStyle = 'midnightblue';
                     ctx.font = '75px "Open Sans Condensed"';
                     ctx.textAlign = 'right';
                     const text_width = ctx.measureText(used_nr).width;
                     const text_height = 75;
-                    ctx.fillStyle = 'midnightblue';
+                    ctx.strokeStyle = 'midnightblue';
                     ctx.beginPath();
                     ctx.roundRect(890 - text_width - 10, 200 - text_height / 2 - 10, text_width + 20, text_height + 10, 6);
-                    ctx.fill();
-                    ctx.fillStyle = 'white';
+                    ctx.stroke();
+                    ctx.fillStyle = 'midnightblue';
                     ctx.fillText(used_nr, 890, 200);
                 }
                 ctx.textAlign = 'left';
@@ -755,10 +755,10 @@ class TrainDisplay {
             ctx.fillText("H", x + 30, 60);
             //Draw plus sign 
             ctx.fillStyle = 'midnightblue';
-            ctx.font = 'bold 56px "Open Sans Condensed"';
+            ctx.font = 'bold 64px "Open Sans Condensed"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText("+", x + 70, 36);
+            ctx.fillText("+", x + 65, 48);
             //Move to the right for next icon or scrolling text start
             x += step;
         }
@@ -775,10 +775,10 @@ class TrainDisplay {
             ctx.fillText("H", x + 30, 60);
             //Draw minus sign 
             ctx.fillStyle = 'midnightblue';
-            ctx.font = 'bold 56px "Open Sans Condensed"';
+            ctx.font = 'bold 64px "Open Sans Condensed"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText("-", x + 70, 36);
+            ctx.fillText("-", x + 60, 48);
             //Move to the right for next icon or scrolling text start
             x += step;
         }
