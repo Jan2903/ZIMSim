@@ -3,7 +3,7 @@ Simulation of a Deutsche Bahn (DB) train display (ZugInfoMonitor / ZIM)
 
 ## Current state
 
-- site live at <https://www.jan2903.github.io/ZIMSim>
+- site live at <https://jan2903.github.io/ZIMSim>
 - rendering of train details, scrolling texts, info icons/pictograms and train formations
 - customize all train details
 - export and import train data in JSON format
