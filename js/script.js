@@ -887,9 +887,9 @@ class TrainDisplay {
             this.scroll_divs[zug_nr].remove();
             delete this.scroll_divs[zug_nr];
         }
+ 
         if (info !== "" && gleiswechsel === "0") {
-            const mainFrame = document.querySelector('.main-frame');
-            const canvas_rect = canvas.getBoundingClientRect();
+            //Create scrolling text container
             const scroll_div = document.createElement('div');
             scroll_div.classList.add('scroll-container');
             scroll_div.style.left = `${canvas.offsetLeft + x + 5}px`;
@@ -898,38 +898,41 @@ class TrainDisplay {
             scroll_div.style.height = '100px';
             canvas.parentElement.appendChild(scroll_div);
             this.scroll_divs[zug_nr] = scroll_div;
+            //Create inner scrolling text
             const inner = document.createElement('div');
             inner.classList.add('scroll-text');
             inner.style.color = 'midnightblue';
             inner.style.font = '67px "Open Sans Condensed"';
             inner.style.lineHeight = '100px';
+            
             const temp_canvas = document.createElement('canvas');
             const temp_ctx = temp_canvas.getContext('2d');
             temp_ctx.font = inner.style.font;
             const text_width = temp_ctx.measureText(info).width;
             const scroll_width = parseInt(scroll_div.style.width);
-            
+
             ctx.fillStyle = 'white';
             if (info !== "") ctx.fillRect(x, 0, canvas.width - x, 100);
-            
+
             if (text_width > scroll_width) {
                 let result = info + ' +++ ' + info + ' +++ ';
+                // Repeat enough to fill at least twice the scroll width for smooth looping
                 for (let i = 0; i < Math.floor((scroll_width * 2) / text_width); i++) {
-                    result += info + ' +++ ';
+                result += info + ' +++ ';
                 }
                 inner.textContent = result;
                 // Calculate animation duration for consistent speed
-                const total_text_width = temp_ctx.measureText(result).width;
+                const padding = 10; 
+                const total_text_width = temp_ctx.measureText(result).width + padding; // Include padding
                 const scroll_speed = 150; // Pixels per second
                 const duration = total_text_width / scroll_speed;
                 inner.style.setProperty('--scroll-duration', `${duration}s`);
             } else {
                 inner.textContent = info;
                 inner.style.animation = 'none';
-                inner.style.paddingLeft = '5px';
+                inner.style.paddingLeft = '10px';
             }
             scroll_div.appendChild(inner);
-            canvas.parentElement.appendChild(scroll_div);
             this.scroll_divs[zug_nr] = scroll_div;
         }
     }
