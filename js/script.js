@@ -95,11 +95,11 @@ class TrainDisplay {
         ctx.lineWidth = 6;
         ctx.beginPath();
         if (richtung === 0) {
-            ctx.moveTo(x, this.y + 40); ctx.lineTo(x + 20, this.y + 25);
-            ctx.moveTo(x, this.y + 40); ctx.lineTo(x + 30, this.y + 40);
-            ctx.moveTo(x, this.y + 40); ctx.lineTo(x + 20, this.y + 55);
+            ctx.moveTo(x, this.y + 60); ctx.lineTo(x + 20, this.y + 45);
+            ctx.moveTo(x, this.y + 60); ctx.lineTo(x + 30, this.y + 60);
+            ctx.moveTo(x, this.y + 60); ctx.lineTo(x + 20, this.y + 75);
         } else {
-            ctx.moveTo(x + 30, this.y + 40); ctx.lineTo(x + 10, this.y + 25);
+            ctx.moveTo(x + 30, this.y + 4); ctx.lineTo(x + 10, this.y + 25);
             ctx.moveTo(x + 30, this.y + 40); ctx.lineTo(x, this.y + 40);
             ctx.moveTo(x + 30, this.y + 40); ctx.lineTo(x + 10, this.y + 55);
         }
@@ -112,7 +112,7 @@ class TrainDisplay {
         ctx.beginPath();
         ctx.moveTo(x, this.y + 83); ctx.lineTo(x, this.y + 20);
         ctx.moveTo(x, this.y + 20); ctx.lineTo(x + 20, this.y);
-        ctx.moveTo(x + 29, this.y); ctx.lineTo(x + coach.length, this.y);
+        ctx.moveTo(x + 20, this.y); ctx.lineTo(x + coach.length, this.y);
         ctx.moveTo(x, this.y + 80); ctx.lineTo(x + coach.length, this.y + 80);
         ctx.stroke();
     }
