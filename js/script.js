@@ -95,13 +95,13 @@ class TrainDisplay {
         ctx.lineWidth = 6;
         ctx.beginPath();
         if (richtung === 0) {
-            ctx.moveTo(x, this.y + 60); ctx.lineTo(x + 20, this.y + 45);
-            ctx.moveTo(x, this.y + 60); ctx.lineTo(x + 30, this.y + 60);
-            ctx.moveTo(x, this.y + 60); ctx.lineTo(x + 20, this.y + 75);
+            ctx.moveTo(x, this.y + 55); ctx.lineTo(x + 15, this.y + 40);
+            ctx.moveTo(x, this.y + 55); ctx.lineTo(x + 30, this.y + 55);
+            ctx.moveTo(x, this.y + 55); ctx.lineTo(x + 15, this.y + 70);
         } else {
-            ctx.moveTo(x + 30, this.y + 4); ctx.lineTo(x + 10, this.y + 25);
-            ctx.moveTo(x + 30, this.y + 40); ctx.lineTo(x, this.y + 40);
-            ctx.moveTo(x + 30, this.y + 40); ctx.lineTo(x + 10, this.y + 55);
+            ctx.moveTo(x + 30, this.y + 55); ctx.lineTo(x + 15, this.y + 40);
+            ctx.moveTo(x + 30, this.y + 55); ctx.lineTo(x, this.y + 55);
+            ctx.moveTo(x + 30, this.y + 55); ctx.lineTo(x + 15, this.y + 70);
         }
         ctx.stroke();
     }
