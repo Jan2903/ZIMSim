@@ -892,9 +892,9 @@ class TrainDisplay {
             const canvas_rect = canvas.getBoundingClientRect();
             const scroll_div = document.createElement('div');
             scroll_div.classList.add('scroll-container');
-            scroll_div.style.left = `${canvas.offsetLeft + x + 2}px`;
+            scroll_div.style.left = `${canvas.offsetLeft + x + 5}px`;
             scroll_div.style.top = `${canvas.offsetTop}px`;
-            scroll_div.style.width = `${canvas.width - x - 2}px`;
+            scroll_div.style.width = `${canvas.width - x - 5}px`;
             scroll_div.style.height = '100px';
             canvas.parentElement.appendChild(scroll_div);
             this.scroll_divs[zug_nr] = scroll_div;
@@ -926,7 +926,7 @@ class TrainDisplay {
             } else {
                 inner.textContent = info;
                 inner.style.animation = 'none';
-                inner.style.paddingLeft = '10px';
+                inner.style.paddingLeft = '5px';
             }
             scroll_div.appendChild(inner);
             canvas.parentElement.appendChild(scroll_div);
@@ -1344,5 +1344,6 @@ function resizeDisplay() {
 window.addEventListener('resize', resizeDisplay);
 
 resizeDisplay();
+
 
 
