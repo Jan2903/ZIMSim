@@ -92,16 +92,16 @@ class TrainDisplay {
 
     print_direction(richtung, x, ctx) {
         ctx.strokeStyle = 'white';
-        ctx.lineWidth = 4;
+        ctx.lineWidth = 6;
         ctx.beginPath();
         if (richtung === 0) {
-            ctx.moveTo(x, this.y + 40); ctx.lineTo(x + 20, this.y + 20);
+            ctx.moveTo(x, this.y + 40); ctx.lineTo(x + 20, this.y + 25);
             ctx.moveTo(x, this.y + 40); ctx.lineTo(x + 30, this.y + 40);
-            ctx.moveTo(x, this.y + 40); ctx.lineTo(x + 20, this.y + 60);
+            ctx.moveTo(x, this.y + 40); ctx.lineTo(x + 20, this.y + 55);
         } else {
-            ctx.moveTo(x + 30, this.y + 40); ctx.lineTo(x + 10, this.y + 20);
+            ctx.moveTo(x + 30, this.y + 40); ctx.lineTo(x + 10, this.y + 25);
             ctx.moveTo(x + 30, this.y + 40); ctx.lineTo(x, this.y + 40);
-            ctx.moveTo(x + 30, this.y + 40); ctx.lineTo(x + 10, this.y + 60);
+            ctx.moveTo(x + 30, this.y + 40); ctx.lineTo(x + 10, this.y + 55);
         }
         ctx.stroke();
     }
@@ -111,8 +111,8 @@ class TrainDisplay {
         ctx.lineWidth = 6;
         ctx.beginPath();
         ctx.moveTo(x, this.y + 83); ctx.lineTo(x, this.y + 20);
-        ctx.moveTo(x, this.y + 20); ctx.lineTo(x + 12, this.y);
-        ctx.moveTo(x + 12, this.y); ctx.lineTo(x + coach.length, this.y);
+        ctx.moveTo(x, this.y + 20); ctx.lineTo(x + 20, this.y);
+        ctx.moveTo(x + 29, this.y); ctx.lineTo(x + coach.length, this.y);
         ctx.moveTo(x, this.y + 80); ctx.lineTo(x + coach.length, this.y + 80);
         ctx.stroke();
     }
@@ -135,8 +135,8 @@ class TrainDisplay {
         ctx.strokeStyle = 'white';
         ctx.lineWidth = 6;
         ctx.beginPath();
-        ctx.moveTo(x, this.y); ctx.lineTo(x + coach.length - 12, this.y);
-        ctx.moveTo(x + coach.length - 12, this.y); ctx.lineTo(x + coach.length, this.y + 20);
+        ctx.moveTo(x, this.y); ctx.lineTo(x + coach.length - 20, this.y);
+        ctx.moveTo(x + coach.length - 20, this.y); ctx.lineTo(x + coach.length, this.y + 20);
         ctx.moveTo(x + coach.length, this.y + 20); ctx.lineTo(x + coach.length, this.y + 83);
         ctx.moveTo(x, this.y + 80); ctx.lineTo(x + coach.length, this.y + 80);
         ctx.stroke();
