@@ -111,7 +111,7 @@ class TrainDisplay {
         ctx.lineWidth = 6;
         ctx.beginPath();
         ctx.moveTo(x, this.y + 83); ctx.lineTo(x, this.y + 20);
-        ctx.moveTo(x, this.y + 20); ctx.lineTo(x + 20, this.y);
+        ctx.moveTo(x - 1, this.y + 21); ctx.lineTo(x + 21, this.y - 1);
         ctx.moveTo(x + 20, this.y); ctx.lineTo(x + coach.length, this.y);
         ctx.moveTo(x, this.y + 80); ctx.lineTo(x + coach.length, this.y + 80);
         ctx.stroke();
@@ -124,9 +124,9 @@ class TrainDisplay {
         ctx.moveTo(x, this.y); ctx.lineTo(x + coach.length, this.y);
         ctx.moveTo(x, this.y + 80); ctx.lineTo(x + coach.length, this.y + 80);
         if (coach.coach_type === 'ma') {
-            ctx.moveTo(x, this.y - 1); ctx.lineTo(x, this.y + 83);
+            ctx.moveTo(x, this.y - 3); ctx.lineTo(x, this.y + 83);
         } else if (coach.coach_type === 'me') {
-            ctx.moveTo(x + coach.length, this.y - 1); ctx.lineTo(x + coach.length, this.y + 83);
+            ctx.moveTo(x + coach.length, this.y - 3); ctx.lineTo(x + coach.length, this.y + 83);
         }
         ctx.stroke();
     }
@@ -136,24 +136,26 @@ class TrainDisplay {
         ctx.lineWidth = 6;
         ctx.beginPath();
         ctx.moveTo(x, this.y); ctx.lineTo(x + coach.length - 20, this.y);
-        ctx.moveTo(x + coach.length - 20, this.y); ctx.lineTo(x + coach.length, this.y + 20);
+        ctx.moveTo(x + coach.length - 21, this.y - 1); ctx.lineTo(x + coach.length + 1, this.y + 21);
         ctx.moveTo(x + coach.length, this.y + 20); ctx.lineTo(x + coach.length, this.y + 83);
         ctx.moveTo(x, this.y + 80); ctx.lineTo(x + coach.length, this.y + 80);
         ctx.stroke();
     }
 
     print_locomotive(coach, x, ctx) {
-        ctx.strokeStyle = 'white';
-        ctx.lineWidth = 6;
-        ctx.beginPath();
-        ctx.moveTo(x, this.y + 83); ctx.lineTo(x, this.y + 32);
-        ctx.lineTo(x + 8, this.y + 16);
-        ctx.lineTo(x + coach.length - 8, this.y + 16);
-        ctx.lineTo(x + coach.length, this.y + 32);
-        ctx.lineTo(x + coach.length, this.y + 83);
-        ctx.moveTo(x, this.y + 80); ctx.lineTo(x + coach.length, this.y + 80);
-        ctx.stroke();
-    }
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(x, this.y + 83); // Left vertical start
+    ctx.lineTo(x, this.y + 40); // Left vertical up
+    ctx.arcTo(x, this.y + 10, x + 30, this.y + 10, 20); // Left arc
+    ctx.lineTo(x + coach.length - 30, this.y + 10); // Top line
+    ctx.arcTo(x + coach.length, this.y + 10, x + coach.length, this.y + 40, 20); // Right arc
+    ctx.lineTo(x + coach.length, this.y + 83); // Right vertical down
+    ctx.moveTo(x, this.y + 80); // Bottom line start
+    ctx.lineTo(x + coach.length, this.y + 80); // Bottom line
+    ctx.stroke();
+}
 
     print_first_class(coach, x, ctx, fullScreen) {
         if (coach.is_first_class()) {
