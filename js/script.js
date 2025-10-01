@@ -904,7 +904,7 @@ class TrainDisplay {
             inner.style.color = 'midnightblue';
             inner.style.font = '67px "Open Sans Condensed"';
             inner.style.lineHeight = '100px';
-            
+
             const temp_canvas = document.createElement('canvas');
             const temp_ctx = temp_canvas.getContext('2d');
             temp_ctx.font = inner.style.font;
@@ -916,15 +916,14 @@ class TrainDisplay {
 
             if (text_width > scroll_width) {
                 let result = info + ' +++ ' + info + ' +++ ';
-                // Repeat enough to fill at least twice the scroll width for smooth looping
-                for (let i = 0; i < Math.floor((scroll_width * 2) / text_width); i++) {
+                // Ensure enough repetitions for smooth looping (at least 2x scroll_width)
+                for (let i = 0; i < Math.ceil((scroll_width * 2) / text_width); i++) {
                 result += info + ' +++ ';
                 }
                 inner.textContent = result;
-                // Calculate animation duration for consistent speed
-                const padding = 10; 
-                const total_text_width = temp_ctx.measureText(result).width + padding; // Include padding
-                const scroll_speed = 150; // Pixels per second
+                // Calculate duration for consistent speed
+                const total_text_width = temp_ctx.measureText(result).width;
+                const scroll_speed = 100;
                 const duration = total_text_width / scroll_speed;
                 inner.style.setProperty('--scroll-duration', `${duration}s`);
             } else {
