@@ -976,12 +976,7 @@ class TrainDisplay {
         const direction = this.train_data.zug_daten[zug_nr].Richtung;
         const gleiswechsel = this.train_data.zug_daten[zug_nr].Gleiswechsel || "0";
         const skalieren = this.train_data.zug_daten[zug_nr].Skalieren;
-        if (coaches.length > 0) {
-            this.print_coach_sequence(coaches, display_id, fullScreen, direction, platform_length, train_start, skalieren, gleiswechsel);
-        } else {
-            const ctx = document.getElementById(display_id).getContext('2d');
-            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-        }
+        this.print_coach_sequence(coaches, display_id, fullScreen, direction, platform_length, train_start, skalieren, gleiswechsel);
     }
 
     update_train_display(zug_nr, info_canvas_id, wagen_canvas_id, fullScreen) {
