@@ -26,6 +26,107 @@
     </div>
 
     <div class="settings-container">
+        <div class="settings-frame" id="train_selection">
+            <h3>Zug</h3>
+            <div class="form-row">
+                <label><input type="radio" name="zug_select" value="1" checked> Zug 1</label>
+                <label><input type="radio" name="zug_select" value="2"> Zug 2</label>
+                <label><input type="radio" name="zug_select" value="3"> Zug 3</label>
+                <label><input type="radio" name="zug_select" value="3"> Zug 4</label>
+                <label><input type="radio" name="zug_select" value="3"> Zug 5</label>
+                <label><input type="radio" name="zug_select" value="3"> Zug 6</label>
+            </div>
+        </div>
+        <div class="settings-frame" id="zug1_settings">
+            <div class="form-row">
+                <label>Linie/Nummer: <input type="text" class="zug_entry" data-zug="1" data-field="Zugnummer"></label>
+                <label>Ziel: <input type="text" class="zug_entry" data-zug="1" data-field="Ziel"></label>
+                <label>Zeit: <input type="text" class="zug_entry" data-zug="1" data-field="Abfahrt"></label>
+                <label>Abw.: <input type="text" class="zug_entry" data-zug="1" data-field="Abweichend"></label>
+                <label>Informationen: <input type="text" class="zug_entry" data-zug="1" data-field="Informationen"></label>
+                <label>Via-Halte 1: <input type="text" class="zug_entry" data-zug="1" data-field="Via-Halte 1"></label>
+                <label>Via-Halte 2: <input type="text" class="zug_entry" data-zug="1" data-field="Via-Halte 2"></label>
+            </div>
+            <div class="form-row">
+                <label class="radio-group">Richtung:
+                    <div class="options">
+                        <label><input type="radio" name="richtung1" value="0" class="richtung_radio" data-zug="1"> Links</label>
+                        <label><input type="radio" name="richtung1" value="1" checked class="richtung_radio" data-zug="1"> Rechts</label>
+                    </div>
+                </label>
+                <label>Bahnsteiglänge: <input type="text" class="zug_entry" data-zug="1" data-field="PlatformLength" value="420"></label>
+                <label>Startmeter: <input type="text" class="zug_entry" data-zug="1" data-field="TrainStart" value="0"></label>
+                <label>Skalieren: <input type="checkbox" class="zug_checkbox" data-zug="1" data-field="Skalieren"></label>
+                <label>Zugteilung: <input type="checkbox" class="zug_checkbox" data-zug="1" data-field="Zugteilung"></label>
+
+            </div>
+            <div class="form-row">
+                <button class="export_formation" data-zug="1">Wagenreihung exportieren</button>
+                <button class="import_formation" data-zug="1">Wagenreihung importieren</button>
+            </div>
+        </div>
+        <div class="settings-frame hidden" id="zug2_settings">
+            <div class="form-row">
+                <label>Linie/Nummer: <input type="text" class="zug_entry" data-zug="2" data-field="Zugnummer"></label>
+                <label>Ziel: <input type="text" class="zug_entry" data-zug="2" data-field="Ziel"></label>
+                <label>Zeit: <input type="text" class="zug_entry" data-zug="2" data-field="Abfahrt"></label>
+                <label>Abw.: <input type="text" class="zug_entry" data-zug="2" data-field="Abweichend"></label>
+                <label>Informationen: <input type="text" class="zug_entry" data-zug="2" data-field="Informationen"></label>
+            </div>
+            <div class="form-row">
+                <label>Via-Halte 1: <input type="text" class="zug_entry" data-zug="2" data-field="Via-Halte 1 Small"></label>
+                <label>Via-Halte 2: <input type="text" class="zug_entry" data-zug="2" data-field="Via-Halte 2 Small"></label>
+                <label>Via-Halte 3: <input type="text" class="zug_entry" data-zug="2" data-field="Via-Halte 3 Small"></label>
+            </div>
+            <div class="form-row">
+                <label class="radio-group">Richtung:
+                    <div class="options">
+                        <label><input type="radio" name="richtung1" value="0" class="richtung_radio" data-zug="2"> Links</label>
+                        <label><input type="radio" name="richtung1" value="1" checked class="richtung_radio" data-zug="2"> Rechts</label>
+                    </div>
+                </label>
+                <label>Bahnsteiglänge: <input type="text" class="zug_entry" data-zug="2" data-field="PlatformLength" value="420"></label>
+                <label>Startmeter: <input type="text" class="zug_entry" data-zug="2" data-field="TrainStart" value="0"></label>
+                <label>Skalieren: <input type="checkbox" class="zug_checkbox" data-zug="2" data-field="Skalieren"></label>
+                <label>Zugteilung: <input type="checkbox" class="zug_checkbox" data-zug="2" data-field="Zugteilung"></label>
+
+            </div>
+            <div class="form-row">
+                <button class="export_formation" data-zug="2">Wagenreihung exportieren</button>
+                <button class="import_formation" data-zug="2">Wagenreihung importieren</button>
+            </div>
+        </div>
+        <div class="settings-frame hidden" id="zug3_settings">
+            <div class="form-row">
+                <label>Linie/Nummer: <input type="text" class="zug_entry" data-zug="3" data-field="Zugnummer"></label>
+                <label>Ziel: <input type="text" class="zug_entry" data-zug="3" data-field="Ziel"></label>
+                <label>Zeit: <input type="text" class="zug_entry" data-zug="3" data-field="Abfahrt"></label>
+                <label>Abw.: <input type="text" class="zug_entry" data-zug="3" data-field="Abweichend"></label>
+                <label>Informationen: <input type="text" class="zug_entry" data-zug="3" data-field="Informationen"></label>
+            </div>
+            <div class="form-row">
+                <label>Via-Halte 1: <input type="text" class="zug_entry" data-zug="3" data-field="Via-Halte 1 Small"></label>
+                <label>Via-Halte 2: <input type="text" class="zug_entry" data-zug="3" data-field="Via-Halte 2 Small"></label>
+                <label>Via-Halte 3: <input type="text" class="zug_entry" data-zug="3" data-field="Via-Halte 3 Small"></label>
+            </div>
+            <div class="form-row">
+                <label class="radio-group">Richtung:
+                    <div class="options">
+                        <label><input type="radio" name="richtung1" value="0" class="richtung_radio" data-zug="3"> Links</label>
+                        <label><input type="radio" name="richtung1" value="1" checked class="richtung_radio" data-zug="3"> Rechts</label>
+                    </div>
+                </label>
+                <label>Bahnsteiglänge: <input type="text" class="zug_entry" data-zug="3" data-field="PlatformLength" value="420"></label>
+                <label>Startmeter: <input type="text" class="zug_entry" data-zug="3" data-field="TrainStart" value="0"></label>
+                <label>Skalieren: <input type="checkbox" class="zug_checkbox" data-zug="3" data-field="Skalieren"></label>
+                <label>Zugteilung: <input type="checkbox" class="zug_checkbox" data-zug="3" data-field="Zugteilung"></label>
+                <label>Gleiswechsel: <input type="text" class="zug_entry" data-zug="3" data-field="Gleiswechsel" value="0"></label>
+            </div>
+            <div class="form-row">
+                <button class="export_formation" data-zug="3">Wagenreihung exportieren</button>
+                <button class="import_formation" data-zug="3">Wagenreihung importieren</button>
+            </div>
+        </div>
         <div class="settings-frame" id="frame_links_oben">
             <h3>Wagenreihung</h3>
             <div class="form-row">
@@ -39,102 +140,11 @@
                 <label>Bahnhof/Station: <input type="text" id="entry_stop_name"></label>
                 <label>Gleis: <input type="text" id="entry_gleis"></label>
                 <label>Zeit: <input type="datetime-local" id="departureTime" name="departureTime"></label>
-                <label>Bahnsteiglänge: <input type="text" id="entry_bahnsteiglaenge" value="420"></label>          
-            </div>
-            <h3>Datenquelle</h3>
-            <div class="form-row">
-                <label><input type="radio" name="data_source" value="xml" checked> Manuell</label>
-                <label><input type="radio" name="data_source" value="json"> Echtzeit</label>
+                <label><input type="checkbox" id="abfahrten_checkbox"> Abfahrten</label>
+                <label><input type="checkbox" id="ankuenfte_checkbox"> Ankünfte</label>
                 <button id="fetch_data_btn">Daten abrufen</button>
                 <button id="export_all_btn">Exportieren</button>
                 <button id="import_all_btn">Importieren</button>
-            </div>
-        </div>
-        <div class="settings-frame" id="zug1_settings">
-            <h3>Daten Zug 1</h3>
-            <div class="form-row">
-                <label>Zuglinie/Zugnummer: <input type="text" class="zug_entry" data-zug="1" data-field="Zugnummer"></label>
-                <label>Abfahrt: <input type="text" class="zug_entry" data-zug="1" data-field="Abfahrt"></label>
-                <label>Abweichend: <input type="text" class="zug_entry" data-zug="1" data-field="Abweichend"></label>
-                <label>Informationen: <input type="text" class="zug_entry" data-zug="1" data-field="Informationen"></label>
-            </div>
-            <div class="form-row">
-                <label>Ziel: <input type="text" class="zug_entry" data-zug="1" data-field="Ziel"></label>
-                <label>Via-Halte 1: <input type="text" class="zug_entry" data-zug="1" data-field="Via-Halte 1"></label>
-                <label>Via-Halte 2: <input type="text" class="zug_entry" data-zug="1" data-field="Via-Halte 2"></label>
-            </div>
-            <div class="form-row">
-                <label class="radio-group">Richtung:
-                    <div class="options">
-                        <label><input type="radio" name="richtung1" value="0" class="richtung_radio" data-zug="1"> Links</label>
-                        <label><input type="radio" name="richtung1" value="1" checked class="richtung_radio" data-zug="1"> Rechts</label>
-                    </div>
-                </label>
-                <label>Startmeter: <input type="text" class="zug_entry" data-zug="1" data-field="TrainStart" value="0"></label>
-                <label>Skalieren: <input type="checkbox" class="zug_checkbox" data-zug="1" data-field="Skalieren"></label>
-            </div>
-            <div class="form-row">
-                <button class="export_formation" data-zug="1">Wagenreihung exportieren</button>
-                <button class="import_formation" data-zug="1">Wagenreihung importieren</button>
-            </div>
-        </div>
-        <div class="settings-frame" id="zug2_settings">
-            <h3>Daten Zug 2</h3>
-            <div class="form-row">
-                <label>Zuglinie/Zugnummer: <input type="text" class="zug_entry" data-zug="2" data-field="Zugnummer"></label>
-                <label>Abfahrt: <input type="text" class="zug_entry" data-zug="2" data-field="Abfahrt"></label>
-                <label>Abweichend: <input type="text" class="zug_entry" data-zug="2" data-field="Abweichend"></label>
-                <label>Informationen: <input type="text" class="zug_entry" data-zug="2" data-field="Informationen"></label>
-            </div>
-            <div class="form-row">
-                <label>Ziel: <input type="text" class="zug_entry" data-zug="2" data-field="Ziel"></label>
-                <label>Via-Halte 1: <input type="text" class="zug_entry" data-zug="2" data-field="Via-Halte 1 Small"></label>
-                <label>Via-Halte 2: <input type="text" class="zug_entry" data-zug="2" data-field="Via-Halte 2 Small"></label>
-                <label>Via-Halte 3: <input type="text" class="zug_entry" data-zug="2" data-field="Via-Halte 3 Small"></label>
-            </div>
-            <div class="form-row">
-                <label class="radio-group">Richtung:
-                    <div class="options">
-                        <label><input type="radio" name="richtung1" value="0" class="richtung_radio" data-zug="2"> Links</label>
-                        <label><input type="radio" name="richtung1" value="1" checked class="richtung_radio" data-zug="2"> Rechts</label>
-                    </div>
-                </label>
-                <label>Startmeter: <input type="text" class="zug_entry" data-zug="2" data-field="TrainStart" value="0"></label>
-                <label>Skalieren: <input type="checkbox" class="zug_checkbox" data-zug="2" data-field="Skalieren"></label>
-            </div>
-            <div class="form-row">
-                <button class="export_formation" data-zug="2">Wagenreihung exportieren</button>
-                <button class="import_formation" data-zug="2">Wagenreihung importieren</button>
-            </div>
-        </div>
-        <div class="settings-frame" id="zug3_settings">
-            <h3>Daten Zug 3</h3>
-            <div class="form-row">
-                <label>Zuglinie/Zugnummer: <input type="text" class="zug_entry" data-zug="3" data-field="Zugnummer"></label>
-                <label>Abfahrt: <input type="text" class="zug_entry" data-zug="3" data-field="Abfahrt"></label>
-                <label>Abweichend: <input type="text" class="zug_entry" data-zug="3" data-field="Abweichend"></label>
-                <label>Informationen: <input type="text" class="zug_entry" data-zug="3" data-field="Informationen"></label>
-            </div>
-            <div class="form-row">
-                <label>Ziel: <input type="text" class="zug_entry" data-zug="3" data-field="Ziel"></label>
-                <label>Via-Halte 1: <input type="text" class="zug_entry" data-zug="3" data-field="Via-Halte 1 Small"></label>
-                <label>Via-Halte 2: <input type="text" class="zug_entry" data-zug="3" data-field="Via-Halte 2 Small"></label>
-                <label>Via-Halte 3: <input type="text" class="zug_entry" data-zug="3" data-field="Via-Halte 3 Small"></label>
-            </div>
-            <div class="form-row">
-                <label class="radio-group">Richtung:
-                    <div class="options">
-                        <label><input type="radio" name="richtung1" value="0" class="richtung_radio" data-zug="3"> Links</label>
-                        <label><input type="radio" name="richtung1" value="1" checked class="richtung_radio" data-zug="3"> Rechts</label>
-                    </div>
-                </label>
-                <label>Startmeter: <input type="text" class="zug_entry" data-zug="3" data-field="TrainStart" value="0"></label>
-                <label>Skalieren: <input type="checkbox" class="zug_checkbox" data-zug="3" data-field="Skalieren"></label>
-                <label>Gleiswechsel: <input type="text" class="zug_entry" data-zug="3" data-field="Gleiswechsel" value="0"></label>
-            </div>
-            <div class="form-row">
-                <button class="export_formation" data-zug="3">Wagenreihung exportieren</button>
-                <button class="import_formation" data-zug="3">Wagenreihung importieren</button>
             </div>
         </div>
     </div>

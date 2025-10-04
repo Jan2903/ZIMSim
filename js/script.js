@@ -1078,14 +1078,22 @@ document.querySelectorAll('.zug_checkbox').forEach(checkbox => {
     });
 });
 
-document.getElementById('entry_bahnsteiglaenge').addEventListener('input', (e) => {
-    for (let zug in train_data.zug_daten) {
-        if (!train_data.zug_daten[zug]) {
-            train_data.initializeZugDaten();
-        }
+document.querySelectorAll('.zug_entry[data-field="PlatformLength"]').forEach(input => {
+    input.addEventListener('input', (e) => {
+        const zug = parseInt(e.target.dataset.zug);
         train_data.zug_daten[zug].PlatformLength = parseFloat(e.target.value) || 420;
-    }
-    train_display.update_all_displays();
+        train_display.update_all_displays();
+    });
+});
+
+document.querySelectorAll('input[name="zug_select"]').forEach(radio => {
+    radio.addEventListener('change', (e) => {
+        const selectedZug = e.target.value;
+        document.querySelectorAll('.settings-frame[id^="zug"]').forEach(frame => {
+            frame.classList.add('hidden');
+        });
+        document.getElementById(`zug${selectedZug}_settings`).classList.remove('hidden');
+    });
 });
 
 document.getElementById('entry_stop_name').addEventListener('input', (e) => {
@@ -1096,6 +1104,17 @@ document.getElementById('entry_stop_name').addEventListener('input', (e) => {
 document.getElementById('entry_gleis').addEventListener('input', (e) => {
     train_data.current_platform = e.target.value;
     train_display.update_all_displays();
+});
+
+let abfahrten = false;
+let ankuenfte = false;
+document.getElementById('abfahrten_checkbox').addEventListener('change', (e) => {
+    abfahrten = e.target.checked;
+    // For future API use
+});
+document.getElementById('ankuenfte_checkbox').addEventListener('change', (e) => {
+    ankuenfte = e.target.checked;
+    // For future API use
 });
 
 document.getElementById('import_all_btn').addEventListener('click', () => {
