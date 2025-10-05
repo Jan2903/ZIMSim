@@ -76,6 +76,11 @@ transform-origin: top center;
     gap: 10px; /* Reduced gap for smaller screens */
     justify-content: flex-start;
     align-items: flex-end; /* Align bottoms for better look */
+    margin-bottom: 12px; /* Increased from 8px */
+}
+
+.form-row:last-child {
+    margin-bottom: 0; /* Remove margin from last form-row in each frame */
 }
 
 /* Media queries for responsiveness */
@@ -133,7 +138,7 @@ background-color: midnightblue;
 color: white;
 padding: 10px;
 width: auto;
-margin-bottom: 20px;
+margin-bottom: 5px; /* Reduced from 10px */
 }
 
 .settings-frame h3 {
@@ -149,7 +154,6 @@ font-size: 1.1rem;
 display: flex;
 flex-wrap: wrap;
 gap: 20px;              /* spacing between fields */
-margin-bottom: 12px;
 }
 
 /* Labels stack text above input */
@@ -175,6 +179,11 @@ margin: 0;              /* reset inline spacing */
   min-width: 140px;       /* prevent it from collapsing too small */
   max-width: 250px;       /* cap width for consistent layout */
   box-sizing: border-box; /* include padding in width */
+}
+
+.settings-frame input.short-input {
+  min-width: 60px; 
+  max-width: 80px; /* Reduced width for specific short inputs */
 }
 
 /* Radio + checkbox inline */

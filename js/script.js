@@ -1048,9 +1048,9 @@ document.querySelectorAll('.zug_entry').forEach(input => {
             train_data.initializeZugDaten();
         }
         train_data.zug_daten[zug][field] = e.target.value;
-        if (field === "Zugnummer" && !train_data.zug_daten[zug].Zugnummer_kurz) {
+        if (field === "Zugnummer") {
             train_data.zug_daten[zug].Zugnummer_kurz = e.target.value;
-        }
+       }
         train_display.update_all_displays();
     });
 });
