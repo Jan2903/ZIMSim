@@ -389,14 +389,14 @@ class TrainDisplay {
             ctx.strokeStyle = 'white';
             ctx.lineWidth = 3;
             ctx.beginPath();
-            ctx.moveTo(0, 0); ctx.lineTo(0, 258);
+            ctx.moveTo(0, 0); ctx.lineTo(0, 280);
             ctx.stroke();
         }
 
         // Display track change notification
         if (gleiswechsel !== "0" && display_id === "display2_zug2_wagenreihung") {
             ctx.fillStyle = 'orange';
-            ctx.fillRect(3, 0, 940, 258);
+            ctx.fillRect(3, 0, 960, 280);
             ctx.fillStyle = 'white';
             ctx.font = '67px "Open Sans Condensed"';
             ctx.textAlign = 'left';
@@ -428,7 +428,7 @@ class TrainDisplay {
 
             //Scaling and positioning calculations
             const factor = fullScreen ? 2 : 1;
-            const bahnsteiglaenge_display = 940 * factor;
+            const bahnsteiglaenge_display = 960 * factor;
             const threshold = fullScreen ? 100 : 50;
             let usable_display_length = fullScreen ? 1580 : 740;
             const gap = 4;
@@ -615,14 +615,14 @@ class TrainDisplay {
             ctx.fillText(via3, 56, 720);
             if (gleiswechsel !== "0" && display_id === "display2_zug2") {//Gleichswechsel / Ausfall / Verkehrt heute ab
                 ctx.fillStyle = 'orange';
-                ctx.fillRect(3, 0, 940, 100);
+                ctx.fillRect(3, 0, 960, 100);
                 ctx.fillStyle = 'white';
                 ctx.font = '67px "Open Sans Condensed"';
                 ctx.fillText('Gleisänderung / ', 50, 55);
                 ctx.font = 'italic 67px "Open Sans Condensed"';
                 ctx.fillText('Track change', 448, 55);
                 ctx.fillStyle = 'white';
-                ctx.fillRect(3, 100, 940, 700);
+                ctx.fillRect(3, 100, 960, 700);
                 if (used_nr !== "") {
                     ctx.fillStyle = 'midnightblue';
                     ctx.font = '75px "Open Sans Condensed"';
@@ -1050,7 +1050,7 @@ document.querySelectorAll('.zug_entry').forEach(input => {
         train_data.zug_daten[zug][field] = e.target.value;
         if (field === "Zugnummer") {
             train_data.zug_daten[zug].Zugnummer_kurz = e.target.value;
-       }
+        }
         train_display.update_all_displays();
     });
 });
@@ -1136,7 +1136,7 @@ document.getElementById('file-input').addEventListener('change', (e) => {
                     continue;
                 }
                 const zug = parseInt(key.split('_')[1]);
-                if (!zug || zug < 1 || zug > 3) {
+                if (!zug || zug < 1 || zug > 6) {
                     console.warn(`Invalid zug number: ${zug} from key ${key}`);
                     continue;
                 }
@@ -1199,20 +1199,21 @@ document.getElementById('file-input').addEventListener('change', (e) => {
                 } catch (err) {
                     console.warn(`Failed to set Richtung for zug ${zug}:`, err);
                 }
+                
                 try {
                     const skalierenCheckbox = document.querySelector(`.zug_checkbox[data-zug="${zug}"][data-field="Skalieren"]`);
                     if (skalierenCheckbox) skalierenCheckbox.checked = !!mergedData.Skalieren;
                 } catch (err) {
                     console.warn(`Failed to set Skalieren for zug ${zug}:`, err);
                 }
-                if (zug === 3) {
-                    try {
-                        const gleiswechselInput = document.querySelector(`.zug_entry[data-zug="3"][data-field="Gleiswechsel"]`);
-                        if (gleiswechselInput) gleiswechselInput.value = mergedData.Gleiswechsel || '0';
-                    } catch (err) {
-                        console.warn(`Failed to set Gleiswechsel for zug 3:`, err);
-                    }
+
+                try {
+                    const gleiswechselInput = document.querySelector(`.zug_entry[data-zug="${zug}"][data-field="Gleiswechsel"]`);
+                    if (gleiswechselInput) gleiswechselInput.value = mergedData.Gleiswechsel || '0';
+                } catch (err) {
+                    console.warn(`Failed to set Gleiswechsel for ${zug}:`, err);
                 }
+                
             }
             train_display.update_all_displays();
         } catch (error) {
@@ -1253,8 +1254,8 @@ document.getElementById('download-btn').addEventListener('click', () => {
         const oldWrapperLeft = wrapper.style.left;
         const oldWrapperPosition = wrapper.style.position;
         // Set to full size
-        container.style.width = '3980px';
-        container.style.height = '1178px';
+        container.style.width = '4060px';
+        container.style.height = '2100px';
         wrapper.style.position = 'static';
         wrapper.style.left = '0';
         wrapper.style.transform = 'none';
@@ -1262,10 +1263,10 @@ document.getElementById('download-btn').addEventListener('click', () => {
             scale: 1,
             useCORS: true,
             backgroundColor: 'midnightblue',
-            width: 3980,
-            height: 1178,
-            windowWidth: 3980,
-            windowHeight: 1178,
+            width: 4060,
+            height: 2100,
+            windowWidth: 4060,
+            windowHeight: 2100,
             x: 0,
             y: 0,
             scrollX: 0,
@@ -1352,11 +1353,11 @@ document.querySelectorAll('.export_formation').forEach(button => {
 function resizeDisplay() {
     const container = document.querySelector('.display-container');
     const wrapper = document.querySelector('.screen-wrapper');
-    const scaleX = window.innerWidth / 3980;
-    const scaleY = window.innerHeight / 1178;
+    const scaleX = window.innerWidth / 4060;
+    const scaleY = window.innerHeight / 2100;
     const scale = Math.min(scaleX, scaleY);
     wrapper.style.transform = `translateX(-50%) scale(${scale})`;
-    container.style.height = `${1178 * scale}px`;
+    container.style.height = `${2100 * scale}px`;
 }
 
 window.addEventListener('resize', resizeDisplay);

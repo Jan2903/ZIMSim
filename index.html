@@ -9,18 +9,18 @@
 <body>
     <div class="display-container">
         <div class="screen-wrapper">
-            <canvas class="header" width="3980" height="60"></canvas>
+            <canvas class="header" width="4060" height="60"></canvas>
             <div class="main-frame">
-                <canvas class="display-trenner-links" width="80" height="1058"></canvas>
-                <canvas class="display1" id="display1" width="1880" height="800"></canvas>
-                <canvas class="display-trenner" width="60" height="1058"></canvas>
-                <canvas class="display2-zug1" id="display2_zug1" width="940" height="800"></canvas>
-                <canvas class="display2-zug2" id="display2_zug2" width="940" height="800"></canvas>
-                <canvas class="display-trenner-rechts" width="80" height="1058"></canvas>
-                <canvas class="display1-wagenreihung" id="display1_wagenreihung" width="1880" height="258"></canvas>
-                <canvas class="display2-zug1-wagenreihung" id="display2_zug1_wagenreihung" width="940" height="258"></canvas>
-                <canvas class="display2-zug2-wagenreihung" id="display2_zug2_wagenreihung" width="940" height="258"></canvas>
-                <canvas class="footer" width="3980" height="60"></canvas>
+                <canvas class="display-trenner-links" width="80" height="1080"></canvas>
+                <canvas class="display1" id="display1" width="1920" height="800"></canvas>
+                <canvas class="display-trenner" width="60" height="1080"></canvas>
+                <canvas class="display2-zug1" id="display2_zug1" width="960" height="800"></canvas>
+                <canvas class="display2-zug2" id="display2_zug2" width="960" height="800"></canvas>
+                <canvas class="display-trenner-rechts" width="80" height="1080"></canvas>
+                <canvas class="display1-wagenreihung" id="display1_wagenreihung" width="1920" height="280"></canvas>
+                <canvas class="display2-zug1-wagenreihung" id="display2_zug1_wagenreihung" width="960" height="280"></canvas>
+                <canvas class="display2-zug2-wagenreihung" id="display2_zug2_wagenreihung" width="960" height="280"></canvas>
+                <canvas class="footer" width="4060" height="60"></canvas>
             </div>
         </div>
     </div>
@@ -36,6 +36,8 @@
                 <label><input type="radio" name="zug_select" value="5"> Zug 5</label>
                 <label><input type="radio" name="zug_select" value="6"> Zug 6</label>
                 <label><input type="checkbox" id="display3_rotieren_checkbox"> 3-6 rotieren </label>
+                <button id="edit_formation_btn">Wagenreihung bearbeiten</button>
+
             </div>
         </div>
         <div class="settings-frame" id="zug1_settings">
@@ -222,8 +224,8 @@
         <div class="settings-frame" id="frame_links_oben">
             <h3>Anzeige Wagenreihung</h3>
             <div class="form-row">
-                <label><input type="radio" name="wahl" value="rotierend"> Rotierend</label>
-                <label><input type="radio" name="wahl" value="wagennummern" checked> Wagennummern</label>
+                <label><input type="radio" name="wahl" value="rotierend" checked> Rotierend</label>
+                <label><input type="radio" name="wahl" value="wagennummern"> Wagennummern</label>
                 <label><input type="radio" name="wahl" value="ausstattung"> Ausstattung</label>
                 <label><input type="radio" name="wahl" value="klasse"> Klasse</label>
             </div>
