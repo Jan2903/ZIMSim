@@ -429,7 +429,7 @@ class TrainDisplay {
             //Scaling and positioning calculations
             const factor = fullScreen ? 2 : 1;
             const bahnsteiglaenge_display = 960 * factor;
-            const threshold = fullScreen ? 100 : 50;
+            const threshold = fullScreen ? 50 : 50;
             let usable_display_length = fullScreen ? 1580 : 740;
             const gap = 4;
             let zuglaenge = coaches.reduce((sum, c) => sum + c.length, 0);
@@ -542,17 +542,17 @@ class TrainDisplay {
                 const text_height = 100;
                 ctx.fillStyle = 'white';
                 ctx.beginPath();
-                ctx.roundRect(1780 - text_width - 15, 220 - text_height / 2 - 15, text_width + 30, text_height + 15, 10);
+                ctx.roundRect(1855 - text_width - 15, 220 - text_height / 2 - 15, text_width + 30, text_height + 15, 10);
                 ctx.fill();
-                ctx.fillStyle = 'midnightblue';
-                ctx.fillText(used_nr, 1780, 220);
+                ctx.fillStyle = 'navy';
+                ctx.fillText(used_nr, 1855, 220);
             }
             ctx.textAlign = 'left';
             ctx.fillStyle = 'white';
             ctx.font = '180px "Open Sans Condensed"';
             ctx.fillText(abfahrt, 100, 220);
             if (abfahrt_a !== "") {
-                ctx.fillStyle = 'midnightblue';
+                ctx.fillStyle = 'navy';
                 ctx.font = '120px "Open Sans Condensed"';
                 const text_width = ctx.measureText(abfahrt_a).width;
                 const text_height = 120;
@@ -560,7 +560,7 @@ class TrainDisplay {
                 ctx.beginPath();
                 ctx.roundRect(520 - 20 , 215 - text_height / 2 - 20, text_width + 40, text_height + 20, 10);
                 ctx.fill();
-                ctx.fillStyle = 'midnightblue';
+                ctx.fillStyle = 'navy';
                 ctx.fillText(abfahrt_a, 520, 215);
             }
             ctx.fillStyle = 'white';
@@ -578,7 +578,7 @@ class TrainDisplay {
             ctx.stroke();
             
             if (used_nr !== "") {
-                ctx.fillStyle = 'midnightblue';
+                ctx.fillStyle = 'navy';
                 ctx.font = '75px "Open Sans Condensed"';
                 ctx.textAlign = 'right';
                 const text_width = ctx.measureText(used_nr).width;
@@ -587,7 +587,7 @@ class TrainDisplay {
                 ctx.beginPath();
                 ctx.roundRect(890 - text_width - 10, 200 - text_height / 2 - 10, text_width + 20, text_height + 10, 6);
                 ctx.fill();
-                ctx.fillStyle = 'midnightblue';
+                ctx.fillStyle = 'navy';
                 ctx.fillText(used_nr, 890, 200);
             }
             ctx.textAlign = 'left';
@@ -595,7 +595,7 @@ class TrainDisplay {
             ctx.font = '120px "Open Sans Condensed"';
             ctx.fillText(abfahrt, 50, 200);
             if (abfahrt_a !== "") {
-                ctx.fillStyle = 'midnightblue';
+                ctx.fillStyle = 'navy';
                 ctx.font = '90px "Open Sans Condensed"';
                 const text_width = ctx.measureText(abfahrt_a).width;
                 const text_height = 90;
@@ -603,7 +603,7 @@ class TrainDisplay {
                 ctx.beginPath();
                 ctx.roundRect(330 - 10, 195 - text_height / 2 - 10, text_width + 20, text_height + 10, 6);
                 ctx.fill();
-                ctx.fillStyle = 'midnightblue';
+                ctx.fillStyle = 'navy';
                 ctx.fillText(abfahrt_a, 330, 195);
             }
             ctx.fillStyle = 'white';
@@ -624,21 +624,21 @@ class TrainDisplay {
                 ctx.fillStyle = 'white';
                 ctx.fillRect(3, 100, 960, 700);
                 if (used_nr !== "") {
-                    ctx.fillStyle = 'midnightblue';
+                    ctx.fillStyle = 'navy';
                     ctx.font = '75px "Open Sans Condensed"';
                     ctx.textAlign = 'right';
                     const text_width = ctx.measureText(used_nr).width;
                     const text_height = 75;
-                    ctx.strokeStyle = 'midnightblue';
+                    ctx.strokeStyle = 'navy';
                     ctx.lineWidth = 4;
                     ctx.beginPath();
                     ctx.roundRect(890 - text_width - 10, 200 - text_height / 2 - 10, text_width + 20, text_height + 10, 6);
                     ctx.stroke();
-                    ctx.fillStyle = 'midnightblue';
+                    ctx.fillStyle = 'navy';
                     ctx.fillText(used_nr, 890, 200);
                 }
                 ctx.textAlign = 'left';
-                ctx.fillStyle = 'midnightblue';
+                ctx.fillStyle = 'navy';
                 ctx.font = '120px "Open Sans Condensed"';
                 ctx.fillText(abfahrt, 50, 200);
                 if (abfahrt_a !== "") {
@@ -646,14 +646,14 @@ class TrainDisplay {
                     ctx.font = '90px "Open Sans Condensed"';
                     const text_width = ctx.measureText(abfahrt_a).width;
                     const text_height = 90;
-                    ctx.fillStyle = 'midnightblue';
+                    ctx.fillStyle = 'navy';
                     ctx.beginPath();
                     ctx.roundRect(330 - 10, 195 - text_height / 2 - 10, text_width + 20, text_height + 10, 6);
                     ctx.fill();
                     ctx.fillStyle = 'white';
                     ctx.fillText(abfahrt_a, 330, 195);
                 }
-                ctx.fillStyle = 'midnightblue';
+                ctx.fillStyle = 'navy';
                 ctx.font = '120px "Open Sans Condensed"';
                 ctx.fillText(ziel, 50, 360);
                 ctx.font = '70px "Open Sans Condensed"';
@@ -667,7 +667,7 @@ class TrainDisplay {
     print_pictograms(info, nr, display_id, fullScreen, zug_nr, gleiswechsel) {
         const canvas = document.getElementById(display_id);
         const ctx = canvas.getContext('2d');
-        let x = fullScreen ? 100 : 50;
+        let x = fullScreen ? 50 : 50;
         const step = 105;
         const drawImageSafe = (img_key, scale, img_x, img_y, tintColor = null) => {
             const img = images[img_key];
@@ -704,7 +704,7 @@ class TrainDisplay {
             ctx.fillStyle = 'white';
             ctx.fillRect(x, 0, 100, 100);
             //Draw blue cross
-            ctx.strokeStyle = 'midnightblue';
+            ctx.strokeStyle = 'navy';
             ctx.lineWidth = 12;
             ctx.beginPath();
             ctx.moveTo(x + 28, 28); ctx.lineTo(x + 72, 72);
@@ -751,13 +751,13 @@ class TrainDisplay {
             ctx.fillStyle = 'white';
             ctx.fillRect(x, 0, 100, 100);
             //Draw H text
-            ctx.fillStyle = 'midnightblue';
+            ctx.fillStyle = 'navy';
             ctx.font = 'bold 68px "Open Sans Condensed"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText("H", x + 30, 60);
             //Draw plus sign 
-            ctx.fillStyle = 'midnightblue';
+            ctx.fillStyle = 'navy';
             ctx.font = 'bold 64px "Open Sans Condensed"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
@@ -771,13 +771,13 @@ class TrainDisplay {
             ctx.fillStyle = 'white';
             ctx.fillRect(x, 0, 100, 100);
             //Draw H text
-            ctx.fillStyle = 'midnightblue';
+            ctx.fillStyle = 'navy';
             ctx.font = 'bold 68px "Open Sans Condensed"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText("H", x + 30, 60);
             //Draw minus sign 
-            ctx.fillStyle = 'midnightblue';
+            ctx.fillStyle = 'navy';
             ctx.font = 'bold 64px "Open Sans Condensed"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
@@ -791,7 +791,7 @@ class TrainDisplay {
             ctx.fillStyle = 'white';
             ctx.fillRect(x, 0, 100, 100);
             //Draw missing wagons icon
-            drawImageSafe('wagen_fehlen',1 ,x + 50 ,50 , 'midnightblue');
+            drawImageSafe('wagen_fehlen',1 ,x + 50 ,50 , 'navy');
             //Move to the right for next icon or scrolling text start
             x += step;
         }
@@ -801,7 +801,7 @@ class TrainDisplay {
             ctx.fillStyle = 'white';
             ctx.fillRect(x, 0, 100, 100);
             //Draw gastronomy icon
-            drawImageSafe('wagenreihung_gastronomie', 0.5, x + 30, 50, 'midnightblue');
+            drawImageSafe('wagenreihung_gastronomie', 0.5, x + 30, 50, 'navy');
             // Draw red slash over the icon
             ctx.strokeStyle = 'red';
             ctx.lineWidth = 12;
@@ -818,9 +818,9 @@ class TrainDisplay {
             ctx.fillStyle = 'white';
             ctx.fillRect(x, 0, 100, 100);
             //Draw wheelchair icon
-            drawImageSafe('wagenreihung_rollstuhl', 0.32, x + 32, 28, 'midnightblue');
+            drawImageSafe('wagenreihung_rollstuhl', 0.32, x + 32, 28, 'navy');
             //Draw WC text
-            ctx.fillStyle = 'midnightblue';
+            ctx.fillStyle = 'navy';
             ctx.font = '48px "Open Sans Condensed"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
@@ -841,9 +841,9 @@ class TrainDisplay {
             ctx.fillStyle = 'white';
             ctx.fillRect(x, 0, 100, 100);
             //Draw wheelchair icon
-            drawImageSafe('wagenreihung_rollstuhl', 0.5, x + 50, 50, 'midnightblue');
+            drawImageSafe('wagenreihung_rollstuhl', 0.5, x + 50, 50, 'navy');
             //Draw exclamation mark on the top right corner
-            ctx.fillStyle = 'midnightblue';
+            ctx.fillStyle = 'navy';
             ctx.font = 'bold 56px "Open Sans Condensed"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
@@ -857,9 +857,9 @@ class TrainDisplay {
             ctx.fillStyle = 'white';
             ctx.fillRect(x, 0, 100, 100);
             //Draw bicycle icon
-            drawImageSafe('wagenreihung_fahrrad',0.40 , x + 50, 66, 'midnightblue');
+            drawImageSafe('wagenreihung_fahrrad',0.40 , x + 50, 66, 'navy');
             //Draw exclamation mark on the top right corner
-            ctx.fillStyle = 'midnightblue';
+            ctx.fillStyle = 'navy';
             ctx.font = 'bold 56px "Open Sans Condensed"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
@@ -873,9 +873,9 @@ class TrainDisplay {
             ctx.fillStyle = 'white';
             ctx.fillRect(x, 0, 100, 100);
             //Draw gastronomy icon
-            drawImageSafe('wagenreihung_gastronomie', 0.5, x + 30, 50, 'midnightblue');
+            drawImageSafe('wagenreihung_gastronomie', 0.5, x + 30, 50, 'navy');
             //Draw exclamation mark on the top right corner
-            ctx.fillStyle = 'midnightblue';
+            ctx.fillStyle = 'navy';
             ctx.font = 'bold 56px "Open Sans Condensed"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
@@ -903,7 +903,7 @@ class TrainDisplay {
             //Create inner scrolling text
             const inner = document.createElement('div');
             inner.classList.add('scroll-text');
-            inner.style.color = 'midnightblue';
+            inner.style.color = 'navy';
             inner.style.font = '67px "Open Sans Condensed"';
             inner.style.lineHeight = '100px';
 
@@ -1254,19 +1254,19 @@ document.getElementById('download-btn').addEventListener('click', () => {
         const oldWrapperLeft = wrapper.style.left;
         const oldWrapperPosition = wrapper.style.position;
         // Set to full size
-        container.style.width = '4060px';
-        container.style.height = '1200px';
+        container.style.width = '4260px';
+        container.style.height = '1400px';
         wrapper.style.position = 'static';
         wrapper.style.left = '0';
         wrapper.style.transform = 'none';
         html2canvas(screenWrapper, {
             scale: 1,
             useCORS: true,
-            backgroundColor: 'midnightblue',
-            width: 4060,
-            height: 1200,
-            windowWidth: 4060,
-            windowHeight: 1200,
+            backgroundColor: 'navy',
+            width: 4260,
+            height: 1400,
+            windowWidth: 4260,
+            windowHeight: 1400,
             x: 0,
             y: 0,
             scrollX: 0,
@@ -1353,11 +1353,11 @@ document.querySelectorAll('.export_formation').forEach(button => {
 function resizeDisplay() {
     const container = document.querySelector('.display-container');
     const wrapper = document.querySelector('.screen-wrapper');
-    const scaleX = window.innerWidth / 4060;
-    const scaleY = window.innerHeight / 1200;
+    const scaleX = window.innerWidth / 4260;
+    const scaleY = window.innerHeight / 1400;
     const scale = Math.min(scaleX, scaleY);
     wrapper.style.transform = `translateX(-50%) scale(${scale})`;
-    container.style.height = `${1200 * scale}px`;
+    container.style.height = `${1400 * scale}px`;
 }
 
 window.addEventListener('resize', resizeDisplay);

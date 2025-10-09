@@ -10,19 +10,22 @@ font-style: normal;
 body {
 margin: 0;
 padding: 0;
-background-color: midnightblue;
+background-color: navy;
 color: white;
 font-family: 'Open Sans Condensed', sans-serif;
 overflow-x: hidden;
 }
 canvas {
-background-color: midnightblue;
+background-color: navy;
 border: none;
 display: block;
 }
 .header, .footer {
 width: 100%;
-height: 60px;
+height: 160px;
+background-color: midnightblue;
+}
+.display-trenner-links, .display-trenner, .display-trenner-rechts {
 background-color: midnightblue;
 }
 
@@ -36,20 +39,20 @@ overflow: visible;
 position: absolute;
 top: 0;
 left: 50%;
-width: 4060px;
-height: 1200px;
+width: 4260px;
+height: 1400px;
 box-sizing: border-box;
 transform-origin: top center;
 }
 
 .main-frame {
 display: grid;
-grid-template-columns: 80px 1920px 60px 960px 960px 80px;
-grid-template-rows: 800px 280px 60px;
+grid-template-columns: 200px 1920px 40px 960px 960px 200px;
+grid-template-rows: 800px 280px 160px;
 gap: 0;
 position: relative;
-background-color: midnightblue;
-width: 4060px;
+background-color: navy;
+width: 4260px;
 height: 1080px;
 transform-origin: top center;
 }
@@ -106,7 +109,7 @@ transform-origin: top center;
     }
 }
 
-@media (min-width: 769px) and (max-width: 1200px) { /* Tablet/laptop */
+@media (min-width: 769px) and (max-width: 1400px) { /* Tablet/laptop */
     .form-row {
         gap: 15px;
     }
@@ -134,7 +137,7 @@ transform-origin: top center;
 
 /* Each frame box */
 .settings-frame {
-background-color: midnightblue;
+background-color: navy;
 color: white;
 padding: 10px;
 width: auto;
@@ -195,7 +198,7 @@ margin-top: 4px;        /* align vertically with text */
 
 /* Buttons */
 .settings-frame button {
-background-color: midnightblue;
+background-color: navy;
 color: white;
 border: 1px solid white;
 padding: 5px 10px;
@@ -252,7 +255,7 @@ position: fixed;
 bottom: 20px;
 right: 20px;
 z-index: 1000;
-background-color: midnightblue;
+background-color: navy;
 color: white;
 border: 1px solid white;
 padding: 5px 10px;
