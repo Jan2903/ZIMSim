@@ -94,14 +94,14 @@ class TrainDisplay {
         ctx.strokeStyle = 'white';
         ctx.lineWidth = 7;
         ctx.beginPath();
-        if (richtung === 0) {
-            ctx.moveTo(x, this.y + 50); ctx.lineTo(x + 20, this.y + 30);
+        if (richtung === 0) { // Left
+            ctx.moveTo(x - 2, this.y + 52); ctx.lineTo(x + 18, this.y + 32);
             ctx.moveTo(x, this.y + 50); ctx.lineTo(x + 30, this.y + 50);
-            ctx.moveTo(x, this.y + 50); ctx.lineTo(x + 20, this.y + 70);
-        } else {
-            ctx.moveTo(x + 30, this.y + 50); ctx.lineTo(x + 15, this.y + 35);
+            ctx.moveTo(x - 2, this.y + 48); ctx.lineTo(x + 18, this.y + 68);
+        } else { // Right
+            ctx.moveTo(x + 30 + 2, this.y + 52); ctx.lineTo(x + 12, this.y + 32);
             ctx.moveTo(x + 30, this.y + 50); ctx.lineTo(x, this.y + 50);
-            ctx.moveTo(x + 30, this.y + 50); ctx.lineTo(x + 15, this.y + 65);
+            ctx.moveTo(x + 30 + 2, this.y + 48); ctx.lineTo(x + 12, this.y + 68);
         }
         ctx.stroke();
     }
@@ -176,10 +176,10 @@ class TrainDisplay {
         ctx.textBaseline = 'middle';
         if (coach.is_first_class()) {
             ctx.fillStyle = 'orange';
-            ctx.fillText("1.", x + (coach.length / 2), this.y + 42);
+            ctx.fillText("1.", x + (coach.length / 2), this.y + 44);
         } else if (coach.coach_class === 2 && !coach.is_locomotive()) {
             ctx.fillStyle = 'white';
-            ctx.fillText("2.", x + (coach.length / 2), this.y + 42);
+            ctx.fillText("2.", x + (coach.length / 2), this.y + 44);
         }
     }
 
@@ -198,7 +198,7 @@ class TrainDisplay {
             ctx.textBaseline = 'middle';
             if (current_class === 1) {
                 ctx.fillStyle = 'orange';
-                ctx.fillText("1.", center, this.y + 42);
+                ctx.fillText("1.", center, this.y + 44);
             } 
             group = [];
         };
@@ -298,7 +298,7 @@ class TrainDisplay {
             ctx.font = '40px "Open Sans Condensed"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(coach.coach_number.toString(), x + (coach.length / 2), this.y + 42);
+            ctx.fillText(coach.coach_number.toString(), x + (coach.length / 2), this.y + 44);
         }
     }
 
@@ -322,7 +322,7 @@ class TrainDisplay {
                             ctx.font = '40px "Open Sans Condensed"';
                             ctx.textAlign = 'center';
                             ctx.textBaseline = 'middle';
-                            ctx.fillText(number_text, center, this.y + 42);
+                            ctx.fillText(number_text, center, this.y + 44);
                         }
                     }
                     group = [];
@@ -342,7 +342,7 @@ class TrainDisplay {
                         ctx.font = '40px "Open Sans Condensed"';
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
-                        ctx.fillText(number_text, center, this.y + 42);
+                        ctx.fillText(number_text, center, this.y + 44);
                     }
                     group = [];
                 }
@@ -362,7 +362,7 @@ class TrainDisplay {
                 ctx.font = '40px "Open Sans Condensed"';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(number_text, center, this.y + 42);
+                ctx.fillText(number_text, center, this.y + 44);
             }
         }
     }
@@ -375,7 +375,7 @@ class TrainDisplay {
         ctx.textBaseline = 'top';
         sectors.forEach(([name, position]) => {
             const display_pos = threshold + 50 + (position * scale_factor);
-            ctx.fillText(name, display_pos, 5);
+            ctx.fillText(name, display_pos, 2);
         });
     }
 
@@ -524,6 +524,25 @@ class TrainDisplay {
        
     }
 
+    wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+    const words = text.split(' ');
+    let line = '';
+    
+    for (let n = 0; n < words.length; n++) {
+        const testLine = line + words[n] + ' ';
+        const metrics = ctx.measureText(testLine);
+        const testWidth = metrics.width;
+        if (testWidth > maxWidth && n > 0) {
+        ctx.fillText(line, x, y);
+        line = words[n] + ' ';
+        y += lineHeight;
+        } else {
+        line = testLine;
+        }
+    }
+    ctx.fillText(line, x, y);
+    }
+
     print_train_info(info, nr, nr_kurz, abfahrt, abfahrt_a, ziel, via, via2, via3, gleiswechsel, display_id, fullScreen) {
         const canvas = document.getElementById(display_id);
         const ctx = canvas.getContext('2d');
@@ -567,8 +586,10 @@ class TrainDisplay {
             ctx.font = '180px "Open Sans Condensed"';
             ctx.fillText(ziel, 100, 420);
             ctx.font = '70px "Open Sans Condensed"';
-            ctx.fillText(via, 112, 620);
-            ctx.fillText(via2, 112, 720);
+            //ctx.fillText(via, 112, 620);
+            //ctx.fillText(via2, 112, 720);
+            const via_full = [via, via2].filter(v => v !== "").join(' ');
+            this.wrapText(ctx, via_full, 112, 620, 1800, 100);
         } else {
             // Draw left border line for non-fullscreen displays
             ctx.strokeStyle = 'white';
@@ -610,9 +631,11 @@ class TrainDisplay {
             ctx.font = '120px "Open Sans Condensed"';
             ctx.fillText(ziel, 50, 360);
             ctx.font = '70px "Open Sans Condensed"';
-            ctx.fillText(via, 56, 520);
-            ctx.fillText(via2, 56, 620);
-            ctx.fillText(via3, 56, 720);
+            //ctx.fillText(via, 56, 520);
+            //ctx.fillText(via2, 56, 620);
+            //ctx.fillText(via3, 56, 720);
+            const via_full = [via, via2, via3].filter(v => v !== "").join(' ');
+            this.wrapText(ctx, via_full, 50, 520, 880, 100);
             if (gleiswechsel !== "0" && display_id === "display2_zug2") {//Gleichswechsel / Ausfall / Verkehrt heute ab
                 ctx.fillStyle = 'orange';
                 ctx.fillRect(3, 0, 960, 100);
@@ -657,9 +680,11 @@ class TrainDisplay {
                 ctx.font = '120px "Open Sans Condensed"';
                 ctx.fillText(ziel, 50, 360);
                 ctx.font = '70px "Open Sans Condensed"';
-                ctx.fillText(via, 50, 520);
-                ctx.fillText(via2, 50, 620);
-                ctx.fillText(via3, 50, 720);
+                //ctx.fillText(via, 50, 520);
+                //ctx.fillText(via2, 50, 620);
+                //ctx.fillText(via3, 50, 720);
+                const via_full = [via, via2, via3].filter(v => v !== "").join(' ');
+                this.wrapText(ctx, via_full, 50, 520, 880, 100);
             }
         }
     }
