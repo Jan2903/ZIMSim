@@ -92,26 +92,26 @@ class TrainDisplay {
 
     print_direction(richtung, x, ctx) {
         ctx.strokeStyle = 'white';
-        ctx.lineWidth = 6;
+        ctx.lineWidth = 7;
         ctx.beginPath();
         if (richtung === 0) {
-            ctx.moveTo(x, this.y + 55); ctx.lineTo(x + 15, this.y + 40);
-            ctx.moveTo(x, this.y + 55); ctx.lineTo(x + 30, this.y + 55);
-            ctx.moveTo(x, this.y + 55); ctx.lineTo(x + 15, this.y + 70);
+            ctx.moveTo(x, this.y + 50); ctx.lineTo(x + 20, this.y + 30);
+            ctx.moveTo(x, this.y + 50); ctx.lineTo(x + 30, this.y + 50);
+            ctx.moveTo(x, this.y + 50); ctx.lineTo(x + 20, this.y + 70);
         } else {
-            ctx.moveTo(x + 30, this.y + 55); ctx.lineTo(x + 15, this.y + 40);
-            ctx.moveTo(x + 30, this.y + 55); ctx.lineTo(x, this.y + 55);
-            ctx.moveTo(x + 30, this.y + 55); ctx.lineTo(x + 15, this.y + 70);
+            ctx.moveTo(x + 30, this.y + 50); ctx.lineTo(x + 15, this.y + 35);
+            ctx.moveTo(x + 30, this.y + 50); ctx.lineTo(x, this.y + 50);
+            ctx.moveTo(x + 30, this.y + 50); ctx.lineTo(x + 15, this.y + 65);
         }
         ctx.stroke();
     }
 
     print_start_wagon(coach, x, ctx) {
         ctx.strokeStyle = 'white';
-        ctx.lineWidth = 6;
+        ctx.lineWidth = 7;
         ctx.beginPath();
-        ctx.moveTo(x, this.y + 83); ctx.lineTo(x, this.y + 20);
-        ctx.moveTo(x - 1, this.y + 21); ctx.lineTo(x + 21, this.y - 1);
+        ctx.moveTo(x + 3, this.y + 83); ctx.lineTo(x + 3, this.y + 20);
+        ctx.moveTo(x + 2, this.y + 21); ctx.lineTo(x + 21, this.y - 1);
         ctx.moveTo(x + 20, this.y); ctx.lineTo(x + coach.length, this.y);
         ctx.moveTo(x, this.y + 80); ctx.lineTo(x + coach.length, this.y + 80);
         ctx.stroke();
@@ -119,7 +119,7 @@ class TrainDisplay {
 
     print_middle_wagon(coach, x, ctx) {
         ctx.strokeStyle = 'white';
-        ctx.lineWidth = 6;
+        ctx.lineWidth = 7;
         ctx.beginPath();
         ctx.moveTo(x, this.y); ctx.lineTo(x + coach.length, this.y);
         ctx.moveTo(x, this.y + 80); ctx.lineTo(x + coach.length, this.y + 80);
@@ -133,25 +133,25 @@ class TrainDisplay {
 
     print_end_wagon(coach, x, ctx) {
         ctx.strokeStyle = 'white';
-        ctx.lineWidth = 6;
+        ctx.lineWidth = 7;
         ctx.beginPath();
         ctx.moveTo(x, this.y); ctx.lineTo(x + coach.length - 20, this.y);
-        ctx.moveTo(x + coach.length - 21, this.y - 1); ctx.lineTo(x + coach.length + 1, this.y + 21);
-        ctx.moveTo(x + coach.length, this.y + 20); ctx.lineTo(x + coach.length, this.y + 83);
+        ctx.moveTo(x + coach.length - 21, this.y - 1); ctx.lineTo(x + coach.length - 3, this.y + 21);
+        ctx.moveTo(x + coach.length - 4, this.y + 20); ctx.lineTo(x + coach.length - 4, this.y + 83);
         ctx.moveTo(x, this.y + 80); ctx.lineTo(x + coach.length, this.y + 80);
         ctx.stroke();
     }
 
     print_locomotive(coach, x, ctx) {
     ctx.strokeStyle = 'white';
-    ctx.lineWidth = 6;
+    ctx.lineWidth = 7;
     ctx.beginPath();
-    ctx.moveTo(x, this.y + 83); // Left vertical start
-    ctx.lineTo(x, this.y + 40); // Left vertical up
-    ctx.arcTo(x, this.y + 10, x + 30, this.y + 10, 20); // Left arc
+    ctx.moveTo(x + 3, this.y + 83); // Left vertical start
+    ctx.lineTo(x + 3, this.y + 40); // Left vertical up
+    ctx.arcTo(x + 3, this.y + 10, x + 30, this.y + 10, 20); // Left arc
     ctx.lineTo(x + coach.length - 30, this.y + 10); // Top line
-    ctx.arcTo(x + coach.length, this.y + 10, x + coach.length, this.y + 40, 20); // Right arc
-    ctx.lineTo(x + coach.length, this.y + 83); // Right vertical down
+    ctx.arcTo(x + coach.length, this.y + 10, x + coach.length - 4, this.y + 40, 20); // Right arc
+    ctx.lineTo(x + coach.length - 4, this.y + 83); // Right vertical down
     ctx.moveTo(x, this.y + 80); // Bottom line start
     ctx.lineTo(x + coach.length, this.y + 80); // Bottom line
     ctx.stroke();
@@ -483,7 +483,7 @@ class TrainDisplay {
                 this.print_direction(richtung, arrow_pos, ctx);
             }
             ctx.strokeStyle = 'white';
-            ctx.lineWidth = 6;
+            ctx.lineWidth = 7;
             ctx.beginPath();
             ctx.moveTo(threshold, 150); ctx.lineTo(start_meter_pixel - 10, 150);
             ctx.stroke();
@@ -508,7 +508,7 @@ class TrainDisplay {
             });
             let right_pos = Math.max(...coach_start_positions);
             ctx.strokeStyle = 'white';
-            ctx.lineWidth = 6;
+            ctx.lineWidth = 7;
             ctx.beginPath();
             ctx.moveTo(right_pos + 10, 150); ctx.lineTo(bahnsteiglaenge_display - threshold, 150);
             ctx.stroke();
