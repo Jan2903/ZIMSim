@@ -1,3 +1,9 @@
+//Global variables for display rotating
+let rotate_3_6 = false;
+let current_rotating_zug = 3;
+let rotation_timer = null;
+let current_display3_zug = 3;
+
 // Image preloading with error handling
 const images = {};
 const pictogramNames = [
@@ -51,7 +57,7 @@ class TrainData {
     }
 
     initializeZugDaten() {
-        for (let i = 1; i <= 3; i++) {
+        for (let i = 1; i <= 6; i++) {
             this.zug_daten[i] = {
                 Zugnummer: '',
                 Zugnummer_kurz: '',
@@ -987,7 +993,11 @@ class TrainDisplay {
     update_all_formations() {
         this.update_coach_sequence(1, 'display1_wagenreihung', true);
         this.update_coach_sequence(2, 'display2_zug1_wagenreihung', false);
-        this.update_coach_sequence(3, 'display2_zug2_wagenreihung', false);
+        if (rotate_3_6) {
+            this.update_coach_sequence(current_rotating_zug, 'display2_zug2_wagenreihung', false);
+        } else {
+            this.update_coach_sequence(current_display3_zug, 'display2_zug2_wagenreihung', false);
+        }
     }
 
     update_coach_sequence(zug_nr, display_id, fullScreen) {
@@ -1035,7 +1045,11 @@ class TrainDisplay {
                 } else if (zug_nr === 2) {
                     this.update_train_display(2, 'display2_zug1', 'display2_zug1_wagenreihung', false);
                 } else if (zug_nr === 3) {
-                    this.update_train_display(3, 'display2_zug2', 'display2_zug2_wagenreihung', false);
+                    if (rotate_3_6) {
+                        update_rotating_display();
+                    } else {
+                        this.update_train_display(current_display3_zug, 'display2_zug2', 'display2_zug2_wagenreihung', false);
+                    }
                 }
             } catch (err) {
                 console.error(`Failed to update display for zug_${zug_nr}:`, err);
@@ -1044,6 +1058,32 @@ class TrainDisplay {
     }
 }
 
+function start_rotation() {
+    if (rotation_timer) clearTimeout(rotation_timer);
+    update_rotating_display();
+    rotation_timer = setTimeout(start_rotation, 4000);
+}
+
+function update_rotating_display() {
+    const available_zugs = [];
+    for (let i = 3; i <= 6; i++) {
+        const zd = train_data.zug_daten[i];
+        if (zd.Zugnummer || zd.Abfahrt || zd.Informationen) {
+            available_zugs.push(i);
+        }
+    }
+    if (available_zugs.length === 0) {
+        current_rotating_zug = 3;
+        return;
+    }
+    let index = available_zugs.indexOf(current_rotating_zug);
+    if (index === -1) index = -1;
+    index = (index + 1) % available_zugs.length;
+    current_rotating_zug = available_zugs[index];
+    train_display.update_train_display(current_rotating_zug, 'display2_zug2', 'display2_zug2_wagenreihung', false);
+}
+
+// Global variables
 const train_data = new TrainData();
 const train_display = new TrainDisplay(train_data);
 
@@ -1091,6 +1131,24 @@ document.querySelectorAll('.richtung_radio').forEach(radio => {
     });
 });
 
+document.getElementById('display3_rotieren_checkbox').addEventListener('change', (e) => {
+    rotate_3_6 = e.target.checked;
+    if (rotate_3_6) {
+        start_rotation();
+    } else {
+        if (rotation_timer) clearTimeout(rotation_timer);
+        current_rotating_zug = 3;
+        const selectedRadio = document.querySelector('input[name="zug_select"]:checked');
+        const selectedZug = selectedRadio ? parseInt(selectedRadio.value) : 3;
+        if (selectedZug >= 3 && selectedZug <= 6) {
+            current_display3_zug = selectedZug;
+        } else {
+            current_display3_zug = 3;
+        }
+        train_display.update_train_display(current_display3_zug, 'display2_zug2', 'display2_zug2_wagenreihung', false);
+    }
+});
+
 document.querySelectorAll('.zug_checkbox').forEach(checkbox => {
     checkbox.addEventListener('change', (e) => {
         const zug = parseInt(e.target.dataset.zug);
@@ -1118,6 +1176,11 @@ document.querySelectorAll('input[name="zug_select"]').forEach(radio => {
             frame.classList.add('hidden');
         });
         document.getElementById(`zug${selectedZug}_settings`).classList.remove('hidden');
+        const selZugInt = parseInt(selectedZug);
+        if (!rotate_3_6 && selZugInt >= 3 && selZugInt <= 6) {
+            current_display3_zug = selZugInt;
+            train_display.update_train_display(current_display3_zug, 'display2_zug2', 'display2_zug2_wagenreihung', false);
+        }
     });
 });
 
@@ -1388,6 +1451,3 @@ function resizeDisplay() {
 window.addEventListener('resize', resizeDisplay);
 
 resizeDisplay();
-
-
-
