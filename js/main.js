@@ -4,11 +4,11 @@ import { TrainDisplay } from './displays/trainDisplay.js';
 import { initEvents } from './events.js';
 import './utils/utils.js';
 
-export const train_data = new TrainData();
-export const train_display = new TrainDisplay(train_data);
+export const trainData = new TrainData();
+export const trainDisplay = new TrainDisplay(trainData);
 
 // Wait for DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', () => {
     initEvents();
-    train_display.update_all_displays(); // Initial render
+    trainDisplay.updateAll(); // Initial render
 });

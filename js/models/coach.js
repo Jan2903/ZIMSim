@@ -10,13 +10,13 @@ export class Coach {
         this.start = coach.start || 0;
         this.stop = coach.stop || 0;
     }
-    is_first_class() {
+    isFirstClass() {
         return this.coach_class === 1;
     }
-    is_locomotive() {
+    isLocomotive() {
         return this.coach_type === 'l';
     }
-    has_amenity(amenity) {
+    hasAmenity(amenity) {
         return this.amenities === amenity;
     }
 }

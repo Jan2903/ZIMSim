@@ -1,8 +1,8 @@
 // js/events.js
 import { Coach } from './models/coach.js';
-import { train_data, train_display } from './main.js';
+import { trainData, trainDisplay } from './main.js';
 import { config } from './utils/config.js';
-import { start_rotation } from './utils/utils.js';
+import { startRotation } from './utils/utils.js';
 
 function resizeDisplay() {
     const container = document.querySelector('.display-container');
@@ -21,19 +21,17 @@ function resizeDisplay() {
 export function initEvents() {
 
     // Default departure time to current local time
-    document.addEventListener("DOMContentLoaded", () => {
     const departureTime = document.getElementById("departureTime");
     if (departureTime) {
         const now = new Date();
         now.setMinutes(now.getMinutes() - now.getTimezoneOffset()); // adjust for local timezone
         departureTime.value = now.toISOString().slice(0, 16); // format YYYY-MM-DDTHH:mm
     }
-    });
 
     document.querySelectorAll('input[name="wahl"]').forEach(radio => {
         radio.addEventListener('change', () => {
             console.log('Feature selection:', radio.value);
-            train_display.on_feature_button_change(radio.value);
+            trainDisplay.onFeatureButtonChange(radio.value);
         });
     });
 
@@ -41,32 +39,32 @@ export function initEvents() {
         input.addEventListener('input', (e) => {
             const zug = parseInt(e.target.dataset.zug);
             const field = e.target.dataset.field;
-            if (!train_data.zug_daten[zug]) {
-                train_data.initializeZugDaten();
+            if (!trainData.zugDaten[zug]) {
+                trainData.initializeZugDaten();
             }
-            train_data.zug_daten[zug][field] = e.target.value;
+            trainData.zugDaten[zug][field] = e.target.value;
             if (field === "Zugnummer") {
-                train_data.zug_daten[zug].Zugnummer_kurz = e.target.value;
+                trainData.zugDaten[zug].Zugnummer_kurz = e.target.value;
             }
-            train_display.update_all_displays();
+            trainDisplay.updateAll();
         });
     });
 
     document.querySelectorAll('.richtung_radio').forEach(radio => {
         radio.addEventListener('change', (e) => {
             const zug = parseInt(e.target.dataset.zug);
-            if (!train_data.zug_daten[zug]) {
-                train_data.initializeZugDaten();
+            if (!trainData.zugDaten[zug]) {
+                trainData.initializeZugDaten();
             }
-            train_data.zug_daten[zug].Richtung = parseInt(e.target.value);
-            train_display.update_all_displays();
+            trainData.zugDaten[zug].Richtung = parseInt(e.target.value);
+            trainDisplay.updateAll();
         });
     });
 
     document.getElementById('display3_rotieren_checkbox').addEventListener('change', (e) => {
         config.rotate_3_6 = e.target.checked;
         if (config.rotate_3_6) {
-            start_rotation();
+            startRotation();
         } else {
             if (config.rotation_timer) clearTimeout(config.rotation_timer);
             config.current_rotating_zug = 3;
@@ -77,12 +75,12 @@ export function initEvents() {
             } else {
                 config.current_display3_zug = 3;
             }
-            train_display.update_train_display(config.current_display3_zug, 'display2_zug2', 'display2_zug2_wagenreihung', false);
+            trainDisplay.update(config.current_display3_zug, 'display2_zug2', 'display2_zug2_wagenreihung', false);
         }
         // Preserve feature rotation
-        if (train_display.rotating) {
+        if (trainDisplay.rotating) {
             console.log('Restarting feature rotation to preserve state');
-            train_display.on_feature_button_change('rotierend');
+            trainDisplay.onFeatureButtonChange('rotierend');
         }
     });
 
@@ -90,19 +88,19 @@ export function initEvents() {
         checkbox.addEventListener('change', (e) => {
             const zug = parseInt(e.target.dataset.zug);
             const field = e.target.dataset.field;
-            if (!train_data.zug_daten[zug]) {
-                train_data.initializeZugDaten();
+            if (!trainData.zugDaten[zug]) {
+                trainData.initializeZugDaten();
             }
-            train_data.zug_daten[zug][field] = e.target.checked;
-            train_display.update_all_displays();
+            trainData.zugDaten[zug][field] = e.target.checked;
+            trainDisplay.updateAll();
         });
     });
 
     document.querySelectorAll('.zug_entry[data-field="PlatformLength"]').forEach(input => {
         input.addEventListener('input', (e) => {
             const zug = parseInt(e.target.dataset.zug);
-            train_data.zug_daten[zug].PlatformLength = parseFloat(e.target.value) || 420;
-            train_display.update_all_displays();
+            trainData.zugDaten[zug].PlatformLength = parseFloat(e.target.value) || 420;
+            trainDisplay.updateAll();
         });
     });
 
@@ -116,19 +114,19 @@ export function initEvents() {
             const selZugInt = parseInt(selectedZug);
             if (!config.rotate_3_6 && selZugInt >= 3 && selZugInt <= 6) {
                 config.current_display3_zug = selZugInt;
-                train_display.update_train_display(config.current_display3_zug, 'display2_zug2', 'display2_zug2_wagenreihung', false);
+                trainDisplay.update(config.current_display3_zug, 'display2_zug2', 'display2_zug2_wagenreihung', false);
             }
         });
     });
 
     document.getElementById('entry_stop_name').addEventListener('input', (e) => {
-        train_data.current_stop = e.target.value;
-        train_display.update_all_displays();
+        trainData.current_stop = e.target.value;
+        trainDisplay.updateAll();
     });
 
     document.getElementById('entry_gleis').addEventListener('input', (e) => {
-        train_data.current_platform = e.target.value;
-        train_display.update_all_displays();
+        trainData.current_platform = e.target.value;
+        trainDisplay.updateAll();
     });
 
     let abfahrten = false;
@@ -154,7 +152,7 @@ export function initEvents() {
             try {
                 const data = JSON.parse(ev.target.result);
                 console.log('Imported JSON:', data);
-                train_data.initializeZugDaten();
+                trainData.initializeZugDaten();
                 for (let key in data) {
                     if (!key.startsWith('zug_')) {
                         console.warn(`Skipping invalid key: ${key}`);
@@ -203,8 +201,8 @@ export function initEvents() {
                         Gleiswechsel: zugData.Gleiswechsel || '0',
                         TrainStart: parseFloat(zugData.TrainStart) || 0
                     };
-                    train_data.zug_daten[zug] = mergedData;
-                    console.log(`Updated zug_daten[${zug}]:`, train_data.zug_daten[zug]);
+                    trainData.zugDaten[zug] = mergedData;
+                    console.log(`Updated zug_daten[${zug}]:`, trainData.zugDaten[zug]);
                     document.querySelectorAll(`.zug_entry[data-zug="${zug}"]`).forEach(input => {
                         const field = input.dataset.field;
                         try {
@@ -233,6 +231,13 @@ export function initEvents() {
                     }
 
                     try {
+                        const zugteilungCheckbox = document.querySelector(`.zug_checkbox[data-zug="${zug}"][data-field="Zugteilung"]`);
+                        if (zugteilungCheckbox) zugteilungCheckbox.checked = !!mergedData.Zugteilung;
+                    } catch (err) {
+                        console.warn(`Failed to set Zugteilung for zug ${zug}:`, err);
+                    }
+
+                    try {
                         const gleiswechselInput = document.querySelector(`.zug_entry[data-zug="${zug}"][data-field="Gleiswechsel"]`);
                         if (gleiswechselInput) gleiswechselInput.value = mergedData.Gleiswechsel || '0';
                     } catch (err) {
@@ -240,12 +245,12 @@ export function initEvents() {
                     }
                     
                 }
-                train_display.update_all_displays();
+                trainDisplay.updateAll();
             } catch (error) {
                 console.error('Failed to load JSON:', error);
                 alert('Error loading JSON file. Please check the file format and console for details.');
-                train_data.initializeZugDaten();
-                train_display.update_all_displays();
+                trainData.initializeZugDaten();
+                trainDisplay.updateAll();
             }
         };
         reader.readAsText(file);
@@ -253,8 +258,8 @@ export function initEvents() {
 
     document.getElementById('export_all_btn').addEventListener('click', () => {
         const data = {};
-        for (let zug in train_data.zug_daten) {
-            data[`zug_${zug}`] = train_data.zug_daten[zug];
+        for (let zug in trainData.zugDaten) {
+            data[`zug_${zug}`] = trainData.zugDaten[zug];
         }
         const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
         const url = URL.createObjectURL(blob);
@@ -267,7 +272,7 @@ export function initEvents() {
 
     document.getElementById('download-btn').addEventListener('click', () => {
         // Ensure all displays are updated before capturing
-        train_display.update_all_displays();
+        trainDisplay.updateAll();
         setTimeout(() => {
             const container = document.querySelector('.display-container');
             const wrapper = document.querySelector('.screen-wrapper');
@@ -331,8 +336,8 @@ export function initEvents() {
     document.querySelectorAll('.import_formation').forEach(button => {
         button.addEventListener('click', (e) => {
             const zug = parseInt(e.target.dataset.zug);
-            if (!train_data.zug_daten[zug]) {
-                train_data.initializeZugDaten();
+            if (!trainData.zugDaten[zug]) {
+                trainData.initializeZugDaten();
             }
             const input = document.createElement('input');
             input.type = 'file';
@@ -344,8 +349,8 @@ export function initEvents() {
                 reader.onload = (ev) => {
                     try {
                         const data = JSON.parse(ev.target.result);
-                        train_data.zug_daten[zug].Wagenreihung = data.map(c => new Coach(c));
-                        train_display.update_all_displays();
+                        trainData.zugDaten[zug].Wagenreihung = data.map(c => new Coach(c));
+                        trainDisplay.updateAll();
                     } catch (error) {
                         console.error('Failed to import formation:', error);
                         alert('Error loading formation JSON.');
@@ -360,11 +365,11 @@ export function initEvents() {
     document.querySelectorAll('.export_formation').forEach(button => {
         button.addEventListener('click', (e) => {
             const zug = parseInt(e.target.dataset.zug);
-            if (!train_data.zug_daten[zug]) {
+            if (!trainData.zugDaten[zug]) {
                 console.warn(`zug_daten[${zug}] is undefined`);
                 return;
             }
-            const data = train_data.zug_daten[zug].Wagenreihung || [];
+            const data = trainData.zugDaten[zug].Wagenreihung || [];
             const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
