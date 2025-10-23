@@ -1,7 +1,7 @@
 // js/displays/trainDisplay.js
 import { Coach } from '../models/coach.js';
 import { config } from '../utils/config.js';
-import { images, update_rotating_display} from '../utils/utils.js'; 
+import { images, update_rotating_display} from '../utils/utils.js';
 
 export class TrainDisplay {
     constructor(train_data) {
@@ -11,7 +11,6 @@ export class TrainDisplay {
         this.aktuelles_merkmal = 'wagennummern';
         this.merkmale = ['wagennummern', 'ausstattung', 'klasse'];
         this.rotations_index = 0;
-        config.rotation_timer = null;
         this.rotating = false;
         this.scroll_divs = {};
     }
