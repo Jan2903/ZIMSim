@@ -304,7 +304,7 @@ export class TrainDisplay {
         });
     }
 
-    displayFormation(coaches, display_id, fullScreen, richtung, platform_length, start_meter, skalieren, zugteilung, gleiswechsel) {
+    displayFormation(coaches, display_id, fullScreen, richtung, platform_length, start_meter, skalieren, zugteilung, gleiswechsel, infoscreen) {
         const canvas = document.getElementById(display_id);
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -319,7 +319,8 @@ export class TrainDisplay {
         }
 
         // Display track change notification
-        if (gleiswechsel !== "0" && display_id === "display2_zug2_wagenreihung") {
+      
+        if (gleiswechsel !== "0") {
             ctx.fillStyle = 'orange';
             ctx.fillRect(3, 0, 960, 280);
             ctx.fillStyle = 'white';
@@ -333,7 +334,10 @@ export class TrainDisplay {
             ctx.textAlign = 'right';
             ctx.fillText(gleiswechsel, 920, 80);
             ctx.textAlign = 'left';
-        } else {
+        } else if (infoscreen) {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(3, 0, 960, 280);
+        }else {
             // Determine zug_nr based on display_id
             let zug_nr;
             if (display_id === 'display1_wagenreihung') {
@@ -518,7 +522,8 @@ export class TrainDisplay {
         } else {
             if (infoscreen) {
                 ctx.fillStyle = 'white';
-                ctx.fillRect(0, 0, 960, 800);
+                ctx.fillRect(3, 0, 960, 800);
+                ctx.fillStyle = 'navy';
                 ctx.font = '70px "Open Sans Condensed"';
                 this.wrapText(ctx, info, 112, 120, 1800, 100);
             }
@@ -930,8 +935,9 @@ export class TrainDisplay {
         const direction = this.trainData.zugDaten[zug_nr].Richtung;
         const skalieren = this.trainData.zugDaten[zug_nr].Skalieren;
         const zugteilung = this.trainData.zugDaten[zug_nr].Zugteilung;
+        const infoscreen = this.trainData.zugDaten[zug_nr].Infoscreen;
         const gleiswechsel = this.trainData.zugDaten[zug_nr].Gleiswechsel || "0";
-        this.displayFormation(coaches, display_id, fullScreen, direction, platform_length, train_start, skalieren, zugteilung, gleiswechsel);
+        this.displayFormation(coaches, display_id, fullScreen, direction, platform_length, train_start, skalieren, zugteilung, gleiswechsel, infoscreen);
     }
 
     update(zug_nr, info_canvas_id, wagen_canvas_id, fullScreen) {
