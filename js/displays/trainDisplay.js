@@ -1,7 +1,7 @@
 // js/displays/trainDisplay.js
 import { Coach } from '../models/coach.js'; // Für new Coach() in Methoden
 import { config } from '../utils/config.js'; // Für config.rotate_3_6 usw.
-import { images } from '../utils/utils.js'; // Für Pictograms
+import { images, update_rotating_display} from '../utils/utils.js'; 
 
 export class TrainDisplay {
     constructor(train_data) {
