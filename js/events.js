@@ -3,6 +3,20 @@ import { train_data, train_display } from './main.js'; // Für Instanzen
 import { config } from './utils/config.js'; // Für config.rotate_3_6 usw.
 import { start_rotation } from './utils/utils.js'; // Für Rotation
 
+function resizeDisplay() {
+    const container = document.querySelector('.display-container');
+    const wrapper = document.querySelector('.screen-wrapper');
+    if (!container || !wrapper) {
+        console.warn('DOM elements not found in resizeDisplay');
+        return; // Prevent errors if DOM isn’t ready
+    }
+    const scaleX = window.innerWidth / 4260;
+    const scaleY = window.innerHeight / 1400;
+    const scale = Math.min(scaleX, scaleY);
+    wrapper.style.transform = `translateX(-50%) scale(${scale})`;
+    container.style.height = `${1400 * scale}px`;
+}
+
 export function initEvents() {
 
     // Default departure time to current local time
@@ -353,20 +367,8 @@ export function initEvents() {
             URL.revokeObjectURL(url);
         });
     });
-    
-    // Responsive scaling logic
-    function resizeDisplay() {
-        const container = document.querySelector('.display-container');
-        const wrapper = document.querySelector('.screen-wrapper');
-        const scaleX = window.innerWidth / 4260;
-        const scaleY = window.innerHeight / 1400;
-        const scale = Math.min(scaleX, scaleY);
-        wrapper.style.transform = `translateX(-50%) scale(${scale})`;
-        container.style.height = `${1400 * scale}px`;
-    }
 
     window.addEventListener('resize', resizeDisplay);
-
     resizeDisplay();
 
 }
