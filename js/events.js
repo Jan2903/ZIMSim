@@ -180,9 +180,11 @@ export function initEvents() {
                         'Via-Halte 2 Small': '',
                         'Via-Halte 3 Small': '',
                         Informationen: '',
+                        Infoscreen: 0,
                         Richtung: 1,
                         TrainStart: 0,
                         Skalieren: false,
+                        Zugteilung: false,
                         Wagenreihung: [],
                         PlatformLength: 420,
                         PlatformSections: [['A', 69.7], ['B', 135.8], ['C', 208], ['D', 266], ['E', 315.65]],
@@ -215,6 +217,14 @@ export function initEvents() {
                             console.warn(`Failed to set input for zug ${zug}, field ${field}:`, err);
                         }
                     });
+
+                    try {
+                        const infoscreenCheckbox = document.querySelector(`.zug_checkbox[data-zug="${zug}"][data-field="Infoscreen"]`);
+                        if (infoscreenCheckbox) infoScreenCheckbox.checked = !!mergedData.Infoscreen;
+                    } catch (err) {
+                        console.warn(`Failed to set Infoscreen for zug ${zug}:`, err);
+                    }
+
                     try {
                         const richtungValue = Number.isInteger(mergedData.Richtung) ? mergedData.Richtung.toString() : '1';
                         const richtungRadio = document.querySelector(`.richtung_radio[data-zug="${zug}"][value="${richtungValue}"]`);

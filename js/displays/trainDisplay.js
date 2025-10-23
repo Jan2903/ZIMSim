@@ -468,12 +468,14 @@ export class TrainDisplay {
     ctx.fillText(line, x, y);
     }
 
-    displayTrainInfo(info, nr, nr_kurz, abfahrt, abfahrt_a, ziel, via, via2, via3, gleiswechsel, display_id, fullScreen) {
+    displayTrainInfo(info, nr, nr_kurz, abfahrt, abfahrt_a, ziel, via, via2, via3, gleiswechsel, infoscreen, display_id, fullScreen) {
         const canvas = document.getElementById(display_id);
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         const zug_nr = fullScreen ? 1 : display_id === 'display2_zug1' ? 2 : 3;
-        this.displayPictograms(info, nr, display_id, fullScreen, zug_nr, gleiswechsel);
+        if (gleiswechsel !== "0" || !infoscreen ){
+            this.displayPictograms(info, nr, display_id, fullScreen, zug_nr, gleiswechsel, infoscreen);
+        }
         let used_nr = nr;
         if (!fullScreen) used_nr = nr_kurz;
         ctx.textAlign = 'left';
@@ -511,11 +513,15 @@ export class TrainDisplay {
             ctx.font = '180px "Open Sans Condensed"';
             ctx.fillText(ziel, 100, 420);
             ctx.font = '70px "Open Sans Condensed"';
-            //ctx.fillText(via, 112, 620);
-            //ctx.fillText(via2, 112, 720);
             const via_full = [via, via2].filter(v => v !== "").join(' ');
             this.wrapText(ctx, via_full, 112, 620, 1800, 100);
         } else {
+            if (infoscreen) {
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, 960, 800);
+                ctx.font = '70px "Open Sans Condensed"';
+                this.wrapText(ctx, info, 112, 120, 1800, 100);
+            }
             // Draw left border line for non-fullscreen displays
             ctx.strokeStyle = 'white';
             ctx.lineWidth = 3;
@@ -556,12 +562,9 @@ export class TrainDisplay {
             ctx.font = '120px "Open Sans Condensed"';
             ctx.fillText(ziel, 50, 360);
             ctx.font = '70px "Open Sans Condensed"';
-            //ctx.fillText(via, 56, 520);
-            //ctx.fillText(via2, 56, 620);
-            //ctx.fillText(via3, 56, 720);
             const via_full = [via, via2, via3].filter(v => v !== "").join(' ');
             this.wrapText(ctx, via_full, 50, 520, 880, 100);
-            if (gleiswechsel !== "0" && display_id === "display2_zug2") {//Gleichswechsel / Ausfall / Verkehrt heute ab
+            if (gleiswechsel !== "0" && display_id === "display2_zug2") { //Gleichswechsel / Ausfall / Verkehrt heute ab
                 ctx.fillStyle = 'orange';
                 ctx.fillRect(3, 0, 960, 100);
                 ctx.fillStyle = 'white';
@@ -605,9 +608,6 @@ export class TrainDisplay {
                 ctx.font = '120px "Open Sans Condensed"';
                 ctx.fillText(ziel, 50, 360);
                 ctx.font = '70px "Open Sans Condensed"';
-                //ctx.fillText(via, 50, 520);
-                //ctx.fillText(via2, 50, 620);
-                //ctx.fillText(via3, 50, 720);
                 const via_full = [via, via2, via3].filter(v => v !== "").join(' ');
                 this.wrapText(ctx, via_full, 50, 520, 880, 100);
             }
@@ -950,8 +950,9 @@ export class TrainDisplay {
             const via = fullScreen ? this.trainData.zugDaten[zug_nr]['Via-Halte 1'] || "" : this.trainData.zugDaten[zug_nr]['Via-Halte 1 Small'] || "";
             const via2 = fullScreen ? this.trainData.zugDaten[zug_nr]['Via-Halte 2'] || "" : this.trainData.zugDaten[zug_nr]['Via-Halte 2 Small'] || "";
             const via3 = this.trainData.zugDaten[zug_nr]['Via-Halte 3 Small'] || "";
+            const infoscreen = this.trainData.zugDaten[zug_nr].Infoscreen;
             const gleiswechsel = this.trainData.zugDaten[zug_nr].Gleiswechsel || "0";
-            this.displayTrainInfo(info, nr, nr_kurz, abfahrt, abfahrt_a, ziel, via, via2, via3, gleiswechsel, info_canvas_id, fullScreen);
+            this.displayTrainInfo(info, nr, nr_kurz, abfahrt, abfahrt_a, ziel, via, via2, via3, gleiswechsel, infoscreen, info_canvas_id, fullScreen);
         } catch (err) {
             console.error(`Error in update_train_display for zug_${zug_nr}:`, err);
         }
