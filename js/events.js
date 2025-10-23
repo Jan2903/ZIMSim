@@ -202,7 +202,7 @@ export function initEvents() {
                         TrainStart: parseFloat(zugData.TrainStart) || 0
                     };
                     trainData.zugDaten[zug] = mergedData;
-                    console.log(`Updated zug_daten[${zug}]:`, trainData.zugDaten[zug]);
+                    console.log(`Updated zugDaten[${zug}]:`, trainData.zugDaten[zug]);
                     document.querySelectorAll(`.zug_entry[data-zug="${zug}"]`).forEach(input => {
                         const field = input.dataset.field;
                         try {
@@ -366,7 +366,7 @@ export function initEvents() {
         button.addEventListener('click', (e) => {
             const zug = parseInt(e.target.dataset.zug);
             if (!trainData.zugDaten[zug]) {
-                console.warn(`zug_daten[${zug}] is undefined`);
+                console.warn(`zugDaten[${zug}] is undefined`);
                 return;
             }
             const data = trainData.zugDaten[zug].Wagenreihung || [];

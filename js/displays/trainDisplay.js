@@ -346,8 +346,8 @@ export class TrainDisplay {
                 console.warn(`Invalid display_id: ${display_id}`);
                 return;
             }
-            if (!this.trainData.zug_daten[zug_nr]) {
-                console.warn(`zug_daten[${zug_nr}] is undefined for display_id: ${display_id}`);
+            if (!this.trainData.zugDaten[zug_nr]) {
+                console.warn(`zugDaten[${zug_nr}] is undefined for display_id: ${display_id}`);
                 return;
             }
 
@@ -441,7 +441,7 @@ export class TrainDisplay {
                 this.displayDirection(richtung, right_pos + 10, ctx);
             }
             try {
-                this.displaySectors(this.trainData.zug_daten[zug_nr].PlatformSections, ctx, fullScreen, factor_new, platform_length);
+                this.displaySectors(this.trainData.zugDaten[zug_nr].PlatformSections, ctx, fullScreen, factor_new, platform_length);
             } catch (err) {
                 console.warn(`Failed to print sectors for zug_${zug_nr} on ${display_id}:`, err);
             }
@@ -920,37 +920,37 @@ export class TrainDisplay {
     }
 
     updateFormation(zug_nr, display_id, fullScreen) {
-        if (!this.trainData.zug_daten[zug_nr]) {
-            console.warn(`zug_daten[${zug_nr}] is undefined for display_id: ${display_id}`);
+        if (!this.trainData.zugDaten[zug_nr]) {
+            console.warn(`zugDaten[${zug_nr}] is undefined for display_id: ${display_id}`);
             return;
         }
-        const coaches = this.trainData.zug_daten[zug_nr].Wagenreihung || [];
-        const platform_length = this.trainData.zug_daten[zug_nr].PlatformLength || 420;
-        const train_start = parseFloat(this.trainData.zug_daten[zug_nr].TrainStart) || 0;
-        const direction = this.trainData.zug_daten[zug_nr].Richtung;
-        const skalieren = this.trainData.zug_daten[zug_nr].Skalieren;
-        const zugteilung = this.trainData.zug_daten[zug_nr].Zugteilung;
-        const gleiswechsel = this.trainData.zug_daten[zug_nr].Gleiswechsel || "0";
+        const coaches = this.trainData.zugDaten[zug_nr].Wagenreihung || [];
+        const platform_length = this.trainData.zugDaten[zug_nr].PlatformLength || 420;
+        const train_start = parseFloat(this.trainData.zugDaten[zug_nr].TrainStart) || 0;
+        const direction = this.trainData.zugDaten[zug_nr].Richtung;
+        const skalieren = this.trainData.zugDaten[zug_nr].Skalieren;
+        const zugteilung = this.trainData.zugDaten[zug_nr].Zugteilung;
+        const gleiswechsel = this.trainData.zugDaten[zug_nr].Gleiswechsel || "0";
         this.displayFormation(coaches, display_id, fullScreen, direction, platform_length, train_start, skalieren, zugteilung, gleiswechsel);
     }
 
     update(zug_nr, info_canvas_id, wagen_canvas_id, fullScreen) {
         try {
             this.updateFormation(zug_nr, wagen_canvas_id, fullScreen);
-            if (!this.trainData.zug_daten[zug_nr]) {
-                console.warn(`zug_daten[${zug_nr}] is undefined for info_canvas_id: ${info_canvas_id}`);
+            if (!this.trainData.zugDaten[zug_nr]) {
+                console.warn(`zugDaten[${zug_nr}] is undefined for info_canvas_id: ${info_canvas_id}`);
                 return;
             }
-            const info = this.trainData.zug_daten[zug_nr].Informationen || "";
-            let nr = this.trainData.zug_daten[zug_nr].Zugnummer || "";
-            const nr_kurz = this.trainData.zug_daten[zug_nr].Zugnummer_kurz || "";
-            const abfahrt = this.trainData.zug_daten[zug_nr].Abfahrt || "";
-            const abfahrt_a = this.trainData.zug_daten[zug_nr].Abweichend || "";
-            const ziel = this.trainData.zug_daten[zug_nr].Ziel || "";
-            const via = fullScreen ? this.trainData.zug_daten[zug_nr]['Via-Halte 1'] || "" : this.trainData.zug_daten[zug_nr]['Via-Halte 1 Small'] || "";
-            const via2 = fullScreen ? this.trainData.zug_daten[zug_nr]['Via-Halte 2'] || "" : this.trainData.zug_daten[zug_nr]['Via-Halte 2 Small'] || "";
-            const via3 = this.trainData.zug_daten[zug_nr]['Via-Halte 3 Small'] || "";
-            const gleiswechsel = this.trainData.zug_daten[zug_nr].Gleiswechsel || "0";
+            const info = this.trainData.zugDaten[zug_nr].Informationen || "";
+            let nr = this.trainData.zugDaten[zug_nr].Zugnummer || "";
+            const nr_kurz = this.trainData.zugDaten[zug_nr].Zugnummer_kurz || "";
+            const abfahrt = this.trainData.zugDaten[zug_nr].Abfahrt || "";
+            const abfahrt_a = this.trainData.zugDaten[zug_nr].Abweichend || "";
+            const ziel = this.trainData.zugDaten[zug_nr].Ziel || "";
+            const via = fullScreen ? this.trainData.zugDaten[zug_nr]['Via-Halte 1'] || "" : this.trainData.zugDaten[zug_nr]['Via-Halte 1 Small'] || "";
+            const via2 = fullScreen ? this.trainData.zugDaten[zug_nr]['Via-Halte 2'] || "" : this.trainData.zugDaten[zug_nr]['Via-Halte 2 Small'] || "";
+            const via3 = this.trainData.zugDaten[zug_nr]['Via-Halte 3 Small'] || "";
+            const gleiswechsel = this.trainData.zugDaten[zug_nr].Gleiswechsel || "0";
             this.displayTrainInfo(info, nr, nr_kurz, abfahrt, abfahrt_a, ziel, via, via2, via3, gleiswechsel, info_canvas_id, fullScreen);
         } catch (err) {
             console.error(`Error in update_train_display for zug_${zug_nr}:`, err);
