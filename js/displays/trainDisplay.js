@@ -1,5 +1,6 @@
+// js/displays/trainDisplay.js
 import { Coach } from '../models/coach.js'; // Für new Coach() in Methoden
-import { config } from '../utils/config.js'; // Für config.config.rotate_3_6 usw.
+import { config } from '../utils/config.js'; // Für config.rotate_3_6 usw.
 import { images } from '../utils/utils.js'; // Für Pictograms
 
 export class TrainDisplay {
@@ -912,8 +913,8 @@ export class TrainDisplay {
     update_all_formations() {
         this.update_coach_sequence(1, 'display1_wagenreihung', true);
         this.update_coach_sequence(2, 'display2_zug1_wagenreihung', false);
-        if (config.config.rotate_3_6) {
-            this.update_coach_sequence(config.config.current_rotating_zug, 'display2_zug2_wagenreihung', false);
+        if (config.rotate_3_6) {
+            this.update_coach_sequence(config.current_rotating_zug, 'display2_zug2_wagenreihung', false);
         } else {
             this.update_coach_sequence(config.current_display3_zug, 'display2_zug2_wagenreihung', false);
         }
@@ -964,7 +965,7 @@ export class TrainDisplay {
                 } else if (zug_nr === 2) {
                     this.update_train_display(2, 'display2_zug1', 'display2_zug1_wagenreihung', false);
                 } else if (zug_nr === 3) {
-                    if (config.config.rotate_3_6) {
+                    if (config.rotate_3_6) {
                         update_rotating_display();
                     } else {
                         this.update_train_display(config.current_display3_zug, 'display2_zug2', 'display2_zug2_wagenreihung', false);

@@ -1,3 +1,4 @@
+// js/models/trainData.js
 export class TrainData {
     constructor() {
         this.zug_daten = {1: {}, 2: {}, 3: {}};

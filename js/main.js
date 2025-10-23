@@ -1,5 +1,4 @@
 // js/main.js
-
 import { TrainData } from './models/trainData.js';
 import { TrainDisplay } from './displays/trainDisplay.js';
 import { initEvents } from './events.js';
