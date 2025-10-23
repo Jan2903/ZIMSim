@@ -10,7 +10,7 @@ export class TrainDisplay {
         this.aktuelles_merkmal = 'wagennummern';
         this.merkmale = ['wagennummern', 'ausstattung', 'klasse'];
         this.rotations_index = 0;
-        this.config.rotation_timer = null;
+        config.rotation_timer = null;
         this.rotating = false;
         this.scroll_divs = {};
     }
@@ -891,11 +891,11 @@ export class TrainDisplay {
     on_feature_button_change(value) {
         if (value === "rotierend") {
             this.rotating = true;
-            if (this.config.rotation_timer) clearTimeout(this.config.rotation_timer);
+            if (config.rotation_timer) clearTimeout(config.rotation_timer);
             this.start_feature_rotation();
         } else {
             this.rotating = false;
-            if (this.config.rotation_timer) clearTimeout(this.config.rotation_timer);
+            if (config.rotation_timer) clearTimeout(config.rotation_timer);
             this.aktuelles_merkmal = value;
             this.update_all_formations();
         }
@@ -906,7 +906,7 @@ export class TrainDisplay {
         this.aktuelles_merkmal = this.merkmale[this.rotations_index];
         this.rotations_index = (this.rotations_index + 1) % this.merkmale.length;
         this.update_all_formations();
-        this.config.rotation_timer = setTimeout(() => this.start_feature_rotation(), 3000);
+        config.rotation_timer = setTimeout(() => this.start_feature_rotation(), 3000);
     }
 
     update_all_formations() {

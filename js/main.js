@@ -8,5 +8,8 @@ import './utils/utils.js'; // Für Preloading (wird automatisch ausgeführt)
 export const train_data = new TrainData();
 export const train_display = new TrainDisplay(train_data);
 
-// Initialisierungen:
-initEvents();
+// Wait for DOM to be fully loaded
+document.addEventListener('DOMContentLoaded', () => {
+    initEvents();
+    train_display.update_all_displays(); // Initial render
+});
