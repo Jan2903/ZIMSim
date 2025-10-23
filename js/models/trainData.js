@@ -1,7 +1,7 @@
 // js/models/trainData.js
 export class TrainData {
     constructor() {
-        this.zug_daten = {1: {}, 2: {}, 3: {}};
+        this.zugDaten = {1: {}, 2: {}, 3: {}};
         this.initializeZugDaten();
         this.current_stop = '';
         this.current_platform = '';
@@ -10,7 +10,7 @@ export class TrainData {
 
     initializeZugDaten() {
         for (let i = 1; i <= 6; i++) {
-            this.zug_daten[i] = {
+            this.zugDaten[i] = {
                 Zugnummer: '',
                 Zugnummer_kurz: '',
                 Abfahrt: '',
@@ -25,6 +25,7 @@ export class TrainData {
                 Richtung: 1,
                 TrainStart: 0,
                 Skalieren: false,
+                Zugteilung: false,
                 Wagenreihung: [],
                 PlatformLength: 420,
                 PlatformSections: [['A', 69.7], ['B', 135.8], ['C', 208], ['D', 266], ['E', 315.65]],

@@ -1,6 +1,6 @@
 // js/utils/utils.js
 import { config } from './config.js';
-import { train_data, train_display } from '../main.js';
+import { trainData, trainDisplay } from '../main.js';
 
 export const images = {};
 export const pictogramNames = ['wagen_fehlen', 'wagenreihung_fahrrad', 'wagenreihung_gastronomie', 'wagenreihung_mehrzweck', 'wagenreihung_rollstuhl'];
@@ -18,16 +18,16 @@ pictogramNames.forEach(name => {
     };
 });
 
-export function start_rotation() {
+export function startRotation() {
     if (config.rotation_timer) clearTimeout(config.rotation_timer);
-    update_rotating_display();
-    config.rotation_timer = setTimeout(start_rotation, 4000);
+    updateRotatingDisplay();
+    config.rotation_timer = setTimeout(startRotation, 4000);
 }
 
-export function update_rotating_display() {
+export function updateRotatingDisplay() {
     const available_zugs = [];
     for (let i = 3; i <= 6; i++) {
-        const zd = train_data.zug_daten[i];
+        const zd = trainData.zugDaten[i];
         if (zd.Zugnummer || zd.Abfahrt || zd.Informationen) {
             available_zugs.push(i);
         }
@@ -40,5 +40,5 @@ export function update_rotating_display() {
     if (index === -1) index = -1;
     index = (index + 1) % available_zugs.length;
     config.current_rotating_zug = available_zugs[index];
-    train_display.update_train_display(config.current_rotating_zug, 'display2_zug2', 'display2_zug2_wagenreihung', false);
+    trainDisplay.update(config.current_rotating_zug, 'display2_zug2', 'display2_zug2_wagenreihung', false);
 }
