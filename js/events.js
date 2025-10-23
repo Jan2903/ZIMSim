@@ -82,7 +82,7 @@ export function initEvents() {
         // Preserve feature rotation
         if (train_display.rotating) {
             console.log('Restarting feature rotation to preserve state');
-            train_display.on_feature_button_change('rotation');
+            train_display.on_feature_button_change('rotierend');
         }
     });
 
