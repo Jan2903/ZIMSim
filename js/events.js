@@ -1,4 +1,5 @@
 // js/events.js
+import { Coach } from './models/coach.js'; // Für Coach-Klasse
 import { train_data, train_display } from './main.js'; // Für Instanzen
 import { config } from './utils/config.js'; // Für config.rotate_3_6 usw.
 import { start_rotation } from './utils/utils.js'; // Für Rotation

@@ -1,3 +1,4 @@
+// js/models/coach.js
 export class Coach {
     constructor(coach) {
         this.coach_type = coach.coach_type || '';
