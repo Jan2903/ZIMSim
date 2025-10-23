@@ -83,7 +83,7 @@ export class TrainDisplay {
 }
 
     displayFirstClass(coach, x, ctx, fullScreen) {
-        if (coach.is_first_class()) {
+        if (coach.isFirstClass()) {
             ctx.fillStyle = 'orange';
             let len = coach.length;
             if (!fullScreen) {
@@ -99,10 +99,10 @@ export class TrainDisplay {
         ctx.font = 'bold 40px "Open Sans Condensed"';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        if (coach.is_first_class()) {
+        if (coach.isFirstClass()) {
             ctx.fillStyle = 'orange';
             ctx.fillText("1.", x + (coach.length / 2), this.y + 44);
-        } else if (coach.coach_class === 2 && !coach.is_locomotive()) {
+        } else if (coach.coach_class === 2 && !coach.isLocomotive()) {
             ctx.fillStyle = 'white';
             ctx.fillText("2.", x + (coach.length / 2), this.y + 44);
         }
@@ -151,10 +151,10 @@ export class TrainDisplay {
     displayAmenities(coach, x, ctx) {
         let img_key;
         let scale; // image scaling factor
-        if (coach.has_amenity('f')) img_key = 'wagenreihung_fahrrad', scale = 0.28;
-        else if (coach.has_amenity('r')) img_key = 'wagenreihung_rollstuhl', scale = 0.24;
-        else if (coach.has_amenity('m')) img_key = 'wagenreihung_mehrzweck', scale = 0.28;
-        else if (coach.has_amenity('g')) img_key = 'wagenreihung_gastronomie', scale = 0.32;
+        if (coach.hasAmenity('f')) img_key = 'wagenreihung_fahrrad', scale = 0.28;
+        else if (coach.hasAmenity('r')) img_key = 'wagenreihung_rollstuhl', scale = 0.24;
+        else if (coach.hasAmenity('m')) img_key = 'wagenreihung_mehrzweck', scale = 0.28;
+        else if (coach.hasAmenity('g')) img_key = 'wagenreihung_gastronomie', scale = 0.32;
         const img = images[img_key];
         if (img && img.isLoaded && !img.isBroken) {
             try {
@@ -359,10 +359,10 @@ export class TrainDisplay {
             const gap = 4;
             let zuglaenge = coaches.reduce((sum, c) => sum + c.length, 0);
             if (!fullScreen) {
-                zuglaenge -= coaches.reduce((sum, c) => sum + (c.is_locomotive() ? c.length : 0), 0);
+                zuglaenge -= coaches.reduce((sum, c) => sum + (c.isLocomotive() ? c.length : 0), 0);
             }
             let factor_new = usable_display_length / platform_length;
-            let display_coaches = fullScreen ? coaches : coaches.filter(c => !c.is_locomotive());
+            let display_coaches = fullScreen ? coaches : coaches.filter(c => !c.isLocomotive());
             if (display_coaches.length === 0) return;
 
             let min_start = Math.min(...display_coaches.map(c => c.start));
