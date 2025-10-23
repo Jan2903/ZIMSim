@@ -32,6 +32,7 @@ export function initEvents() {
 
     document.querySelectorAll('input[name="wahl"]').forEach(radio => {
         radio.addEventListener('change', () => {
+            console.log('Feature selection:', radio.value);
             train_display.on_feature_button_change(radio.value);
         });
     });
@@ -77,6 +78,11 @@ export function initEvents() {
                 config.current_display3_zug = 3;
             }
             train_display.update_train_display(config.current_display3_zug, 'display2_zug2', 'display2_zug2_wagenreihung', false);
+        }
+        // Preserve feature rotation
+        if (train_display.rotating) {
+            console.log('Restarting feature rotation to preserve state');
+            train_display.on_feature_button_change('rotation');
         }
     });
 
