@@ -1,11 +1,11 @@
 // js/utils/utils.js
-import { config } from './config.js'; // Für config.rotate_3_6 usw.
-import { train_data, train_display } from '../main.js'; // Für Zugriff auf Instanzen (alternativ: als Parameter übergeben, aber hier importiert für Einfachheit)
+import { config } from './config.js';
+import { train_data, train_display } from '../main.js';
 
 export const images = {};
 export const pictogramNames = ['wagen_fehlen', 'wagenreihung_fahrrad', 'wagenreihung_gastronomie', 'wagenreihung_mehrzweck', 'wagenreihung_rollstuhl'];
 
-// Preloading-Code hier (images[name] = new Image(); ...)
+// Preload images
 pictogramNames.forEach(name => {
     images[name] = new Image();
     images[name].src = `images/icons/${name}.png`;
