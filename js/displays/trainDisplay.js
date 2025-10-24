@@ -522,7 +522,7 @@ export class TrainDisplay {
         } else {
             if (infoscreen) {
                 ctx.fillStyle = 'white';
-                ctx.fillRect(3, 0, 960, 800);
+                ctx.fillRect(0, 0, 960, 800);
                 ctx.fillStyle = 'navy';
                 ctx.font = '70px "Open Sans Condensed"';
                 this.wrapText(ctx, info, 112, 120, 1800, 100);
