@@ -220,7 +220,7 @@ export function initEvents() {
 
                     try {
                         const infoscreenCheckbox = document.querySelector(`.zug_checkbox[data-zug="${zug}"][data-field="Infoscreen"]`);
-                        if (infoscreenCheckbox) infoScreenCheckbox.checked = !!mergedData.Infoscreen;
+                        if (infoscreenCheckbox) infoscreenCheckbox.checked = !!mergedData.Infoscreen;
                     } catch (err) {
                         console.warn(`Failed to set Infoscreen for zug ${zug}:`, err);
                     }
