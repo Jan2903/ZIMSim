@@ -304,7 +304,7 @@ export class TrainDisplay {
         });
     }
 
-    displayFormation(coaches, display_id, fullScreen, richtung, platform_length, start_meter, skalieren, zugteilung, gleiswechsel, infoscreen) {
+    displayFormation(coaches, display_id, fullScreen, richtung, platform_length, start_meter, skalieren, zugteilung, gleiswechsel, ausfall, verkehrtAb, infoscreen) {
         const canvas = document.getElementById(display_id);
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -334,7 +334,7 @@ export class TrainDisplay {
             ctx.textAlign = 'right';
             ctx.fillText(gleiswechsel, 920, 80);
             ctx.textAlign = 'left';
-        } else if (infoscreen) {
+        } else if (infoscreen || ausfall|| (verkehrtAb !== "0")) {
             ctx.fillStyle = 'white';
             ctx.fillRect(3, 0, 960, 280);
         }else {
@@ -454,64 +454,154 @@ export class TrainDisplay {
     }
 
     wrapText(ctx, text, x, y, maxWidth, lineHeight) {
-    const words = text.split(' ');
-    let line = '';
-    
-    for (let n = 0; n < words.length; n++) {
-        const testLine = line + words[n] + ' ';
-        const metrics = ctx.measureText(testLine);
-        const testWidth = metrics.width;
-        if (testWidth > maxWidth && n > 0) {
-        ctx.fillText(line, x, y);
-        line = words[n] + ' ';
-        y += lineHeight;
-        } else {
-        line = testLine;
+        const words = text.split(' ');
+        let line = '';
+        
+        for (let n = 0; n < words.length; n++) {
+            const testLine = line + words[n] + ' ';
+            const metrics = ctx.measureText(testLine);
+            const testWidth = metrics.width;
+            if (testWidth > maxWidth && n > 0) {
+            ctx.fillText(line, x, y);
+            line = words[n] + ' ';
+            y += lineHeight;
+            } else {
+            line = testLine;
+            }
         }
+        ctx.fillText(line, x, y);
     }
-    ctx.fillText(line, x, y);
+    
+    displayAusfallUndGleiswechsel(ctx, used_nr, abfahrt, abfahrt_a, ziel, via, via2, via3, gleiswechsel, ausfall, verkehrtAb) {
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+       
+        if (ausfall) {
+            ctx.fillStyle = 'red';
+            ctx.fillRect(3, 0, 960, 100);
+            ctx.fillStyle = 'white';
+            ctx.font = '67px "Open Sans Condensed"';
+            ctx.fillText('Fährt fällt aus / ', 50, 55);
+            ctx.font = 'italic 67px "Open Sans Condensed"';
+            ctx.fillText('Cancelled', 448, 55);
+        }
+        else if (verkehrtAb !== "0") {
+            ctx.fillStyle = 'red';
+            ctx.fillRect(3, 0, 960, 100);
+            ctx.fillStyle = 'white';
+            ctx.font = '67px "Open Sans Condensed"';
+            ctx.fillText('Halt entfällt hier / ', 50, 55);
+            ctx.font = 'italic 67px "Open Sans Condensed"';
+            ctx.fillText('Stop Cancelled', 480, 55);
+        } else if (gleiswechsel !== "0") {
+            ctx.fillStyle = 'orange';
+            ctx.fillRect(3, 0, 960, 100);
+            ctx.fillStyle = 'white';
+            ctx.font = '67px "Open Sans Condensed"';
+            ctx.fillText('Gleisänderung / ', 50, 55);
+            ctx.font = 'italic 67px "Open Sans Condensed"';
+            ctx.fillText('Track change', 448, 55);
+        }
+
+        ctx.fillStyle = 'white';
+        ctx.fillRect(3, 100, 960, 700);
+
+        if (used_nr !== "") {
+            ctx.fillStyle = 'navy';
+            ctx.font = '75px "Open Sans Condensed"';
+            ctx.textAlign = 'right';
+            const text_width = ctx.measureText(used_nr).width;
+            const text_height = 75;
+            ctx.strokeStyle = 'navy';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.roundRect(890 - text_width - 10, 200 - text_height / 2 - 10, text_width + 20, text_height + 10, 6);
+            ctx.stroke();
+            ctx.fillStyle = 'navy';
+            ctx.fillText(used_nr, 890, 200);
+        }
+        ctx.textAlign = 'left';
+        ctx.fillStyle = 'navy';
+        ctx.font = '120px "Open Sans Condensed"';
+        ctx.fillText(abfahrt, 50, 200);
+        if (abfahrt_a !== "") {
+            ctx.fillStyle = 'white';
+            ctx.font = '90px "Open Sans Condensed"';
+            const text_width = ctx.measureText(abfahrt_a).width;
+            const text_height = 90;
+            ctx.fillStyle = 'navy';
+            ctx.beginPath();
+            ctx.roundRect(330 - 10, 195 - text_height / 2 - 10, text_width + 20, text_height + 10, 6);
+            ctx.fill();
+            ctx.fillStyle = 'white';
+            ctx.fillText(abfahrt_a, 330, 195);
+        }
+        ctx.fillStyle = 'navy';
+        ctx.font = '120px "Open Sans Condensed"';
+        ctx.fillText(ziel, 50, 360);
+        ctx.font = '70px "Open Sans Condensed"';
+
+        if (gleiswechsel !== "0") {  
+        const via_full = [via, via2, via3].filter(v => v !== "").join(' ');
+        this.wrapText(ctx, via_full, 50, 520, 880, 100);
+        }
+
     }
 
-    displayTrainInfo(info, nr, nr_kurz, abfahrt, abfahrt_a, ziel, via, via2, via3, gleiswechsel, infoscreen, display_id, fullScreen) {
+    displayTextInRectangle(ctx, text, x, y, font, textAlign, textHeight, rectPadding, fullScreen, cornerRadius, rectColor, textColor) {
+        ctx.font = font;
+        ctx.textAlign = textAlign
+        const textWidth = ctx.measureText(text).width;
+        if (text.includes("IC")) {
+            rectColor = 'white';
+            textColor = 'navy';
+            if (fullScreen) {
+                cornerRadius = 15;
+            } else {
+                cornerRadius = 10;
+            }
+        } else if (text.includes("FLX")) {
+            rectColor = 'lime';
+            textColor = 'white';
+        }
+        ctx.fillStyle = rectColor;
+        ctx.beginPath();
+        if (textAlign === 'left') {
+            ctx.roundRect(x - rectPadding, y - textHeight / 2 - rectPadding, textWidth + 2 * rectPadding, textHeight + rectPadding, cornerRadius);
+        } else if (textAlign === 'right') {
+            ctx.roundRect(x - textWidth - rectPadding, y - textHeight / 2 - rectPadding, textWidth + 2 * rectPadding, textHeight + rectPadding, cornerRadius);
+        }
+        ctx.fill();
+        ctx.fillStyle = textColor;
+        ctx.fillText(text, x, y);
+    }
+
+    displayTrainInfo(info, nr, nr_kurz, abfahrt, abfahrt_a, ziel, via, via2, via3, gleiswechsel, ausfall, verkehrtAb, infoscreen, display_id, fullScreen) {
         const canvas = document.getElementById(display_id);
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         const zug_nr = fullScreen ? 1 : display_id === 'display2_zug1' ? 2 : 3;
-        if (gleiswechsel !== "0" || !infoscreen ){
-            this.displayPictograms(info, nr, display_id, fullScreen, zug_nr, gleiswechsel, infoscreen);
+        if (!infoscreen && gleiswechsel === "0" && !ausfall && (verkehrtAb === "0")){
+            this.displayPictograms(info, nr, display_id, fullScreen, zug_nr, false);
+        } else {
+            this.displayPictograms(info, nr, display_id, fullScreen, zug_nr, true);
         }
+
         let used_nr = nr;
         if (!fullScreen) used_nr = nr_kurz;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
+        
         if (fullScreen) {
             if (used_nr !== "") {
-                ctx.font = '100px "Open Sans Condensed"';
-                ctx.textAlign = 'right';
-                const text_width = ctx.measureText(used_nr).width;
-                const text_height = 100;
-                ctx.fillStyle = 'white';
-                ctx.beginPath();
-                ctx.roundRect(1855 - text_width - 15, 220 - text_height / 2 - 15, text_width + 30, text_height + 15, 10);
-                ctx.fill();
-                ctx.fillStyle = 'navy';
-                ctx.fillText(used_nr, 1855, 220);
+                this.displayTextInRectangle(ctx, used_nr, 1855, 220, '100px "Open Sans Condensed"', 'right', 100, 15, fullScreen, 0, 'grey', 'white');
             }
             ctx.textAlign = 'left';
             ctx.fillStyle = 'white';
             ctx.font = '180px "Open Sans Condensed"';
             ctx.fillText(abfahrt, 100, 220);
             if (abfahrt_a !== "") {
-                ctx.fillStyle = 'navy';
-                ctx.font = '120px "Open Sans Condensed"';
-                const text_width = ctx.measureText(abfahrt_a).width;
-                const text_height = 120;
-                ctx.fillStyle = 'white';
-                ctx.beginPath();
-                ctx.roundRect(520 - 20 , 215 - text_height / 2 - 20, text_width + 40, text_height + 20, 10);
-                ctx.fill();
-                ctx.fillStyle = 'navy';
-                ctx.fillText(abfahrt_a, 520, 215);
+                this.displayTextInRectangle(ctx, abfahrt_a, 520, 215, '120px "Open Sans Condensed"', 'left', 120, 20, fullScreen, 0, 'white', 'navy');
             }
             ctx.fillStyle = 'white';
             ctx.font = '180px "Open Sans Condensed"';
@@ -525,43 +615,27 @@ export class TrainDisplay {
                 ctx.fillRect(0, 0, 960, 800);
                 ctx.fillStyle = 'navy';
                 ctx.font = '70px "Open Sans Condensed"';
-                this.wrapText(ctx, info, 112, 120, 1800, 100);
+                this.wrapText(ctx, info, 50, 120, 900, 80);
+            } else  if ((gleiswechsel !== "0") || ausfall|| (verkehrtAb !== "0")){
+                this.displayAusfallUndGleiswechsel(ctx, used_nr, abfahrt, abfahrt_a, ziel, via, via2, via3, gleiswechsel, ausfall, verkehrtAb)
             }
+            else {
             // Draw left border line for non-fullscreen displays
             ctx.strokeStyle = 'white';
             ctx.lineWidth = 3;
             ctx.beginPath();
             ctx.moveTo(0, 0); ctx.lineTo(0, 800);
             ctx.stroke();
-            
+
             if (used_nr !== "") {
-                ctx.fillStyle = 'navy';
-                ctx.font = '75px "Open Sans Condensed"';
-                ctx.textAlign = 'right';
-                const text_width = ctx.measureText(used_nr).width;
-                const text_height = 75;
-                ctx.fillStyle = 'white';
-                ctx.beginPath();
-                ctx.roundRect(890 - text_width - 10, 200 - text_height / 2 - 10, text_width + 20, text_height + 10, 6);
-                ctx.fill();
-                ctx.fillStyle = 'navy';
-                ctx.fillText(used_nr, 890, 200);
+                this.displayTextInRectangle(ctx, used_nr, 890, 200, '75px "Open Sans Condensed"', 'right', 75, 10, fullScreen, 0, 'grey', 'white');
             }
             ctx.textAlign = 'left';
             ctx.fillStyle = 'white';
             ctx.font = '120px "Open Sans Condensed"';
             ctx.fillText(abfahrt, 50, 200);
             if (abfahrt_a !== "") {
-                ctx.fillStyle = 'navy';
-                ctx.font = '90px "Open Sans Condensed"';
-                const text_width = ctx.measureText(abfahrt_a).width;
-                const text_height = 90;
-                ctx.fillStyle = 'white';
-                ctx.beginPath();
-                ctx.roundRect(330 - 10, 195 - text_height / 2 - 10, text_width + 20, text_height + 10, 6);
-                ctx.fill();
-                ctx.fillStyle = 'navy';
-                ctx.fillText(abfahrt_a, 330, 195);
+                this.displayTextInRectangle(ctx, abfahrt_a, 330, 195, '90px "Open Sans Condensed"', 'left', 90, 10, fullScreen, 0, 'white', 'navy');
             }
             ctx.fillStyle = 'white';
             ctx.font = '120px "Open Sans Condensed"';
@@ -569,57 +643,18 @@ export class TrainDisplay {
             ctx.font = '70px "Open Sans Condensed"';
             const via_full = [via, via2, via3].filter(v => v !== "").join(' ');
             this.wrapText(ctx, via_full, 50, 520, 880, 100);
-            if (gleiswechsel !== "0" && display_id === "display2_zug2") { //Gleichswechsel / Ausfall / Verkehrt heute ab
-                ctx.fillStyle = 'orange';
-                ctx.fillRect(3, 0, 960, 100);
-                ctx.fillStyle = 'white';
-                ctx.font = '67px "Open Sans Condensed"';
-                ctx.fillText('Gleisänderung / ', 50, 55);
-                ctx.font = 'italic 67px "Open Sans Condensed"';
-                ctx.fillText('Track change', 448, 55);
-                ctx.fillStyle = 'white';
-                ctx.fillRect(3, 100, 960, 700);
-                if (used_nr !== "") {
-                    ctx.fillStyle = 'navy';
-                    ctx.font = '75px "Open Sans Condensed"';
-                    ctx.textAlign = 'right';
-                    const text_width = ctx.measureText(used_nr).width;
-                    const text_height = 75;
-                    ctx.strokeStyle = 'navy';
-                    ctx.lineWidth = 4;
-                    ctx.beginPath();
-                    ctx.roundRect(890 - text_width - 10, 200 - text_height / 2 - 10, text_width + 20, text_height + 10, 6);
-                    ctx.stroke();
-                    ctx.fillStyle = 'navy';
-                    ctx.fillText(used_nr, 890, 200);
-                }
-                ctx.textAlign = 'left';
-                ctx.fillStyle = 'navy';
-                ctx.font = '120px "Open Sans Condensed"';
-                ctx.fillText(abfahrt, 50, 200);
-                if (abfahrt_a !== "") {
-                    ctx.fillStyle = 'white';
-                    ctx.font = '90px "Open Sans Condensed"';
-                    const text_width = ctx.measureText(abfahrt_a).width;
-                    const text_height = 90;
-                    ctx.fillStyle = 'navy';
-                    ctx.beginPath();
-                    ctx.roundRect(330 - 10, 195 - text_height / 2 - 10, text_width + 20, text_height + 10, 6);
-                    ctx.fill();
-                    ctx.fillStyle = 'white';
-                    ctx.fillText(abfahrt_a, 330, 195);
-                }
-                ctx.fillStyle = 'navy';
-                ctx.font = '120px "Open Sans Condensed"';
-                ctx.fillText(ziel, 50, 360);
-                ctx.font = '70px "Open Sans Condensed"';
-                const via_full = [via, via2, via3].filter(v => v !== "").join(' ');
-                this.wrapText(ctx, via_full, 50, 520, 880, 100);
             }
         }
     }
 
-    displayPictograms(info, nr, display_id, fullScreen, zug_nr, gleiswechsel) {
+    displayPictograms(info, nr, display_id, fullScreen, zug_nr, clear) {
+        if (clear){
+            // Remove existing scroll div if any
+             if (this.scroll_divs[zug_nr]) {
+            this.scroll_divs[zug_nr].remove();
+            delete this.scroll_divs[zug_nr];
+            }
+        } else {
         const canvas = document.getElementById(display_id);
         const ctx = canvas.getContext('2d');
         let x = fullScreen ? 50 : 50;
@@ -845,7 +880,7 @@ export class TrainDisplay {
             delete this.scroll_divs[zug_nr];
         }
  
-        if (info !== "" && gleiswechsel === "0") {
+        if (info !== "") {
             //Create scrolling text container
             const scroll_div = document.createElement('div');
             scroll_div.classList.add('scroll-container');
@@ -890,6 +925,7 @@ export class TrainDisplay {
             }
             scroll_div.appendChild(inner);
             this.scroll_divs[zug_nr] = scroll_div;
+        }
         }
     }
 
@@ -937,7 +973,9 @@ export class TrainDisplay {
         const zugteilung = this.trainData.zugDaten[zug_nr].Zugteilung;
         const infoscreen = this.trainData.zugDaten[zug_nr].Infoscreen;
         const gleiswechsel = this.trainData.zugDaten[zug_nr].Gleiswechsel || "0";
-        this.displayFormation(coaches, display_id, fullScreen, direction, platform_length, train_start, skalieren, zugteilung, gleiswechsel, infoscreen);
+        const ausfall = this.trainData.zugDaten[zug_nr].Ausfall;
+        const verkehrtAb = this.trainData.zugDaten[zug_nr].VerkehrtAb || "0";
+        this.displayFormation(coaches, display_id, fullScreen, direction, platform_length, train_start, skalieren, zugteilung, gleiswechsel, ausfall, verkehrtAb, infoscreen);
     }
 
     update(zug_nr, info_canvas_id, wagen_canvas_id, fullScreen) {
@@ -958,7 +996,9 @@ export class TrainDisplay {
             const via3 = this.trainData.zugDaten[zug_nr]['Via-Halte 3 Small'] || "";
             const infoscreen = this.trainData.zugDaten[zug_nr].Infoscreen;
             const gleiswechsel = this.trainData.zugDaten[zug_nr].Gleiswechsel || "0";
-            this.displayTrainInfo(info, nr, nr_kurz, abfahrt, abfahrt_a, ziel, via, via2, via3, gleiswechsel, infoscreen, info_canvas_id, fullScreen);
+            const ausfall = this.trainData.zugDaten[zug_nr].Ausfall;
+            const verkehrtAb = this.trainData.zugDaten[zug_nr].VerkehrtAb || "0";
+            this.displayTrainInfo(info, nr, nr_kurz, abfahrt, abfahrt_a, ziel, via, via2, via3, gleiswechsel, ausfall, verkehrtAb, infoscreen, info_canvas_id, fullScreen);
         } catch (err) {
             console.error(`Error in update_train_display for zug_${zug_nr}:`, err);
         }

@@ -37,7 +37,6 @@
                 <label><input type="radio" name="zug_select" value="6"> Zug 6</label>
                 <label><input type="checkbox" id="display3_rotieren_checkbox"> 3-6 rotieren </label>
                 <button id="edit_formation_btn">Wagenreihung bearbeiten</button>
-
             </div>
         </div>
         <div class="settings-frame" id="zug1_settings">
@@ -61,7 +60,6 @@
                 <label>Startmeter: <input type="text" class="zug_entry short-input" data-zug="1" data-field="TrainStart" value="0"></label>
                 <label>Skalieren: <input type="checkbox" class="zug_checkbox" data-zug="1" data-field="Skalieren"></label>
                 <label>Zugteilung: <input type="checkbox" class="zug_checkbox" data-zug="1" data-field="Zugteilung"></label>
-
             </div>
             <div class="form-row">
                 <button class="export_formation" data-zug="1">Wagenreihung exportieren</button>
@@ -89,7 +87,6 @@
                 <label>Startmeter: <input type="text" class="zug_entry short-input" data-zug="2" data-field="TrainStart" value="0"></label>
                 <label>Skalieren: <input type="checkbox" class="zug_checkbox" data-zug="2" data-field="Skalieren"></label>
                 <label>Zugteilung: <input type="checkbox" class="zug_checkbox" data-zug="2" data-field="Zugteilung"></label>
-
             </div>
             <div class="form-row">
                 <button class="export_formation" data-zug="2">Wagenreihung exportieren</button>
@@ -106,7 +103,6 @@
                 <label>Via-Halte: <input type="text" class="zug_entry" data-zug="3" data-field="Via-Halte 1 Small"></label>
                 <label>Via-Prioritäten: <input type="text" class="zug_entry" data-zug="3" data-field="Via-Halte 2 Small"></label>
                 <label>Infoscreen: <input type="checkbox" class="zug_checkbox" data-zug="3" data-field="Infoscreen"></label>
-
             </div>
             <div class="form-row">
                 <label class="radio-group">Richtung:
@@ -120,6 +116,8 @@
                 <label>Skalieren: <input type="checkbox" class="zug_checkbox" data-zug="3" data-field="Skalieren"></label>
                 <label>Zugteilung: <input type="checkbox" class="zug_checkbox" data-zug="3" data-field="Zugteilung"></label>
                 <label>Gleiswechsel: <input type="text" class="zug_entry" data-zug="3" data-field="Gleiswechsel" value="0"></label>
+                <label>Ausfall: <input type="checkbox" class="zug_checkbox" data-zug="3" data-field="Ausfall"></label>
+                <label>Verkehrt ab: <input type="text" class="zug_entry" data-zug="3" data-field="VerkehrtAb" value="0"></label>
             </div>
             <div class="form-row">
                 <button class="export_formation" data-zug="3">Wagenreihung exportieren</button>
@@ -136,7 +134,6 @@
                 <label>Via-Halte: <input type="text" class="zug_entry" data-zug="4" data-field="Via-Halte 1 Small"></label>
                 <label>Via-Prioriäten: <input type="text" class="zug_entry" data-zug="4" data-field="Via-Halte 2 Small"></label>
                 <label>Infoscreen: <input type="checkbox" class="zug_checkbox" data-zug="4" data-field="Infoscreen"></label>
-
             </div>
             <div class="form-row">
                 <label class="radio-group">Richtung:
@@ -150,6 +147,8 @@
                 <label>Skalieren: <input type="checkbox" class="zug_checkbox" data-zug="4" data-field="Skalieren"></label>
                 <label>Zugteilung: <input type="checkbox" class="zug_checkbox" data-zug="4" data-field="Zugteilung"></label>
                 <label>Gleiswechsel: <input type="text" class="zug_entry" data-zug="4" data-field="Gleiswechsel" value="0"></label>
+                <label>Ausfall: <input type="checkbox" class="zug_checkbox" data-zug="4" data-field="Ausfall"></label>
+                <label>Verkehrt ab: <input type="text" class="zug_entry" data-zug="4" data-field="VerkehrtAb" value="0"></label>
             </div>
             <div class="form-row">
                 <button class="export_formation" data-zug="4">Wagenreihung exportieren</button>
@@ -166,7 +165,6 @@
                 <label>Via-Halte: <input type="text" class="zug_entry" data-zug="5" data-field="Via-Halte 1 Small"></label>
                 <label>Via-Prioritäten: <input type="text" class="zug_entry" data-zug="5" data-field="Via-Halte 2 Small"></label>
                 <label>Infoscreen: <input type="checkbox" class="zug_checkbox" data-zug="5" data-field="Infoscreen"></label>
-
             </div>
             <div class="form-row">
                 <label class="radio-group">Richtung:
@@ -180,6 +178,8 @@
                 <label>Skalieren: <input type="checkbox" class="zug_checkbox" data-zug="5" data-field="Skalieren"></label>
                 <label>Zugteilung: <input type="checkbox" class="zug_checkbox" data-zug="5" data-field="Zugteilung"></label>
                 <label>Gleiswechsel: <input type="text" class="zug_entry" data-zug="5" data-field="Gleiswechsel" value="0"></label>
+                <label>Ausfall: <input type="checkbox" class="zug_checkbox" data-zug="5" data-field="Ausfall"></label>
+                <label>Verkehrt ab: <input type="text" class="zug_entry" data-zug="5" data-field="VerkehrtAb" value="0"></label>
             </div>
             <div class="form-row">
                 <button class="export_formation" data-zug="5">Wagenreihung exportieren</button>
@@ -196,7 +196,6 @@
                 <label>Via-Halte: <input type="text" class="zug_entry" data-zug="6" data-field="Via-Halte 1 Small"></label>
                 <label>Via-Prioritäten: <input type="text" class="zug_entry" data-zug="6" data-field="Via-Halte 2 Small"></label>
                 <label>Infoscreen: <input type="checkbox" class="zug_checkbox" data-zug="6" data-field="Infoscreen"></label>
-
             </div>
             <div class="form-row">
                 <label class="radio-group">Richtung:
@@ -210,6 +209,8 @@
                 <label>Skalieren: <input type="checkbox" class="zug_checkbox" data-zug="6" data-field="Skalieren"></label>
                 <label>Zugteilung: <input type="checkbox" class="zug_checkbox" data-zug="6" data-field="Zugteilung"></label>
                 <label>Gleiswechsel: <input type="text" class="zug_entry" data-zug="6" data-field="Gleiswechsel" value="0"></label>
+                <label>Ausfall: <input type="checkbox" class="zug_checkbox" data-zug="6" data-field="Ausfall"></label>
+                <label>Verkehrt ab: <input type="text" class="zug_entry" data-zug="6" data-field="VerkehrtAb" value="0"></label>
             </div>
             <div class="form-row">
                 <button class="export_formation" data-zug="6">Wagenreihung exportieren</button>
