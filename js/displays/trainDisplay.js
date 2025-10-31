@@ -472,69 +472,42 @@ export class TrainDisplay {
         ctx.fillText(line, x, y);
     }
     
+    displayInfoTopText(ctx, backgroundColor, textColor, infoText1, infoText2, x1, x2) {
+        ctx.fillStyle = backgroundColor;
+        ctx.fillRect(0, 0, 960, 100);
+        ctx.fillStyle = textColor;
+        ctx.font = '67px "Open Sans Condensed"';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(infoText1, x1, 55);
+        ctx.font = 'italic 67px "Open Sans Condensed"';
+        ctx.fillText(infoText2, x2, 55);
+    }
+
     displayAusfallUndGleiswechsel(ctx, used_nr, abfahrt, abfahrt_a, ziel, via, via2, via3, gleiswechsel, ausfall, verkehrtAb) {
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
        
         if (ausfall) {
-            ctx.fillStyle = 'red';
-            ctx.fillRect(3, 0, 960, 100);
-            ctx.fillStyle = 'white';
-            ctx.font = '67px "Open Sans Condensed"';
-            ctx.fillText('Fährt fällt aus / ', 50, 55);
-            ctx.font = 'italic 67px "Open Sans Condensed"';
-            ctx.fillText('Cancelled', 448, 55);
-        }
-        else if (verkehrtAb !== "0") {
-            ctx.fillStyle = 'red';
-            ctx.fillRect(3, 0, 960, 100);
-            ctx.fillStyle = 'white';
-            ctx.font = '67px "Open Sans Condensed"';
-            ctx.fillText('Halt entfällt hier / ', 50, 55);
-            ctx.font = 'italic 67px "Open Sans Condensed"';
-            ctx.fillText('Stop Cancelled', 480, 55);
+            this.displayInfoTopText(ctx, 'red', 'white', 'Fährt fällt aus / ', 'Cancelled', 50, 430);
+        } else if (verkehrtAb !== "0") {
+            this.displayInfoTopText(ctx, 'red', 'white', 'Halt entfällt hier / ', 'Stop Cancelled', 50, 490);
         } else if (gleiswechsel !== "0") {
-            ctx.fillStyle = 'orange';
-            ctx.fillRect(3, 0, 960, 100);
-            ctx.fillStyle = 'white';
-            ctx.font = '67px "Open Sans Condensed"';
-            ctx.fillText('Gleisänderung / ', 50, 55);
-            ctx.font = 'italic 67px "Open Sans Condensed"';
-            ctx.fillText('Track change', 448, 55);
+            this.displayInfoTopText(ctx, 'orange', 'white', 'Gleisänderung / ', 'Track change', 50, 450);
         }
 
         ctx.fillStyle = 'white';
         ctx.fillRect(3, 100, 960, 700);
 
         if (used_nr !== "") {
-            ctx.fillStyle = 'navy';
-            ctx.font = '75px "Open Sans Condensed"';
-            ctx.textAlign = 'right';
-            const text_width = ctx.measureText(used_nr).width;
-            const text_height = 75;
-            ctx.strokeStyle = 'navy';
-            ctx.lineWidth = 4;
-            ctx.beginPath();
-            ctx.roundRect(890 - text_width - 10, 200 - text_height / 2 - 10, text_width + 20, text_height + 10, 6);
-            ctx.stroke();
-            ctx.fillStyle = 'navy';
-            ctx.fillText(used_nr, 890, 200);
+            this.displayTextInRectangle(ctx, used_nr, 890, 200, '75px "Open Sans Condensed"', 'right', 75, 10, false, 0, 'grey', 'white', true);
         }
         ctx.textAlign = 'left';
         ctx.fillStyle = 'navy';
         ctx.font = '120px "Open Sans Condensed"';
         ctx.fillText(abfahrt, 50, 200);
         if (abfahrt_a !== "") {
-            ctx.fillStyle = 'white';
-            ctx.font = '90px "Open Sans Condensed"';
-            const text_width = ctx.measureText(abfahrt_a).width;
-            const text_height = 90;
-            ctx.fillStyle = 'navy';
-            ctx.beginPath();
-            ctx.roundRect(330 - 10, 195 - text_height / 2 - 10, text_width + 20, text_height + 10, 6);
-            ctx.fill();
-            ctx.fillStyle = 'white';
-            ctx.fillText(abfahrt_a, 330, 195);
+            this.displayTextInRectangle(ctx, abfahrt_a, 330, 195, '90px "Open Sans Condensed"', 'left', 90, 10, false, 0, 'navy', 'white');
         }
         ctx.fillStyle = 'navy';
         ctx.font = '120px "Open Sans Condensed"';
@@ -542,36 +515,54 @@ export class TrainDisplay {
         ctx.font = '70px "Open Sans Condensed"';
 
         if (gleiswechsel !== "0") {  
-        const via_full = [via, via2, via3].filter(v => v !== "").join(' ');
-        this.wrapText(ctx, via_full, 50, 520, 880, 100);
+            const via_full = [via, via2, via3].filter(v => v !== "").join(' ');
+            this.wrapText(ctx, via_full, 50, 520, 880, 100);
         }
 
     }
 
-    displayTextInRectangle(ctx, text, x, y, font, textAlign, textHeight, rectPadding, fullScreen, cornerRadius, rectColor, textColor) {
+    displayTextInRectangle(ctx, text, x, y, font, textAlign, textHeight, rectPadding, fullScreen, cornerRadius, rectColor, textColor, inverted=false) {
         ctx.font = font;
         ctx.textAlign = textAlign
         const textWidth = ctx.measureText(text).width;
+        let stroke = false;
+
         if (text.includes("IC")) {
-            rectColor = 'white';
-            textColor = 'navy';
             if (fullScreen) {
+                textColor = 'navy';
+                ctx.fillStyle = 'white';
                 cornerRadius = 15;
             } else {
-                cornerRadius = 10;
+                if (inverted) {
+                    stroke = true;
+                    cornerRadius = 10;
+                    textColor = 'navy';
+                    ctx.fillStyle = 'navy';
+                    ctx.strokeStyle = 'navy';
+                    ctx.lineWidth = 4;
+                } else {
+                    textColor = 'navy';
+                    ctx.fillStyle = 'white';
+                    cornerRadius = 15;
+                }
             }
         } else if (text.includes("FLX")) {
-            rectColor = 'lime';
             textColor = 'white';
+            ctx.fillStyle = 'lime';
+        } else {
+            ctx.fillStyle = rectColor;
         }
-        ctx.fillStyle = rectColor;
         ctx.beginPath();
         if (textAlign === 'left') {
             ctx.roundRect(x - rectPadding, y - textHeight / 2 - rectPadding, textWidth + 2 * rectPadding, textHeight + rectPadding, cornerRadius);
         } else if (textAlign === 'right') {
             ctx.roundRect(x - textWidth - rectPadding, y - textHeight / 2 - rectPadding, textWidth + 2 * rectPadding, textHeight + rectPadding, cornerRadius);
         }
-        ctx.fill();
+        if (stroke){
+            ctx.stroke();
+        } else {
+            ctx.fill();
+        }
         ctx.fillStyle = textColor;
         ctx.fillText(text, x, y);
     }
