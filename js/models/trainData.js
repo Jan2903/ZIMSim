@@ -22,15 +22,17 @@ export class TrainData {
                 'Via-Halte 2 Small': '',
                 'Via-Halte 3 Small': '',
                 Informationen: '',
-                Infoscreen: 0,
-                Richtung: 1,
+                Infoscreen: false,
+                Richtung: true,
                 TrainStart: 0,
                 Skalieren: false,
                 Zugteilung: false,
                 Wagenreihung: [],
                 PlatformLength: 420,
-                PlatformSections: [['A', 69.7], ['B', 135.8], ['C', 208], ['D', 266], ['E', 315.65]],
+                PlatformSections: [],
                 Gleiswechsel: '0',
+                Ausfall: false,
+                VerkehrtAb: '0',
                 'Via-Stations-Categories': {}
             };
         }

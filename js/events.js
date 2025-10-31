@@ -180,15 +180,17 @@ export function initEvents() {
                         'Via-Halte 2 Small': '',
                         'Via-Halte 3 Small': '',
                         Informationen: '',
-                        Infoscreen: 0,
-                        Richtung: 1,
+                        Infoscreen: false,
+                        Richtung: true,
                         TrainStart: 0,
                         Skalieren: false,
                         Zugteilung: false,
                         Wagenreihung: [],
                         PlatformLength: 420,
-                        PlatformSections: [['A', 69.7], ['B', 135.8], ['C', 208], ['D', 266], ['E', 315.65]],
+                        PlatformSections: [],
                         Gleiswechsel: '0',
+                        Ausfall: false,
+                        VerkehrtAb: '0',
                         'Via-Stations-Categories': {}
                     };
                     const mergedData = {
@@ -253,7 +255,20 @@ export function initEvents() {
                     } catch (err) {
                         console.warn(`Failed to set Gleiswechsel for ${zug}:`, err);
                     }
-                    
+
+                    try {
+                        const ausfallCheckbox = document.querySelector(`.zug_checkbox[data-zug="${zug}"][data-field="Ausfall"]`);
+                        if (ausfallCheckbox) ausfallCheckbox.checked = !!mergedData.Ausfall;
+                    } catch (err) {
+                        console.warn(`Failed to set Ausfall for zug ${zug}:`, err);
+                    }
+
+                     try {
+                        const verkehrtAbInput = document.querySelector(`.zug_entry[data-zug="${zug}"][data-field="VerkehrtAb"]`);
+                        if (verkehrtAbInput) verkehrtAbInput.value = mergedData.Gleiswechsel || '0';
+                    } catch (err) {
+                        console.warn(`Failed to set VerkehrtAb for ${zug}:`, err);
+                    }
                 }
                 trainDisplay.updateAll();
             } catch (error) {
