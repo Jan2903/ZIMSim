@@ -66,7 +66,7 @@ export function initEvents() {
         if (config.rotate_3_6) {
             startRotation();
         } else {
-            if (config.rotation_timer) clearTimeout(config.rotation_timer);
+            if (config.zug_rotation_timer) clearTimeout(config.zug_rotation_timer);
             config.current_rotating_zug = 3;
             const selectedRadio = document.querySelector('input[name="zug_select"]:checked');
             const selectedZug = selectedRadio ? parseInt(selectedRadio.value) : 3;

@@ -504,7 +504,7 @@ export class TrainDisplay {
         if (ausfall) {
             this.displayInfoTopText(ctx, 'DarkRed', 'white', 'Fährt fällt aus / ', 'Cancelled', 50, 430);
         } else if (verkehrtAb !== "0") {
-            this.displayInfoTopText(ctx, 'DarkRed', 'white', 'Halt entfällt hier / ', 'Stop Cancelled', 50, 490);
+            this.displayInfoTopText(ctx, 'DarkRed', 'white', 'Halt entfällt hier / ', 'Stop cancelled', 50, 490);
         } else if (gleiswechsel !== "0") {
             this.displayInfoTopText(ctx, 'orange', 'white', 'Gleisänderung / ', 'Track change', 50, 450);
         }
@@ -893,8 +893,8 @@ export class TrainDisplay {
 
                 if (text_width > scroll_width) {
                     let result = info + ' +++ ' + info + ' +++ ';
-                    // Ensure enough repetitions for smooth looping (at least 2x scroll_width)
-                    for (let i = 0; i < Math.ceil((scroll_width * 2) / text_width); i++) {
+                    // Ensure enough repetitions for smooth looping (at least 10x scroll_width)
+                    for (let i = 0; i < Math.ceil((scroll_width * 10) / text_width); i++) {
                         result += info + ' +++ ';
                     }
                     inner.textContent = result;
@@ -917,11 +917,11 @@ export class TrainDisplay {
     onFeatureButtonChange(value) {
         if (value === "rotierend") {
             this.rotating = true;
-            if (config.rotation_timer) clearTimeout(config.rotation_timer);
+            if (config.feature_rotation_timer) clearTimeout(config.feature_rotation_timer);
             this.startFeatureRotation();
         } else {
             this.rotating = false;
-            if (config.rotation_timer) clearTimeout(config.rotation_timer);
+            if (config.feature_rotation_timer) clearTimeout(config.feature_rotation_timer);
             this.aktuelles_merkmal = value;
             this.updateAllFormations();
         }
@@ -932,7 +932,7 @@ export class TrainDisplay {
         this.aktuelles_merkmal = this.merkmale[this.rotations_index];
         this.rotations_index = (this.rotations_index + 1) % this.merkmale.length;
         this.updateAllFormations();
-        config.rotation_timer = setTimeout(() => this.startFeatureRotation(), 3000);
+        config.feature_rotation_timer = setTimeout(() => this.startFeatureRotation(), 3000);
     }
 
     updateAllFormations() {
