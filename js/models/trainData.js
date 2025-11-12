@@ -22,6 +22,7 @@ export class TrainData {
                 'Via-Halte 2 Small': '',
                 'Via-Halte 3 Small': '',
                 Informationen: '',
+                Ankunft: false,
                 Infoscreen: false,
                 Richtung: true,
                 TrainStart: 0,
