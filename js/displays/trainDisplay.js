@@ -700,21 +700,23 @@ export class TrainDisplay {
                 this.displayTextInRectangle(ctx, abfahrt_a, 330, 195, '90px "Open Sans Condensed"', 'left', 90, 10, fullScreen, 0, 'white', 'navy');
                 this.displayTextInRectangle(ctx, used_nr, 890, 200, '75px "Open Sans Condensed"', 'right', 75, 10, fullScreen, 0, 'DimGrey', 'white');
 
-                let arrivalText = "Please do not board"
-                let ankunftText = "Bitte nicht einsteigen"
-                const zug_nr = fullScreen ? 1 : display_id === 'display2_zug1' ? 2 : 3;
                 if (!ankunft){
-                    arrivalText = ""
-                    ankunftText = ""
+                   
                     this.displayText(ctx, ziel, 50, 360, '120px "Open Sans Condensed"', 'white', 'left')
                     const via_full = [via, via2, via3].filter(v => v !== "").join(' ');
                     this.wrapAndDisplayText(ctx, via_full, 50, 520, 880, 100, '70px "Open Sans Condensed"', 'white', 'left');
                 } 
-
-                this.displayScrollingText(canvas, zug_nr, 'ankunft', ankunftText, `${canvas.offsetLeft + 50}px`, `${canvas.offsetTop + 280}px`,`${canvas.width - 50}px`,'120px','white', '120px "Open Sans Condensed"');
-                this.displayScrollingText(canvas, zug_nr, 'arrival', arrivalText, `${canvas.offsetLeft + 50}px`, `${canvas.offsetTop + 420}px`,`${canvas.width - 50}px`,'120px','white', 'italic 120px "Open Sans Condensed"');
                 if (ankunft) this.displayText(ctx,'von / from ' + ziel, 50, 650, '67px "Open Sans Condensed"', 'white','left');
             }
+
+            let ankunftText = ""
+            let arrivalText = ""
+            if (ankunft){
+                ankunftText = "Bitte nicht einsteigen"
+                arrivalText = "Please do not board"
+                } 
+            this.displayScrollingText(canvas, zug_nr, 'ankunft', ankunftText, `${canvas.offsetLeft + 50}px`, `${canvas.offsetTop + 280}px`,`${canvas.width - 50}px`,'120px','white', '120px "Open Sans Condensed"');
+            this.displayScrollingText(canvas, zug_nr, 'arrival', arrivalText, `${canvas.offsetLeft + 50}px`, `${canvas.offsetTop + 420}px`,`${canvas.width - 50}px`,'120px','white', 'italic 120px "Open Sans Condensed"');
         }
     }
 
