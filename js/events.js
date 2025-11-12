@@ -180,6 +180,7 @@ export function initEvents() {
                         'Via-Halte 2 Small': '',
                         'Via-Halte 3 Small': '',
                         Informationen: '',
+                        Ankunft: false,
                         Infoscreen: false,
                         Richtung: true,
                         TrainStart: 0,
@@ -219,6 +220,13 @@ export function initEvents() {
                             console.warn(`Failed to set input for zug ${zug}, field ${field}:`, err);
                         }
                     });
+
+                    try {
+                        const ankunftCheckbox = document.querySelector(`.zug_checkbox[data-zug="${zug}"][data-field="Ankunft"]`);
+                        if (ankunftCheckbox) ankunftCheckbox.checked = !!mergedData.Ankunft;
+                    } catch (err) {
+                        console.warn(`Failed to set Ankunft for zug ${zug}:`, err);
+                    }
 
                     try {
                         const infoscreenCheckbox = document.querySelector(`.zug_checkbox[data-zug="${zug}"][data-field="Infoscreen"]`);
