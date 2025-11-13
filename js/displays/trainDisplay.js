@@ -341,20 +341,11 @@ export class TrainDisplay {
                 this.displayText(ctx, 'von / from ' + ziel, 105, 20, '67px "Open Sans Condensed"', 'white', 'left');
             }
         } else {
-            // Determine zugID based on display_id
-            let zugID;
-            if (displayID === 'display1_wagenreihung') {
-                zugID = 1;
-            } else if (displayID === 'display2_zug1_wagenreihung') {
-                zugID = 2;
-            } else if (displayID === 'display2_zug2_wagenreihung') {
-                zugID = 3;
-            } else {
-                console.warn(`Invalid display_id: ${displayID}`);
-                return;
-            }
+            // Determine zugID based on displayID
+            const zugID = fullScreen ? 1 : displayID === 'display2_zug1' ? 2 : 3;
+
             if (!this.trainData.zugDaten[zugID]) {
-                console.warn(`zugDaten[${zugID}] is undefined for display_id: ${displayID}`);
+                console.warn(`zugDaten[${zugID}] is undefined for displayID: ${displayID}`);
                 return;
             }
 
@@ -505,7 +496,7 @@ export class TrainDisplay {
         ctx.fillText(text, x, y);
     }
 
-    displayAusfallUndGleiswechsel(ctx, used_nr, abfahrt, abfahrt_a, ziel, via, via2, via3, gleiswechsel, ausfall, verkehrtAb) {
+    displayAusfallUndGleiswechsel(ctx, displayID, used_nr, abfahrt, abfahrt_a, ziel, via, via2, via3, gleiswechsel, ausfall, verkehrtAb) {
         ctx.textBaseline = 'middle';
 
         if (ausfall) {
@@ -521,8 +512,8 @@ export class TrainDisplay {
 
         this.displayText(ctx, abfahrt, 50, 200, '120px "Open Sans Condensed"', 'navy', 'left')
 
-        this.displayTextInRectangle(ctx, abfahrt_a, 330, 195, '90px "Open Sans Condensed"', 'left', 90, 10, false, 0, 'navy', 'white');
-        this.displayTextInRectangle(ctx, used_nr, 890, 200, '75px "Open Sans Condensed"', 'right', 75, 10, false, 0, 'DimGrey', 'white', true, true);
+        this.displayTextInRectangle(ctx, abfahrt_a, 330, 195, '90px "Open Sans Condensed"', 'left', 90, 10, false, displayID, 0, 'navy', 'white');
+        this.displayTextInRectangle(ctx, used_nr, 890, 200, '75px "Open Sans Condensed"', 'right', 75, 10, false, displayID, 0, 'DimGrey', 'white', true, true);
 
         this.displayText(ctx, ziel, 50, 360, '120px "Open Sans Condensed"', 'navy', 'left')
 
@@ -535,7 +526,7 @@ export class TrainDisplay {
         }
     }
 
-    displayTextInRectangle(ctx, text, x, y, font, textAlign, textHeight, rectPadding, fullScreen, cornerRadius, rectColor, textColor, inverted = false, widthLimited = false) {
+    displayTextInRectangle(ctx, text, x, y, font, textAlign, textHeight, rectPadding, fullScreen, displayID, cornerRadius, rectColor, textColor, inverted = false, widthLimited = false) {
         ctx.font = font;
         ctx.textAlign = textAlign
 
@@ -591,8 +582,19 @@ export class TrainDisplay {
             } else {
                 ctx.fill();
             }
-            ctx.fillStyle = textColor;
-            ctx.fillText(text, x, y);
+            const canvas = document.getElementById(displayID);
+            const zugID = fullScreen ? 1 : displayID === 'display2_zug1' ? 2 : 3;
+            
+            if (widthLimited){
+                if (fullScreen) {
+                this.displayScrollingText(canvas, zugID, 'zugNr', text, `${canvas.offsetLeft + x - textWidth - rectPadding}px`, `${canvas.offsetTop + y - (textHeight / 2) - rectPadding}px`, `${canvas.width - 50}px`, `${textHeight + rectPadding}px`, textColor, font);
+                } else {
+                    this.displayScrollingText(canvas, zugID, 'zugNr', text, `${canvas.offsetLeft + x - textWidth - rectPadding}px`, `${canvas.offsetTop + y - (textHeight / 2) - rectPadding}px`, `${textWidth + 2 * rectPadding}px`, `${textHeight + rectPadding}px`, textColor, font);
+                }
+           
+            } else {
+                this.displayText(ctx, text, x, y, font, textColor, textAlign);
+            }
         }
     }
 
@@ -697,13 +699,13 @@ export class TrainDisplay {
         return maxWidth;
     }
 
-    displayTrainInfo(info, nr, nr_kurz, abfahrt, abfahrt_a, ziel, via, via2, via3, gleiswechsel, ausfall, verkehrtAb, ankunft, infoscreen, display_id, fullScreen) {
-        const canvas = document.getElementById(display_id);
+    displayTrainInfo(info, nr, nr_kurz, abfahrt, abfahrt_a, ziel, via, via2, via3, gleiswechsel, ausfall, verkehrtAb, ankunft, infoscreen, displayID, fullScreen) {
+        const canvas = document.getElementById(displayID);
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        const zugID = fullScreen ? 1 : display_id === 'display2_zug1' ? 2 : 3;
+        const zugID = fullScreen ? 1 : displayID === 'display2_zug1' ? 2 : 3;
         let x = 0
-        x = this.displayPictograms(info, nr, display_id, fullScreen, ankunft);
+        x = this.displayPictograms(info, nr, displayID, fullScreen, ankunft);
 
         let used_nr = nr;
         if (!fullScreen) used_nr = nr_kurz;
@@ -731,8 +733,8 @@ export class TrainDisplay {
         if (fullScreen) {
 
             this.displayText(ctx, abfahrt, 100, 220, '180px "Open Sans Condensed"', 'white', 'left')
-            this.displayTextInRectangle(ctx, abfahrt_a, 520, 215, '120px "Open Sans Condensed"', 'left', 120, 20, fullScreen, 0, 'white', 'navy');
-            this.displayTextInRectangle(ctx, used_nr, 1855, 220, '100px "Open Sans Condensed"', 'right', 100, 15, fullScreen, 0, 'DimGrey', 'white', false, true);
+            this.displayTextInRectangle(ctx, abfahrt_a, 520, 215, '120px "Open Sans Condensed"', 'left', 120, 20, fullScreen, displayID, 0, 'white', 'navy');
+            this.displayTextInRectangle(ctx, used_nr, 1855, 220, '100px "Open Sans Condensed"', 'right', 100, 15, fullScreen, displayID, 0, 'DimGrey', 'white', false, true);
 
             if (ankunft) {
                 this.displayText(ctx, "Bitte nicht einsteigen", 110, 450, '180px "Open Sans Condensed"', 'white', 'left')
@@ -751,7 +753,7 @@ export class TrainDisplay {
                 this.wrapAndDisplayText(ctx, info_full, 50, 120, 900, 80, '70px "Open Sans Condensed"', 'navy', 'left');
             }
             else if ((gleiswechsel !== "0") || ausfall || (verkehrtAb !== "0")) {
-                this.displayAusfallUndGleiswechsel(ctx, used_nr, abfahrt, abfahrt_a, ziel, via, via2, via3, gleiswechsel, ausfall, verkehrtAb)
+                this.displayAusfallUndGleiswechsel(ctx, displayID, used_nr, abfahrt, abfahrt_a, ziel, via, via2, via3, gleiswechsel, ausfall, verkehrtAb)
             }
             else {
                 // Draw left border line for non-fullscreen displays
@@ -762,8 +764,8 @@ export class TrainDisplay {
                 ctx.stroke();
 
                 this.displayText(ctx, abfahrt, 50, 200, '120px "Open Sans Condensed"', 'white', 'left')
-                this.displayTextInRectangle(ctx, abfahrt_a, 330, 195, '90px "Open Sans Condensed"', 'left', 90, 10, fullScreen, 0, 'white', 'navy');
-                this.displayTextInRectangle(ctx, used_nr, 890, 200, '75px "Open Sans Condensed"', 'right', 75, 10, fullScreen, 0, 'DimGrey', 'white', false, true);
+                this.displayTextInRectangle(ctx, abfahrt_a, 330, 195, '90px "Open Sans Condensed"', 'left', 90, 10, fullScreen, displayID, 0, 'white', 'navy');
+                this.displayTextInRectangle(ctx, used_nr, 890, 200, '75px "Open Sans Condensed"', 'right', 75, 10, fullScreen, displayID, 0, 'DimGrey', 'white', false, true);
 
                 if (!ankunft) {
                     this.displayText(ctx, ziel, 50, 360, '120px "Open Sans Condensed"', 'white', 'left')
@@ -784,9 +786,9 @@ export class TrainDisplay {
         }
     }
 
-    displayPictograms(info, nr, display_id, fullScreen, ankunft) {
+    displayPictograms(info, nr, displayID, fullScreen, ankunft) {
 
-        const canvas = document.getElementById(display_id);
+        const canvas = document.getElementById(displayID);
         const ctx = canvas.getContext('2d');
         let x = fullScreen ? 100 : 50;
         if (!ankunft) {
@@ -1043,7 +1045,7 @@ export class TrainDisplay {
 
     updateFormation(zugID, displayID, fullScreen) {
         if (!this.trainData.zugDaten[zugID]) {
-            console.warn(`zugDaten[${zugID}] is undefined for display_id: ${displayID}`);
+            console.warn(`zugDaten[${zugID}] is undefined for displayID: ${displayID}`);
             return;
         }
         const coaches = this.trainData.zugDaten[zugID].Wagenreihung || [];
