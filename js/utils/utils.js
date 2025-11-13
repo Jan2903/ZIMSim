@@ -21,7 +21,7 @@ pictogramNames.forEach(name => {
 export function startRotation() {
     if (config.zug_rotation_timer) clearTimeout(config.zug_rotation_timer);  // Alten Timer löschen
     updateRotatingDisplay();
-    config.zug_rotation_timer = setTimeout(startRotation, 6000);  // Neuen Timer setzen
+    config.zug_rotation_timer = setTimeout(startRotation, 3000);  // Neuen Timer setzen
 }
 
 export function updateRotatingDisplay() {

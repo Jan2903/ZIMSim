@@ -242,7 +242,7 @@ export function initEvents() {
                     } catch (err) {
                         console.warn(`Failed to set Richtung for zug ${zug}:`, err);
                     }
-                    
+
                     try {
                         const skalierenCheckbox = document.querySelector(`.zug_checkbox[data-zug="${zug}"][data-field="Skalieren"]`);
                         if (skalierenCheckbox) skalierenCheckbox.checked = !!mergedData.Skalieren;
@@ -271,7 +271,7 @@ export function initEvents() {
                         console.warn(`Failed to set Ausfall for zug ${zug}:`, err);
                     }
 
-                     try {
+                    try {
                         const verkehrtAbInput = document.querySelector(`.zug_entry[data-zug="${zug}"][data-field="VerkehrtAb"]`);
                         if (verkehrtAbInput) verkehrtAbInput.value = mergedData.Gleiswechsel || '0';
                     } catch (err) {
@@ -294,7 +294,7 @@ export function initEvents() {
         for (let zug in trainData.zugDaten) {
             data[`zug_${zug}`] = trainData.zugDaten[zug];
         }
-        const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -338,12 +338,12 @@ export function initEvents() {
                 const link = document.createElement('a');
                 // Dynamic filename with timestamp
                 const now = new Date();
-                const timestamp = now.getDate().toString().padStart(2, '0') + '.' + 
-                                    (now.getMonth() + 1).toString().padStart(2, '0') + '.' + 
-                                    now.getFullYear() + '_' + 
-                                    now.getHours().toString().padStart(2, '0') + '.' + 
-                                    now.getMinutes().toString().padStart(2, '0') + '.' + 
-                                    now.getSeconds().toString().padStart(2, '0');
+                const timestamp = now.getDate().toString().padStart(2, '0') + '.' +
+                    (now.getMonth() + 1).toString().padStart(2, '0') + '.' +
+                    now.getFullYear() + '_' +
+                    now.getHours().toString().padStart(2, '0') + '.' +
+                    now.getMinutes().toString().padStart(2, '0') + '.' +
+                    now.getSeconds().toString().padStart(2, '0');
                 link.download = `zim_${timestamp}.png`;
                 link.href = canvas.toDataURL('image/png', 1.0);
                 link.click();
@@ -403,7 +403,7 @@ export function initEvents() {
                 return;
             }
             const data = trainData.zugDaten[zug].Wagenreihung || [];
-            const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;

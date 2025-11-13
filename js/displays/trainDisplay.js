@@ -336,9 +336,9 @@ export class TrainDisplay {
             ctx.fillStyle = 'white';
             ctx.fillRect(3, 0, 960, 280);
         } else if (ankunft) {
-            if (fullScreen){
+            if (fullScreen) {
                 ctx.textBaseline = 'top';
-                this.displayText(ctx,'von / from ' + ziel, 105, 20, '67px "Open Sans Condensed"', 'white','left');
+                this.displayText(ctx, 'von / from ' + ziel, 105, 20, '67px "Open Sans Condensed"', 'white', 'left');
             }
         } else {
             // Determine zugID based on display_id
@@ -374,7 +374,7 @@ export class TrainDisplay {
 
             let minCoachStart = Math.min(...displayedCoaches.map(c => c.start));
 
-            if (minCoachStart !== zugStart){
+            if (minCoachStart !== zugStart) {
                 minCoachStart = zugStart - minCoachStart;
             } else {
                 minCoachStart = 0
@@ -463,7 +463,6 @@ export class TrainDisplay {
     }
 
     wrapAndDisplayText(ctx, text, x, y, maxWidth, lineHeight, font, textColor, textAlign) {
-
         if (text !== "") {
             const words = text.split(' ');
             let line = '';
@@ -504,7 +503,6 @@ export class TrainDisplay {
         ctx.textAlign = textAlign;
         ctx.fillStyle = textColor;
         ctx.fillText(text, x, y);
-
     }
 
     displayAusfallUndGleiswechsel(ctx, used_nr, abfahrt, abfahrt_a, ziel, via, via2, via3, gleiswechsel, ausfall, verkehrtAb) {
@@ -521,10 +519,10 @@ export class TrainDisplay {
         ctx.fillStyle = 'white';
         ctx.fillRect(3, 100, 960, 700); //white background
 
-        this.displayText(ctx, abfahrt, 50, 200, '120px "Open Sans Condensed"', 'navy','left')
+        this.displayText(ctx, abfahrt, 50, 200, '120px "Open Sans Condensed"', 'navy', 'left')
 
         this.displayTextInRectangle(ctx, abfahrt_a, 330, 195, '90px "Open Sans Condensed"', 'left', 90, 10, false, 0, 'navy', 'white');
-        this.displayTextInRectangle(ctx, used_nr, 890, 200, '75px "Open Sans Condensed"', 'right', 75, 10, false, 0, 'DimGrey', 'white', true);
+        this.displayTextInRectangle(ctx, used_nr, 890, 200, '75px "Open Sans Condensed"', 'right', 75, 10, false, 0, 'DimGrey', 'white', true, true);
 
         this.displayText(ctx, ziel, 50, 360, '120px "Open Sans Condensed"', 'navy', 'left')
 
@@ -537,10 +535,23 @@ export class TrainDisplay {
         }
     }
 
-    displayTextInRectangle(ctx, text, x, y, font, textAlign, textHeight, rectPadding, fullScreen, cornerRadius, rectColor, textColor, inverted = false) {
+    displayTextInRectangle(ctx, text, x, y, font, textAlign, textHeight, rectPadding, fullScreen, cornerRadius, rectColor, textColor, inverted = false, widthLimited = false) {
         ctx.font = font;
         ctx.textAlign = textAlign
-        const textWidth = ctx.measureText(text).width;
+
+        let textWidth = ctx.measureText(text).width;
+
+        const checkHeight = 50; // full vertical scan area
+        const availableWidth = this.findMaxZugNrWidth(
+            ctx, x, y, checkHeight
+        );
+        const finalWidth = availableWidth - 40; // 20px padding
+
+        // Limit width 
+        if (widthLimited && textWidth > finalWidth) {
+            textWidth = finalWidth;
+        }
+
         let stroke = false;
         if (text !== "") {
             if (text.includes("IC")) {
@@ -569,6 +580,7 @@ export class TrainDisplay {
                 ctx.fillStyle = rectColor;
             }
             ctx.beginPath();
+            //consider length limit
             if (textAlign === 'left') {
                 ctx.roundRect(x - rectPadding, y - textHeight / 2 - rectPadding, textWidth + 2 * rectPadding, textHeight + rectPadding, cornerRadius);
             } else if (textAlign === 'right') {
@@ -617,9 +629,9 @@ export class TrainDisplay {
         const text_width = tempCtx.measureText(text).width;
         const scroll_width = parseInt(width);
 
-        if ((text_width > scroll_width) || ((scrollingID === "ankunft") || (scrollingID === 'arrival'))){
-            let connect = ' +++ ' 
-            if ((scrollingID==="ankunft") || (scrollingID==='arrival')) connect = ' ';
+        if ((text_width > scroll_width) || ((scrollingID === "ankunft") || (scrollingID === 'arrival'))) {
+            let connect = ' +++ '
+            if ((scrollingID === "ankunft") || (scrollingID === 'arrival')) connect = ' ';
             let result = text + connect + text + connect;
             for (let i = 0; i < Math.ceil((scroll_width * 10) / text_width); i++) {
                 result += text + connect;
@@ -639,6 +651,52 @@ export class TrainDisplay {
         this.scrollDivs[zugID][scrollingID] = scrollDiv;
     }
 
+    getBackgroundColor(ctx) {
+        const canvas = ctx.canvas;
+        const x = canvas.width - 25;
+        const y = 200;
+
+        // Get 1x1 pixel
+        const pixel = ctx.getImageData(x, y, 1, 1).data;
+        return [pixel[0], pixel[1], pixel[2], pixel[3]];
+    }
+
+    findMaxZugNrWidth(ctx, startX, yCenter, height) {
+        const bgColor = this.getBackgroundColor(ctx);  // ← dynamic!
+
+        const halfH = height / 2;
+        const top = Math.max(0, yCenter - halfH);
+        const bottom = Math.min(ctx.canvas.height, yCenter + halfH);
+        const checkHeight = bottom - top;
+
+        let maxWidth = 0;
+
+        for (let x = startX; x >= 0; x--) {
+            const colData = ctx.getImageData(x, top, 1, checkHeight).data;
+
+            let isClear = true;
+            for (let i = 0; i < colData.length; i += 4) {
+                if (
+                    colData[i] !== bgColor[0] ||
+                    colData[i + 1] !== bgColor[1] ||
+                    colData[i + 2] !== bgColor[2] ||
+                    colData[i + 3] !== bgColor[3]
+                ) {
+                    isClear = false;
+                    break;
+                }
+            }
+
+            if (isClear) {
+                maxWidth = startX - x + 1;
+            } else {
+                break;
+            }
+        }
+
+        return maxWidth;
+    }
+
     displayTrainInfo(info, nr, nr_kurz, abfahrt, abfahrt_a, ziel, via, via2, via3, gleiswechsel, ausfall, verkehrtAb, ankunft, infoscreen, display_id, fullScreen) {
         const canvas = document.getElementById(display_id);
         const ctx = canvas.getContext('2d');
@@ -646,7 +704,7 @@ export class TrainDisplay {
         const zugID = fullScreen ? 1 : display_id === 'display2_zug1' ? 2 : 3;
         let x = 0
         x = this.displayPictograms(info, nr, display_id, fullScreen, ankunft);
-      
+
         let used_nr = nr;
         if (!fullScreen) used_nr = nr_kurz;
 
@@ -654,7 +712,9 @@ export class TrainDisplay {
         ctx.textBaseline = 'middle';
 
         if (ankunft) info = "Ankunft / Arrival"
-           
+        let info_full = info;
+        if (infoscreen || (gleiswechsel !== "0") || ausfall || (verkehrtAb !== "0")) info = "";
+
         ctx.fillStyle = 'white';
         if (info !== "") ctx.fillRect(x, 0, canvas.width - x, 100);
 
@@ -670,25 +730,25 @@ export class TrainDisplay {
 
         if (fullScreen) {
 
-            this.displayText(ctx, abfahrt, 100, 220, '180px "Open Sans Condensed"', 'white','left')
+            this.displayText(ctx, abfahrt, 100, 220, '180px "Open Sans Condensed"', 'white', 'left')
             this.displayTextInRectangle(ctx, abfahrt_a, 520, 215, '120px "Open Sans Condensed"', 'left', 120, 20, fullScreen, 0, 'white', 'navy');
-            this.displayTextInRectangle(ctx, used_nr, 1855, 220, '100px "Open Sans Condensed"', 'right', 100, 15, fullScreen, 0, 'DimGrey', 'white');
+            this.displayTextInRectangle(ctx, used_nr, 1855, 220, '100px "Open Sans Condensed"', 'right', 100, 15, fullScreen, 0, 'DimGrey', 'white', false, true);
 
-            if (ankunft){
-                this.displayText(ctx, "Bitte nicht einsteigen", 110,450, '180px "Open Sans Condensed"', 'white','left')
-                this.displayText(ctx, "Please do not board", 105,670, 'italic 180px "Open Sans Condensed"', 'white','left')
+            if (ankunft) {
+                this.displayText(ctx, "Bitte nicht einsteigen", 110, 450, '180px "Open Sans Condensed"', 'white', 'left')
+                this.displayText(ctx, "Please do not board", 105, 670, 'italic 180px "Open Sans Condensed"', 'white', 'left')
 
-            } else{
-                this.displayText(ctx, ziel, 100, 420, '180px "Open Sans Condensed"', 'white','left')
+            } else {
+                this.displayText(ctx, ziel, 100, 420, '180px "Open Sans Condensed"', 'white', 'left')
                 const via_full = [via, via2].filter(v => v !== "").join(' ');
                 this.wrapAndDisplayText(ctx, via_full, 112, 620, 1800, 100, '70px "Open Sans Condensed"', 'white', 'left');
             }
-           
+
         } else {
             if (infoscreen) {
                 ctx.fillStyle = 'white';
                 ctx.fillRect(0, 0, 960, 800); //Create white background
-                this.wrapAndDisplayText(ctx, info, 50, 120, 900, 80, '70px "Open Sans Condensed"', 'navy', 'left');
+                this.wrapAndDisplayText(ctx, info_full, 50, 120, 900, 80, '70px "Open Sans Condensed"', 'navy', 'left');
             }
             else if ((gleiswechsel !== "0") || ausfall || (verkehrtAb !== "0")) {
                 this.displayAusfallUndGleiswechsel(ctx, used_nr, abfahrt, abfahrt_a, ziel, via, via2, via3, gleiswechsel, ausfall, verkehrtAb)
@@ -701,11 +761,11 @@ export class TrainDisplay {
                 ctx.moveTo(0, 0); ctx.lineTo(0, 800);
                 ctx.stroke();
 
-                this.displayText(ctx, abfahrt, 50, 200, '120px "Open Sans Condensed"', 'white','left')
+                this.displayText(ctx, abfahrt, 50, 200, '120px "Open Sans Condensed"', 'white', 'left')
                 this.displayTextInRectangle(ctx, abfahrt_a, 330, 195, '90px "Open Sans Condensed"', 'left', 90, 10, fullScreen, 0, 'white', 'navy');
-                this.displayTextInRectangle(ctx, used_nr, 890, 200, '75px "Open Sans Condensed"', 'right', 75, 10, fullScreen, 0, 'DimGrey', 'white');
+                this.displayTextInRectangle(ctx, used_nr, 890, 200, '75px "Open Sans Condensed"', 'right', 75, 10, fullScreen, 0, 'DimGrey', 'white', false, true);
 
-                if (!ankunft){
+                if (!ankunft) {
                     this.displayText(ctx, ziel, 50, 360, '120px "Open Sans Condensed"', 'white', 'left')
                     const via_full = [via, via2, via3].filter(v => v !== "").join(' ');
                     this.wrapAndDisplayText(ctx, via_full, 50, 520, 880, 100, '70px "Open Sans Condensed"', 'white', 'left');
@@ -714,240 +774,240 @@ export class TrainDisplay {
 
             let ankunftText = ""
             let arrivalText = ""
-            if (ankunft){
+            if (ankunft) {
                 ankunftText = "Bitte nicht einsteigen"
                 arrivalText = "Please do not board"
-                this.displayText(ctx,'von / from ' + ziel, 50, 650, '67px "Open Sans Condensed"', 'white','left');
-                } 
-            this.displayScrollingText(canvas, zugID, 'ankunft', ankunftText, `${canvas.offsetLeft + 50}px`, `${canvas.offsetTop + 280}px`,`${canvas.width - 50}px`,'120px','white', '120px "Open Sans Condensed"');
-            this.displayScrollingText(canvas, zugID, 'arrival', arrivalText, `${canvas.offsetLeft + 50}px`, `${canvas.offsetTop + 420}px`,`${canvas.width - 50}px`,'120px','white', 'italic 120px "Open Sans Condensed"');
+                this.displayText(ctx, 'von / from ' + ziel, 50, 650, '67px "Open Sans Condensed"', 'white', 'left');
+            }
+            this.displayScrollingText(canvas, zugID, 'ankunft', ankunftText, `${canvas.offsetLeft + 50}px`, `${canvas.offsetTop + 280}px`, `${canvas.width - 50}px`, '120px', 'white', '120px "Open Sans Condensed"');
+            this.displayScrollingText(canvas, zugID, 'arrival', arrivalText, `${canvas.offsetLeft + 50}px`, `${canvas.offsetTop + 420}px`, `${canvas.width - 50}px`, '120px', 'white', 'italic 120px "Open Sans Condensed"');
         }
     }
 
     displayPictograms(info, nr, display_id, fullScreen, ankunft) {
 
-            const canvas = document.getElementById(display_id);
-            const ctx = canvas.getContext('2d');
-            let x = fullScreen ? 100 : 50;
-            if (!ankunft){
-                const step = 105;
-                const drawImageSafe = (imgKey, scale, img_x, img_y, tintColor = null) => {
-                    const img = images[imgKey];
-                    if (img && img.isLoaded && !img.isBroken) {
-                        try {
-                            let drawImg = img; // Default to original image
-                            let drawWidth = img.width * scale;
-                            let drawHeight = img.height * scale;
-                            if (tintColor) {
-                                // Create offscreen canvas for tinting if needed
-                                const offCanvas = document.createElement('canvas');
-                                offCanvas.width = img.width;
-                                offCanvas.height = img.height;
-                                const offCtx = offCanvas.getContext('2d');
-                                offCtx.drawImage(img, 0, 0);
-                                offCtx.globalCompositeOperation = 'source-in';
-                                offCtx.fillStyle = tintColor;
-                                offCtx.fillRect(0, 0, img.width, img.height);
-                                offCtx.globalCompositeOperation = 'source-over'; // Reset
-                                drawImg = offCanvas; // Use tinted version
-                            }
-                            // Draw (centered at img_x, img_y)
-                            ctx.drawImage(drawImg, img_x - (drawWidth / 2), img_y - (drawHeight / 2), drawWidth, drawHeight);
-                        } catch (err) {
-                            console.warn(`Failed to draw pictogram ${imgKey}:`, err);
+        const canvas = document.getElementById(display_id);
+        const ctx = canvas.getContext('2d');
+        let x = fullScreen ? 100 : 50;
+        if (!ankunft) {
+            const step = 105;
+            const drawImageSafe = (imgKey, scale, img_x, img_y, tintColor = null) => {
+                const img = images[imgKey];
+                if (img && img.isLoaded && !img.isBroken) {
+                    try {
+                        let drawImg = img; // Default to original image
+                        let drawWidth = img.width * scale;
+                        let drawHeight = img.height * scale;
+                        if (tintColor) {
+                            // Create offscreen canvas for tinting if needed
+                            const offCanvas = document.createElement('canvas');
+                            offCanvas.width = img.width;
+                            offCanvas.height = img.height;
+                            const offCtx = offCanvas.getContext('2d');
+                            offCtx.drawImage(img, 0, 0);
+                            offCtx.globalCompositeOperation = 'source-in';
+                            offCtx.fillStyle = tintColor;
+                            offCtx.fillRect(0, 0, img.width, img.height);
+                            offCtx.globalCompositeOperation = 'source-over'; // Reset
+                            drawImg = offCanvas; // Use tinted version
                         }
-                    } else {
-                        console.warn(`Pictogram ${imgKey} not loaded or broken`);
+                        // Draw (centered at img_x, img_y)
+                        ctx.drawImage(drawImg, img_x - (drawWidth / 2), img_y - (drawHeight / 2), drawWidth, drawHeight);
+                    } catch (err) {
+                        console.warn(`Failed to draw pictogram ${imgKey}:`, err);
                     }
-                };
-
-                if (info.includes("Zug fällt heute aus") || info.includes("Keine Weiterfahrt nach")) {
-                    //Draw white filled box
-                    ctx.fillStyle = 'white';
-                    ctx.fillRect(x, 0, 100, 100);
-                    //Draw blue cross
-                    ctx.strokeStyle = 'navy';
-                    ctx.lineWidth = 12;
-                    ctx.beginPath();
-                    ctx.moveTo(x + 28, 28); ctx.lineTo(x + 72, 72);
-                    ctx.moveTo(x + 72, 28); ctx.lineTo(x + 28, 72);
-                    ctx.stroke();
-                    //Move to the right for next icon or scrolling text start
-                    x += step;
+                } else {
+                    console.warn(`Pictogram ${imgKey} not loaded or broken`);
                 }
+            };
 
-                if (nr.includes("FLX")) { //Reservierungspflicht Flixtrain
-                    //Draw white outline box
-                    ctx.lineWidth = "4";
-                    ctx.strokeStyle = 'white';
-                    ctx.strokeRect(x + 2, 2, 96, 96);
-                    //Draw R text
-                    ctx.fillStyle = 'white';
-                    ctx.font = '48px "Open Sans Condensed"';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText("R", x + 75, 28);
-                    //Move to the right for next icon or scrolling text start
-                    x += step;
-                }
-
-                if (nr.includes("IC")) { //Reservierungspflicht Fahrrad
-                    //Draw white outline box
-                    ctx.lineWidth = "4";
-                    ctx.strokeStyle = 'white';
-                    ctx.strokeRect(x + 2, 2, 96, 96);
-                    //Draw bicycle icon
-                    drawImageSafe('wagenreihung_fahrrad', 0.40, x + 50, 66);
-                    //Draw R text
-                    ctx.fillStyle = 'white';
-                    ctx.font = '48px "Open Sans Condensed"';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText("R", x + 75, 28);
-                    //Move to the right for next icon or scrolling text start
-                    x += step;
-                }
-
-                if (info.includes("Heute mit Halt in")) {
-                    //Draw white filled box
-                    ctx.fillStyle = 'white';
-                    ctx.fillRect(x, 0, 100, 100);
-                    //Draw H text
-                    ctx.fillStyle = 'navy';
-                    ctx.font = 'bold 68px "Open Sans Condensed"';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText("H", x + 30, 60);
-                    //Draw plus sign 
-                    ctx.fillStyle = 'navy';
-                    ctx.font = 'bold 64px "Open Sans Condensed"';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText("+", x + 65, 48);
-                    //Move to the right for next icon or scrolling text start
-                    x += step;
-                }
-
-                if (info.includes("Heute ohne Halt in")) {
-                    //Draw white filled box
-                    ctx.fillStyle = 'white';
-                    ctx.fillRect(x, 0, 100, 100);
-                    //Draw H text
-                    ctx.fillStyle = 'navy';
-                    ctx.font = 'bold 68px "Open Sans Condensed"';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText("H", x + 30, 60);
-                    //Draw minus sign 
-                    ctx.fillStyle = 'navy';
-                    ctx.font = 'bold 64px "Open Sans Condensed"';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText("-", x + 60, 36);
-                    //Move to the right for next icon or scrolling text start
-                    x += step;
-                }
-
-                if (info.includes("Mehrere Wagen fehlen") || info.includes("Ein Wagen fehlt")) {
-                    //Draw white filled box
-                    ctx.fillStyle = 'white';
-                    ctx.fillRect(x, 0, 100, 100);
-                    //Draw missing wagons icon
-                    drawImageSafe('wagen_fehlen', 1, x + 50, 50, 'navy');
-                    //Move to the right for next icon or scrolling text start
-                    x += step;
-                }
-
-                if (info.includes("Kein gastronomisches Angebot")) {
-                    //Draw white filled box
-                    ctx.fillStyle = 'white';
-                    ctx.fillRect(x, 0, 100, 100);
-                    //Draw gastronomy icon
-                    drawImageSafe('wagenreihung_gastronomie', 0.5, x + 30, 50, 'navy');
-                    // Draw red slash over the icon
-                    ctx.strokeStyle = 'red';
-                    ctx.lineWidth = 12;
-                    ctx.beginPath();
-                    ctx.moveTo(x + 10, 90);
-                    ctx.lineTo(x + 90, 10);
-                    ctx.stroke();
-                    //Move to the right for next icon or scrolling text start
-                    x += step;
-                }
-
-                if (info.includes("Universal-WC fehlt") || info.includes("Kein behindertengerechtes WC")) {
-                    //Draw white filled box
-                    ctx.fillStyle = 'white';
-                    ctx.fillRect(x, 0, 100, 100);
-                    //Draw wheelchair icon
-                    drawImageSafe('wagenreihung_rollstuhl', 0.32, x + 32, 28, 'navy');
-                    //Draw WC text
-                    ctx.fillStyle = 'navy';
-                    ctx.font = '48px "Open Sans Condensed"';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText("WC", x + 66, 75);
-                    // Draw red slash over the icon
-                    ctx.strokeStyle = 'red';
-                    ctx.lineWidth = 12;
-                    ctx.beginPath();
-                    ctx.moveTo(x + 10, 90);
-                    ctx.lineTo(x + 90, 10);
-                    ctx.stroke();
-                    //Move to the right for next icon or scrolling text start
-                    x += step;
-                }
-
-                if (info.includes("Defekte fahrzeuggebundene Einstiegshilfe")) {
-                    //Draw white filled box
-                    ctx.fillStyle = 'white';
-                    ctx.fillRect(x, 0, 100, 100);
-                    //Draw wheelchair icon
-                    drawImageSafe('wagenreihung_rollstuhl', 0.5, x + 50, 50, 'navy');
-                    //Draw exclamation mark on the top right corner
-                    ctx.fillStyle = 'navy';
-                    ctx.font = 'bold 56px "Open Sans Condensed"';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText("!", x + 80, 36);
-                    //Move to the right for next icon or scrolling text start
-                    x += step;
-                }
-
-                if (info.includes("Eingeschränkte Fahrradbeförderung")) {
-                    //Draw white filled box
-                    ctx.fillStyle = 'white';
-                    ctx.fillRect(x, 0, 100, 100);
-                    //Draw bicycle icon
-                    drawImageSafe('wagenreihung_fahrrad', 0.40, x + 50, 66, 'navy');
-                    //Draw exclamation mark on the top right corner
-                    ctx.fillStyle = 'navy';
-                    ctx.font = 'bold 56px "Open Sans Condensed"';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText("!", x + 80, 36);
-                    //Move to the right for next icon or scrolling text start
-                    x += step;
-                }
-
-                if (info.includes("Eingeschränktes gastronomisches Angebot")) {
-                    //Draw white filled box
-                    ctx.fillStyle = 'white';
-                    ctx.fillRect(x, 0, 100, 100);
-                    //Draw gastronomy icon
-                    drawImageSafe('wagenreihung_gastronomie', 0.5, x + 30, 50, 'navy');
-                    //Draw exclamation mark on the top right corner
-                    ctx.fillStyle = 'navy';
-                    ctx.font = 'bold 56px "Open Sans Condensed"';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText("!", x + 80, 36);
-                    //Move to the right for next icon or scrolling text start
-                    x += step;
-                }
+            if (info.includes("Zug fällt heute aus") || info.includes("Keine Weiterfahrt nach")) {
+                //Draw white filled box
+                ctx.fillStyle = 'white';
+                ctx.fillRect(x, 0, 100, 100);
+                //Draw blue cross
+                ctx.strokeStyle = 'navy';
+                ctx.lineWidth = 12;
+                ctx.beginPath();
+                ctx.moveTo(x + 28, 28); ctx.lineTo(x + 72, 72);
+                ctx.moveTo(x + 72, 28); ctx.lineTo(x + 28, 72);
+                ctx.stroke();
+                //Move to the right for next icon or scrolling text start
+                x += step;
             }
 
-            return x
+            if (nr.includes("FLX")) { //Reservierungspflicht Flixtrain
+                //Draw white outline box
+                ctx.lineWidth = "4";
+                ctx.strokeStyle = 'white';
+                ctx.strokeRect(x + 2, 2, 96, 96);
+                //Draw R text
+                ctx.fillStyle = 'white';
+                ctx.font = '48px "Open Sans Condensed"';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText("R", x + 75, 28);
+                //Move to the right for next icon or scrolling text start
+                x += step;
+            }
+
+            if (nr.includes("IC")) { //Reservierungspflicht Fahrrad
+                //Draw white outline box
+                ctx.lineWidth = "4";
+                ctx.strokeStyle = 'white';
+                ctx.strokeRect(x + 2, 2, 96, 96);
+                //Draw bicycle icon
+                drawImageSafe('wagenreihung_fahrrad', 0.40, x + 50, 66);
+                //Draw R text
+                ctx.fillStyle = 'white';
+                ctx.font = '48px "Open Sans Condensed"';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText("R", x + 75, 28);
+                //Move to the right for next icon or scrolling text start
+                x += step;
+            }
+
+            if (info.includes("Heute mit Halt in")) {
+                //Draw white filled box
+                ctx.fillStyle = 'white';
+                ctx.fillRect(x, 0, 100, 100);
+                //Draw H text
+                ctx.fillStyle = 'navy';
+                ctx.font = 'bold 68px "Open Sans Condensed"';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText("H", x + 30, 60);
+                //Draw plus sign 
+                ctx.fillStyle = 'navy';
+                ctx.font = 'bold 64px "Open Sans Condensed"';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText("+", x + 65, 48);
+                //Move to the right for next icon or scrolling text start
+                x += step;
+            }
+
+            if (info.includes("Heute ohne Halt in")) {
+                //Draw white filled box
+                ctx.fillStyle = 'white';
+                ctx.fillRect(x, 0, 100, 100);
+                //Draw H text
+                ctx.fillStyle = 'navy';
+                ctx.font = 'bold 68px "Open Sans Condensed"';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText("H", x + 30, 60);
+                //Draw minus sign 
+                ctx.fillStyle = 'navy';
+                ctx.font = 'bold 64px "Open Sans Condensed"';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText("-", x + 60, 36);
+                //Move to the right for next icon or scrolling text start
+                x += step;
+            }
+
+            if (info.includes("Mehrere Wagen fehlen") || info.includes("Ein Wagen fehlt")) {
+                //Draw white filled box
+                ctx.fillStyle = 'white';
+                ctx.fillRect(x, 0, 100, 100);
+                //Draw missing wagons icon
+                drawImageSafe('wagen_fehlen', 1, x + 50, 50, 'navy');
+                //Move to the right for next icon or scrolling text start
+                x += step;
+            }
+
+            if (info.includes("Kein gastronomisches Angebot")) {
+                //Draw white filled box
+                ctx.fillStyle = 'white';
+                ctx.fillRect(x, 0, 100, 100);
+                //Draw gastronomy icon
+                drawImageSafe('wagenreihung_gastronomie', 0.5, x + 30, 50, 'navy');
+                // Draw red slash over the icon
+                ctx.strokeStyle = 'red';
+                ctx.lineWidth = 12;
+                ctx.beginPath();
+                ctx.moveTo(x + 10, 90);
+                ctx.lineTo(x + 90, 10);
+                ctx.stroke();
+                //Move to the right for next icon or scrolling text start
+                x += step;
+            }
+
+            if (info.includes("Universal-WC fehlt") || info.includes("Kein behindertengerechtes WC")) {
+                //Draw white filled box
+                ctx.fillStyle = 'white';
+                ctx.fillRect(x, 0, 100, 100);
+                //Draw wheelchair icon
+                drawImageSafe('wagenreihung_rollstuhl', 0.32, x + 32, 28, 'navy');
+                //Draw WC text
+                ctx.fillStyle = 'navy';
+                ctx.font = '48px "Open Sans Condensed"';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText("WC", x + 66, 75);
+                // Draw red slash over the icon
+                ctx.strokeStyle = 'red';
+                ctx.lineWidth = 12;
+                ctx.beginPath();
+                ctx.moveTo(x + 10, 90);
+                ctx.lineTo(x + 90, 10);
+                ctx.stroke();
+                //Move to the right for next icon or scrolling text start
+                x += step;
+            }
+
+            if (info.includes("Defekte fahrzeuggebundene Einstiegshilfe")) {
+                //Draw white filled box
+                ctx.fillStyle = 'white';
+                ctx.fillRect(x, 0, 100, 100);
+                //Draw wheelchair icon
+                drawImageSafe('wagenreihung_rollstuhl', 0.5, x + 50, 50, 'navy');
+                //Draw exclamation mark on the top right corner
+                ctx.fillStyle = 'navy';
+                ctx.font = 'bold 56px "Open Sans Condensed"';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText("!", x + 80, 36);
+                //Move to the right for next icon or scrolling text start
+                x += step;
+            }
+
+            if (info.includes("Eingeschränkte Fahrradbeförderung")) {
+                //Draw white filled box
+                ctx.fillStyle = 'white';
+                ctx.fillRect(x, 0, 100, 100);
+                //Draw bicycle icon
+                drawImageSafe('wagenreihung_fahrrad', 0.40, x + 50, 66, 'navy');
+                //Draw exclamation mark on the top right corner
+                ctx.fillStyle = 'navy';
+                ctx.font = 'bold 56px "Open Sans Condensed"';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText("!", x + 80, 36);
+                //Move to the right for next icon or scrolling text start
+                x += step;
+            }
+
+            if (info.includes("Eingeschränktes gastronomisches Angebot")) {
+                //Draw white filled box
+                ctx.fillStyle = 'white';
+                ctx.fillRect(x, 0, 100, 100);
+                //Draw gastronomy icon
+                drawImageSafe('wagenreihung_gastronomie', 0.5, x + 30, 50, 'navy');
+                //Draw exclamation mark on the top right corner
+                ctx.fillStyle = 'navy';
+                ctx.font = 'bold 56px "Open Sans Condensed"';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText("!", x + 80, 36);
+                //Move to the right for next icon or scrolling text start
+                x += step;
+            }
+        }
+
+        return x
     }
 
     onFeatureButtonChange(value) {

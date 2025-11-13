@@ -1,7 +1,7 @@
 // js/models/trainData.js
 export class TrainData {
     constructor() {
-        this.zugDaten = {1: {}, 2: {}, 3: {}};
+        this.zugDaten = { 1: {}, 2: {}, 3: {} };
         this.initializeZugDaten();
         this.current_stop = '';
         this.current_platform = '';
