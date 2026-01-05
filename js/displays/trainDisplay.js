@@ -303,7 +303,22 @@ export class TrainDisplay {
         });
     }
 
-    displayFormation(coaches, displayID, fullScreen, richtung, bahnsteigLaenge, zugStart, skalieren, zugteilung, gleiswechsel, ausfall, verkehrtAb, ziel, ankunft, infoscreen) {
+    displayFormation(zugData, displayID, fullScreen) {
+        const {
+            Wagenreihung: coaches = [],
+            PlatformLength: bahnsteigLaenge = 420,
+            TrainStart: zugStart = 0,
+            Richtung: richtung,
+            Skalieren: skalieren,
+            Zugteilung: zugteilung,
+            Infoscreen: infoscreen,
+            Gleiswechsel: gleiswechsel = "0",
+            Ausfall: ausfall,
+            VerkehrtAb: verkehrtAb = "0",
+            Ziel: ziel = "",
+            Ankunft: ankunft
+        } = zugData;
+
         const canvas = document.getElementById(displayID);
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -496,7 +511,22 @@ export class TrainDisplay {
         ctx.fillText(text, x, y);
     }
 
-    displayAusfallUndGleiswechsel(ctx, displayID, used_nr, abfahrt, abfahrt_a, ziel, via, via2, via3, gleiswechsel, ausfall, verkehrtAb) {
+    displayAusfallUndGleiswechsel(ctx, zugData, displayID, used_nr) {
+        // Unpack only what we need for this specific view
+        const {
+            Abfahrt: abfahrt,
+            Abweichend: abfahrt_a,
+            Ziel: ziel,
+            Gleiswechsel: gleiswechsel = "0",
+            Ausfall: ausfall,
+            VerkehrtAb: verkehrtAb = "0"
+        } = zugData;
+
+        // Logic for Vias (similar to before)
+        const via = zugData['Via-Halte 1 Small'] || "";
+        const via2 = zugData['Via-Halte 2 Small'] || "";
+        const via3 = zugData['Via-Halte 3 Small'] || "";
+        
         ctx.textBaseline = 'middle';
 
         if (ausfall) {
@@ -699,13 +729,35 @@ export class TrainDisplay {
         return maxWidth;
     }
 
-    displayTrainInfo(info, nr, nr_kurz, abfahrt, abfahrt_a, ziel, via, via2, via3, gleiswechsel, ausfall, verkehrtAb, ankunft, infoscreen, displayID, fullScreen) {
+    displayTrainInfo(zugData, displayID, fullScreen) {
         const canvas = document.getElementById(displayID);
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Unpack the data
+        var {
+            Informationen: info = "",
+            Zugnummer: nr = "",
+            Zugnummer_kurz: nr_kurz = "",
+            Abfahrt: abfahrt = "",
+            Abweichend: abfahrt_a = "",
+            Ziel: ziel = "",
+            Gleiswechsel: gleiswechsel = "0",
+            Ausfall: ausfall = false,
+            VerkehrtAb: verkehrtAb = "0",
+            Ankunft: ankunft = false,
+            Infoscreen: infoscreen = false,
+            PlatformSections: sectors = [] 
+        } = zugData;
+
+        // Logic for Vias
+        const via = fullScreen ? (zugData['Via-Halte 1'] || "") : (zugData['Via-Halte 1 Small'] || "");
+        const via2 = fullScreen ? (zugData['Via-Halte 2'] || "") : (zugData['Via-Halte 2 Small'] || "");
+        const via3 = zugData['Via-Halte 3 Small'] || "";
+
         const zugID = fullScreen ? 1 : displayID === 'display2_zug1' ? 2 : 3;
-        let x = 0
-        x = this.displayPictograms(info, nr, displayID, fullScreen, ankunft);
+
+        let x = this.displayPictograms(info, nr, displayID, fullScreen, ankunft);
 
         let used_nr = nr;
         if (!fullScreen) used_nr = nr_kurz;
@@ -753,7 +805,7 @@ export class TrainDisplay {
                 this.wrapAndDisplayText(ctx, info_full, 50, 120, 900, 80, '70px "Open Sans Condensed"', 'navy', 'left');
             }
             else if ((gleiswechsel !== "0") || ausfall || (verkehrtAb !== "0")) {
-                this.displayAusfallUndGleiswechsel(ctx, displayID, used_nr, abfahrt, abfahrt_a, ziel, via, via2, via3, gleiswechsel, ausfall, verkehrtAb)
+                this.displayAusfallUndGleiswechsel(ctx, zugData, displayID, used_nr)
             }
             else {
                 // Draw left border line for non-fullscreen displays
@@ -1043,53 +1095,30 @@ export class TrainDisplay {
         }
     }
 
-    updateFormation(zugID, displayID, fullScreen) {
-        if (!this.trainData.zugDaten[zugID]) {
-            console.warn(`zugDaten[${zugID}] is undefined for displayID: ${displayID}`);
-            return;
-        }
-        const coaches = this.trainData.zugDaten[zugID].Wagenreihung || [];
-        const bahnsteigLaenge = this.trainData.zugDaten[zugID].PlatformLength || 420;
-        const train_start = parseFloat(this.trainData.zugDaten[zugID].TrainStart) || 0;
-        const richtung = this.trainData.zugDaten[zugID].Richtung;
-        const skalieren = this.trainData.zugDaten[zugID].Skalieren;
-        const zugteilung = this.trainData.zugDaten[zugID].Zugteilung;
-        const infoscreen = this.trainData.zugDaten[zugID].Infoscreen;
-        const gleiswechsel = this.trainData.zugDaten[zugID].Gleiswechsel || "0";
-        const ausfall = this.trainData.zugDaten[zugID].Ausfall;
-        const verkehrtAb = this.trainData.zugDaten[zugID].VerkehrtAb || "0";
-        const ziel = this.trainData.zugDaten[zugID].Ziel || "";
-        const ankunft = this.trainData.zugDaten[zugID].Ankunft;
-        this.displayFormation(coaches, displayID, fullScreen, richtung, bahnsteigLaenge, train_start, skalieren, zugteilung, gleiswechsel, ausfall, verkehrtAb, ziel, ankunft, infoscreen);
+    updateFormation(zugData, displayID, fullScreen) {
+        if (!zugData) return;
+
+        this.displayFormation(zugData, displayID, fullScreen); 
     }
 
     update(zugID, info_canvas_id, wagen_canvas_id, fullScreen) {
         try {
-            this.updateFormation(zugID, wagen_canvas_id, fullScreen);
-            if (!this.trainData.zugDaten[zugID]) {
-                console.warn(`zugDaten[${zugID}] is undefined for info_canvas_id: ${info_canvas_id}`);
+            // 1. Get the single data object
+            const zugData = this.trainData.zugDaten[zugID];
+
+            if (!zugData) {
+                console.warn(`zugDaten[${zugID}] is undefined`);
                 return;
             }
-            const info = this.trainData.zugDaten[zugID].Informationen || "";
-            let nr = this.trainData.zugDaten[zugID].Zugnummer || "";
-            const nr_kurz = this.trainData.zugDaten[zugID].Zugnummer_kurz || "";
-            const abfahrt = this.trainData.zugDaten[zugID].Abfahrt || "";
-            const abfahrt_a = this.trainData.zugDaten[zugID].Abweichend || "";
-            const ziel = this.trainData.zugDaten[zugID].Ziel || "";
-            const via = fullScreen ? this.trainData.zugDaten[zugID]['Via-Halte 1'] || "" : this.trainData.zugDaten[zugID]['Via-Halte 1 Small'] || "";
-            const via2 = fullScreen ? this.trainData.zugDaten[zugID]['Via-Halte 2'] || "" : this.trainData.zugDaten[zugID]['Via-Halte 2 Small'] || "";
-            const via3 = this.trainData.zugDaten[zugID]['Via-Halte 3 Small'] || "";
-            const ankunft = this.trainData.zugDaten[zugID].Ankunft;
-            const infoscreen = this.trainData.zugDaten[zugID].Infoscreen;
-            const gleiswechsel = this.trainData.zugDaten[zugID].Gleiswechsel || "0";
-            const ausfall = this.trainData.zugDaten[zugID].Ausfall;
-            const verkehrtAb = this.trainData.zugDaten[zugID].VerkehrtAb || "0";
-            this.displayTrainInfo(info, nr, nr_kurz, abfahrt, abfahrt_a, ziel, via, via2, via3, gleiswechsel, ausfall, verkehrtAb, ankunft, infoscreen, info_canvas_id, fullScreen);
+
+            // 2. Pass the whole object to the rendering functions
+            this.updateFormation(zugData, wagen_canvas_id, fullScreen);
+            this.displayTrainInfo(zugData, info_canvas_id, fullScreen);
+
         } catch (err) {
             console.error(`Error in update_train_display for zug_${zugID}:`, err);
         }
     }
-
     updateAll() {
         for (let zugID = 1; zugID <= 3; zugID++) {
             try {
