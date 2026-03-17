@@ -125,43 +125,39 @@ export class TrainDisplay {
     }
 
     displayCompactClass(scaledCoaches, ctx) {
-        let group = [];
-        const processGroup = () => {
+        if (!scaledCoaches || scaledCoaches.length === 0) return;
+
+        let currentGroup = [];
+
+        const processGroup = (group) => {
             if (group.length === 0) return;
-            const first = group[0];
-            const last = group[group.length - 1];
-            const startPos = first.start;
-            const endPos = last.start + last.length;
+
+            const firstCoach = group[0];
+            const lastCoach = group[group.length - 1];
+            
+            // In der Kompaktansicht wird nur die 1. Klasse hervorgehoben.
+            if (firstCoach.coachClass !== 1) return;
+
+            const startPos = firstCoach.start;
+            const endPos = lastCoach.start + lastCoach.length;
             const center = (startPos + endPos) / 2;
-            const current_class = first.coachClass;
+
             ctx.font = 'bold 40px "Open Sans Condensed"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            if (current_class === 1) {
-                ctx.fillStyle = 'orange';
-                ctx.fillText("1.", center, this.y + 44);
-            }
-            group = [];
+            ctx.fillStyle = 'orange';
+            ctx.fillText("1.", center, this.y + 44);
         };
-        scaledCoaches.forEach(coach => {
-            if (['a', 'ma', 'm'].includes(coach.coach_type)) {
-                if (group.length === 0 || coach.coachClass === group[0].coachClass) {
-                    group.push(coach);
-                } else {
-                    processGroup();
-                    group = [coach];
-                }
-            } else if (['e', 'me'].includes(coach.coach_type)) {
-                if (group.length > 0 && coach.coachClass === group[0].coachClass) {
-                    group.push(coach);
-                }
-                processGroup();
-                group = [];
+
+        for (const coach of scaledCoaches) {
+            if (currentGroup.length > 0 && coach.coachClass === currentGroup[0].coachClass) {
+                currentGroup.push(coach);
             } else {
-                processGroup();
+                processGroup(currentGroup);
+                currentGroup = [coach];
             }
-        });
-        processGroup();
+        }
+        processGroup(currentGroup);
     }
 
     displayAmenities(coach, x, ctx) {
@@ -182,7 +178,8 @@ export class TrainDisplay {
     }
 
     displayCompactAmenities(scaledCoaches, ctx) {
-        let group = [];
+        if (!scaledCoaches || scaledCoaches.length === 0) return;
+
         const arraysAreEqual = (a, b) => {
             if (a.length !== b.length) return false;
             const sortedA = [...a].sort();
@@ -190,54 +187,45 @@ export class TrainDisplay {
             return sortedA.every((val, index) => val === sortedB[index]);
         };
 
-        const processGroup = () => {
-            if (group.length === 0) return;
-            const first = group[0];
-            const last = group[group.length - 1];
-            const startPos = first.start;
-            const endPos = last.start + last.length;
+        let currentGroup = [];
+
+        const processGroup = (group) => {
+            if (group.length === 0 || group[0].amenities.length === 0) return;
+
+            const firstCoach = group[0];
+            const lastCoach = group[group.length - 1];
+            const amenities = firstCoach.amenities;
+
+            const startPos = firstCoach.start;
+            const endPos = lastCoach.start + lastCoach.length;
             const center = (startPos + endPos) / 2;
-            const amenities = first.amenities;
+
             let imgKey;
-            let scale; // image scaling factor
-            if (amenities.includes('f')) imgKey = 'wagenreihung_fahrrad', scale = 0.28;
-            else if (amenities.includes('r')) imgKey = 'wagenreihung_rollstuhl', scale = 0.24;
-            else if (amenities.includes('m')) imgKey = 'wagenreihung_mehrzweck', scale = 0.28;
-            else if (amenities.includes('g')) imgKey = 'wagenreihung_gastronomie', scale = 0.32;
+            let scale;
+            if (amenities.includes('f')) { imgKey = 'wagenreihung_fahrrad'; scale = 0.28; }
+            else if (amenities.includes('r')) { imgKey = 'wagenreihung_rollstuhl'; scale = 0.24; }
+            else if (amenities.includes('m')) { imgKey = 'wagenreihung_mehrzweck'; scale = 0.28; }
+            else if (amenities.includes('g')) { imgKey = 'wagenreihung_gastronomie'; scale = 0.32; }
+            
             const img = images[imgKey];
             if (img && img.isLoaded && !img.isBroken) {
                 try {
-                    let adj = 0;
-                    if (amenities.includes('f') || amenities.includes('m')) {
-                        if (last.coach_type === 'a') adj = 0;
-                        else if (last.coach_type === 'e') adj = 0;
-                    }
-                    ctx.drawImage(img, center + adj - (img.width * scale / 2), this.y + 42 - (img.height * scale / 2), img.width * scale, img.height * scale);
+                    ctx.drawImage(img, center - (img.width * scale / 2), this.y + 42 - (img.height * scale / 2), img.width * scale, img.height * scale);
                 } catch (err) {
                     console.warn(`Failed to draw compact amenity image ${imgKey}:`, err);
                 }
             }
-            group = [];
         };
-        scaledCoaches.forEach(coach => {
-            if (['a', 'ma', 'm'].includes(coach.coach_type)) {
-                if (group.length === 0 || arraysAreEqual(coach.amenities, group[0].amenities)) {
-                    group.push(coach);
-                } else {
-                    processGroup();
-                    group = [coach];
-                }
-            } else if (['e', 'me'].includes(coach.coach_type)) {
-                if (group.length > 0 && arraysAreEqual(coach.amenities, group[0].amenities)) {
-                    group.push(coach);
-                }
-                processGroup();
-                group = [];
+
+        for (const coach of scaledCoaches) {
+            if (currentGroup.length > 0 && arraysAreEqual(coach.amenities, currentGroup[0].amenities)) {
+                currentGroup.push(coach);
             } else {
-                processGroup();
+                processGroup(currentGroup);
+                currentGroup = [coach];
             }
-        });
-        processGroup();
+        }
+        processGroup(currentGroup);
     }
 
     displayWagonNumbers(coach, x, ctx) {
@@ -251,68 +239,47 @@ export class TrainDisplay {
     }
 
     displayCompactWagonNumbers(scaledCoaches, ctx) {
-        let group = [];
-        scaledCoaches.forEach(coach => {
-            if (coach.coachNumber && coach.coachNumber !== 0) {
-                group.push(coach);
-                if (['e', 'me', 'l'].includes(coach.coach_type)) {
-                    if (group.length > 0) {
-                        const first = group[0];
-                        const last = group[group.length - 1];
-                        const startPos = first.start;
-                        const endPos = last.start + last.length;
-                        const center = (startPos + endPos) / 2;
-                        const first_number = first.coachNumber;
-                        const last_number = last.coachNumber;
-                        let number_text = first_number === last_number ? first_number.toString() : `${first_number} - ${last_number}`;
-                        if (number_text !== "0") {
-                            ctx.fillStyle = 'white';
-                            ctx.font = '40px "Open Sans Condensed"';
-                            ctx.textAlign = 'center';
-                            ctx.textBaseline = 'middle';
-                            ctx.fillText(number_text, center, this.y + 44);
-                        }
-                    }
-                    group = [];
-                }
-            } else {
-                if (group.length > 0 && ['e', 'me', 'l'].includes(coach.coach_type)) {
-                    const first = group[0];
-                    const last = group[group.length - 1];
-                    const startPos = first.start;
-                    const endPos = last.start + last.length;
-                    const center = (startPos + endPos) / 2;
-                    const first_number = first.coachNumber;
-                    const last_number = last.coachNumber;
-                    let number_text = first_number === last_number ? first_number.toString() : `${first_number} - ${last_number}`;
-                    if (number_text !== "0") {
-                        ctx.fillStyle = 'white';
-                        ctx.font = '40px "Open Sans Condensed"';
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
-                        ctx.fillText(number_text, center, this.y + 44);
-                    }
-                    group = [];
-                }
-            }
-        });
-        if (group.length > 0) {
-            const first = group[0];
-            const last = group[group.length - 1];
-            const startPos = first.start;
-            const endPos = last.start + last.length;
+        if (!scaledCoaches || scaledCoaches.length === 0) return;
+
+        let currentGroup = [];
+
+        const processGroup = (group) => {
+            if (group.length === 0) return;
+
+            const firstCoach = group[0];
+            const lastCoach = group[group.length - 1];
+
+            const startPos = firstCoach.start;
+            const endPos = lastCoach.start + lastCoach.length;
             const center = (startPos + endPos) / 2;
-            const first_number = first.coachNumber;
-            const last_number = last.coachNumber;
-            let number_text = first_number === last_number ? first_number.toString() : `${first_number} - ${last_number}`;
-            if (number_text !== "0") {
-                ctx.fillStyle = 'white';
-                ctx.font = '40px "Open Sans Condensed"';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(number_text, center, this.y + 44);
+
+            const firstNumber = firstCoach.coachNumber;
+            const lastNumber = lastCoach.coachNumber;
+
+            const numberText = firstNumber === lastNumber ?
+                firstNumber.toString() :
+                `${firstNumber} - ${lastNumber}`;
+
+            ctx.fillStyle = 'white';
+            ctx.font = '40px "Open Sans Condensed"';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(numberText, center, this.y + 44);
+        };
+
+        for (const coach of scaledCoaches) {
+            // Coach must have a number to be part of a group.
+            if (coach.coachNumber && coach.coachNumber !== '0' && coach.coachNumber !== '') {
+                currentGroup.push(coach);
+            } else {
+                // End of a group, process it and reset.
+                processGroup(currentGroup);
+                currentGroup = [];
             }
         }
+
+        // Process the last group if any.
+        processGroup(currentGroup);
     }
 
     displaySectors(sectors, ctx, fullScreen, scale_factor, platform_length) {
@@ -468,8 +435,11 @@ export class TrainDisplay {
             }
 
             if (!coachData.open) {
-                ctx.fillStyle = 'rgba(80, 80, 80, 0.7)';
-                ctx.fillRect(x, this.y - 5, pixelLength, 90);
+                ctx.font = 'bold 48px "Open Sans Condensed"';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = 'white';
+                ctx.fillText("X", x + (drawableCoach.length / 2), this.y + 44);
             } else {
                 this.displayFirstClass(drawableCoach, x, ctx, fullScreen);
                 if (fullScreen) {
@@ -876,8 +846,8 @@ export class TrainDisplay {
                 const viaLineHeight = 80;
 
                 for (const group of groups) {
-                    const destText = `${group.trainNumber} ${group.destination}`;
-                    this.displayText(ctx, destText, 50, yPos, destFont, 'white', 'left');
+                    this.displayText(ctx, group.destination, 50, yPos, destFont, 'white', 'left');
+                    this.displayTextInRectangle(ctx, group.trainNumber, 890, yPos, '75px "Open Sans Condensed"', 'right', 75, 10, fullScreen, displayID, 0, 'DimGrey', 'white', false, true);
                     yPos += destLineHeight;
                     const viaText = (group.vias || []).join(' ');
                     yPos = this.wrapAndDisplayText(ctx, viaText, 50, yPos, 880, viaLineHeight, viaFont, 'white', 'left');
