@@ -65,9 +65,8 @@ function generateGroupSettingsHTML(departureIndex, groupIndex) {
                 <label>Via-Halte 3: <input type="text" class="zug_entry" data-zug="${zugId}" data-group-index="${groupIndex}" data-field="Via-Halte 3"></label>
             </div>
             <div class="form-row action-row-group">
-                <button class="export_formation btn-secondary" data-zug="${zugId}" data-group-index="${groupIndex}">⬇️ Wagenreihung exportieren</button>
-                <button class="import_formation btn-secondary" data-zug="${zugId}" data-group-index="${groupIndex}">⬆️ Wagenreihung importieren</button>
-                <button class="remove-group-btn btn-danger" data-zug="${zugId}" data-group-index="${groupIndex}">- Zugteil entfernen</button>
+                <button class="edit-formation-btn btn-secondary" data-zug="${zugId}" data-group-index="${groupIndex}">✏️ Wagenreihung bearbeiten</button>
+                <button class="remove-group-btn btn-danger" data-zug="${zugId}" data-group-index="${groupIndex}">- Zugteil entfernen</button>                
             </div>
         </div>
     `;
@@ -100,6 +99,241 @@ function renderGroupsUI(departureIndex) {
         setValue('Via-Halte 2', vias[1]);
         setValue('Via-Halte 3', vias[2]);
     });
+}
+
+/**
+ * Generiert das HTML für eine einzelne Zeile im Wagenreihungs-Editor.
+ * @param {Coach} coach - Das Coach-Objekt.
+ * @param {number} index - Der Index des Wagens.
+ * @returns {string} - Der HTML-String für die Editor-Zeile.
+ */
+function generateCoachEditorRowHTML(coach, index) {
+    const coachTypes = ['locomotive', 'control_car', 'middle_car'];
+    const coachClasses = { '1': '1. Klasse', '2': '2. Klasse', 'null': 'Keine' };
+    const amenities = ['bike', 'wheelchair', 'dining', 'family', 'g', 'f', 'r', 'm']; // 'g', 'f', 'r', 'm' for legacy
+
+    return `
+    <div class="coach-editor-row" draggable="true" data-coach-index="${index}">
+        <span class="drag-handle">⠿</span>
+        <select data-prop="type">
+            ${coachTypes.map(t => `<option value="${t}" ${coach.type === t ? 'selected' : ''}>${t.replace('_', ' ')}</option>`).join('')}
+        </select>
+        <input type="number" step="0.1" value="${coach.length}" data-prop="length" class="short-input">
+        <select data-prop="coachClass">
+            ${Object.entries(coachClasses).map(([val, text]) => `<option value="${val}" ${String(coach.coachClass) === val ? 'selected' : ''}>${text}</option>`).join('')}
+        </select>
+        <input type="text" value="${coach.coachNumber}" data-prop="coachNumber" class="short-input">
+        <div class="amenities-group">
+            ${amenities.map(a => `<label><input type="checkbox" data-amenity="${a}" ${coach.amenities.includes(a) ? 'checked' : ''}> ${a.charAt(0).toUpperCase()}</label>`).join('')}
+        </div>
+        <label class="switch"><input type="checkbox" data-prop="open" ${coach.open ? 'checked' : ''}><span class="slider round"></span></label>
+        <button class="delete-coach-btn btn-danger small-btn">🗑️</button>
+    </div>
+    `;
+}
+
+/**
+ * Zeigt den modalen Editor für die Wagenreihung einer bestimmten TrainGroup an.
+ * @param {number} departureIndex 
+ * @param {number} groupIndex 
+ */
+function showFormationEditor(departureIndex, groupIndex) {
+    const { group } = getDepartureAndGroupByIndex(departureIndex, groupIndex);
+
+    const overlay = document.createElement('div');
+    overlay.id = 'formation-editor-overlay';
+    overlay.className = 'modal-overlay';
+
+    const modalHTML = `
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2>Wagenreihung bearbeiten (Zug ${departureIndex + 1}, Teil ${groupIndex + 1})</h2>
+                <button class="close-modal-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="coach-editor-header">
+                    <span></span>
+                    <span>Typ</span>
+                    <span>Länge (m)</span>
+                    <span>Klasse</span>
+                    <span>Nummer</span>
+                    <span class="amenities-header">Ausstattung</span>
+                    <span>Offen</span>
+                    <span>Aktion</span>
+                </div>
+                <div id="coach-list-container">
+                    ${group.coaches.map((coach, index) => generateCoachEditorRowHTML(coach, index)).join('')}
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div>
+                    <button id="add-coach-btn" class="btn-secondary">+ Wagen hinzufügen</button>
+                    <button id="import-formation-btn" class="btn-secondary">⬆️ Importieren</button>
+                    <button id="export-formation-btn" class="btn-secondary">⬇️ Exportieren</button>
+                </div>
+                <div>
+                    <button id="save-formation-btn" class="btn-primary">Speichern & Schließen</button>
+                </div>
+            </div>
+        </div>
+    `;
+    overlay.innerHTML = modalHTML;
+    document.body.appendChild(overlay);
+
+    const coachListContainer = document.getElementById('coach-list-container');
+
+    // Event Listeners for Modal
+    overlay.addEventListener('click', e => {
+        if (e.target.id === 'formation-editor-overlay' || e.target.classList.contains('close-modal-btn')) {
+            overlay.remove();
+        }
+        if (e.target.id === 'add-coach-btn') {
+            const newCoach = new Coach();
+            const newIndex = coachListContainer.children.length;
+            coachListContainer.insertAdjacentHTML('beforeend', generateCoachEditorRowHTML(newCoach, newIndex));
+        }
+        if (e.target.closest('.delete-coach-btn')) {
+            e.target.closest('.coach-editor-row').remove();
+        }
+        if (e.target.id === 'import-formation-btn') {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = (ev) => {
+                const file = ev.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (readEvent) => {
+                    try {
+                        const importedCoaches = JSON.parse(readEvent.target.result);
+                        if (!Array.isArray(importedCoaches)) {
+                            throw new Error("JSON ist kein Array.");
+                        }
+                        // Rendere die Wagenliste im Modal mit den neuen Daten neu
+                        coachListContainer.innerHTML = importedCoaches.map((coachData, index) => 
+                            generateCoachEditorRowHTML(new Coach(coachData), index)
+                        ).join('');
+                    } catch (error) {
+                        console.error('Failed to import formation:', error);
+                        alert('Fehler beim Importieren der Wagenreihung. Bitte prüfe die JSON-Datei.');
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
+        if (e.target.id === 'export-formation-btn') {
+            const coachesToExport = [];
+            document.querySelectorAll('#coach-list-container .coach-editor-row').forEach(row => {
+                const coachData = {};
+                row.querySelectorAll('[data-prop]').forEach(input => {
+                    const prop = input.dataset.prop;
+                    if (input.type === 'checkbox') {
+                        coachData[prop] = input.checked;
+                    } else {
+                        coachData[prop] = input.value;
+                    }
+                });
+                
+                coachData.amenities = [];
+                row.querySelectorAll('.amenities-group input:checked').forEach(amenityInput => {
+                    coachData.amenities.push(amenityInput.dataset.amenity);
+                });
+
+                if (coachData.coachClass === 'null') {
+                    coachData.coachClass = null;
+                }
+                
+                coachData.length = parseFloat(coachData.length) || 25;
+                coachesToExport.push(coachData);
+            });
+
+            const blob = new Blob([JSON.stringify(coachesToExport, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `zug_${departureIndex + 1}_gruppe_${groupIndex + 1}_formation.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+        if (e.target.id === 'save-formation-btn') {
+            const newCoaches = [];
+            document.querySelectorAll('#coach-list-container .coach-editor-row').forEach(row => {
+                const coachData = {};
+                row.querySelectorAll('[data-prop]').forEach(input => {
+                    const prop = input.dataset.prop;
+                    if (input.type === 'checkbox') {
+                        coachData[prop] = input.checked;
+                    } else {
+                        coachData[prop] = input.value;
+                    }
+                });
+                
+                coachData.amenities = [];
+                row.querySelectorAll('.amenities-group input:checked').forEach(amenityInput => {
+                    coachData.amenities.push(amenityInput.dataset.amenity);
+                });
+
+                // Konvertiere 'null' String zurück zu null
+                if (coachData.coachClass === 'null' || coachData.coachClass === undefined) {
+                    coachData.coachClass = null;
+                } else {
+                    // Konvertiere den String aus dem <select> in eine Zahl
+                    coachData.coachClass = parseInt(coachData.coachClass, 10);
+                }
+
+                newCoaches.push(new Coach(coachData));
+            });
+            
+            trainData.departures[departureIndex].groups[groupIndex].coaches = newCoaches;
+            overlay.remove();
+            trainDisplay.updateAll();
+        }
+    });
+
+    // Drag and Drop Logic
+    let draggedItem = null;
+
+    coachListContainer.addEventListener('dragstart', e => {
+        if (e.target.classList.contains('coach-editor-row')) {
+            draggedItem = e.target;
+            setTimeout(() => {
+                e.target.style.opacity = '0.5';
+            }, 0);
+        }
+    });
+
+    coachListContainer.addEventListener('dragend', e => {
+        if (draggedItem) {
+            draggedItem.style.opacity = '1';
+            draggedItem = null;
+        }
+    });
+
+    coachListContainer.addEventListener('dragover', e => {
+        e.preventDefault();
+        const afterElement = getDragAfterElement(coachListContainer, e.clientY);
+        const currentDragged = document.querySelector('.dragging');
+        if (afterElement == null) {
+            coachListContainer.appendChild(draggedItem);
+        } else {
+            coachListContainer.insertBefore(draggedItem, afterElement);
+        }
+    });
+
+    function getDragAfterElement(container, y) {
+        const draggableElements = [...container.querySelectorAll('.coach-editor-row:not(.dragging)')];
+
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child };
+            } else {
+                return closest;
+            }
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
 }
 
 function resizeDisplay() {    
@@ -379,6 +613,13 @@ export function initEvents() {
     // Klick-Events (Buttons)
     settingsContainer.addEventListener('click', e => {
         // "Zugteil hinzufügen" Button
+        if (e.target.matches('.edit-formation-btn')) {
+            const departureIndex = parseInt(e.target.dataset.zug) - 1;
+            const groupIndex = parseInt(e.target.dataset.groupIndex);
+            showFormationEditor(departureIndex, groupIndex);
+        }
+
+
         if (e.target.matches('.add-group-btn')) {
             const departureIndex = parseInt(e.target.dataset.zug) - 1;
             const { departure } = getDepartureAndGroup(departureIndex);
@@ -401,48 +642,6 @@ export function initEvents() {
             }
         }
 
-        // "Wagenreihung importieren" Button
-        if (e.target.matches('.import_formation')) {
-            const departureIndex = parseInt(e.target.dataset.zug) - 1;
-            const groupIndex = parseInt(e.target.dataset.groupIndex);
-            
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = '.json';
-            input.onchange = (ev) => {
-                const file = ev.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    try {
-                        const data = JSON.parse(ev.target.result);
-                        const { group } = getDepartureAndGroupByIndex(departureIndex, groupIndex);
-                        group.coaches = data.map(c => new Coach(c));
-                        trainDisplay.updateAll();
-                    } catch (error) {
-                        console.error('Failed to import formation:', error);
-                        alert('Error loading formation JSON.');
-                    }
-                };
-                reader.readAsText(file);
-            };
-            input.click();
-        }
-
-        // "Wagenreihung exportieren" Button
-        if (e.target.matches('.export_formation')) {
-            const departureIndex = parseInt(e.target.dataset.zug) - 1;
-            const groupIndex = parseInt(e.target.dataset.groupIndex);
-            const { group } = getDepartureAndGroupByIndex(departureIndex, groupIndex);
-            const data = group.coaches || [];
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `zug_${departureIndex + 1}_gruppe_${groupIndex + 1}_formation.json`;
-            link.click();
-            URL.revokeObjectURL(url);
-        }
     });
 
     // Input-Events (Textfelder)
