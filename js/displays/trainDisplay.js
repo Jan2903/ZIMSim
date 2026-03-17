@@ -83,10 +83,9 @@ export class TrainDisplay {
 
     displayCoupling(ctx, x) {
         ctx.fillStyle = 'white';
-        const dotRadius = 3;
-        const yOffset = 0;
-        const startY = this.y + yOffset;
-        const endY = this.y + 80 - yOffset;
+        const dotRadius = 6;
+        const startY = this.y - 15;
+        const endY = this.y + 100;
         const numDots = 6;
         const step = (endY - startY) / (numDots - 1);
 
@@ -344,8 +343,8 @@ export class TrainDisplay {
         if (groups.length === 0 || groups.every(g => g.coaches.length === 0)) return;
 
         const threshold = 50;
-        const coachGap = fullScreen ? 4 : 2;
-        const groupGap = fullScreen ? 12 : 6;
+        const coachGap = fullScreen ? 8 : 0;
+        const groupGap = fullScreen ? 28 : 28;
         const usableDisplayLength = fullScreen ? 1820 : 860;
         const platformLengthMeters = this.trainData.platform.length;
         let pixelPerMeter = usableDisplayLength / platformLengthMeters;
@@ -379,24 +378,29 @@ export class TrainDisplay {
             // Advance X by the length of the coach
             currentX += coachPixelLength;
 
-            // Now, calculate the gap to the *next* coach
+            // Now, calculate the gap to the next coach
             if (i < coachesToDraw.length - 1) {
                 const nextItem = coachesToDraw[i + 1];
                 const nextGroup = nextItem.group;
 
                 // Is the next coach in a new group?
                 if (group !== nextGroup) {
-                    // It's a group boundary. Use the larger gap.
-                    const couplingX = currentX + groupGap / 2;
                     
+
+                    //TODO: Accomodate for lenght/ gaps -> reduce length of start and end coaches when coupling / gap between groups
                     // Check condition to draw coupling
                     if (group.destination !== nextGroup.destination || group.trainNumber !== nextGroup.trainNumber) {
+                        // It's a group boundary. Use the larger gap.
+                        const couplingX = currentX + groupGap / 2;
                         this.displayCoupling(ctx, couplingX);
+                        currentX += groupGap;
+                    } else {
+                        // Same group, use a smaller gap.
+                        currentX += groupGap / 3; // Half gap for visual separation, but no coupling dot
                     }
-                    
-                    currentX += groupGap;
+
                 } else {
-                    // Same group, use the smaller gap.
+                    // Same group, use a smaller gap.
                     currentX += coachGap;
                 }
             }
