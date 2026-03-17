@@ -1,10 +1,108 @@
 // js/events.js
 import { Coach } from './models/coach.js';
+import { Departure } from './models/departure.js';
+import { Platform } from './models/platform.js';
+import { TrainGroup } from './models/trainGroup.js';
 import { trainData, trainDisplay } from './main.js';
 import { config } from './utils/config.js';
 import { startRotation } from './utils/utils.js';
 
-function resizeDisplay() {
+/**
+ * Stellt sicher, dass ein Departure-Objekt und dessen erste TrainGroup für einen gegebenen Index existieren.
+ * @param {number} departureIndex - Der 0-basierte Index in trainData.departures.
+ * @returns {{departure: Departure, group: TrainGroup}}
+ */
+function getDepartureAndGroup(departureIndex) {
+    while (trainData.departures.length <= departureIndex) {
+        trainData.departures.push(new Departure());
+    }
+    const departure = trainData.departures[departureIndex];
+    if (!departure.groups || departure.groups.length === 0) {
+        departure.groups.push(new TrainGroup());
+    }
+    return { departure, group: departure.groups[0] };
+}
+
+/**
+ * Stellt sicher, dass ein Departure- und ein TrainGroup-Objekt für die gegebenen Indizes existieren.
+ * @param {number} departureIndex - Der 0-basierte Index in trainData.departures.
+ * @param {number} groupIndex - Der 0-basierte Index in departure.groups.
+ * @returns {{departure: Departure, group: TrainGroup}}
+ */
+function getDepartureAndGroupByIndex(departureIndex, groupIndex) {
+    // Stellt sicher, dass das Departure-Objekt existiert
+    while (trainData.departures.length <= departureIndex) {
+        trainData.departures.push(new Departure());
+    }
+    const departure = trainData.departures[departureIndex];
+    // Stellt sicher, dass das TrainGroup-Objekt existiert
+    while (departure.groups.length <= groupIndex) {
+        departure.groups.push(new TrainGroup());
+    }
+    return { departure, group: departure.groups[groupIndex] };
+}
+
+/**
+ * Generiert das HTML für die Eingabefelder eines einzelnen Zugteils (TrainGroup).
+ * @param {number} departureIndex - Der 0-basierte Index der Abfahrt.
+ * @param {number} groupIndex - Der 0-basierte Index des Zugteils.
+ * @returns {string} - Der HTML-String für den Zugteil-Editor.
+ */
+function generateGroupSettingsHTML(departureIndex, groupIndex) {
+    const zugId = departureIndex + 1;
+    return `
+        <div class="train-group-frame" data-group-index="${groupIndex}">
+            <h4>Zugteil ${groupIndex + 1}</h4>
+            <div class="form-row">
+                <label>Linie/Nummer: <input type="text" class="zug_entry" data-zug="${zugId}" data-group-index="${groupIndex}" data-field="Zugnummer"></label>
+                <label>Ziel: <input type="text" class="zug_entry" data-zug="${zugId}" data-group-index="${groupIndex}" data-field="Ziel"></label>
+                <label>Zeit: <input type="text" class="zug_entry short-input" data-zug="${zugId}" data-group-index="${groupIndex}" data-field="Abfahrt"></label>
+                <label>Abw.: <input type="text" class="zug_entry short-input" data-zug="${zugId}" data-group-index="${groupIndex}" data-field="Abweichend"></label>
+            </div>
+            <div class="form-row">
+                <label>Via-Halte 1: <input type="text" class="zug_entry" data-zug="${zugId}" data-group-index="${groupIndex}" data-field="Via-Halte 1"></label>
+                <label>Via-Halte 2: <input type="text" class="zug_entry" data-zug="${zugId}" data-group-index="${groupIndex}" data-field="Via-Halte 2"></label>
+                <label>Via-Halte 3: <input type="text" class="zug_entry" data-zug="${zugId}" data-group-index="${groupIndex}" data-field="Via-Halte 3"></label>
+            </div>
+            <div class="form-row action-row-group">
+                <button class="export_formation btn-secondary" data-zug="${zugId}" data-group-index="${groupIndex}">⬇️ Wagenreihung exportieren</button>
+                <button class="import_formation btn-secondary" data-zug="${zugId}" data-group-index="${groupIndex}">⬆️ Wagenreihung importieren</button>
+                <button class="remove-group-btn btn-danger" data-zug="${zugId}" data-group-index="${groupIndex}">- Zugteil entfernen</button>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Rendert die UI für alle Zugteile einer bestimmten Abfahrt und füllt sie mit Daten.
+ * @param {number} departureIndex - Der 0-basierte Index der Abfahrt.
+ */
+function renderGroupsUI(departureIndex) {
+    const zugId = departureIndex + 1;
+    const container = document.getElementById(`zug${zugId}_groups_container`);
+    if (!container) return;
+
+    const { departure } = getDepartureAndGroup(departureIndex);
+    container.innerHTML = departure.groups.map((_, groupIndex) => generateGroupSettingsHTML(departureIndex, groupIndex)).join('');
+
+    // UI-Felder mit Daten aus dem Modell füllen
+    departure.groups.forEach((group, groupIndex) => {
+        const vias = group.vias || [];
+        const setValue = (field, value) => {
+            const el = document.querySelector(`.zug_entry[data-zug="${zugId}"][data-group-index="${groupIndex}"][data-field="${field}"]`);
+            if (el) el.value = value || '';
+        };
+        setValue('Zugnummer', group.trainNumber);
+        setValue('Ziel', group.destination);
+        setValue('Abfahrt', group.scheduledTime);
+        setValue('Abweichend', group.expectedTime);
+        setValue('Via-Halte 1', vias[0]);
+        setValue('Via-Halte 2', vias[1]);
+        setValue('Via-Halte 3', vias[2]);
+    });
+}
+
+function resizeDisplay() {    
     const container = document.querySelector('.display-container');
     const wrapper = document.querySelector('.screen-wrapper');
     if (!container || !wrapper) {
@@ -35,32 +133,6 @@ export function initEvents() {
         });
     });
 
-    document.querySelectorAll('.zug_entry').forEach(input => {
-        input.addEventListener('input', (e) => {
-            const zug = parseInt(e.target.dataset.zug);
-            const field = e.target.dataset.field;
-            if (!trainData.zugDaten[zug]) {
-                trainData.initializeZugDaten();
-            }
-            trainData.zugDaten[zug][field] = e.target.value;
-            if (field === "Zugnummer") {
-                trainData.zugDaten[zug].Zugnummer_kurz = e.target.value;
-            }
-            trainDisplay.updateAll();
-        });
-    });
-
-    document.querySelectorAll('.richtung_radio').forEach(radio => {
-        radio.addEventListener('change', (e) => {
-            const zug = parseInt(e.target.dataset.zug);
-            if (!trainData.zugDaten[zug]) {
-                trainData.initializeZugDaten();
-            }
-            trainData.zugDaten[zug].Richtung = parseInt(e.target.value);
-            trainDisplay.updateAll();
-        });
-    });
-
     document.getElementById('display3_rotieren_checkbox').addEventListener('change', (e) => {
         config.rotate_3_6 = e.target.checked;
         if (config.rotate_3_6) {
@@ -75,33 +147,13 @@ export function initEvents() {
             } else {
                 config.current_display3_zug = 3;
             }
-            trainDisplay.update(config.current_display3_zug, 'display2_zug2', 'display2_zug2_wagenreihung', false);
+            trainDisplay.update(config.current_display3_zug - 1, 'display2_zug2', 'display2_zug2_wagenreihung', false);
         }
         // Preserve feature rotation
         if (trainDisplay.rotating) {
             console.log('Restarting feature rotation to preserve state');
             trainDisplay.onFeatureButtonChange('rotierend');
         }
-    });
-
-    document.querySelectorAll('.zug_checkbox').forEach(checkbox => {
-        checkbox.addEventListener('change', (e) => {
-            const zug = parseInt(e.target.dataset.zug);
-            const field = e.target.dataset.field;
-            if (!trainData.zugDaten[zug]) {
-                trainData.initializeZugDaten();
-            }
-            trainData.zugDaten[zug][field] = e.target.checked;
-            trainDisplay.updateAll();
-        });
-    });
-
-    document.querySelectorAll('.zug_entry[data-field="PlatformLength"]').forEach(input => {
-        input.addEventListener('input', (e) => {
-            const zug = parseInt(e.target.dataset.zug);
-            trainData.zugDaten[zug].PlatformLength = parseFloat(e.target.value) || 420;
-            trainDisplay.updateAll();
-        });
     });
 
     document.querySelectorAll('input[name="zug_select"]').forEach(radio => {
@@ -114,28 +166,33 @@ export function initEvents() {
             const selZugInt = parseInt(selectedZug);
             if (!config.rotate_3_6 && selZugInt >= 3 && selZugInt <= 6) {
                 config.current_display3_zug = selZugInt;
-                trainDisplay.update(config.current_display3_zug, 'display2_zug2', 'display2_zug2_wagenreihung', false);
+                trainDisplay.update(config.current_display3_zug - 1, 'display2_zug2', 'display2_zug2_wagenreihung', false);
             }
         });
     });
 
-    document.getElementById('entry_stop_name').addEventListener('input', (e) => {
+    document.getElementById('platform_length_input').addEventListener('input', (e) => {
+        trainData.platform.length = parseFloat(e.target.value) || 420;
+        trainDisplay.updateAll();
+    });
+
+    document.getElementById('entry_stop_name')?.addEventListener('input', (e) => {
         trainData.current_stop = e.target.value;
         trainDisplay.updateAll();
     });
 
-    document.getElementById('entry_gleis').addEventListener('input', (e) => {
+    document.getElementById('entry_gleis')?.addEventListener('input', (e) => {
         trainData.current_platform = e.target.value;
         trainDisplay.updateAll();
     });
 
     let abfahrten = false;
     let ankuenfte = false;
-    document.getElementById('abfahrten_checkbox').addEventListener('change', (e) => {
+    document.getElementById('abfahrten_checkbox')?.addEventListener('change', (e) => {
         abfahrten = e.target.checked;
         // For future API use
     });
-    document.getElementById('ankuenfte_checkbox').addEventListener('change', (e) => {
+    document.getElementById('ankuenfte_checkbox')?.addEventListener('change', (e) => {
         ankuenfte = e.target.checked;
         // For future API use
     });
@@ -151,138 +208,87 @@ export function initEvents() {
         reader.onload = (ev) => {
             try {
                 const data = JSON.parse(ev.target.result);
-                console.log('Imported JSON:', data);
-                trainData.initializeZugDaten();
-                for (let key in data) {
-                    if (!key.startsWith('zug_')) {
-                        console.warn(`Skipping invalid key: ${key}`);
-                        continue;
+
+                // Unterstützt neues und altes JSON-Format
+                if (Array.isArray(data.departures)) { // Neues Format
+                    trainData.departures = data.departures.map(d => new Departure(d));
+                    if (data.platform) {
+                        trainData.platform = new Platform(data.platform);
                     }
-                    const zug = parseInt(key.split('_')[1]);
-                    if (!zug || zug < 1 || zug > 6) {
-                        console.warn(`Invalid zug number: ${zug} from key ${key}`);
-                        continue;
-                    }
-                    const zugData = data[key];
-                    if (zugData['Zugnummer kurz'] !== undefined) {
-                        zugData.Zugnummer_kurz = zugData['Zugnummer kurz'];
-                        delete zugData['Zugnummer kurz'];
-                    }
-                    const defaultData = {
-                        Zugnummer: '',
-                        Zugnummer_kurz: '',
-                        Abfahrt: '',
-                        Abweichend: '',
-                        Ziel: '',
-                        'Via-Halte 1': '',
-                        'Via-Halte 2': '',
-                        'Via-Halte 1 Small': '',
-                        'Via-Halte 2 Small': '',
-                        'Via-Halte 3 Small': '',
-                        Informationen: '',
-                        Ankunft: false,
-                        Infoscreen: false,
-                        Richtung: true,
-                        TrainStart: 0,
-                        Skalieren: false,
-                        Zugteilung: false,
-                        Wagenreihung: [],
-                        PlatformLength: 420,
-                        PlatformSections: [],
-                        Gleiswechsel: '0',
-                        Ausfall: false,
-                        VerkehrtAb: '0',
-                        'Via-Stations-Categories': {}
-                    };
-                    const mergedData = {
-                        ...defaultData,
-                        ...zugData,
-                        Wagenreihung: Array.isArray(zugData.Wagenreihung) ? zugData.Wagenreihung.map(c => new Coach(c)) : defaultData.Wagenreihung,
-                        PlatformSections: Array.isArray(zugData.PlatformSections) ? zugData.PlatformSections : defaultData.PlatformSections,
-                        'Via-Stations-Categories': zugData['Via-Stations-Categories'] && typeof zugData['Via-Stations-Categories'] === 'object' ? zugData['Via-Stations-Categories'] : defaultData['Via-Stations-Categories'],
-                        Zugnummer_kurz: zugData.Zugnummer_kurz || zugData.Zugnummer || '',
-                        Richtung: Number.isInteger(zugData.Richtung) ? zugData.Richtung : 1,
-                        Skalieren: typeof zugData.Skalieren === 'boolean' ? zugData.Skalieren : false,
-                        Gleiswechsel: zugData.Gleiswechsel || '0',
-                        TrainStart: parseFloat(zugData.TrainStart) || 0
-                    };
-                    trainData.zugDaten[zug] = mergedData;
-                    console.log(`Updated zugDaten[${zug}]:`, trainData.zugDaten[zug]);
-                    document.querySelectorAll(`.zug_entry[data-zug="${zug}"]`).forEach(input => {
-                        const field = input.dataset.field;
-                        try {
-                            if (mergedData[field] !== undefined && mergedData[field] !== null) {
-                                input.value = mergedData[field].toString();
-                            } else {
-                                input.value = '';
-                            }
-                        } catch (err) {
-                            console.warn(`Failed to set input for zug ${zug}, field ${field}:`, err);
+                } else { // Altes Format: Konvertieren
+                    trainData.departures = [];
+                    for (let i = 1; i <= 6; i++) {
+                        const oldData = data[`zug_${i}`];
+                        if (!oldData) {
+                            trainData.departures.push(new Departure());
+                            continue;
                         }
-                    });
-
-                    try {
-                        const ankunftCheckbox = document.querySelector(`.zug_checkbox[data-zug="${zug}"][data-field="Ankunft"]`);
-                        if (ankunftCheckbox) ankunftCheckbox.checked = !!mergedData.Ankunft;
-                    } catch (err) {
-                        console.warn(`Failed to set Ankunft for zug ${zug}:`, err);
-                    }
-
-                    try {
-                        const infoscreenCheckbox = document.querySelector(`.zug_checkbox[data-zug="${zug}"][data-field="Infoscreen"]`);
-                        if (infoscreenCheckbox) infoscreenCheckbox.checked = !!mergedData.Infoscreen;
-                    } catch (err) {
-                        console.warn(`Failed to set Infoscreen for zug ${zug}:`, err);
-                    }
-
-                    try {
-                        const richtungValue = Number.isInteger(mergedData.Richtung) ? mergedData.Richtung.toString() : '1';
-                        const richtungRadio = document.querySelector(`.richtung_radio[data-zug="${zug}"][value="${richtungValue}"]`);
-                        if (richtungRadio) richtungRadio.checked = true;
-                    } catch (err) {
-                        console.warn(`Failed to set Richtung for zug ${zug}:`, err);
-                    }
-
-                    try {
-                        const skalierenCheckbox = document.querySelector(`.zug_checkbox[data-zug="${zug}"][data-field="Skalieren"]`);
-                        if (skalierenCheckbox) skalierenCheckbox.checked = !!mergedData.Skalieren;
-                    } catch (err) {
-                        console.warn(`Failed to set Skalieren for zug ${zug}:`, err);
-                    }
-
-                    try {
-                        const zugteilungCheckbox = document.querySelector(`.zug_checkbox[data-zug="${zug}"][data-field="Zugteilung"]`);
-                        if (zugteilungCheckbox) zugteilungCheckbox.checked = !!mergedData.Zugteilung;
-                    } catch (err) {
-                        console.warn(`Failed to set Zugteilung for zug ${zug}:`, err);
-                    }
-
-                    try {
-                        const gleiswechselInput = document.querySelector(`.zug_entry[data-zug="${zug}"][data-field="Gleiswechsel"]`);
-                        if (gleiswechselInput) gleiswechselInput.value = mergedData.Gleiswechsel || '0';
-                    } catch (err) {
-                        console.warn(`Failed to set Gleiswechsel for ${zug}:`, err);
-                    }
-
-                    try {
-                        const ausfallCheckbox = document.querySelector(`.zug_checkbox[data-zug="${zug}"][data-field="Ausfall"]`);
-                        if (ausfallCheckbox) ausfallCheckbox.checked = !!mergedData.Ausfall;
-                    } catch (err) {
-                        console.warn(`Failed to set Ausfall for zug ${zug}:`, err);
-                    }
-
-                    try {
-                        const verkehrtAbInput = document.querySelector(`.zug_entry[data-zug="${zug}"][data-field="VerkehrtAb"]`);
-                        if (verkehrtAbInput) verkehrtAbInput.value = mergedData.Gleiswechsel || '0';
-                    } catch (err) {
-                        console.warn(`Failed to set VerkehrtAb for ${zug}:`, err);
+                        const group = {
+                            trainNumber: oldData.Zugnummer,
+                            destination: oldData.Ziel,
+                            vias: [oldData['Via-Halte 1 Small'], oldData['Via-Halte 2 Small'], oldData['Via-Halte 3 Small']].filter(Boolean),
+                            scheduledTime: oldData.Abfahrt,
+                            expectedTime: oldData.Abweichend,
+                            coaches: (oldData.Wagenreihung || []).map(c => new Coach(c))
+                        };
+                        const departure = {
+                            direction: oldData.Richtung,
+                            startMeter: oldData.TrainStart,
+                            scrollText: oldData.Informationen,
+                            groups: [group],
+                            ankunft: oldData.Ankunft,
+                            ausfall: oldData.Ausfall,
+                            gleiswechsel: oldData.Gleiswechsel,
+                            infoscreen: oldData.Infoscreen,
+                            skalieren: oldData.Skalieren,
+                            verkehrtAb: oldData.VerkehrtAb,
+                        };
+                        trainData.departures.push(new Departure(departure));
                     }
                 }
+
+                // Synchronisiere alle UI-Felder mit dem geladenen Modell
+                trainData.departures.forEach((departure, index) => {
+                    const zugId = index + 1;
+
+                    // Abfahrts-spezifische Felder aktualisieren
+                    const setValue = (field, value) => {
+                        const el = document.querySelector(`.zug_entry[data-zug="${zugId}"][data-field="${field}"]`);
+                        if (el) el.value = value || '';
+                    };
+                    const setCheck = (field, checked) => {
+                        const el = document.querySelector(`.zug_checkbox[data-zug="${zugId}"][data-field="${field}"]`);
+                        if (el) el.checked = !!checked;
+                    };
+                    const setRadio = (name, value) => {
+                        const el = document.querySelector(`input[name="${name}"][value="${value}"]`);
+                        if (el) el.checked = true;
+                    };
+
+                    setValue('Informationen', departure.scrollText);
+                    setValue('TrainStart', departure.startMeter);
+                    setValue('Gleiswechsel', departure.gleiswechsel);
+                    setValue('VerkehrtAb', departure.verkehrtAb);
+
+                    setCheck('Ankunft', departure.ankunft);
+                    setCheck('Infoscreen', departure.infoscreen);
+                    setCheck('Ausfall', departure.ausfall);
+                    setCheck('Skalieren', departure.skalieren);
+
+                    setRadio(`richtung${zugId}`, departure.direction);
+
+                    // Rendere die Gruppen-UI für diese Abfahrt neu
+                    renderGroupsUI(index);
+                });
+
+                // Globale Felder
+                const platformLengthInput = document.querySelector('.zug_entry[data-field="PlatformLength"]');
+                if (platformLengthInput) platformLengthInput.value = trainData.platform.length;
+
                 trainDisplay.updateAll();
             } catch (error) {
                 console.error('Failed to load JSON:', error);
                 alert('Error loading JSON file. Please check the file format and console for details.');
-                trainData.initializeZugDaten();
                 trainDisplay.updateAll();
             }
         };
@@ -290,10 +296,10 @@ export function initEvents() {
     });
 
     document.getElementById('export_all_btn').addEventListener('click', () => {
-        const data = {};
-        for (let zug in trainData.zugDaten) {
-            data[`zug_${zug}`] = trainData.zugDaten[zug];
-        }
+        const data = {
+            platform: trainData.platform,
+            departures: trainData.departures
+        };
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -366,12 +372,40 @@ export function initEvents() {
         }, 500); // Delay to ensure all rendering is complete
     });
 
-    document.querySelectorAll('.import_formation').forEach(button => {
-        button.addEventListener('click', (e) => {
-            const zug = parseInt(e.target.dataset.zug);
-            if (!trainData.zugDaten[zug]) {
-                trainData.initializeZugDaten();
+    // --- Event Delegation für dynamische UI-Elemente ---
+    const settingsContainer = document.getElementById('train_settings_container');
+    if (!settingsContainer) return;
+
+    // Klick-Events (Buttons)
+    settingsContainer.addEventListener('click', e => {
+        // "Zugteil hinzufügen" Button
+        if (e.target.matches('.add-group-btn')) {
+            const departureIndex = parseInt(e.target.dataset.zug) - 1;
+            const { departure } = getDepartureAndGroup(departureIndex);
+            departure.groups.push(new TrainGroup());
+            renderGroupsUI(departureIndex);
+            trainDisplay.updateAll();
+        }
+
+        // "Zugteil entfernen" Button
+        if (e.target.matches('.remove-group-btn')) {
+            const departureIndex = parseInt(e.target.dataset.zug) - 1;
+            const groupIndex = parseInt(e.target.dataset.groupIndex);
+            const { departure } = getDepartureAndGroup(departureIndex);
+            if (departure.groups.length > 1) {
+                departure.groups.splice(groupIndex, 1);
+                renderGroupsUI(departureIndex);
+                trainDisplay.updateAll();
+            } else {
+                alert("Der letzte Zugteil kann nicht entfernt werden.");
             }
+        }
+
+        // "Wagenreihung importieren" Button
+        if (e.target.matches('.import_formation')) {
+            const departureIndex = parseInt(e.target.dataset.zug) - 1;
+            const groupIndex = parseInt(e.target.dataset.groupIndex);
+            
             const input = document.createElement('input');
             input.type = 'file';
             input.accept = '.json';
@@ -382,7 +416,8 @@ export function initEvents() {
                 reader.onload = (ev) => {
                     try {
                         const data = JSON.parse(ev.target.result);
-                        trainData.zugDaten[zug].Wagenreihung = data.map(c => new Coach(c));
+                        const { group } = getDepartureAndGroupByIndex(departureIndex, groupIndex);
+                        group.coaches = data.map(c => new Coach(c));
                         trainDisplay.updateAll();
                     } catch (error) {
                         console.error('Failed to import formation:', error);
@@ -392,28 +427,72 @@ export function initEvents() {
                 reader.readAsText(file);
             };
             input.click();
-        });
-    });
+        }
 
-    document.querySelectorAll('.export_formation').forEach(button => {
-        button.addEventListener('click', (e) => {
-            const zug = parseInt(e.target.dataset.zug);
-            if (!trainData.zugDaten[zug]) {
-                console.warn(`zugDaten[${zug}] is undefined`);
-                return;
-            }
-            const data = trainData.zugDaten[zug].Wagenreihung || [];
+        // "Wagenreihung exportieren" Button
+        if (e.target.matches('.export_formation')) {
+            const departureIndex = parseInt(e.target.dataset.zug) - 1;
+            const groupIndex = parseInt(e.target.dataset.groupIndex);
+            const { group } = getDepartureAndGroupByIndex(departureIndex, groupIndex);
+            const data = group.coaches || [];
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `zug_${zug}_formation.json`;
+            link.download = `zug_${departureIndex + 1}_gruppe_${groupIndex + 1}_formation.json`;
             link.click();
             URL.revokeObjectURL(url);
-        });
+        }
+    });
+
+    // Input-Events (Textfelder)
+    settingsContainer.addEventListener('input', e => {
+        if (e.target.matches('.zug_entry')) {
+            const departureIndex = parseInt(e.target.dataset.zug) - 1;
+            const groupIndex = parseInt(e.target.dataset.groupIndex); // Wird bei Gruppen-Feldern vorhanden sein
+            const field = e.target.dataset.field;
+
+            if (!isNaN(groupIndex)) { // Es ist ein Gruppen-Feld
+                const { group } = getDepartureAndGroupByIndex(departureIndex, groupIndex);
+                if (field.startsWith('Via-Halte')) {
+                    const viaIndex = parseInt(field.split(' ')[2]) - 1;
+                    group.vias = group.vias || [];
+                    group.vias[viaIndex] = e.target.value;
+                    group.vias = group.vias.filter(v => v && v.trim() !== '');
+                } else {
+                    const modelField = { 'Zugnummer': 'trainNumber', 'Ziel': 'destination', 'Abfahrt': 'scheduledTime', 'Abweichend': 'expectedTime' }[field];
+                    if(modelField) group[modelField] = e.target.value;
+                }
+            } else { // Es ist ein Abfahrts-Feld
+                const { departure } = getDepartureAndGroup(departureIndex);
+                const modelField = { 'Informationen': 'scrollText', 'TrainStart': 'startMeter', 'Gleiswechsel': 'gleiswechsel', 'VerkehrtAb': 'verkehrtAb' }[field];
+                if(modelField) departure[modelField] = e.target.value;
+            }
+            trainDisplay.updateAll();
+        }
+    });
+
+    // Change-Events (Checkboxes, Radios)
+    settingsContainer.addEventListener('change', e => {
+        if (e.target.matches('.zug_checkbox') || e.target.matches('.richtung_radio')) {
+            const departureIndex = parseInt(e.target.dataset.zug) - 1;
+            const { departure } = getDepartureAndGroup(departureIndex);
+            const field = e.target.dataset.field;
+
+            if (e.target.matches('.richtung_radio')) {
+                departure.direction = parseInt(e.target.value);
+            } else { // Checkbox
+                departure[field.toLowerCase()] = e.target.checked;
+            }
+            trainDisplay.updateAll();
+        }
     });
 
     window.addEventListener('resize', resizeDisplay);
     resizeDisplay();
 
+    // Initiales Rendern aller Gruppen-UIs
+    for (let i = 0; i < 6; i++) {
+        renderGroupsUI(i);
+    }
 }

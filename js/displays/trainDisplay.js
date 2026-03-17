@@ -81,6 +81,23 @@ export class TrainDisplay {
         ctx.stroke();
     }
 
+    displayCoupling(ctx, x) {
+        ctx.fillStyle = 'white';
+        const dotRadius = 3;
+        const yOffset = 0;
+        const startY = this.y + yOffset;
+        const endY = this.y + 80 - yOffset;
+        const numDots = 6;
+        const step = (endY - startY) / (numDots - 1);
+
+        for (let i = 0; i < numDots; i++) {
+            const y = startY + i * step;
+            ctx.beginPath();
+            ctx.arc(x, y, dotRadius, 0, 2 * Math.PI);
+            ctx.fill();
+        }
+    }
+
     displayFirstClass(coach, x, ctx, fullScreen) {
         if (coach.isFirstClass()) {
             ctx.fillStyle = 'orange';
@@ -383,20 +400,43 @@ export class TrainDisplay {
 
         let drawableCoaches = [];
         let currentX = threshold + (startMeter * pixelPerMeter);
-        let lastGroupId = null;
 
-        for (const { coach, group, isFirstInGroup, isLastInGroup } of coachesToDraw) {
-            if (lastGroupId !== null && lastGroupId !== group.groupId) {
-                currentX += groupGap;
-            }
+        for (let i = 0; i < coachesToDraw.length; i++) {
+            const currentItem = coachesToDraw[i];
+            const { coach, group } = currentItem;
             const coachPixelLength = coach.length * pixelPerMeter;
-            drawableCoaches.push({ coachData: coach, x: currentX, pixelLength: coachPixelLength, isFirstInGroup, isLastInGroup });
-            currentX += coachPixelLength + coachGap;
-            lastGroupId = group.groupId;
+
+            // Add current coach to be drawn at currentX
+            drawableCoaches.push({ ...currentItem, coachData: coach, x: currentX, pixelLength: coachPixelLength });
+
+            // Advance X by the length of the coach
+            currentX += coachPixelLength;
+
+            // Now, calculate the gap to the *next* coach
+            if (i < coachesToDraw.length - 1) {
+                const nextItem = coachesToDraw[i + 1];
+                const nextGroup = nextItem.group;
+
+                // Is the next coach in a new group?
+                if (group !== nextGroup) {
+                    // It's a group boundary. Use the larger gap.
+                    const couplingX = currentX + groupGap / 2;
+                    
+                    // Check condition to draw coupling
+                    if (group.destination !== nextGroup.destination || group.trainNumber !== nextGroup.trainNumber) {
+                        this.displayCoupling(ctx, couplingX);
+                    }
+                    
+                    currentX += groupGap;
+                } else {
+                    // Same group, use the smaller gap.
+                    currentX += coachGap;
+                }
+            }
         }
 
-        const trainPixelStart = drawableCoaches[0].x;
-        const trainPixelEnd = currentX - coachGap;
+        const trainPixelStart = drawableCoaches.length > 0 ? drawableCoaches[0].x : 0;
+        const trainPixelEnd = currentX;
 
         ctx.strokeStyle = 'white';
         ctx.lineWidth = 6;
@@ -467,9 +507,9 @@ export class TrainDisplay {
     }
 
     wrapAndDisplayText(ctx, text, x, y, maxWidth, lineHeight, font, textColor, textAlign) {
+        let line = '';
         if (text !== "") {
             const words = text.split(' ');
-            let line = '';
             ctx.font = font; //needed for text length measurement
 
             for (let n = 0; n < words.length; n++) {
