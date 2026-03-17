@@ -7,7 +7,7 @@ export class TrainDisplay {
     constructor(trainData) {
         this.trainData = trainData;
         this.y = 70;
-        this.aktuellesMerkmal = 'wagennummern';
+        this.aktuellesMerkmal = 'wagennummern'; // 'wagennummern', 'ausstattung', 'klasse'
         this.merkmale = ['wagennummern', 'ausstattung', 'klasse'];
         this.rotationIndex = 0;
         this.rotating = false;
@@ -101,7 +101,7 @@ export class TrainDisplay {
         if (coach.isFirstClass()) {
             ctx.fillStyle = 'orange';
             ctx.fillText("1.", x + (coach.length / 2), this.y + 44);
-        } else if (coach.coach_class === 2 && !coach.isLocomotive()) {
+        } else if (coach.coachClass === 2 && !coach.isLocomotive()) {
             ctx.fillStyle = 'white';
             ctx.fillText("2.", x + (coach.length / 2), this.y + 44);
         }
@@ -116,7 +116,7 @@ export class TrainDisplay {
             const startPos = first.start;
             const endPos = last.start + last.length;
             const center = (startPos + endPos) / 2;
-            const current_class = first.coach_class;
+            const current_class = first.coachClass;
             ctx.font = 'bold 40px "Open Sans Condensed"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
@@ -128,14 +128,14 @@ export class TrainDisplay {
         };
         scaledCoaches.forEach(coach => {
             if (['a', 'ma', 'm'].includes(coach.coach_type)) {
-                if (group.length === 0 || coach.coach_class === group[0].coach_class) {
+                if (group.length === 0 || coach.coachClass === group[0].coachClass) {
                     group.push(coach);
                 } else {
                     processGroup();
                     group = [coach];
                 }
             } else if (['e', 'me'].includes(coach.coach_type)) {
-                if (group.length >= 0 && coach.coach_class === group[0].coach_class) {
+                if (group.length > 0 && coach.coachClass === group[0].coachClass) {
                     group.push(coach);
                 }
                 processGroup();
@@ -151,7 +151,7 @@ export class TrainDisplay {
         let imgKey;
         let scale; // image scaling factor
         if (coach.hasAmenity('f')) imgKey = 'wagenreihung_fahrrad', scale = 0.28;
-        else if (coach.hasAmenity('r')) imgKey = 'wagenreihung_rollstuhl', scale = 0.24;
+        else if (coach.hasAmenity('r')) imgKey = 'wagenreihung_rollstuhl', scale = 0.24; // wheelchair
         else if (coach.hasAmenity('m')) imgKey = 'wagenreihung_mehrzweck', scale = 0.28;
         else if (coach.hasAmenity('g')) imgKey = 'wagenreihung_gastronomie', scale = 0.32;
         const img = images[imgKey];
@@ -166,6 +166,13 @@ export class TrainDisplay {
 
     displayCompactAmenities(scaledCoaches, ctx) {
         let group = [];
+        const arraysAreEqual = (a, b) => {
+            if (a.length !== b.length) return false;
+            const sortedA = [...a].sort();
+            const sortedB = [...b].sort();
+            return sortedA.every((val, index) => val === sortedB[index]);
+        };
+
         const processGroup = () => {
             if (group.length === 0) return;
             const first = group[0];
@@ -173,18 +180,18 @@ export class TrainDisplay {
             const startPos = first.start;
             const endPos = last.start + last.length;
             const center = (startPos + endPos) / 2;
-            const amenity = first.amenities;
+            const amenities = first.amenities;
             let imgKey;
             let scale; // image scaling factor
-            if (amenity === 'f') imgKey = 'wagenreihung_fahrrad', scale = 0.28;
-            else if (amenity === 'r') imgKey = 'wagenreihung_rollstuhl', scale = 0.24;
-            else if (amenity === 'm') imgKey = 'wagenreihung_mehrzweck', scale = 0.28;
-            else if (amenity === 'g') imgKey = 'wagenreihung_gastronomie', scale = 0.32;
+            if (amenities.includes('f')) imgKey = 'wagenreihung_fahrrad', scale = 0.28;
+            else if (amenities.includes('r')) imgKey = 'wagenreihung_rollstuhl', scale = 0.24;
+            else if (amenities.includes('m')) imgKey = 'wagenreihung_mehrzweck', scale = 0.28;
+            else if (amenities.includes('g')) imgKey = 'wagenreihung_gastronomie', scale = 0.32;
             const img = images[imgKey];
             if (img && img.isLoaded && !img.isBroken) {
                 try {
                     let adj = 0;
-                    if (amenity === 'f' || amenity === 'm') {
+                    if (amenities.includes('f') || amenities.includes('m')) {
                         if (last.coach_type === 'a') adj = 0;
                         else if (last.coach_type === 'e') adj = 0;
                     }
@@ -197,14 +204,14 @@ export class TrainDisplay {
         };
         scaledCoaches.forEach(coach => {
             if (['a', 'ma', 'm'].includes(coach.coach_type)) {
-                if (group.length === 0 || coach.amenities === group[0].amenities) {
+                if (group.length === 0 || arraysAreEqual(coach.amenities, group[0].amenities)) {
                     group.push(coach);
                 } else {
                     processGroup();
                     group = [coach];
                 }
             } else if (['e', 'me'].includes(coach.coach_type)) {
-                if (group.length >= 0 && coach.amenities === group[0].amenities) {
+                if (group.length > 0 && arraysAreEqual(coach.amenities, group[0].amenities)) {
                     group.push(coach);
                 }
                 processGroup();
@@ -217,19 +224,19 @@ export class TrainDisplay {
     }
 
     displayWagonNumbers(coach, x, ctx) {
-        if (coach.coach_number !== 0) {
+        if (coach.coachNumber && coach.coachNumber !== 0) {
             ctx.fillStyle = 'white';
             ctx.font = '40px "Open Sans Condensed"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(coach.coach_number.toString(), x + (coach.length / 2), this.y + 44);
+            ctx.fillText(coach.coachNumber.toString(), x + (coach.length / 2), this.y + 44);
         }
     }
 
     displayCompactWagonNumbers(scaledCoaches, ctx) {
         let group = [];
         scaledCoaches.forEach(coach => {
-            if (coach.coach_number !== 0) {
+            if (coach.coachNumber && coach.coachNumber !== 0) {
                 group.push(coach);
                 if (['e', 'me', 'l'].includes(coach.coach_type)) {
                     if (group.length > 0) {
@@ -238,8 +245,8 @@ export class TrainDisplay {
                         const startPos = first.start;
                         const endPos = last.start + last.length;
                         const center = (startPos + endPos) / 2;
-                        const first_number = first.coach_number;
-                        const last_number = last.coach_number;
+                        const first_number = first.coachNumber;
+                        const last_number = last.coachNumber;
                         let number_text = first_number === last_number ? first_number.toString() : `${first_number} - ${last_number}`;
                         if (number_text !== "0") {
                             ctx.fillStyle = 'white';
@@ -258,8 +265,8 @@ export class TrainDisplay {
                     const startPos = first.start;
                     const endPos = last.start + last.length;
                     const center = (startPos + endPos) / 2;
-                    const first_number = first.coach_number;
-                    const last_number = last.coach_number;
+                    const first_number = first.coachNumber;
+                    const last_number = last.coachNumber;
                     let number_text = first_number === last_number ? first_number.toString() : `${first_number} - ${last_number}`;
                     if (number_text !== "0") {
                         ctx.fillStyle = 'white';
@@ -278,8 +285,8 @@ export class TrainDisplay {
             const startPos = first.start;
             const endPos = last.start + last.length;
             const center = (startPos + endPos) / 2;
-            const first_number = first.coach_number;
-            const last_number = last.coach_number;
+            const first_number = first.coachNumber;
+            const last_number = last.coachNumber;
             let number_text = first_number === last_number ? first_number.toString() : `${first_number} - ${last_number}`;
             if (number_text !== "0") {
                 ctx.fillStyle = 'white';
@@ -303,27 +310,24 @@ export class TrainDisplay {
         });
     }
 
-    displayFormation(zugData, displayID, fullScreen) {
-        const {
-            Wagenreihung: coaches = [],
-            PlatformLength: bahnsteigLaenge = 420,
-            TrainStart: zugStart = 0,
-            Richtung: richtung,
-            Skalieren: skalieren,
-            Zugteilung: zugteilung,
-            Infoscreen: infoscreen,
-            Gleiswechsel: gleiswechsel = "0",
-            Ausfall: ausfall,
-            VerkehrtAb: verkehrtAb = "0",
-            Ziel: ziel = "",
-            Ankunft: ankunft
-        } = zugData;
-
+    displayFormation(departure, displayID, fullScreen) {
         const canvas = document.getElementById(displayID);
+        if (!canvas) return;
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Draw left border line for non-fullscreen displays
+        const {
+            direction = 1,
+            startMeter = 0,
+            groups = [],
+            skalieren = false,
+            gleiswechsel = "0",
+            ausfall = false,
+            verkehrtAb = "0",
+            ankunft = false,
+            infoscreen = false,
+        } = departure;
+
         if (!fullScreen) {
             ctx.strokeStyle = 'white';
             ctx.lineWidth = 3;
@@ -332,140 +336,134 @@ export class TrainDisplay {
             ctx.stroke();
         }
 
-        // Display track change notification
         if (gleiswechsel !== "0") {
             ctx.fillStyle = 'orange';
             ctx.fillRect(3, 0, 960, 280);
             ctx.fillStyle = 'white';
-            ctx.font = '67px "Open Sans Condensed"';
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('Neues Gleis', 50, 50);
-            ctx.font = 'italic 67px "Open Sans Condensed"';
-            ctx.fillText('New Track', 50, 125);
-            ctx.font = '128px "Open Sans Condensed"';
-            ctx.textAlign = 'right';
-            ctx.fillText(gleiswechsel, 920, 80);
-            ctx.textAlign = 'left';
+            this.displayText(ctx, 'Neues Gleis', 50, 50, '67px "Open Sans Condensed"', 'white', 'left');
+            this.displayText(ctx, 'New Track', 50, 125, 'italic 67px "Open Sans Condensed"', 'white', 'left');
+            this.displayText(ctx, gleiswechsel, 920, 80, '128px "Open Sans Condensed"', 'white', 'right');
+            return;
         } else if (infoscreen || ausfall || (verkehrtAb !== "0")) {
             ctx.fillStyle = 'white';
             ctx.fillRect(3, 0, 960, 280);
+            return;
         } else if (ankunft) {
             if (fullScreen) {
                 ctx.textBaseline = 'top';
-                this.displayText(ctx, 'von / from ' + ziel, 105, 20, '67px "Open Sans Condensed"', 'white', 'left');
+                const firstGroup = groups[0] || {};
+                this.displayText(ctx, 'von / from ' + (firstGroup.destination || ''), 105, 20, '67px "Open Sans Condensed"', 'white', 'left');
             }
+            return;
+        }
+
+        if (groups.length === 0 || groups.every(g => g.coaches.length === 0)) return;
+
+        const threshold = 50;
+        const coachGap = fullScreen ? 4 : 2;
+        const groupGap = fullScreen ? 12 : 6;
+        const usableDisplayLength = fullScreen ? 1820 : 860;
+        const platformLengthMeters = this.trainData.platform.length;
+        let pixelPerMeter = usableDisplayLength / platformLengthMeters;
+
+        const allCoaches = [];
+        groups.forEach(group => {
+            group.coaches.forEach((coach, index) => {
+                allCoaches.push({ coach, group, isFirstInGroup: index === 0, isLastInGroup: index === group.coaches.length - 1 });
+            });
+        });
+
+        const coachesToDraw = fullScreen ? allCoaches : allCoaches.filter(c => !c.coach.isLocomotive());
+        if (coachesToDraw.length === 0) return;
+
+        let totalLengthMeters = coachesToDraw.reduce((sum, c) => sum + c.coach.length, 0);
+        if (skalieren && (totalLengthMeters * pixelPerMeter) < (usableDisplayLength / 2)) {
+            pixelPerMeter *= 2;
+        }
+
+        let drawableCoaches = [];
+        let currentX = threshold + (startMeter * pixelPerMeter);
+        let lastGroupId = null;
+
+        for (const { coach, group, isFirstInGroup, isLastInGroup } of coachesToDraw) {
+            if (lastGroupId !== null && lastGroupId !== group.groupId) {
+                currentX += groupGap;
+            }
+            const coachPixelLength = coach.length * pixelPerMeter;
+            drawableCoaches.push({ coachData: coach, x: currentX, pixelLength: coachPixelLength, isFirstInGroup, isLastInGroup });
+            currentX += coachPixelLength + coachGap;
+            lastGroupId = group.groupId;
+        }
+
+        const trainPixelStart = drawableCoaches[0].x;
+        const trainPixelEnd = currentX - coachGap;
+
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.moveTo(threshold, 150);
+        ctx.lineTo(trainPixelStart - 10, 150);
+        ctx.moveTo(trainPixelEnd + 10, 150);
+        ctx.lineTo(threshold + usableDisplayLength, 150);
+        ctx.stroke();
+
+        if (direction === 0) {
+            this.displayDirection(direction, trainPixelStart - 40, ctx);
         } else {
-            // Determine zugID based on displayID
-            const zugID = fullScreen ? 1 : displayID === 'display2_zug1' ? 2 : 3;
+            this.displayDirection(direction, trainPixelEnd + 10, ctx);
+        }
 
-            if (!this.trainData.zugDaten[zugID]) {
-                console.warn(`zugDaten[${zugID}] is undefined for displayID: ${displayID}`);
-                return;
-            }
+        for (const item of drawableCoaches) {
+            const { coachData, x, pixelLength, isFirstInGroup, isLastInGroup } = item;
+            const drawableCoach = new Coach({ ...coachData, length: pixelLength });
 
-            //Scaling and positioning calculations
-            const factor = fullScreen ? 2 : 1;
-            const bahnsteiglaengeDisplay = 960 * factor;
-            const threshold = fullScreen ? 50 : 50;
-            let usableDisplayLength = fullScreen ? 1720 : 780;
-            const gap = 4;
-            let zuglaenge = coaches.reduce((sum, c) => sum + c.length, 0);
-            if (!fullScreen) {
-                zuglaenge -= coaches.reduce((sum, c) => sum + (c.isLocomotive() ? c.length : 0), 0);
-            }
-            let factorNew = usableDisplayLength / bahnsteigLaenge;
-            let displayedCoaches = fullScreen ? coaches : coaches.filter(c => !c.isLocomotive());
-            if (displayedCoaches.length === 0) return;
-
-            let minCoachStart = Math.min(...displayedCoaches.map(c => c.start));
-
-            if (minCoachStart !== zugStart) {
-                minCoachStart = zugStart - minCoachStart;
+            if (coachData.type === 'locomotive' && fullScreen) {
+                this.displayLocomotive(drawableCoach, x, ctx);
+            } else if (coachData.type === 'control_car' && isFirstInGroup) {
+                this.displayStartWagon(drawableCoach, x, ctx);
+            } else if (coachData.type === 'control_car' && isLastInGroup) {
+                this.displayEndWagon(drawableCoach, x, ctx);
             } else {
-                minCoachStart = 0
+                this.displayMiddleWagon(drawableCoach, x, ctx);
             }
 
-            let scaledCoaches = displayedCoaches.map(c => {
-                let newStart = (c.start + minCoachStart) * factorNew + threshold + 50;
-                let newStop = (c.stop + minCoachStart) * factorNew + threshold + 50;
-                let newLength = c.length * factorNew;
-                return new Coach({ ...c, start: newStart, stop: newStop, length: newLength });
-            });
-            for (let i = 0; i < scaledCoaches.length - 1; i++) {
-                scaledCoaches[i].length = scaledCoaches[i + 1].start - scaledCoaches[i].start;
-            }
-            scaledCoaches[scaledCoaches.length - 1].length = scaledCoaches[scaledCoaches.length - 1].stop - scaledCoaches[scaledCoaches.length - 1].start;
-            scaledCoaches.forEach(c => {
+            if (!coachData.open) {
+                ctx.fillStyle = 'rgba(80, 80, 80, 0.7)';
+                ctx.fillRect(x, this.y - 5, pixelLength, 90);
+            } else {
+                this.displayFirstClass(drawableCoach, x, ctx, fullScreen);
                 if (fullScreen) {
-                    c.length -= gap * 2;
-                    c.start += gap;
-                } else {
-                    if (['a', 'ma'].includes(c.coach_type)) c.start += gap;
-                    else if (['e', 'me'].includes(c.coach_type)) c.length -= gap;
-                    else if (['m'].includes(c.coach_type)) c.length += gap;
+                    if (this.aktuellesMerkmal === "klasse") this.displayClass(drawableCoach, x, ctx);
+                    if (this.aktuellesMerkmal === "ausstattung") this.displayAmenities(drawableCoach, x, ctx);
+                    if (this.aktuellesMerkmal === "wagennummern") this.displayWagonNumbers(drawableCoach, x, ctx);
                 }
-            });
-            let zuglaengeScaled = scaledCoaches.reduce((sum, c) => sum + c.length, 0);
-            if (zuglaengeScaled < usableDisplayLength / 2 && skalieren) {
-                factorNew *= 2;
-                scaledCoaches = displayedCoaches.map(c => {
-                    let new_start = c.start * factorNew + threshold;
-                    let new_stop = c.stop * factorNew + threshold;
-                    let new_length = c.length * factorNew;
-                    return new Coach({ ...c, start: new_start, stop: new_stop, length: new_length });
-                });
-                for (let i = 0; i < scaledCoaches.length - 1; i++) {
-                    scaledCoaches[i].length = scaledCoaches[i + 1].start - scaledCoaches[i].start;
-                }
-                scaledCoaches[scaledCoaches.length - 1].length = scaledCoaches[scaledCoaches.length - 1].stop - scaledCoaches[scaledCoaches.length - 1].start;
-                zuglaengeScaled = scaledCoaches.reduce((sum, c) => sum + c.length, 0);
-            }
-            let start_meter_pixel = Math.min(...scaledCoaches.map(c => c.start));
-            if (richtung === 0) {
-                let arrow_pos = start_meter_pixel - 40;
-                this.displayDirection(richtung, arrow_pos, ctx);
-            }
-            ctx.strokeStyle = 'white';
-            ctx.lineWidth = 6;
-            ctx.beginPath();
-            ctx.moveTo(threshold, 150); ctx.lineTo(start_meter_pixel - 10, 150);
-            ctx.stroke();
-            if (!fullScreen) {
-                if (this.aktuellesMerkmal === "klasse") this.displayCompactClass(scaledCoaches, ctx);
-                if (this.aktuellesMerkmal === "ausstattung") this.displayCompactAmenities(scaledCoaches, ctx);
-                if (this.aktuellesMerkmal === "wagennummern") this.displayCompactWagonNumbers(scaledCoaches, ctx);
-            }
-            let coach_startPositions = [];
-            scaledCoaches.forEach(c => {
-                if (c.coach_type === 'a') this.displayStartWagon(c, c.start, ctx);
-                else if (c.coach_type.includes('m')) this.displayMiddleWagon(c, c.start, ctx);
-                else if (c.coach_type === 'e') this.displayEndWagon(c, c.start, ctx);
-                else if (c.coach_type === 'l' && fullScreen) this.displayLocomotive(c, c.start, ctx);
-                this.displayFirstClass(c, c.start, ctx, fullScreen);
-                if (fullScreen) {
-                    if (this.aktuellesMerkmal === "klasse") this.displayClass(c, c.start, ctx);
-                    if (this.aktuellesMerkmal === "ausstattung") this.displayAmenities(c, c.start, ctx);
-                    if (this.aktuellesMerkmal === "wagennummern") this.displayWagonNumbers(c, c.start, ctx);
-                }
-                coach_startPositions.push(c.start + c.length);
-            });
-            let right_pos = Math.max(...coach_startPositions);
-            ctx.strokeStyle = 'white';
-            ctx.lineWidth = 6;
-            ctx.beginPath();
-            ctx.moveTo(right_pos + 10, 150); ctx.lineTo(bahnsteiglaengeDisplay - threshold, 150);
-            ctx.stroke();
-            if (richtung === 1) {
-                this.displayDirection(richtung, right_pos + 10, ctx);
-            }
-            try {
-                this.displaySectors(this.trainData.zugDaten[zugID].PlatformSections, ctx, fullScreen, factorNew, bahnsteigLaenge);
-            } catch (err) {
-                console.warn(`Failed to print sectors for zug_${zugID} on ${displayID}:`, err);
             }
         }
 
+        if (!fullScreen) {
+            const scaledCoaches = drawableCoaches.map(dc => ({ ...dc.coachData, start: dc.x, length: dc.pixelLength, coach_type: this.mapCoachType(dc) }));
+            if (this.aktuellesMerkmal === "klasse") this.displayCompactClass(scaledCoaches, ctx);
+            if (this.aktuellesMerkmal === "ausstattung") this.displayCompactAmenities(scaledCoaches, ctx);
+            if (this.aktuellesMerkmal === "wagennummern") this.displayCompactWagonNumbers(scaledCoaches, ctx);
+        }
+
+        const platformSectors = this.trainData.platform.sections.map(s => [s.name, s.startMeter]);
+        this.displaySectors(platformSectors, ctx, fullScreen, pixelPerMeter, platformLengthMeters);
+    }
+
+    mapCoachType({ coachData, isFirstInGroup, isLastInGroup }) {
+        if (coachData.type === 'locomotive') return 'l';
+        if (coachData.type === 'control_car') {
+            if (isFirstInGroup && isLastInGroup) return 'a'; // TODO: Combined a/e for single control car/tz
+            if (isFirstInGroup) return 'a';
+            if (isLastInGroup) return 'e';
+        }
+        if (coachData.type === 'middle_car') {
+            if (isFirstInGroup && isLastInGroup) return 'ma'; // TODO: Combined a/e for single wagon
+            if (isFirstInGroup) return 'ma';
+            if (isLastInGroup) return 'me';
+            if (!isFirstInGroup && !isLastInGroup) return 'm';
+        }
     }
 
     wrapAndDisplayText(ctx, text, x, y, maxWidth, lineHeight, font, textColor, textAlign) {
@@ -476,10 +474,8 @@ export class TrainDisplay {
 
             for (let n = 0; n < words.length; n++) {
                 const testLine = line + words[n] + ' ';
-                const metrics = ctx.measureText(testLine);
-                const testWidth = metrics.width;
+                const testWidth = ctx.measureText(testLine).width;
                 if (testWidth > maxWidth && n > 0) {
-                    //ctx.fillText(line, x, y);
                     this.displayText(ctx, line, x, y, font, textColor, textAlign)
                     line = words[n] + ' ';
                     y += lineHeight;
@@ -487,9 +483,9 @@ export class TrainDisplay {
                     line = testLine;
                 }
             }
-            //ctx.fillText(line, x, y);
             this.displayText(ctx, line, x, y, font, textColor, textAlign)
         }
+        return y + (line === '' ? 0 : lineHeight);
     }
 
     displayInfoTopText(ctx, backgroundColor, textColor, infoText1, infoText2, x1, x2) {
@@ -729,51 +725,43 @@ export class TrainDisplay {
         return maxWidth;
     }
 
-    displayTrainInfo(zugData, displayID, fullScreen) {
+    displayTrainInfo(departure, displayID, fullScreen) {
         const canvas = document.getElementById(displayID);
+        if (!canvas) return;
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Unpack the data
-        var {
-            Informationen: info = "",
-            Zugnummer: nr = "",
-            Zugnummer_kurz: nr_kurz = "",
-            Abfahrt: abfahrt = "",
-            Abweichend: abfahrt_a = "",
-            Ziel: ziel = "",
+        const {
+            groups = [],
+            scrollText = "",
             Gleiswechsel: gleiswechsel = "0",
             Ausfall: ausfall = false,
             VerkehrtAb: verkehrtAb = "0",
             Ankunft: ankunft = false,
-            Infoscreen: infoscreen = false,
-            PlatformSections: sectors = [] 
-        } = zugData;
+            Infoscreen: infoscreen = false
+        } = departure;
 
-        // Logic for Vias
-        const via = fullScreen ? (zugData['Via-Halte 1'] || "") : (zugData['Via-Halte 1 Small'] || "");
-        const via2 = fullScreen ? (zugData['Via-Halte 2'] || "") : (zugData['Via-Halte 2 Small'] || "");
-        const via3 = zugData['Via-Halte 3 Small'] || "";
+        const mainGroup = groups[0] || {};
+        const abfahrt = mainGroup.scheduledTime || "";
+        const abfahrt_a = mainGroup.expectedTime || "";
+        const nr = mainGroup.trainNumber || "";
+        const used_nr = nr;
 
-        const zugID = fullScreen ? 1 : displayID === 'display2_zug1' ? 2 : 3;
-
-        let x = this.displayPictograms(info, nr, displayID, fullScreen, ankunft);
-
-        let used_nr = nr;
-        if (!fullScreen) used_nr = nr_kurz;
+        let x = this.displayPictograms(scrollText, nr, displayID, fullScreen, ankunft);
 
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
 
-        if (ankunft) info = "Ankunft / Arrival"
-        let info_full = info;
-        if (infoscreen || (gleiswechsel !== "0") || ausfall || (verkehrtAb !== "0")) info = "";
+        let infoToScroll = scrollText;
+        if (ankunft) infoToScroll = "Ankunft / Arrival";
+        if (infoscreen || gleiswechsel !== "0" || ausfall || verkehrtAb !== "0") infoToScroll = "";
 
         ctx.fillStyle = 'white';
-        if (info !== "") ctx.fillRect(x, 0, canvas.width - x, 100);
+        if (infoToScroll !== "") ctx.fillRect(x, 0, canvas.width - x, 100);
 
+        const zugID = fullScreen ? 1 : (displayID === 'display2_zug1' ? 2 : 3);
         this.displayScrollingText(
-            canvas, zugID, "info", info,
+            canvas, zugID, "info", infoToScroll,
             `${canvas.offsetLeft + x + 5}px`,
             `${canvas.offsetTop}px`,
             `${canvas.width - x - 5}px`,
@@ -782,59 +770,80 @@ export class TrainDisplay {
             '67px "Open Sans Condensed"'
         );
 
-        if (fullScreen) {
-
-            this.displayText(ctx, abfahrt, 100, 220, '180px "Open Sans Condensed"', 'white', 'left')
-            this.displayTextInRectangle(ctx, abfahrt_a, 520, 215, '120px "Open Sans Condensed"', 'left', 120, 20, fullScreen, displayID, 0, 'white', 'navy');
-            this.displayTextInRectangle(ctx, used_nr, 1855, 220, '100px "Open Sans Condensed"', 'right', 100, 15, fullScreen, displayID, 0, 'DimGrey', 'white', false, true);
-
-            if (ankunft) {
-                this.displayText(ctx, "Bitte nicht einsteigen", 110, 450, '180px "Open Sans Condensed"', 'white', 'left')
-                this.displayText(ctx, "Please do not board", 105, 670, 'italic 180px "Open Sans Condensed"', 'white', 'left')
-
-            } else {
-                this.displayText(ctx, ziel, 100, 420, '180px "Open Sans Condensed"', 'white', 'left')
-                const via_full = [via, via2].filter(v => v !== "").join(' ');
-                this.wrapAndDisplayText(ctx, via_full, 112, 620, 1800, 100, '70px "Open Sans Condensed"', 'white', 'left');
-            }
-
-        } else {
+        if (!fullScreen && (infoscreen || gleiswechsel !== "0" || ausfall || verkehrtAb !== "0")) {
+            const zugDataForHelper = {
+                Abfahrt: abfahrt, Abweichend: abfahrt_a, Ziel: mainGroup.destination || "",
+                'Via-Halte 1 Small': (mainGroup.vias || [])[0] || "", 'Via-Halte 2 Small': (mainGroup.vias || [])[1] || "", 'Via-Halte 3 Small': (mainGroup.vias || [])[2] || "",
+                Gleiswechsel: gleiswechsel, Ausfall: ausfall, VerkehrtAb: verkehrtAb,
+            };
             if (infoscreen) {
                 ctx.fillStyle = 'white';
-                ctx.fillRect(0, 0, 960, 800); //Create white background
-                this.wrapAndDisplayText(ctx, info_full, 50, 120, 900, 80, '70px "Open Sans Condensed"', 'navy', 'left');
+                ctx.fillRect(0, 0, 960, 800);
+                this.wrapAndDisplayText(ctx, scrollText, 50, 120, 900, 80, '70px "Open Sans Condensed"', 'navy', 'left');
+            } else {
+                this.displayAusfallUndGleiswechsel(ctx, zugDataForHelper, displayID, used_nr);
             }
-            else if ((gleiswechsel !== "0") || ausfall || (verkehrtAb !== "0")) {
-                this.displayAusfallUndGleiswechsel(ctx, zugData, displayID, used_nr)
-            }
-            else {
-                // Draw left border line for non-fullscreen displays
-                ctx.strokeStyle = 'white';
-                ctx.lineWidth = 3;
-                ctx.beginPath();
-                ctx.moveTo(0, 0); ctx.lineTo(0, 800);
-                ctx.stroke();
+            return;
+        }
 
-                this.displayText(ctx, abfahrt, 50, 200, '120px "Open Sans Condensed"', 'white', 'left')
-                this.displayTextInRectangle(ctx, abfahrt_a, 330, 195, '90px "Open Sans Condensed"', 'left', 90, 10, fullScreen, displayID, 0, 'white', 'navy');
-                this.displayTextInRectangle(ctx, used_nr, 890, 200, '75px "Open Sans Condensed"', 'right', 75, 10, fullScreen, displayID, 0, 'DimGrey', 'white', false, true);
+        if (!fullScreen) {
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(0, 0); ctx.lineTo(0, 800);
+            ctx.stroke();
+        }
 
-                if (!ankunft) {
-                    this.displayText(ctx, ziel, 50, 360, '120px "Open Sans Condensed"', 'white', 'left')
-                    const via_full = [via, via2, via3].filter(v => v !== "").join(' ');
-                    this.wrapAndDisplayText(ctx, via_full, 50, 520, 880, 100, '70px "Open Sans Condensed"', 'white', 'left');
+        if (fullScreen) {
+            this.displayText(ctx, abfahrt, 100, 220, '180px "Open Sans Condensed"', 'white', 'left');
+            this.displayTextInRectangle(ctx, abfahrt_a, 520, 215, '120px "Open Sans Condensed"', 'left', 120, 20, fullScreen, displayID, 0, 'white', 'navy');
+            this.displayTextInRectangle(ctx, nr, 1855, 220, '100px "Open Sans Condensed"', 'right', 100, 15, fullScreen, displayID, 0, 'DimGrey', 'white', false, true);
+
+            if (ankunft) {
+                const fromDestination = mainGroup.destination || "";
+                this.displayText(ctx, "Bitte nicht einsteigen", 110, 450, '180px "Open Sans Condensed"', 'white', 'left');
+                this.displayText(ctx, "Please do not board", 105, 670, 'italic 180px "Open Sans Condensed"', 'white', 'left');
+                this.displayText(ctx, 'von / from ' + fromDestination, 112, 850, '70px "Open Sans Condensed"', 'white', 'left');
+            } else {
+                let yPos = 420;
+                const destFont = groups.length > 1 ? '140px "Open Sans Condensed"' : '180px "Open Sans Condensed"';
+                const viaFont = groups.length > 1 ? '60px "Open Sans Condensed"' : '70px "Open Sans Condensed"';
+                const lineSpacing = groups.length > 1 ? 150 : 200;
+
+                for (const group of groups) {
+                    const destText = `${group.trainNumber} ${group.destination}`;
+                    this.displayText(ctx, destText, 100, yPos, destFont, 'white', 'left');
+                    const viaText = (group.vias || []).join(' - ');
+                    this.displayText(ctx, viaText, 112, yPos + lineSpacing * 0.5, viaFont, 'white', 'left');
+                    yPos += lineSpacing;
                 }
             }
+        } else {
+            this.displayText(ctx, abfahrt, 50, 200, '120px "Open Sans Condensed"', 'white', 'left');
+            this.displayTextInRectangle(ctx, abfahrt_a, 330, 195, '90px "Open Sans Condensed"', 'left', 90, 10, fullScreen, displayID, 0, 'white', 'navy');
+            this.displayTextInRectangle(ctx, used_nr, 890, 200, '75px "Open Sans Condensed"', 'right', 75, 10, fullScreen, displayID, 0, 'DimGrey', 'white', false, true);
 
-            let ankunftText = ""
-            let arrivalText = ""
             if (ankunft) {
-                ankunftText = "Bitte nicht einsteigen"
-                arrivalText = "Please do not board"
-                this.displayText(ctx, 'von / from ' + ziel, 50, 650, '67px "Open Sans Condensed"', 'white', 'left');
+                const fromDestination = mainGroup.destination || "";
+                this.displayText(ctx, 'von / from ' + fromDestination, 50, 360, '67px "Open Sans Condensed"', 'white', 'left');
+                this.displayScrollingText(canvas, zugID, 'ankunft', "Bitte nicht einsteigen", `${canvas.offsetLeft + 50}px`, `${canvas.offsetTop + 420}px`, `${canvas.width - 50}px`, '120px', 'white', '120px "Open Sans Condensed"');
+                this.displayScrollingText(canvas, zugID, 'arrival', "Please do not board", `${canvas.offsetLeft + 50}px`, `${canvas.offsetTop + 560}px`, `${canvas.width - 50}px`, '120px', 'white', 'italic 120px "Open Sans Condensed"');
+            } else {
+                let yPos = 360;
+                const destFont = groups.length > 1 ? '90px "Open Sans Condensed"' : '120px "Open Sans Condensed"';
+                const viaFont = '70px "Open Sans Condensed"';
+                const destLineHeight = groups.length > 1 ? 100 : 160;
+                const viaLineHeight = 80;
+
+                for (const group of groups) {
+                    const destText = `${group.trainNumber} ${group.destination}`;
+                    this.displayText(ctx, destText, 50, yPos, destFont, 'white', 'left');
+                    yPos += destLineHeight;
+                    const viaText = (group.vias || []).join(' ');
+                    yPos = this.wrapAndDisplayText(ctx, viaText, 50, yPos, 880, viaLineHeight, viaFont, 'white', 'left');
+                    yPos += 20;
+                }
             }
-            this.displayScrollingText(canvas, zugID, 'ankunft', ankunftText, `${canvas.offsetLeft + 50}px`, `${canvas.offsetTop + 280}px`, `${canvas.width - 50}px`, '120px', 'white', '120px "Open Sans Condensed"');
-            this.displayScrollingText(canvas, zugID, 'arrival', arrivalText, `${canvas.offsetLeft + 50}px`, `${canvas.offsetTop + 420}px`, `${canvas.width - 50}px`, '120px', 'white', 'italic 120px "Open Sans Condensed"');
         }
     }
 
@@ -1073,7 +1082,7 @@ export class TrainDisplay {
             this.rotating = false;
             if (config.feature_rotation_timer) clearTimeout(config.feature_rotation_timer);
             this.aktuellesMerkmal = value;
-            this.updateAllFormations();
+            this.updateAll();
         }
     }
 
@@ -1081,46 +1090,42 @@ export class TrainDisplay {
         if (!this.rotating) return;
         this.aktuellesMerkmal = this.merkmale[this.rotationIndex];
         this.rotationIndex = (this.rotationIndex + 1) % this.merkmale.length;
-        this.updateAllFormations();
+        this.updateAll();
         config.feature_rotation_timer = setTimeout(() => this.startFeatureRotation(), 3000);
     }
 
-    updateAllFormations() {
-        this.updateFormation(1, 'display1_wagenreihung', true);
-        this.updateFormation(2, 'display2_zug1_wagenreihung', false);
-        if (config.rotate_3_6) {
-            this.updateFormation(config.current_rotating_zug, 'display2_zug2_wagenreihung', false);
-        } else {
-            this.updateFormation(config.current_display3_zug, 'display2_zug2_wagenreihung', false);
-        }
-    }
-
-    updateFormation(zugData, displayID, fullScreen) {
-        if (!zugData) return;
-
-        this.displayFormation(zugData, displayID, fullScreen); 
-    }
-
-    update(zugID, info_canvas_id, wagen_canvas_id, fullScreen) {
+    update(departureIndex, info_canvas_id, wagen_canvas_id, fullScreen) {
         try {
-            // 1. Get the single data object
-            const zugData = this.trainData.zugDaten[zugID];
+            const departure = this.trainData.departures[departureIndex];
 
-            if (!zugData) {
-                console.warn(`zugDaten[${zugID}] is undefined`);
+            if (!departure) {
+                const info_canvas = document.getElementById(info_canvas_id);
+                if (info_canvas) info_canvas.getContext('2d').clearRect(0, 0, info_canvas.width, info_canvas.height);
+                const wagen_canvas = document.getElementById(wagen_canvas_id);
+                if (wagen_canvas) wagen_canvas.getContext('2d').clearRect(0, 0, wagen_canvas.width, wagen_canvas.height);
+                // console.warn(`Departure data for index ${departureIndex} is undefined.`);
                 return;
             }
 
-            // 2. Pass the whole object to the rendering functions
-            this.updateFormation(zugData, wagen_canvas_id, fullScreen);
-            this.displayTrainInfo(zugData, info_canvas_id, fullScreen);
+            this.displayTrainInfo(departure, info_canvas_id, fullScreen);
+            this.displayFormation(departure, wagen_canvas_id, fullScreen);
 
         } catch (err) {
-            console.error(`Error in update_train_display for zug_${zugID}:`, err);
+            console.error(`Error in update for departure index ${departureIndex}:`, err);
         }
     }
     updateAll() {
-        for (let zugID = 1; zugID <= 3; zugID++) {
+        this.update(0, 'display1', 'display1_wagenreihung', true);
+        this.update(1, 'display2_zug1', 'display2_zug1_wagenreihung', false);
+
+        // NOTE: External functions like `updateRotatingDisplay` must be adapted to call `update` with an index.
+        if (config.rotate_3_6) {
+            updateRotatingDisplay();
+        } else {
+            const departureIndex = config.current_display3_zug - 1;
+            this.update(departureIndex, 'display2_zug2', 'display2_zug2_wagenreihung', false);
+        }
+        /* for (let zugID = 1; zugID <= 3; zugID++) {
             try {
                 if (zugID === 1) {
                     this.update(1, 'display1', 'display1_wagenreihung', true);
@@ -1136,6 +1141,6 @@ export class TrainDisplay {
             } catch (err) {
                 console.error(`Failed to update display for zug_${zugID}:`, err);
             }
-        }
+        } */
     }
 }
