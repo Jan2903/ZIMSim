@@ -316,6 +316,32 @@ button:active { transform: translateY(1px); }
 }
 .btn-secondary:hover { background-color: var(--border); }
 
+.btn-danger {
+    background-color: #991b1b; /* Dunkles Rot */
+    color: white;
+}
+.btn-danger:hover {
+    background-color: #7f1d1d;
+}
+
+.train-groups-container {
+    margin-top: 20px;
+}
+
+.train-group-frame {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+    background-color: var(--bg-input);
+}
+
+.train-group-frame h4 {
+    margin-top: 0;
+    margin-bottom: 16px;
+    color: var(--text-muted);
+}
+
 .action-row {
     margin-top: 25px;
     padding-top: 20px;
@@ -329,6 +355,13 @@ button:active { transform: translateY(1px); }
     margin-top: 10px;
 }
 .button-group-vertical button { width: 100%; }
+
+.action-row-group {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 10px;
+}
 
 /* Scroll Text Animation */
 .scroll-container {
