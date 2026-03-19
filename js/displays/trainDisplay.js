@@ -41,15 +41,16 @@ export class TrainDisplay {
         ctx.stroke();
     }
 
-    displayMiddleWagon(coach, x, ctx) {
+    displayMiddleWagon(coach, isStart, isEnd, x, ctx) {
         ctx.strokeStyle = 'white';
         ctx.lineWidth = 6;
         ctx.beginPath();
         ctx.moveTo(x, this.y); ctx.lineTo(x + coach.length, this.y);
         ctx.moveTo(x, this.y + 80); ctx.lineTo(x + coach.length, this.y + 80);
-        if (coach.coach_type === 'ma') {
+        if (isStart) {
             ctx.moveTo(x, this.y - 3); ctx.lineTo(x, this.y + 83);
-        } else if (coach.coach_type === 'me') {
+        }
+        if (isEnd) {
             ctx.moveTo(x + coach.length, this.y - 3); ctx.lineTo(x + coach.length, this.y + 83);
         }
         ctx.stroke();
@@ -355,8 +356,8 @@ export class TrainDisplay {
                 allCoaches.push({ coach, group, isFirstInGroup: index === 0, isLastInGroup: index === group.coaches.length - 1 });
             });
         });
-
-        const coachesToDraw = fullScreen ? allCoaches : allCoaches.filter(c => !c.coach.isLocomotive());
+        
+        const coachesToDraw = allCoaches;
         if (coachesToDraw.length === 0) return;
 
         let totalLengthMeters = coachesToDraw.reduce((sum, c) => sum + c.coach.length, 0);
@@ -373,7 +374,7 @@ export class TrainDisplay {
             const coachPixelLength = coach.length * pixelPerMeter;
 
             // Add current coach to be drawn at currentX
-            drawableCoaches.push({ ...currentItem, coachData: coach, x: currentX, pixelLength: coachPixelLength });
+            drawableCoaches.push({ ...currentItem, coachData: coach, x: currentX, pixelLength: coachPixelLength, destination: group.destination, trainNumber: group.trainNumber});
 
             // Advance X by the length of the coach
             currentX += coachPixelLength;
@@ -385,8 +386,7 @@ export class TrainDisplay {
 
                 // Is the next coach in a new group?
                 if (group !== nextGroup) {
-                    
-
+                
                     //TODO: Accomodate for lenght/ gaps -> reduce length of start and end coaches when coupling / gap between groups
                     // Check condition to draw coupling
                     if (group.destination !== nextGroup.destination || group.trainNumber !== nextGroup.trainNumber) {
@@ -424,8 +424,9 @@ export class TrainDisplay {
             this.displayDirection(direction, trainPixelEnd + 10, ctx);
         }
 
-        for (const item of drawableCoaches) {
-            const { coachData, x, pixelLength, isFirstInGroup, isLastInGroup } = item;
+        for (let i = 0; i < drawableCoaches.length; i++) {
+            const item = drawableCoaches[i];
+            const { coachData, x, pixelLength, isFirstInGroup, isLastInGroup, destination, trainNumber} = item;
             const drawableCoach = new Coach({ ...coachData, length: pixelLength });
 
             if (coachData.type === 'locomotive' && fullScreen) {
@@ -434,10 +435,37 @@ export class TrainDisplay {
                 this.displayStartWagon(drawableCoach, x, ctx);
             } else if (coachData.type === 'control_car' && isLastInGroup) {
                 this.displayEndWagon(drawableCoach, x, ctx);
-            } else {
-                this.displayMiddleWagon(drawableCoach, x, ctx);
+            }
+            
+            let isStart = isFirstInGroup;
+            let isEnd = isLastInGroup;
+
+            const previousCoach = i > 0 ? drawableCoaches[i - 1].coachData : null;
+            const nextCoach = i < drawableCoaches.length - 1 ? drawableCoaches[i + 1].coachData : null;
+
+            if (coachData.type === 'middle_car') {
+                if (isLastInGroup && nextCoach && nextCoach.type === 'middle_car') {
+                    isEnd = false;
+                }
+                
+                if (isFirstInGroup && previousCoach && previousCoach.type === 'middle_car') {
+                    isStart = false;
+                }
+                
+                this.displayMiddleWagon(drawableCoach, isStart, isEnd, x, ctx);
             }
 
+            //Ziel anzeigen
+            if (isFirstInGroup) {
+                if ((!previousCoach || (previousCoach.destination !== destination)) && (!previousCoach || (previousCoach.trainNumber !== trainNumber))) {
+                    ctx.fillStyle = 'white';
+                    ctx.font = '58px "Open Sans Condensed"';
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(destination, x, this.y + 155);
+                }
+            }
+        
             if (!coachData.open) {
                 ctx.font = 'bold 48px "Open Sans Condensed"';
                 ctx.textAlign = 'center';
