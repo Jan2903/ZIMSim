@@ -345,8 +345,8 @@ function resizeDisplay() {
     }
     const scaleX = window.innerWidth / 4260;
     const scaleY = window.innerHeight / 1400;
-    const scale = Math.min(scaleX, scaleY);
-    wrapper.style.transform = `translateX(-50%) scale(${scale})`;
+    const scale = window.innerWidth / 4260; // Einheitliches Skalieren basierend auf der Breite
+    wrapper.style.transform = `scale(${scale})`;
     container.style.height = `${1400 * scale}px`;
 }
 

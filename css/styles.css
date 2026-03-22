@@ -50,7 +50,7 @@ canvas {
 .display-container {
     position: relative;
     width: 100%;
-    overflow: visible;
+    overflow: hidden;
     background-color: var(--db-navy); /* Hintergrund nur für den Screen */
     box-shadow: 0 10px 30px rgba(0,0,0,0.5); /* Schöner Schatten für den Monitor */
     z-index: 10;
@@ -58,11 +58,11 @@ canvas {
 .screen-wrapper {
     position: absolute;
     top: 0;
-    left: 50%;
+    left: 0;
     width: 4260px;
     height: 1400px;
     box-sizing: border-box;
-    transform-origin: top center;
+    transform-origin: top left;
 }
 .main-frame {
     display: grid;

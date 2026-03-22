@@ -85,8 +85,8 @@ export class TrainDisplay {
     displayCoupling(ctx, x) {
         ctx.fillStyle = 'white';
         const dotRadius = 6;
-        const startY = this.y - 15;
-        const endY = this.y + 100;
+        const startY = this.y - 6;
+        const endY = this.y + 86;
         const numDots = 6;
         const step = (endY - startY) / (numDots - 1);
 
@@ -456,7 +456,7 @@ export class TrainDisplay {
             }
 
             //Ziel anzeigen
-            if (isFirstInGroup) {
+            if (isFirstInGroup && groups.length > 1) {
                 if ((!previousCoach || (previousCoach.destination !== destination)) && (!previousCoach || (previousCoach.trainNumber !== trainNumber))) {
                     ctx.fillStyle = 'white';
                     ctx.font = '58px "Open Sans Condensed"';
