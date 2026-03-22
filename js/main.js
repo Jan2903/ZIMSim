@@ -84,6 +84,8 @@ document.addEventListener('DOMContentLoaded', () => {
     generateTrainSettingsUI(); // WICHTIG: Muss vor initEvents() aufgerufen werden!
     initEvents();
     preloadImages().then(() => {
-        trainDisplay.updateAll();
+        document.fonts.ready.then(() => { //Possible Fix for Safari Font Loading 
+            trainDisplay.updateAll();
+        });
     });
 });
