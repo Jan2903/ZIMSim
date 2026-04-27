@@ -6,10 +6,10 @@ export class TrainData {
         this.platform = new Platform({
             length: 420,
             sections: [
-                { name: 'A', startMeter: 0, endMeter: 70, cubePosition: 35 },
-                { name: 'B', startMeter: 70, endMeter: 140, cubePosition: 105 },
+                { name: 'A', startMeter: 0, endMeter: 70, cubePosition: 35 },//35
+                { name: 'B', startMeter: 70, endMeter: 140, cubePosition: 100},
                 { name: 'C', startMeter: 140, endMeter: 210, cubePosition: 175 },
-                { name: 'D', startMeter: 210, endMeter: 280, cubePosition: 245 },
+                { name: 'D', startMeter: 210, endMeter: 280, cubePosition: 275 },//245
                 { name: 'E', startMeter: 280, endMeter: 350, cubePosition: 315 },
                 { name: 'F', startMeter: 350, endMeter: 420, cubePosition: 385 }
             ]
@@ -29,13 +29,13 @@ export class TrainData {
                         scheduledTime: "14:30",
                         expectedTime: "14:32",
                         coaches: [
-                            { type: 'control_car', length: 28.8, coachClass: 1, coachNumber: '37', amenities: [], open: true },
-                            { type: 'middle_car',  length: 27.9, coachClass: 2, coachNumber: '36', amenities: [], open: true },
-                            { type: 'middle_car',  length: 27.9, coachClass: 2, coachNumber: '35', amenities: [], open: true },
-                            { type: 'middle_car',  length: 27.9, coachClass: 2, coachNumber: '34', amenities: ['g'], open: true },
-                            { type: 'middle_car',  length: 27.9, coachClass: 2, coachNumber: '33', amenities: [], open: true },
-                            { type: 'middle_car',  length: 27.9, coachClass: 2, coachNumber: '32', amenities: [], open: true },
-                            { type: 'control_car', length: 28.8, coachClass: 2, coachNumber: '31', amenities: ['f'], open: true }
+                            { type: 'control_car', length: 25, coachClass: 1, coachNumber: '37', amenities: [], open: true },
+                            { type: 'middle_car',  length: 25, coachClass: 2, coachNumber: '36', amenities: [], open: true },
+                            { type: 'middle_car',  length: 25, coachClass: 2, coachNumber: '35', amenities: [], open: true },
+                            { type: 'middle_car',  length: 25, coachClass: 2, coachNumber: '34', amenities: ['g'], open: true },
+                            { type: 'middle_car',  length: 25, coachClass: 2, coachNumber: '33', amenities: [], open: true },
+                            { type: 'middle_car',  length: 25, coachClass: 2, coachNumber: '32', amenities: [], open: true },
+                            { type: 'control_car', length: 25, coachClass: 2, coachNumber: '31', amenities: ['f'], open: true }
                         ]
                     },
                     // --- ZUGTEIL 2
@@ -46,9 +46,9 @@ export class TrainData {
                         scheduledTime: "14:30",
                         expectedTime: "14:32",
                         coaches: [
-                            { type: 'control_car', length: 28.8, coachClass: 1, coachNumber: '28', amenities: [], open: true },
-                            { type: 'middle_car',  length: 27.9, coachClass: 2, coachNumber: '27', amenities: ['dining'], open: true },
-                            { type: 'control_car', length: 28.8, coachClass: 2, coachNumber: '21', amenities: ['bike'], open: true }
+                            { type: 'control_car', length: 25, coachClass: 1, coachNumber: '28', amenities: [], open: true },
+                            { type: 'middle_car',  length: 25, coachClass: 2, coachNumber: '27', amenities: ['dining'], open: true },
+                            { type: 'control_car', length: 25, coachClass: 2, coachNumber: '21', amenities: ['bike'], open: true }
                         ]
                     }
                 ]
