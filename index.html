@@ -10,22 +10,9 @@
 
 <body>
     <div class="display-container">
-        <div class="screen-wrapper">
-            <canvas class="header" width="4260" height="160"></canvas>
-            <div class="main-frame">
-                <canvas class="display-trenner-links" width="200" height="1080"></canvas>
-                <canvas class="display1" id="display1" width="1920" height="800"></canvas>
-                <canvas class="display-trenner" width="40" height="1080"></canvas>
-                <canvas class="display2-zug1" id="display2_zug1" width="960" height="800"></canvas>
-                <canvas class="display2-zug2" id="display2_zug2" width="960" height="800"></canvas>
-                <canvas class="display-trenner-rechts" width="200" height="1080"></canvas>
-                <canvas class="display1-wagenreihung" id="display1_wagenreihung" width="1920" height="280"></canvas>
-                <canvas class="display2-zug1-wagenreihung" id="display2_zug1_wagenreihung" width="960"
-                    height="280"></canvas>
-                <canvas class="display2-zug2-wagenreihung" id="display2_zug2_wagenreihung" width="960"
-                    height="280"></canvas>
-                <canvas class="footer" width="4260" height="160"></canvas>
-            </div>
+        <div id="display-container" style="position: relative; width: 4140px; height: 1280px; background-color: var(--db-dark); overflow: hidden;">
+            <div id="hardware-bezel" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 20; pointer-events: none; background-size: cover;"></div>
+            <canvas id="zimCanvas" width="4140" height="1280" style="position: absolute; top: 0; left: 0; z-index: 10;"></canvas>
         </div>
     </div>
 

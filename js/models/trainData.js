@@ -18,7 +18,7 @@ export class TrainData {
         this.departures = [
             new Departure({
                 direction: 1,      // Fährt nach rechts aus
-                startMeter: 100,   // Zug hält an Meter 100
+                startMeter: 50,   // Zug hält an Meter 100
                 scrollText: "Zugteilung in Hamm (Westf) Hbf",
                 groups: [
                     // --- ZUGTEIL 1
@@ -46,8 +46,12 @@ export class TrainData {
                         scheduledTime: "14:30",
                         expectedTime: "14:32",
                         coaches: [
-                            { type: 'control_car', length: 25, coachClass: 1, coachNumber: '28', amenities: [], open: true },
-                            { type: 'middle_car',  length: 25, coachClass: 2, coachNumber: '27', amenities: ['dining'], open: true },
+                            { type: 'control_car', length: 25, coachClass: 1, coachNumber: '27', amenities: [], open: true },
+                            { type: 'middle_car',  length: 25, coachClass: 1, coachNumber: '26', amenities: [], open: true },
+                            { type: 'middle_car',  length: 25, coachClass: 2, coachNumber: '25', amenities: [], open: true },
+                            { type: 'middle_car',  length: 25, coachClass: 2, coachNumber: '24', amenities: [], open: true },
+                            { type: 'middle_car',  length: 25, coachClass: 2, coachNumber: '23', amenities: ['dining'], open: true },
+                            { type: 'middle_car',  length: 25, coachClass: 2, coachNumber: '22', amenities: [], open: true },
                             { type: 'control_car', length: 25, coachClass: 2, coachNumber: '21', amenities: ['bike'], open: true }
                         ]
                     }
