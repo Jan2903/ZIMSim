@@ -338,16 +338,15 @@ function showFormationEditor(departureIndex, groupIndex) {
 
 function resizeDisplay() {    
     const container = document.querySelector('.display-container');
-    const wrapper = document.querySelector('.screen-wrapper');
+    const wrapper = document.getElementById('display-container');
     if (!container || !wrapper) {
         console.warn('DOM elements not found in resizeDisplay');
         return; // Prevent errors if DOM isn’t ready
     }
-    const scaleX = window.innerWidth / 4260;
-    const scaleY = window.innerHeight / 1400;
-    const scale = window.innerWidth / 4260; // Einheitliches Skalieren basierend auf der Breite
+    const scale = window.innerWidth / 4140; // Einheitliches Skalieren basierend auf der neuen Breite
+    wrapper.style.transformOrigin = 'top left';
     wrapper.style.transform = `scale(${scale})`;
-    container.style.height = `${1400 * scale}px`;
+    container.style.height = `${1280 * scale}px`;
 }
 
 export function initEvents() {
@@ -548,8 +547,8 @@ export function initEvents() {
         trainDisplay.updateAll();
         setTimeout(() => {
             const container = document.querySelector('.display-container');
-            const wrapper = document.querySelector('.screen-wrapper');
-            const screenWrapper = document.querySelector('.screen-wrapper');  // Capture the full screen-wrapper including header
+            const wrapper = document.getElementById('display-container');
+            const screenWrapper = document.getElementById('display-container');  // Capture the new main container
             // Save old styles
             const oldContainerWidth = container.style.width;
             const oldContainerHeight = container.style.height;
@@ -557,8 +556,8 @@ export function initEvents() {
             const oldWrapperLeft = wrapper.style.left;
             const oldWrapperPosition = wrapper.style.position;
             // Set to full size
-            container.style.width = '4260px';
-            container.style.height = '1400px';
+            container.style.width = '4140px';
+            container.style.height = '1280px';
             wrapper.style.position = 'static';
             wrapper.style.left = '0';
             wrapper.style.transform = 'none';
@@ -566,10 +565,10 @@ export function initEvents() {
                 scale: 1,
                 useCORS: true,
                 backgroundColor: 'navy',
-                width: 4260,
-                height: 1400,
-                windowWidth: 4260,
-                windowHeight: 1400,
+                width: 4140,
+                height: 1280,
+                windowWidth: 4140,
+                windowHeight: 1280,
                 x: 0,
                 y: 0,
                 scrollX: 0,

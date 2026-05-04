@@ -3,6 +3,19 @@ import { Coach } from '../models/coach.js';
 import { config } from '../utils/config.js';
 import { images, updateRotatingDisplay } from '../utils/utils.js';
 
+const LAYOUTS = {
+    standard: {
+        width: 4140, 
+        height: 1280,
+        screens: {
+            hauptmonitor: { x: 100, y: 100, w: 1920, h: 1080 },
+            nebenmonitor_1: { x: 2120, y: 100, w: 960, h: 1080 },
+            nebenmonitor_2: { x: 3080, y: 100, w: 960, h: 1080 }
+        }
+    }
+};
+let currentLayout = LAYOUTS.standard;
+
 export class TrainDisplay {
     constructor(trainData) {
         this.trainData = trainData;
@@ -12,6 +25,23 @@ export class TrainDisplay {
         this.rotationIndex = 0;
         this.rotating = false;
         this.scrollDivs = {};
+    }
+
+    drawOnScreen(screenName, drawFunction) {
+        const canvas = document.getElementById('zimCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const screen = currentLayout.screens[screenName];
+        if (!screen) return;
+
+        ctx.save();
+        ctx.clearRect(screen.x, screen.y, screen.w, screen.h);
+        ctx.translate(screen.x, screen.y);
+        ctx.beginPath();
+        ctx.rect(0, 0, screen.w, screen.h);
+        ctx.clip();
+        drawFunction(ctx, screen.w, screen.h);
+        ctx.restore();
     }
 
     displayDirection(richtung, x, ctx) {
@@ -294,12 +324,7 @@ export class TrainDisplay {
         });
     }
 
-    displayFormation(departure, displayID, fullScreen) {
-        const canvas = document.getElementById(displayID);
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+    displayFormation(departure, ctx, fullScreen) {
         const {
             direction = 1,
             startMeter = 0,
@@ -549,7 +574,7 @@ export class TrainDisplay {
         ctx.fillText(text, x, y);
     }
 
-    displayAusfallUndGleiswechsel(ctx, zugData, displayID, used_nr) {
+    displayAusfallUndGleiswechsel(ctx, zugData, screenName, used_nr) {
         // Unpack only what we need for this specific view
         const {
             Abfahrt: abfahrt,
@@ -580,8 +605,8 @@ export class TrainDisplay {
 
         this.displayText(ctx, abfahrt, 50, 200, '120px "Open Sans Condensed"', 'navy', 'left')
 
-        this.displayTextInRectangle(ctx, abfahrt_a, 330, 195, '90px "Open Sans Condensed"', 'left', 90, 10, false, displayID, 0, 'navy', 'white');
-        this.displayTextInRectangle(ctx, used_nr, 890, 200, '75px "Open Sans Condensed"', 'right', 75, 10, false, displayID, 0, 'DimGrey', 'white', true, true);
+        this.displayTextInRectangle(ctx, abfahrt_a, 330, 195, '90px "Open Sans Condensed"', 'left', 90, 10, false, screenName, 0, 'navy', 'white');
+        this.displayTextInRectangle(ctx, used_nr, 890, 200, '75px "Open Sans Condensed"', 'right', 75, 10, false, screenName, 0, 'DimGrey', 'white', true, true);
 
         this.displayText(ctx, ziel, 50, 360, '120px "Open Sans Condensed"', 'navy', 'left')
 
@@ -594,21 +619,27 @@ export class TrainDisplay {
         }
     }
 
-    displayTextInRectangle(ctx, text, x, y, font, textAlign, textHeight, rectPadding, fullScreen, displayID, cornerRadius, rectColor, textColor, inverted = false, widthLimited = false) {
+    displayTextInRectangle(ctx, text, x, y, font, textAlign, textHeight, rectPadding, fullScreen, screenName, cornerRadius, rectColor, textColor, inverted = false, widthLimited = false) {
         ctx.font = font;
-        ctx.textAlign = textAlign
+        ctx.textAlign = textAlign;
 
-        let textWidth = ctx.measureText(text).width;
+        const originalTextWidth = ctx.measureText(text).width;
+        let textWidth = originalTextWidth;
 
-        const checkHeight = 50; // full vertical scan area
-        const availableWidth = this.findMaxZugNrWidth(
-            ctx, x, y, checkHeight
-        );
-        const finalWidth = availableWidth - 40; // 20px padding
+        let shouldScroll = false;
+        let finalWidth = 9999;
 
-        // Limit width 
-        if (widthLimited && textWidth > finalWidth) {
-            textWidth = finalWidth;
+        if (widthLimited) {
+            const checkHeight = 50; // full vertical scan area
+            const availableWidth = this.findMaxZugNrWidth(
+                ctx, x, y, checkHeight, screenName
+            );
+            finalWidth = Math.max(10, availableWidth - 40); // 20px padding
+            
+            if (textWidth > finalWidth) {
+                textWidth = finalWidth;
+                shouldScroll = true;
+            }
         }
 
         let stroke = false;
@@ -650,16 +681,23 @@ export class TrainDisplay {
             } else {
                 ctx.fill();
             }
-            const canvas = document.getElementById(displayID);
-            const zugID = fullScreen ? 1 : displayID === 'display2_zug1' ? 2 : 3;
+            const canvas = ctx.canvas;
+            const zugID = fullScreen ? 1 : screenName === 'nebenmonitor_1' ? 2 : 3;
+            const screen = currentLayout.screens[screenName];
             
-            if (widthLimited){
-                if (fullScreen) {
-                this.displayScrollingText(canvas, zugID, 'zugNr', text, `${canvas.offsetLeft + x - textWidth - rectPadding}px`, `${canvas.offsetTop + y - (textHeight / 2) - rectPadding}px`, `${canvas.width - 50}px`, `${textHeight + rectPadding}px`, textColor, font);
-                } else {
-                    this.displayScrollingText(canvas, zugID, 'zugNr', text, `${canvas.offsetLeft + x - textWidth - rectPadding}px`, `${canvas.offsetTop + y - (textHeight / 2) - rectPadding}px`, `${textWidth + 2 * rectPadding}px`, `${textHeight + rectPadding}px`, textColor, font);
-                }
-           
+            if (shouldScroll) {
+                const boxLeft = textAlign === 'right' 
+                    ? x - textWidth - rectPadding 
+                    : x - rectPadding;
+
+                this.displayScrollingText(
+                    canvas, zugID, 'zugNr_' + Math.round(y), text, 
+                    `${canvas.offsetLeft + screen.x + boxLeft}px`, 
+                    `${canvas.offsetTop + screen.y + y - (textHeight / 2) - rectPadding}px`, 
+                    `${textWidth + 2 * rectPadding}px`, 
+                    `${textHeight + rectPadding}px`, 
+                    textColor, font
+                );
             } else {
                 this.displayText(ctx, text, x, y, font, textColor, textAlign);
             }
@@ -672,13 +710,32 @@ export class TrainDisplay {
             this.scrollDivs[zugID] = {};
         }
 
-        // Remove old one
-        this.scrollDivs[zugID][scrollingID]?.remove();
+        if (this.currentRenderScrollIDs) {
+            this.currentRenderScrollIDs.add(scrollingID);
+        }
 
         if (text === "") {
+            this.scrollDivs[zugID][scrollingID]?.remove();
             delete this.scrollDivs[zugID][scrollingID];
             return null;
         }
+
+        const existingDiv = this.scrollDivs[zugID][scrollingID];
+        
+        // Wenn alles exakt gleich bleibt, tun wir nichts, um den weichen Scrollfluss nicht zu unterbrechen
+        if (existingDiv && 
+            existingDiv.dataset.left === left &&
+            existingDiv.dataset.top === top &&
+            existingDiv.dataset.width === width &&
+            existingDiv.dataset.height === height &&
+            existingDiv.dataset.text === text &&
+            existingDiv.dataset.color === color &&
+            existingDiv.dataset.font === font) {
+            return;
+        }
+
+        // Ansonsten entfernen wir das alte und rendern neu
+        existingDiv?.remove();
 
         const scrollDiv = document.createElement('div');
         scrollDiv.classList.add('scroll-container');
@@ -686,6 +743,17 @@ export class TrainDisplay {
         scrollDiv.style.top = top;
         scrollDiv.style.width = width;
         scrollDiv.style.height = height;
+        scrollDiv.style.zIndex = '15'; // Wichtig: Damit es zwischen Canvas(10) und Hardware-Bezel(20) liegt!
+        
+        // Properties hinterlegen, um Repaints auf das Nötigste zu beschränken
+        scrollDiv.dataset.left = left;
+        scrollDiv.dataset.top = top;
+        scrollDiv.dataset.width = width;
+        scrollDiv.dataset.height = height;
+        scrollDiv.dataset.text = text;
+        scrollDiv.dataset.color = color;
+        scrollDiv.dataset.font = font;
+        
         canvas.parentElement.appendChild(scrollDiv);
 
         const inner = document.createElement('div');
@@ -721,36 +789,46 @@ export class TrainDisplay {
         this.scrollDivs[zugID][scrollingID] = scrollDiv;
     }
 
-    getBackgroundColor(ctx) {
-        const canvas = ctx.canvas;
-        const x = canvas.width - 25;
-        const y = 200;
+    getBackgroundColor(ctx, screenName) {
+        const screen = currentLayout.screens[screenName];
+        if (!screen) return [0, 0, 128, 255]; // fallback
+        const absX = screen.x + screen.w - 25;
+        const absY = screen.y + 200;
 
         // Get 1x1 pixel
-        const pixel = ctx.getImageData(x, y, 1, 1).data;
+        const pixel = ctx.getImageData(absX, absY, 1, 1).data;
         return [pixel[0], pixel[1], pixel[2], pixel[3]];
     }
 
-    findMaxZugNrWidth(ctx, startX, yCenter, height) {
-        const bgColor = this.getBackgroundColor(ctx);  // ← dynamic!
+    findMaxZugNrWidth(ctx, startX, yCenter, height, screenName) {
+        const screen = currentLayout.screens[screenName];
+        if (!screen) return startX;
+
+        const bgColor = this.getBackgroundColor(ctx, screenName);
 
         const halfH = height / 2;
-        const top = Math.max(0, yCenter - halfH);
-        const bottom = Math.min(ctx.canvas.height, yCenter + halfH);
+        const top = Math.floor(Math.max(0, screen.y + yCenter - halfH));
+        const bottom = Math.ceil(Math.min(ctx.canvas.height, screen.y + yCenter + halfH));
         const checkHeight = bottom - top;
 
+        const absStartX = Math.floor(screen.x + startX);
+        const scanWidth = absStartX - screen.x;
+        
+        if (scanWidth <= 0 || checkHeight <= 0) return 0;
+
+        const imgData = ctx.getImageData(screen.x, top, scanWidth, checkHeight).data;
+
         let maxWidth = 0;
-
-        for (let x = startX; x >= 0; x--) {
-            const colData = ctx.getImageData(x, top, 1, checkHeight).data;
-
+        // Von rechts nach links den gesammelten Bereich überprüfen
+        for (let xOffset = scanWidth - 1; xOffset >= 0; xOffset--) {
             let isClear = true;
-            for (let i = 0; i < colData.length; i += 4) {
+            for (let yOffset = 0; yOffset < checkHeight; yOffset++) {
+                const i = (yOffset * scanWidth + xOffset) * 4;
                 if (
-                    colData[i] !== bgColor[0] ||
-                    colData[i + 1] !== bgColor[1] ||
-                    colData[i + 2] !== bgColor[2] ||
-                    colData[i + 3] !== bgColor[3]
+                    imgData[i] !== bgColor[0] ||
+                    imgData[i + 1] !== bgColor[1] ||
+                    imgData[i + 2] !== bgColor[2] ||
+                    imgData[i + 3] !== bgColor[3]
                 ) {
                     isClear = false;
                     break;
@@ -758,7 +836,7 @@ export class TrainDisplay {
             }
 
             if (isClear) {
-                maxWidth = startX - x + 1;
+                maxWidth++;
             } else {
                 break;
             }
@@ -767,12 +845,8 @@ export class TrainDisplay {
         return maxWidth;
     }
 
-    displayTrainInfo(departure, displayID, fullScreen) {
-        const canvas = document.getElementById(displayID);
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+    displayTrainInfo(departure, ctx, width, screenName, fullScreen) {
+        const canvas = ctx.canvas;
         const {
             groups = [],
             scrollText = "",
@@ -786,10 +860,10 @@ export class TrainDisplay {
         const mainGroup = groups[0] || {};
         const abfahrt = mainGroup.scheduledTime || "";
         const abfahrt_a = mainGroup.expectedTime || "";
-        const nr = mainGroup.trainNumber || "";
+        const nr = groups.map(g => g.trainNumber).filter(Boolean).join(' / ') || ""; // Führt bei Zugteilen "ICE 1 / ICE 2" zusammen
         const used_nr = nr;
 
-        let x = this.displayPictograms(scrollText, nr, displayID, fullScreen, ankunft);
+        let x = this.displayPictograms(scrollText, nr, ctx, fullScreen, ankunft);
 
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
@@ -799,14 +873,15 @@ export class TrainDisplay {
         if (infoscreen || gleiswechsel !== "0" || ausfall || verkehrtAb !== "0") infoToScroll = "";
 
         ctx.fillStyle = 'white';
-        if (infoToScroll !== "") ctx.fillRect(x, 0, canvas.width - x, 100);
+        if (infoToScroll !== "") ctx.fillRect(x, 0, width - x, 100);
 
-        const zugID = fullScreen ? 1 : (displayID === 'display2_zug1' ? 2 : 3);
+        const zugID = fullScreen ? 1 : (screenName === 'nebenmonitor_1' ? 2 : 3);
+        const screen = currentLayout.screens[screenName];
         this.displayScrollingText(
             canvas, zugID, "info", infoToScroll,
-            `${canvas.offsetLeft + x + 5}px`,
-            `${canvas.offsetTop}px`,
-            `${canvas.width - x - 5}px`,
+            `${canvas.offsetLeft + screen.x + x + 5}px`,
+            `${canvas.offsetTop + screen.y}px`,
+            `${screen.w - x - 5}px`,
             '100px',
             'navy',
             '67px "Open Sans Condensed"'
@@ -823,7 +898,7 @@ export class TrainDisplay {
                 ctx.fillRect(0, 0, 960, 800);
                 this.wrapAndDisplayText(ctx, scrollText, 50, 120, 900, 80, '70px "Open Sans Condensed"', 'navy', 'left');
             } else {
-                this.displayAusfallUndGleiswechsel(ctx, zugDataForHelper, displayID, used_nr);
+                this.displayAusfallUndGleiswechsel(ctx, zugDataForHelper, screenName, used_nr);
             }
             return;
         }
@@ -838,8 +913,8 @@ export class TrainDisplay {
 
         if (fullScreen) {
             this.displayText(ctx, abfahrt, 100, 220, '180px "Open Sans Condensed"', 'white', 'left');
-            this.displayTextInRectangle(ctx, abfahrt_a, 520, 215, '120px "Open Sans Condensed"', 'left', 120, 20, fullScreen, displayID, 0, 'white', 'navy');
-            this.displayTextInRectangle(ctx, nr, 1855, 220, '100px "Open Sans Condensed"', 'right', 100, 15, fullScreen, displayID, 0, 'DimGrey', 'white', false, true);
+            this.displayTextInRectangle(ctx, abfahrt_a, 520, 215, '120px "Open Sans Condensed"', 'left', 120, 20, fullScreen, screenName, 0, 'white', 'navy');
+            this.displayTextInRectangle(ctx, nr, 1855, 220, '100px "Open Sans Condensed"', 'right', 100, 15, fullScreen, screenName, 0, 'DimGrey', 'white', false, true);
 
             if (ankunft) {
                 const fromDestination = mainGroup.destination || "";
@@ -853,8 +928,9 @@ export class TrainDisplay {
                 const lineSpacing = groups.length > 1 ? 150 : 200;
 
                 for (const group of groups) {
-                    const destText = `${group.trainNumber} ${group.destination}`;
-                    this.displayText(ctx, destText, 100, yPos, destFont, 'white', 'left');
+                    this.displayText(ctx, group.destination, 100, yPos, destFont, 'white', 'left');
+                    this.displayTextInRectangle(ctx, group.trainNumber, 1855, yPos, '100px "Open Sans Condensed"', 'right', 100, 15, fullScreen, screenName, 0, 'DimGrey', 'white', false, true);
+                    
                     const viaText = (group.vias || []).join(' - ');
                     this.displayText(ctx, viaText, 112, yPos + lineSpacing * 0.5, viaFont, 'white', 'left');
                     yPos += lineSpacing;
@@ -862,14 +938,14 @@ export class TrainDisplay {
             }
         } else {
             this.displayText(ctx, abfahrt, 50, 200, '120px "Open Sans Condensed"', 'white', 'left');
-            this.displayTextInRectangle(ctx, abfahrt_a, 330, 195, '90px "Open Sans Condensed"', 'left', 90, 10, fullScreen, displayID, 0, 'white', 'navy');
-            this.displayTextInRectangle(ctx, used_nr, 890, 200, '75px "Open Sans Condensed"', 'right', 75, 10, fullScreen, displayID, 0, 'DimGrey', 'white', false, true);
+            this.displayTextInRectangle(ctx, abfahrt_a, 330, 195, '90px "Open Sans Condensed"', 'left', 90, 10, fullScreen, screenName, 0, 'white', 'navy');
+            this.displayTextInRectangle(ctx, used_nr, 890, 200, '75px "Open Sans Condensed"', 'right', 75, 10, fullScreen, screenName, 0, 'DimGrey', 'white', false, true);
 
             if (ankunft) {
                 const fromDestination = mainGroup.destination || "";
                 this.displayText(ctx, 'von / from ' + fromDestination, 50, 360, '67px "Open Sans Condensed"', 'white', 'left');
-                this.displayScrollingText(canvas, zugID, 'ankunft', "Bitte nicht einsteigen", `${canvas.offsetLeft + 50}px`, `${canvas.offsetTop + 420}px`, `${canvas.width - 50}px`, '120px', 'white', '120px "Open Sans Condensed"');
-                this.displayScrollingText(canvas, zugID, 'arrival', "Please do not board", `${canvas.offsetLeft + 50}px`, `${canvas.offsetTop + 560}px`, `${canvas.width - 50}px`, '120px', 'white', 'italic 120px "Open Sans Condensed"');
+                this.displayScrollingText(canvas, zugID, 'ankunft', "Bitte nicht einsteigen", `${canvas.offsetLeft + screen.x + 50}px`, `${canvas.offsetTop + screen.y + 420}px`, `${screen.w - 50}px`, '120px', 'white', '120px "Open Sans Condensed"');
+                this.displayScrollingText(canvas, zugID, 'arrival', "Please do not board", `${canvas.offsetLeft + screen.x + 50}px`, `${canvas.offsetTop + screen.y + 560}px`, `${screen.w - 50}px`, '120px', 'white', 'italic 120px "Open Sans Condensed"');
             } else {
                 let yPos = 360;
                 const destFont = groups.length > 1 ? '90px "Open Sans Condensed"' : '120px "Open Sans Condensed"';
@@ -879,7 +955,7 @@ export class TrainDisplay {
 
                 for (const group of groups) {
                     this.displayText(ctx, group.destination, 50, yPos, destFont, 'white', 'left');
-                    this.displayTextInRectangle(ctx, group.trainNumber, 890, yPos, '75px "Open Sans Condensed"', 'right', 75, 10, fullScreen, displayID, 0, 'DimGrey', 'white', false, true);
+                    this.displayTextInRectangle(ctx, group.trainNumber, 890, yPos, '75px "Open Sans Condensed"', 'right', 75, 10, fullScreen, screenName, 0, 'DimGrey', 'white', false, true);
                     yPos += destLineHeight;
                     const viaText = (group.vias || []).join(' ');
                     yPos = this.wrapAndDisplayText(ctx, viaText, 50, yPos, 880, viaLineHeight, viaFont, 'white', 'left');
@@ -889,10 +965,7 @@ export class TrainDisplay {
         }
     }
 
-    displayPictograms(info, nr, displayID, fullScreen, ankunft) {
-
-        const canvas = document.getElementById(displayID);
-        const ctx = canvas.getContext('2d');
+    displayPictograms(info, nr, ctx, fullScreen, ankunft) {
         let x = fullScreen ? 100 : 50;
         if (!ankunft) {
             const step = 105;
@@ -1140,17 +1213,47 @@ export class TrainDisplay {
         try {
             const departure = this.trainData.departures[departureIndex];
 
+            let screenName = 'hauptmonitor';
+            if (info_canvas_id === 'display2_zug1') screenName = 'nebenmonitor_1';
+            else if (info_canvas_id === 'display2_zug2') screenName = 'nebenmonitor_2';
+
+            const zugID = fullScreen ? 1 : (screenName === 'nebenmonitor_1' ? 2 : 3);
+
             if (!departure) {
-                const info_canvas = document.getElementById(info_canvas_id);
-                if (info_canvas) info_canvas.getContext('2d').clearRect(0, 0, info_canvas.width, info_canvas.height);
-                const wagen_canvas = document.getElementById(wagen_canvas_id);
-                if (wagen_canvas) wagen_canvas.getContext('2d').clearRect(0, 0, wagen_canvas.width, wagen_canvas.height);
-                // console.warn(`Departure data for index ${departureIndex} is undefined.`);
+                this.drawOnScreen(screenName, (ctx, width, height) => {
+                    ctx.clearRect(0, 0, width, height);
+                });
+                if (this.scrollDivs[zugID]) {
+                    Object.values(this.scrollDivs[zugID]).forEach(div => div?.remove());
+                    this.scrollDivs[zugID] = {};
+                }
                 return;
             }
 
-            this.displayTrainInfo(departure, info_canvas_id, fullScreen);
-            this.displayFormation(departure, wagen_canvas_id, fullScreen);
+            const currentScrollIDs = new Set();
+            this.currentRenderZugID = zugID;
+            this.currentRenderScrollIDs = currentScrollIDs;
+
+            this.drawOnScreen(screenName, (ctx, width, height) => {
+                this.displayTrainInfo(departure, ctx, width, screenName, fullScreen);
+                ctx.save();
+                ctx.translate(0, 800);
+                this.displayFormation(departure, ctx, fullScreen);
+                ctx.restore();
+            });
+
+            // Räume alle Scroll-Divs auf, die im aktuellen Render-Tick nicht mehr benötigt wurden
+            if (this.scrollDivs[zugID]) {
+                for (const [id, div] of Object.entries(this.scrollDivs[zugID])) {
+                    if (!currentScrollIDs.has(id)) {
+                        div.remove();
+                        delete this.scrollDivs[zugID][id];
+                    }
+                }
+            }
+
+            this.currentRenderZugID = null;
+            this.currentRenderScrollIDs = null;
 
         } catch (err) {
             console.error(`Error in update for departure index ${departureIndex}:`, err);
