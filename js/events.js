@@ -344,20 +344,47 @@ function resizeDisplay() {
     const currentWidth = document.getElementById('zimCanvas').width;
     const currentHeight = document.getElementById('zimCanvas').height;
 
-    const container = document.querySelector('.display-container');
-    const wrapper = document.getElementById('display-container');
-    if (!container || !wrapper) {
+    let container = document.querySelector('.display-container');
+    let wrapper = document.querySelector('.screen-wrapper');
+    
+    // Dynamisch den Wrapper erzeugen, falls er im HTML fehlt, um Clipping zu verhindern
+    if (!wrapper && container) {
+        wrapper = document.createElement('div');
+        wrapper.className = 'screen-wrapper';
+        while (container.firstChild) {
+            wrapper.appendChild(container.firstChild);
+        }
+        container.appendChild(wrapper);
+    }
+
+    if (!wrapper) {
         console.warn('DOM elements not found in resizeDisplay');
         return; // Prevent errors if DOM isn’t ready
+    }
+
+    // Wrapper zwingend auf Originalgröße setzen
+    wrapper.style.width = `${currentWidth}px`;
+    wrapper.style.height = `${currentHeight}px`;
+    wrapper.style.transformOrigin = 'top left';
+
+    // Behebt das Abschneiden: Das innere #display-container HTML-Element (welches den Canvas hält) 
+    // muss sich vollflächig an den Wrapper anpassen, da es sonst den Canvas abschneidet.
+    const innerContainer = document.getElementById('display-container');
+    if (innerContainer) {
+        innerContainer.style.width = '100%';
+        innerContainer.style.height = '100%';
     }
 
     const scaleX = window.innerWidth / currentWidth;
     const scaleY = window.innerHeight / currentHeight;
     const scale = Math.min(scaleX, scaleY) * 0.95; // 95% um Ränder zu behalten
 
-    wrapper.style.transformOrigin = 'top left';
     wrapper.style.transform = `scale(${scale})`;
-    container.style.height = `${currentHeight * scale}px`;
+    if (container) {
+        container.style.height = `${currentHeight * scale}px`;
+        container.style.width = `${currentWidth * scale}px`;
+        container.style.margin = '0 auto';
+    }
 }
 
 export function initEvents() {
@@ -562,8 +589,12 @@ export function initEvents() {
         trainDisplay.updateAll();
         setTimeout(() => {
             const container = document.querySelector('.display-container');
-            const wrapper = document.getElementById('display-container');
-            const screenWrapper = document.getElementById('display-container');  // Capture the new main container
+            const wrapper = document.querySelector('.screen-wrapper') || container;
+            const screenWrapper = wrapper;  // Capture the correct wrapper
+            
+            const layoutWidth = trainDisplay.currentLayout.width;
+            const layoutHeight = trainDisplay.currentLayout.height;
+
             // Save old styles
             const oldContainerWidth = container.style.width;
             const oldContainerHeight = container.style.height;
@@ -571,8 +602,8 @@ export function initEvents() {
             const oldWrapperLeft = wrapper.style.left;
             const oldWrapperPosition = wrapper.style.position;
             // Set to full size
-            container.style.width = '4140px';
-            container.style.height = '1280px';
+            container.style.width = `${layoutWidth}px`;
+            container.style.height = `${layoutHeight}px`;
             wrapper.style.position = 'static';
             wrapper.style.left = '0';
             wrapper.style.transform = 'none';
@@ -580,10 +611,10 @@ export function initEvents() {
                 scale: 1,
                 useCORS: true,
                 backgroundColor: 'navy',
-                width: 4140,
-                height: 1280,
-                windowWidth: 4140,
-                windowHeight: 1280,
+                width: layoutWidth,
+                height: layoutHeight,
+                windowWidth: layoutWidth,
+                windowHeight: layoutHeight,
                 x: 0,
                 y: 0,
                 scrollX: 0,
