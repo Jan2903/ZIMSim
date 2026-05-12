@@ -59,8 +59,8 @@ canvas {
     position: absolute;
     top: 0;
     left: 0;
-    width: 4260px;
-    height: 1400px;
+    width: 4428px;
+    height: 1600px;
     box-sizing: border-box;
     transform-origin: top left;
 }
@@ -71,7 +71,7 @@ canvas {
     gap: 0;
     position: relative;
     background-color: var(--db-navy);
-    width: 4260px;
+    width: 4428px;
     height: 1080px;
     transform-origin: top center;
 }
@@ -97,18 +97,19 @@ canvas {
     font-family: system-ui, -apple-system, sans-serif; /* Modernere Schrift für UI */
 }
 
-.settings-header {
+.page-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
-    padding-bottom: 15px;
+    padding: 15px 40px;
+    background-color: var(--bg-card);
     border-bottom: 1px solid var(--border);
+    margin-bottom: 20px;
 }
 
-.settings-header h2 {
+.page-header h2 {
     margin: 0;
-    font-size: 1.5rem;
+    font-size: 1.8rem;
     font-weight: 600;
     color: var(--text-main);
 }
@@ -392,7 +393,7 @@ button:active { transform: translateY(1px); }
     border: 1px solid var(--border);
     box-shadow: 0 10px 25px rgba(0,0,0,0.5);
     width: 90%;
-    max-width: 1400px;
+    max-width: 1600px;
     display: flex;
     flex-direction: column;
     max-height: 90vh;

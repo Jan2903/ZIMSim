@@ -28,12 +28,46 @@ export class TrainDisplay {
 
         ctx.save();
         ctx.clearRect(screen.x, screen.y, screen.w, screen.h);
+        
+        // Bereich des Monitors mit der Standard-Canvas-Farbe (navy) füllen, 
+        // damit das Hintergrundbild nur außerhalb der Displays sichtbar bleibt
+        ctx.fillStyle = 'navy';
+        ctx.fillRect(screen.x, screen.y, screen.w, screen.h);
+
         ctx.translate(screen.x, screen.y);
         ctx.beginPath();
         ctx.rect(0, 0, screen.w, screen.h);
         ctx.clip();
         drawFunction(ctx, screen.w, screen.h);
         ctx.restore();
+    }
+
+    drawFullBackground() {
+        if (!this.ctx || !this.currentLayout) return;
+        const canvas = this.ctx.canvas;
+        
+        if (this.currentLayout.backgroundUrl) {
+            if (!this.currentLayout.bgImageObj) {
+                const img = new Image();
+                img.src = this.currentLayout.backgroundUrl;
+                img.onload = () => {
+                    this.currentLayout.bgImageLoaded = true;
+                    this.updateAll(); // Neu zeichnen sobald geladen
+                };
+                img.onerror = () => {
+                    this.currentLayout.bgImageBroken = true;
+                };
+                this.currentLayout.bgImageObj = img;
+            }
+
+            if (this.currentLayout.bgImageLoaded) {
+                this.ctx.drawImage(this.currentLayout.bgImageObj, 0, 0, canvas.width, canvas.height);
+            } else {
+                this.ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+        } else {
+            this.ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
     }
 
     displayDirection(richtung, x, ctx) {
@@ -674,7 +708,7 @@ export class TrainDisplay {
                 ctx.fill();
             }
             const canvas = ctx.canvas;
-            const zugID = fullScreen ? 1 : screenName === 'nebenmonitor_1' ? 2 : 3;
+            const zugID = this.currentRenderZugID || (fullScreen ? 1 : screenName === 'nebenmonitor_1' ? 2 : 3);
             const screen = this.currentLayout.screens[screenName];
             
             if (shouldScroll) {
@@ -867,7 +901,7 @@ export class TrainDisplay {
         ctx.fillStyle = 'white';
         if (infoToScroll !== "") ctx.fillRect(x, 0, width - x, 100);
 
-        const zugID = fullScreen ? 1 : (screenName === 'nebenmonitor_1' ? 2 : 3);
+        const zugID = this.currentRenderZugID || (fullScreen ? 1 : (screenName === 'nebenmonitor_1' ? 2 : 3));
         const screen = this.currentLayout.screens[screenName];
         this.displayScrollingText(
             canvas, zugID, "info", infoToScroll,
@@ -1218,13 +1252,6 @@ export class TrainDisplay {
             canvas.height = this.currentLayout.height;
         }
         
-        // Container anpassen
-        const container = document.getElementById('display-container') || document.querySelector('.display-container');
-        if (container) {
-            container.style.width = this.currentLayout.width + 'px';
-            container.style.height = this.currentLayout.height + 'px';
-        }
-        
         // Alte Scrolling-Divs aufräumen
         document.querySelectorAll('.scroll-container').forEach(el => el.remove());
         this.scrollDivs = {};
@@ -1288,7 +1315,18 @@ export class TrainDisplay {
     updateAll() {
         const canvas = document.getElementById('zimCanvas');
         if (!canvas) return;
+        
+        // Stelle sicher, dass das Canvas immer die tatsächlichen Maße des aktuellen Layouts hat,
+        // insbesondere wichtig direkt nach dem initialen Neuladen der Seite
+        if (canvas.width !== this.currentLayout.width || canvas.height !== this.currentLayout.height) {
+            canvas.width = this.currentLayout.width;
+            canvas.height = this.currentLayout.height;
+            window.dispatchEvent(new Event('resize')); // Zwinge events.js, die UI-Skalierung zu aktualisieren
+        }
+
         this.ctx = canvas.getContext('2d');
+
+        this.drawFullBackground();
         
         this.currentLayout.screens.forEach(screen => {
             let depIndex = screen.trainIndex;

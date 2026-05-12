@@ -9,21 +9,21 @@
 </head>
 
 <body>
+    <header class="page-header">
+        <h2>ZugInfoMonitor</h2>
+        <div class="header-actions">
+            <button id="download-btn">📸 Screenshot downloaden</button>
+        </div>
+    </header>
+
     <div class="display-container">
-        <div id="display-container" style="position: relative; width: 4140px; height: 1280px; background-color: var(--db-dark); overflow: hidden;">
+        <div id="display-container" style="position: relative; width: 100%; height: 100%; background-color: var(--db-dark); overflow: hidden;">
             <div id="hardware-bezel" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 20; pointer-events: none; background-size: cover;"></div>
             <canvas id="zimCanvas" width="4140" height="1280" style="position: absolute; top: 0; left: 0; z-index: 10;"></canvas>
         </div>
     </div>
 
     <div class="settings-container">
-        <div class="settings-header">
-            <h2>ZugInfoMonitor</h2>
-            <div class="header-actions">
-                <button id="download-btn">📸 Screenshot downloaden</button>
-            </div>
-        </div>
-
         <div class="dashboard-grid">
             <div class="main-controls">
                 <div class="settings-frame tab-container" id="train_selection">
