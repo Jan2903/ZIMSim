@@ -336,17 +336,28 @@ function showFormationEditor(departureIndex, groupIndex) {
     }
 }
 
-function resizeDisplay() {    
+function resizeDisplay() {
+    const canvas = document.getElementById('zimCanvas');
+    if (!canvas) return;
+    
+    // Die dynamische Auflösung des aktuell gewählten Layouts
+    const currentWidth = document.getElementById('zimCanvas').width;
+    const currentHeight = document.getElementById('zimCanvas').height;
+
     const container = document.querySelector('.display-container');
     const wrapper = document.getElementById('display-container');
     if (!container || !wrapper) {
         console.warn('DOM elements not found in resizeDisplay');
         return; // Prevent errors if DOM isn’t ready
     }
-    const scale = window.innerWidth / 4140; // Einheitliches Skalieren basierend auf der neuen Breite
+
+    const scaleX = window.innerWidth / currentWidth;
+    const scaleY = window.innerHeight / currentHeight;
+    const scale = Math.min(scaleX, scaleY) * 0.95; // 95% um Ränder zu behalten
+
     wrapper.style.transformOrigin = 'top left';
     wrapper.style.transform = `scale(${scale})`;
-    container.style.height = `${1280 * scale}px`;
+    container.style.height = `${currentHeight * scale}px`;
 }
 
 export function initEvents() {
@@ -358,6 +369,10 @@ export function initEvents() {
         now.setMinutes(now.getMinutes() - now.getTimezoneOffset()); // adjust for local timezone
         departureTime.value = now.toISOString().slice(0, 16); // format YYYY-MM-DDTHH:mm
     }
+
+    document.getElementById('layout_select')?.addEventListener('change', (e) => {
+        trainDisplay.switchLayout(e.target.value);
+    });
 
     document.querySelectorAll('input[name="wahl"]').forEach(radio => {
         radio.addEventListener('change', () => {
