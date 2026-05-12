@@ -2,19 +2,7 @@
 import { Coach } from '../models/coach.js';
 import { config } from '../utils/config.js';
 import { images, updateRotatingDisplay } from '../utils/utils.js';
-
-const LAYOUTS = {
-    standard: {
-        width: 4140, 
-        height: 1280,
-        screens: {
-            hauptmonitor: { x: 100, y: 100, w: 1920, h: 1080 },
-            nebenmonitor_1: { x: 2120, y: 100, w: 960, h: 1080 },
-            nebenmonitor_2: { x: 3080, y: 100, w: 960, h: 1080 }
-        }
-    }
-};
-let currentLayout = LAYOUTS.standard;
+import { LAYOUTS } from './layouts.js';
 
 export class TrainDisplay {
     constructor(trainData) {
@@ -25,13 +13,17 @@ export class TrainDisplay {
         this.rotationIndex = 0;
         this.rotating = false;
         this.scrollDivs = {};
+        this.currentLayout = LAYOUTS.standard;
+
+        // Temporäre Rückwärtskompatibilität für den Zeichencode, bis dieser refactored wird
+        this.currentLayout.screens.forEach(s => this.currentLayout.screens[s.id] = s);
     }
 
-    drawOnScreen(screenName, drawFunction) {
+    drawOnScreen(screen, drawFunction) {
+        this.currentScreen = screen;
         const canvas = document.getElementById('zimCanvas');
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
-        const screen = currentLayout.screens[screenName];
         if (!screen) return;
 
         ctx.save();
@@ -683,7 +675,7 @@ export class TrainDisplay {
             }
             const canvas = ctx.canvas;
             const zugID = fullScreen ? 1 : screenName === 'nebenmonitor_1' ? 2 : 3;
-            const screen = currentLayout.screens[screenName];
+            const screen = this.currentLayout.screens[screenName];
             
             if (shouldScroll) {
                 const boxLeft = textAlign === 'right' 
@@ -790,7 +782,7 @@ export class TrainDisplay {
     }
 
     getBackgroundColor(ctx, screenName) {
-        const screen = currentLayout.screens[screenName];
+        const screen = this.currentLayout.screens[screenName];
         if (!screen) return [0, 0, 128, 255]; // fallback
         const absX = screen.x + screen.w - 25;
         const absY = screen.y + 200;
@@ -801,7 +793,7 @@ export class TrainDisplay {
     }
 
     findMaxZugNrWidth(ctx, startX, yCenter, height, screenName) {
-        const screen = currentLayout.screens[screenName];
+        const screen = this.currentLayout.screens[screenName];
         if (!screen) return startX;
 
         const bgColor = this.getBackgroundColor(ctx, screenName);
@@ -876,7 +868,7 @@ export class TrainDisplay {
         if (infoToScroll !== "") ctx.fillRect(x, 0, width - x, 100);
 
         const zugID = fullScreen ? 1 : (screenName === 'nebenmonitor_1' ? 2 : 3);
-        const screen = currentLayout.screens[screenName];
+        const screen = this.currentLayout.screens[screenName];
         this.displayScrollingText(
             canvas, zugID, "info", infoToScroll,
             `${canvas.offsetLeft + screen.x + x + 5}px`,
@@ -1209,6 +1201,40 @@ export class TrainDisplay {
         config.feature_rotation_timer = setTimeout(() => this.startFeatureRotation(), 3000);
     }
 
+    switchLayout(layoutName) {
+        if (!LAYOUTS[layoutName]) return;
+        
+        // Stelle sicher, dass die IDs auch als Array-Schlüssel funktionieren (für die alte Zeichenlogik)
+        if (!LAYOUTS[layoutName].screens[LAYOUTS[layoutName].screens[0].id]) {
+            LAYOUTS[layoutName].screens.forEach(s => LAYOUTS[layoutName].screens[s.id] = s);
+        }
+        
+        this.currentLayout = LAYOUTS[layoutName];
+        
+        // Canvas Größe anpassen
+        const canvas = document.getElementById('zimCanvas');
+        if (canvas) {
+            canvas.width = this.currentLayout.width;
+            canvas.height = this.currentLayout.height;
+        }
+        
+        // Container anpassen
+        const container = document.getElementById('display-container') || document.querySelector('.display-container');
+        if (container) {
+            container.style.width = this.currentLayout.width + 'px';
+            container.style.height = this.currentLayout.height + 'px';
+        }
+        
+        // Alte Scrolling-Divs aufräumen
+        document.querySelectorAll('.scroll-container').forEach(el => el.remove());
+        this.scrollDivs = {};
+        
+        this.updateAll();
+        
+        // Skalierung neu triggern, damit sich die Anzeige visuell anpasst
+        window.dispatchEvent(new Event('resize'));
+    }
+
     update(departureIndex, info_canvas_id, wagen_canvas_id, fullScreen) {
         try {
             const departure = this.trainData.departures[departureIndex];
@@ -1220,7 +1246,7 @@ export class TrainDisplay {
             const zugID = fullScreen ? 1 : (screenName === 'nebenmonitor_1' ? 2 : 3);
 
             if (!departure) {
-                this.drawOnScreen(screenName, (ctx, width, height) => {
+                this.drawOnScreen(this.currentLayout.screens[screenName], (ctx, width, height) => {
                     ctx.clearRect(0, 0, width, height);
                 });
                 if (this.scrollDivs[zugID]) {
@@ -1234,7 +1260,7 @@ export class TrainDisplay {
             this.currentRenderZugID = zugID;
             this.currentRenderScrollIDs = currentScrollIDs;
 
-            this.drawOnScreen(screenName, (ctx, width, height) => {
+            this.drawOnScreen(this.currentLayout.screens[screenName], (ctx, width, height) => {
                 this.displayTrainInfo(departure, ctx, width, screenName, fullScreen);
                 ctx.save();
                 ctx.translate(0, 800);
@@ -1260,32 +1286,51 @@ export class TrainDisplay {
         }
     }
     updateAll() {
-        this.update(0, 'display1', 'display1_wagenreihung', true);
-        this.update(1, 'display2_zug1', 'display2_zug1_wagenreihung', false);
+        const canvas = document.getElementById('zimCanvas');
+        if (!canvas) return;
+        this.ctx = canvas.getContext('2d');
+        
+        this.currentLayout.screens.forEach(screen => {
+            let depIndex = screen.trainIndex;
+            
+            // Sonderlogik für den rotierenden Monitor
+            if (screen.type === 'neben_rotierend') {
+                depIndex = config.rotate_3_6 ? (config.current_rotating_zug - 1) : (config.current_display3_zug - 1);
+            }
+            
+            const departure = this.trainData.departures[depIndex];
+            if (!departure) return;
 
-        // NOTE: External functions like `updateRotatingDisplay` must be adapted to call `update` with an index.
-        if (config.rotate_3_6) {
-            updateRotatingDisplay();
-        } else {
-            const departureIndex = config.current_display3_zug - 1;
-            this.update(departureIndex, 'display2_zug2', 'display2_zug2_wagenreihung', false);
-        }
-        /* for (let zugID = 1; zugID <= 3; zugID++) {
-            try {
-                if (zugID === 1) {
-                    this.update(1, 'display1', 'display1_wagenreihung', true);
-                } else if (zugID === 2) {
-                    this.update(2, 'display2_zug1', 'display2_zug1_wagenreihung', false);
-                } else if (zugID === 3) {
-                    if (config.rotate_3_6) {
-                        updateRotatingDisplay();
-                    } else {
-                        this.update(config.current_display3_zug, 'display2_zug2', 'display2_zug2_wagenreihung', false);
+            this.drawOnScreen(screen, (ctx, width, height) => {
+                // Wir geben die ID als Zahl für die Scrolling-Divs weiter (1, 2 oder 3)
+                const zugID = depIndex + 1; 
+                
+                const currentScrollIDs = new Set();
+                this.currentRenderZugID = zugID;
+                this.currentRenderScrollIDs = currentScrollIDs;
+
+                if (screen.type === 'haupt' || screen.type === 'neben' || screen.type === 'neben_rotierend') {
+                    this.displayTrainInfo(departure, ctx, width, screen.id, screen.type === 'haupt');
+                    ctx.save();
+                    ctx.translate(0, 800);
+                    this.displayFormation(departure, ctx, screen.type === 'haupt');
+                    ctx.restore();
+                } else if (screen.type === 'liste') {
+                    // Für den Voranzeiger rufen wir nur die Info-Funktion auf, OHNE Wagenreihung.
+                    this.displayTrainInfo(departure, ctx, width, screen.id, false);
+                }
+                
+                if (this.scrollDivs[zugID]) {
+                    for (const [id, div] of Object.entries(this.scrollDivs[zugID])) {
+                        if (!currentScrollIDs.has(id)) {
+                            div.remove();
+                            delete this.scrollDivs[zugID][id];
+                        }
                     }
                 }
-            } catch (err) {
-                console.error(`Failed to update display for zug_${zugID}:`, err);
-            }
-        } */
+                this.currentRenderZugID = null;
+                this.currentRenderScrollIDs = null;
+            });
+        });
     }
 }

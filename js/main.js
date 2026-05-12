@@ -19,6 +19,12 @@ function generateTrainSettingsUI() {
                 <label>Bahnsteiglänge (m): <input type="text" id="platform_length_input" class="short-input" value="420"></label>
                 <label>Aktueller Halt: <input type="text" id="entry_stop_name" placeholder="z.B. Hannover Hbf"></label>
                 <label>Aktuelles Gleis: <input type="text" id="entry_gleis" class="short-input" placeholder="z.B. 10"></label>
+                <label>Layout wählen:
+                    <select id="layout_select">
+                        <option value="standard">Standard</option>
+                        <option value="voranzeiger">Voranzeiger</option>
+                    </select>
+                </label>
             </div>
         </div>
     `;
