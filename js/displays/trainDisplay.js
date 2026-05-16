@@ -31,7 +31,7 @@ export class TrainDisplay {
         
         // Bereich des Monitors mit der Standard-Canvas-Farbe (navy) füllen, 
         // damit das Hintergrundbild nur außerhalb der Displays sichtbar bleibt
-        ctx.fillStyle = 'navy';
+        ctx.fillStyle = 'midnightblue';
         ctx.fillRect(screen.x, screen.y, screen.w, screen.h);
 
         ctx.translate(screen.x, screen.y);
@@ -1355,7 +1355,7 @@ export class TrainDisplay {
                     ctx.restore();
                 } else if (screen.type === 'liste') {
                     // Für den Voranzeiger rufen wir nur die Info-Funktion auf, OHNE Wagenreihung.
-                    this.displayTrainInfo(departure, ctx, width, screen.id, false);
+                    // this.displayTrainInfo(departure, ctx, width, screen.id, false);
                 }
                 
                 if (this.scrollDivs[zugID]) {
