@@ -1,742 +1,658 @@
 // js/events.js
+// Komplett neue UI-Logik für die dynamische Journey-Liste
+import { journeyStore, trainDisplay } from './main.js';
+import { Journey } from './models/journey.js';
+import { Formation, FormationGroup } from './models/formation.js';
 import { Coach } from './models/coach.js';
-import { Departure } from './models/departure.js';
-import { Platform } from './models/platform.js';
-import { TrainGroup } from './models/trainGroup.js';
-import { trainData, trainDisplay } from './main.js';
 import { config } from './utils/config.js';
-import { startRotation } from './utils/utils.js';
+
+// Aktuell aufgeklappte Journey-ID (oder null)
+let expandedJourneyId = null;
+// Aktuell im Formation-Editor bearbeitete Journey-ID + Group-Index
+let editingFormationJourneyId = null;
+let editingFormationGroupIndex = 0;
+
+// ==========================================
+// Journey-Liste rendern
+// ==========================================
 
 /**
- * Stellt sicher, dass ein Departure-Objekt und dessen erste TrainGroup für einen gegebenen Index existieren.
- * @param {number} departureIndex - Der 0-basierte Index in trainData.departures.
- * @returns {{departure: Departure, group: TrainGroup}}
+ * Rendert die gesamte Journey-Liste neu.
  */
-function getDepartureAndGroup(departureIndex) {
-    while (trainData.departures.length <= departureIndex) {
-        trainData.departures.push(new Departure());
-    }
-    const departure = trainData.departures[departureIndex];
-    if (!departure.groups || departure.groups.length === 0) {
-        departure.groups.push(new TrainGroup());
-    }
-    return { departure, group: departure.groups[0] };
-}
-
-/**
- * Stellt sicher, dass ein Departure- und ein TrainGroup-Objekt für die gegebenen Indizes existieren.
- * @param {number} departureIndex - Der 0-basierte Index in trainData.departures.
- * @param {number} groupIndex - Der 0-basierte Index in departure.groups.
- * @returns {{departure: Departure, group: TrainGroup}}
- */
-function getDepartureAndGroupByIndex(departureIndex, groupIndex) {
-    // Stellt sicher, dass das Departure-Objekt existiert
-    while (trainData.departures.length <= departureIndex) {
-        trainData.departures.push(new Departure());
-    }
-    const departure = trainData.departures[departureIndex];
-    // Stellt sicher, dass das TrainGroup-Objekt existiert
-    while (departure.groups.length <= groupIndex) {
-        departure.groups.push(new TrainGroup());
-    }
-    return { departure, group: departure.groups[groupIndex] };
-}
-
-/**
- * Generiert das HTML für die Eingabefelder eines einzelnen Zugteils (TrainGroup).
- * @param {number} departureIndex - Der 0-basierte Index der Abfahrt.
- * @param {number} groupIndex - Der 0-basierte Index des Zugteils.
- * @returns {string} - Der HTML-String für den Zugteil-Editor.
- */
-function generateGroupSettingsHTML(departureIndex, groupIndex) {
-    const zugId = departureIndex + 1;
-    return `
-        <div class="train-group-frame" data-group-index="${groupIndex}">
-            <h4>Zugteil ${groupIndex + 1}</h4>
-            <div class="form-row">
-                <label>Linie/Nummer: <input type="text" class="zug_entry" data-zug="${zugId}" data-group-index="${groupIndex}" data-field="Zugnummer"></label>
-                <label>Ziel: <input type="text" class="zug_entry" data-zug="${zugId}" data-group-index="${groupIndex}" data-field="Ziel"></label>
-                <label>Zeit: <input type="text" class="zug_entry short-input" data-zug="${zugId}" data-group-index="${groupIndex}" data-field="Abfahrt"></label>
-                <label>Abw.: <input type="text" class="zug_entry short-input" data-zug="${zugId}" data-group-index="${groupIndex}" data-field="Abweichend"></label>
-            </div>
-            <div class="form-row">
-                <label>Via-Halte 1: <input type="text" class="zug_entry" data-zug="${zugId}" data-group-index="${groupIndex}" data-field="Via-Halte 1"></label>
-                <label>Via-Halte 2: <input type="text" class="zug_entry" data-zug="${zugId}" data-group-index="${groupIndex}" data-field="Via-Halte 2"></label>
-                <label>Via-Halte 3: <input type="text" class="zug_entry" data-zug="${zugId}" data-group-index="${groupIndex}" data-field="Via-Halte 3"></label>
-            </div>
-            <div class="form-row action-row-group">
-                <button class="edit-formation-btn btn-secondary" data-zug="${zugId}" data-group-index="${groupIndex}">✏️ Wagenreihung bearbeiten</button>
-                <button class="remove-group-btn btn-danger" data-zug="${zugId}" data-group-index="${groupIndex}">- Zugteil entfernen</button>                
-            </div>
-        </div>
-    `;
-}
-
-/**
- * Rendert die UI für alle Zugteile einer bestimmten Abfahrt und füllt sie mit Daten.
- * @param {number} departureIndex - Der 0-basierte Index der Abfahrt.
- */
-function renderGroupsUI(departureIndex) {
-    const zugId = departureIndex + 1;
-    const container = document.getElementById(`zug${zugId}_groups_container`);
+export function renderJourneyList() {
+    const container = document.getElementById('journey_list');
     if (!container) return;
 
-    const { departure } = getDepartureAndGroup(departureIndex);
-    container.innerHTML = departure.groups.map((_, groupIndex) => generateGroupSettingsHTML(departureIndex, groupIndex)).join('');
+    if (journeyStore.journeys.length === 0) {
+        container.innerHTML = '<div class="journey-empty">Keine Fahrten vorhanden. Klicke "+ Fahrt hinzufügen" oder importiere DB-Daten.</div>';
+        return;
+    }
 
-    // UI-Felder mit Daten aus dem Modell füllen
-    departure.groups.forEach((group, groupIndex) => {
-        const vias = group.vias || [];
-        const setValue = (field, value) => {
-            const el = document.querySelector(`.zug_entry[data-zug="${zugId}"][data-group-index="${groupIndex}"][data-field="${field}"]`);
-            if (el) el.value = value || '';
-        };
-        setValue('Zugnummer', group.trainNumber);
-        setValue('Ziel', group.destination);
-        setValue('Abfahrt', group.scheduledTime);
-        setValue('Abweichend', group.expectedTime);
-        setValue('Via-Halte 1', vias[0]);
-        setValue('Via-Halte 2', vias[1]);
-        setValue('Via-Halte 3', vias[2]);
+    let html = '';
+    let lastCouplingGroupId = null;
+
+    journeyStore.journeys.forEach((journey, index) => {
+        const isExpanded = expandedJourneyId === journey.id;
+        const isCoupled = journey.couplingGroupId !== null;
+        const isFirstInCoupling = isCoupled && journey.couplingGroupId !== lastCouplingGroupId;
+        const nextJourney = journeyStore.journeys[index + 1];
+        const isLastInCoupling = isCoupled && (!nextJourney || nextJourney.couplingGroupId !== journey.couplingGroupId);
+
+        // Coupling-Linie
+        let couplingClass = '';
+        if (isCoupled) {
+            if (isFirstInCoupling && isLastInCoupling) couplingClass = 'coupling-single';
+            else if (isFirstInCoupling) couplingClass = 'coupling-start';
+            else if (isLastInCoupling) couplingClass = 'coupling-end';
+            else couplingClass = 'coupling-middle';
+        }
+
+        // Arrival/Departure Badge
+        const badge = journey.ankunft ? '<span class="badge badge-arrival">ⓐ</span>' : '';
+        const cancelledClass = journey.ausfall ? 'journey-cancelled' : '';
+        const visibleIcon = journey.visible ? '👁' : '○';
+        const delayInfo = journey.expectedTime && journey.expectedTime !== journey.scheduledTime
+            ? `<span class="delay-indicator">${journey.expectedTime}</span>` : '';
+
+        html += `
+            <div class="journey-row ${cancelledClass}" data-journey-id="${journey.id}">
+                <div class="journey-col-visibility">
+                    <button class="btn-icon visibility-toggle" data-journey-id="${journey.id}" title="Sichtbarkeit umschalten">${visibleIcon}</button>
+                </div>
+                <div class="journey-col-coupling ${couplingClass}">
+                    <div class="coupling-line"></div>
+                </div>
+                <div class="journey-col-main">
+                    <div class="journey-summary" data-journey-id="${journey.id}">
+                        <span class="journey-name">${journey.effectiveDisplayName || '(kein Name)'}</span>
+                        ${badge}
+                        <span class="journey-destination">${journey.destination || '—'}</span>
+                        <span class="journey-time">${journey.scheduledTime || '—'}</span>
+                        ${delayInfo}
+                        <span class="journey-platform">${journey.platform ? 'Gl. ' + journey.platform : ''}</span>
+                        <button class="btn-icon expand-toggle" data-journey-id="${journey.id}">${isExpanded ? '▾' : '▸'}</button>
+                    </div>
+                    ${isExpanded ? renderJourneyDetails(journey) : ''}
+                </div>
+            </div>
+        `;
+
+        lastCouplingGroupId = journey.couplingGroupId;
     });
+
+    container.innerHTML = html;
 }
 
 /**
- * Generiert das HTML für eine einzelne Zeile im Wagenreihungs-Editor.
- * @param {Coach} coach - Das Coach-Objekt.
- * @param {number} index - Der Index des Wagens.
- * @returns {string} - Der HTML-String für die Editor-Zeile.
+ * Rendert das aufgeklappte Detail-Panel einer Journey.
  */
-function generateCoachEditorRowHTML(coach, index) {
-    const coachTypes = ['locomotive', 'control_car', 'middle_car'];
-    const coachClasses = { '1': '1. Klasse', '2': '2. Klasse', 'null': 'Keine' };
-    const amenities = ['bike', 'wheelchair', 'dining', 'family', 'g', 'f', 'r', 'm']; // 'g', 'f', 'r', 'm' for legacy
+function renderJourneyDetails(journey) {
+    const groups = journey.formation.groups;
+    const groupOptions = groups.length > 0
+        ? groups.map((g, i) => `<option value="${i}">${g.trainNumber || g.name || 'Gruppe ' + (i+1)}</option>`).join('')
+        : '<option value="0">Standard</option>';
 
     return `
-    <div class="coach-editor-row" draggable="true" data-coach-index="${index}">
-        <span class="drag-handle">⠿</span>
-        <select data-prop="type">
-            ${coachTypes.map(t => `<option value="${t}" ${coach.type === t ? 'selected' : ''}>${t.replace('_', ' ')}</option>`).join('')}
-        </select>
-        <input type="number" step="0.1" value="${coach.length}" data-prop="length" class="short-input">
-        <select data-prop="coachClass">
-            ${Object.entries(coachClasses).map(([val, text]) => `<option value="${val}" ${String(coach.coachClass) === val ? 'selected' : ''}>${text}</option>`).join('')}
-        </select>
-        <input type="text" value="${coach.coachNumber}" data-prop="coachNumber" class="short-input">
-        <div class="amenities-group">
-            ${amenities.map(a => `<label><input type="checkbox" data-amenity="${a}" ${coach.amenities.includes(a) ? 'checked' : ''}> ${a.charAt(0).toUpperCase()}</label>`).join('')}
+        <div class="journey-details" data-journey-id="${journey.id}">
+            <div class="details-grid">
+                <div class="detail-section">
+                    <h4>Stammdaten</h4>
+                    <div class="detail-row">
+                        <label>Kategorie: <input type="text" class="jfield short-input" data-field="category" value="${journey.category}"></label>
+                        <label>Linie: <input type="text" class="jfield short-input" data-field="line" value="${journey.line}"></label>
+                        <label>Nummer: <input type="text" class="jfield short-input" data-field="number" value="${journey.number}"></label>
+                    </div>
+                    <div class="detail-row">
+                        <label>Anzeigename (Override): <input type="text" class="jfield" data-field="displayNameOverride" value="${journey.displayNameOverride}" placeholder="${journey.displayName || 'auto'}"></label>
+                    </div>
+                    <div class="detail-row">
+                        <label>Ziel: <input type="text" class="jfield" data-field="destination" value="${journey.destination}"></label>
+                    </div>
+                    <div class="detail-row">
+                        <label>Abfahrt/Ankunft: <input type="text" class="jfield short-input" data-field="scheduledTime" value="${journey.scheduledTime}"></label>
+                        <label>Echtzeit: <input type="text" class="jfield short-input" data-field="expectedTime" value="${journey.expectedTime}"></label>
+                        <label>Gleis: <input type="text" class="jfield short-input" data-field="platform" value="${journey.platform}"></label>
+                    </div>
+                    <div class="detail-row">
+                        <label>Via 1: <input type="text" class="jfield via-field" data-field="via0" value="${journey.vias[0] || ''}"></label>
+                        <label>Via 2: <input type="text" class="jfield via-field" data-field="via1" value="${journey.vias[1] || ''}"></label>
+                        <label>Via 3: <input type="text" class="jfield via-field" data-field="via2" value="${journey.vias[2] || ''}"></label>
+                    </div>
+                </div>
+                <div class="detail-section">
+                    <h4>Anzeige</h4>
+                    <div class="detail-row">
+                        <label>Lauftext: <input type="text" class="jfield" data-field="scrollText" value="${journey.scrollText}"></label>
+                    </div>
+                    <div class="detail-row">
+                        <label class="radio-group">Richtung:
+                            <span><input type="radio" class="jradio" name="dir_${journey.id}" data-field="direction" value="0" ${journey.direction === 0 ? 'checked' : ''}> Links</span>
+                            <span><input type="radio" class="jradio" name="dir_${journey.id}" data-field="direction" value="1" ${journey.direction === 1 ? 'checked' : ''}> Rechts</span>
+                        </label>
+                        <label>Startmeter: <input type="number" class="jfield short-input" data-field="startMeter" value="${journey.startMeter}"></label>
+                    </div>
+                    <div class="detail-row">
+                        <label class="checkbox-label"><input type="checkbox" class="jcheck" data-field="ankunft" ${journey.ankunft ? 'checked' : ''}> Ankunft</label>
+                        <label class="checkbox-label"><input type="checkbox" class="jcheck" data-field="skalieren" ${journey.skalieren ? 'checked' : ''}> Skalieren</label>
+                        <label class="checkbox-label"><input type="checkbox" class="jcheck" data-field="ausfall" ${journey.ausfall ? 'checked' : ''}> Ausfall</label>
+                        <label class="checkbox-label"><input type="checkbox" class="jcheck" data-field="infoscreen" ${journey.infoscreen ? 'checked' : ''}> Infoscreen</label>
+                    </div>
+                    <div class="detail-row">
+                        <label>Gleiswechsel: <input type="text" class="jfield short-input" data-field="gleiswechsel" value="${journey.gleiswechsel}"></label>
+                        <label>Verkehrt ab: <input type="text" class="jfield short-input" data-field="verkehrtAb" value="${journey.verkehrtAb}"></label>
+                    </div>
+                </div>
+            </div>
+            <div class="details-actions">
+                <button class="btn-secondary edit-formation-btn" data-journey-id="${journey.id}">✏️ Wagenreihung</button>
+                <button class="btn-secondary couple-btn" data-journey-id="${journey.id}">${journey.couplingGroupId ? '🔗 Entkoppeln' : '🔗 Koppeln'}</button>
+                <button class="btn-danger delete-journey-btn" data-journey-id="${journey.id}">🗑️ Löschen</button>
+            </div>
+            ${journey.stops.length > 0 ? renderStopsList(journey) : ''}
         </div>
-        <label class="switch"><input type="checkbox" data-prop="open" ${coach.open ? 'checked' : ''}><span class="slider round"></span></label>
-        <button class="delete-coach-btn btn-danger small-btn">🗑️</button>
-    </div>
     `;
 }
 
 /**
- * Zeigt den modalen Editor für die Wagenreihung einer bestimmten TrainGroup an.
- * @param {number} departureIndex 
- * @param {number} groupIndex 
+ * Rendert die Halteliste einer Journey (wenn Stops vorhanden).
  */
-function showFormationEditor(departureIndex, groupIndex) {
-    const { group } = getDepartureAndGroupByIndex(departureIndex, groupIndex);
+function renderStopsList(journey) {
+    let rows = journey.stops.map((stop, i) => {
+        const isCurrent = i === journey._currentStopIndex;
+        const cancelledClass = stop.cancelled ? 'stop-cancelled' : '';
+        const currentClass = isCurrent ? 'stop-current' : '';
+        const dep = stop.departureTime || '';
+        const arr = stop.arrivalTime || '';
+        return `<tr class="${cancelledClass} ${currentClass}">
+            <td>${stop.name}</td><td>${arr}</td><td>${dep}</td><td>${stop.platform}</td>
+            ${stop.cancelled ? '<td>⛔</td>' : '<td></td>'}
+        </tr>`;
+    }).join('');
 
-    const overlay = document.createElement('div');
-    overlay.id = 'formation-editor-overlay';
-    overlay.className = 'modal-overlay';
-
-    const modalHTML = `
-        <div class="modal-content large">
-            <div class="modal-header">
-                <h2>Wagenreihung bearbeiten (Zug ${departureIndex + 1}, Teil ${groupIndex + 1})</h2>
-                <button class="close-modal-btn">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="coach-editor-header">
-                    <span></span>
-                    <span>Typ</span>
-                    <span>Länge (m)</span>
-                    <span>Klasse</span>
-                    <span>Nummer</span>
-                    <span class="amenities-header">Ausstattung</span>
-                    <span>Offen</span>
-                    <span>Aktion</span>
-                </div>
-                <div id="coach-list-container">
-                    ${group.coaches.map((coach, index) => generateCoachEditorRowHTML(coach, index)).join('')}
-                </div>
-            </div>
-            <div class="modal-footer">
-                <div>
-                    <button id="add-coach-btn" class="btn-secondary">+ Wagen hinzufügen</button>
-                    <button id="import-formation-btn" class="btn-secondary">⬆️ Importieren</button>
-                    <button id="export-formation-btn" class="btn-secondary">⬇️ Exportieren</button>
-                </div>
-                <div>
-                    <button id="save-formation-btn" class="btn-primary">Speichern & Schließen</button>
-                </div>
-            </div>
+    return `
+        <div class="stops-section">
+            <h4>Halte (${journey.stops.length})</h4>
+            <table class="stops-table"><thead><tr><th>Halt</th><th>An</th><th>Ab</th><th>Gl</th><th></th></tr></thead>
+            <tbody>${rows}</tbody></table>
         </div>
     `;
-    overlay.innerHTML = modalHTML;
-    document.body.appendChild(overlay);
+}
 
-    const coachListContainer = document.getElementById('coach-list-container');
+// ==========================================
+// Formation-Editor
+// ==========================================
 
-    // Event Listeners for Modal
-    overlay.addEventListener('click', e => {
-        if (e.target.id === 'formation-editor-overlay' || e.target.classList.contains('close-modal-btn')) {
-            overlay.remove();
-        }
-        if (e.target.id === 'add-coach-btn') {
-            const newCoach = new Coach();
-            const newIndex = coachListContainer.children.length;
-            coachListContainer.insertAdjacentHTML('beforeend', generateCoachEditorRowHTML(newCoach, newIndex));
-        }
-        if (e.target.closest('.delete-coach-btn')) {
-            e.target.closest('.coach-editor-row').remove();
-        }
-        if (e.target.id === 'import-formation-btn') {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = '.json';
-            input.onchange = (ev) => {
-                const file = ev.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (readEvent) => {
-                    try {
-                        const importedCoaches = JSON.parse(readEvent.target.result);
-                        if (!Array.isArray(importedCoaches)) {
-                            throw new Error("JSON ist kein Array.");
-                        }
-                        // Rendere die Wagenliste im Modal mit den neuen Daten neu
-                        coachListContainer.innerHTML = importedCoaches.map((coachData, index) => 
-                            generateCoachEditorRowHTML(new Coach(coachData), index)
-                        ).join('');
-                    } catch (error) {
-                        console.error('Failed to import formation:', error);
-                        alert('Fehler beim Importieren der Wagenreihung. Bitte prüfe die JSON-Datei.');
-                    }
-                };
-                reader.readAsText(file);
-            };
-            input.click();
-        }
-        if (e.target.id === 'export-formation-btn') {
-            const coachesToExport = [];
-            document.querySelectorAll('#coach-list-container .coach-editor-row').forEach(row => {
-                const coachData = {};
-                row.querySelectorAll('[data-prop]').forEach(input => {
-                    const prop = input.dataset.prop;
-                    if (input.type === 'checkbox') {
-                        coachData[prop] = input.checked;
-                    } else {
-                        coachData[prop] = input.value;
-                    }
-                });
-                
-                coachData.amenities = [];
-                row.querySelectorAll('.amenities-group input:checked').forEach(amenityInput => {
-                    coachData.amenities.push(amenityInput.dataset.amenity);
-                });
+function showFormationEditor(journeyId, groupIndex = 0) {
+    const journey = journeyStore.getJourney(journeyId);
+    if (!journey) return;
 
-                if (coachData.coachClass === 'null') {
-                    coachData.coachClass = null;
+    editingFormationJourneyId = journeyId;
+    editingFormationGroupIndex = groupIndex;
+
+    // Wenn noch keine Formation-Gruppen existieren, eine leere erstellen
+    if (journey.formation.groups.length === 0) {
+        journey.formation.groups.push(new FormationGroup({
+            transport: { category: journey.category, destination: { name: journey.destination }, number: journey.number }
+        }));
+    }
+
+    const group = journey.formation.groups[groupIndex];
+    if (!group) return;
+
+    const modal = document.getElementById('formation_modal');
+    const title = document.getElementById('formation_modal_title');
+    const body = document.getElementById('formation_editor_body');
+
+    title.textContent = `Wagenreihung: ${journey.effectiveDisplayName} — ${group.trainNumber || group.name || 'Gruppe ' + (groupIndex + 1)}`;
+
+    let html = '';
+    group.coaches.forEach((coach, i) => {
+        html += renderCoachRow(coach, i);
+    });
+
+    body.innerHTML = `<div class="coach-editor-list">${html}</div>`;
+    modal.classList.remove('hidden');
+}
+
+function renderCoachRow(coach, index) {
+    const amenityTypes = ['f', 'r', 'g', 'm'];
+    const amenityLabels = { f: '🚲', r: '♿', g: '🍽️', m: '📦' };
+    const amenityChecks = amenityTypes.map(a =>
+        `<label title="${a}"><input type="checkbox" class="amenity-check" data-amenity="${a}" ${coach.hasAmenity(a) ? 'checked' : ''}> ${amenityLabels[a]}</label>`
+    ).join('');
+
+    return `
+        <div class="coach-editor-row" data-index="${index}" draggable="true">
+            <span class="drag-handle">⠿</span>
+            <select data-prop="type">
+                <option value="locomotive" ${coach.type === 'locomotive' ? 'selected' : ''}>Lok</option>
+                <option value="control_car" ${coach.type === 'control_car' ? 'selected' : ''}>Steuerwagen</option>
+                <option value="middle_car" ${coach.type === 'middle_car' ? 'selected' : ''}>Mittelwagen</option>
+            </select>
+            <input type="number" data-prop="length" value="${coach.length}" style="width:60px" title="Länge">
+            <select data-prop="coachClass" style="width:55px">
+                <option value="1" ${coach.coachClass === 1 ? 'selected' : ''}>1.</option>
+                <option value="2" ${coach.coachClass === 2 ? 'selected' : ''}>2.</option>
+                <option value="null" ${coach.coachClass === null ? 'selected' : ''}>—</option>
+            </select>
+            <input type="text" data-prop="coachNumber" value="${coach.coachNumber}" style="width:50px" placeholder="Nr" title="Wagennummer">
+            <div class="amenity-checks">${amenityChecks}</div>
+            <label title="Offen"><input type="checkbox" data-prop="open" ${coach.open ? 'checked' : ''}> ✓</label>
+            <button class="btn-icon remove-coach-btn" title="Wagen entfernen">✕</button>
+        </div>
+    `;
+}
+
+function saveFormation() {
+    const journey = journeyStore.getJourney(editingFormationJourneyId);
+    if (!journey) return;
+
+    const group = journey.formation.groups[editingFormationGroupIndex];
+    if (!group) return;
+
+    const rows = document.querySelectorAll('#formation_editor_body .coach-editor-row');
+    const coaches = [];
+
+    rows.forEach(row => {
+        const type = row.querySelector('[data-prop="type"]').value;
+        const length = parseFloat(row.querySelector('[data-prop="length"]').value) || 25;
+        let coachClass = row.querySelector('[data-prop="coachClass"]').value;
+        coachClass = coachClass === 'null' ? null : parseInt(coachClass);
+        const coachNumber = row.querySelector('[data-prop="coachNumber"]').value;
+        const open = row.querySelector('[data-prop="open"]').checked;
+
+        const amenities = [];
+        row.querySelectorAll('.amenity-check:checked').forEach(cb => {
+            amenities.push(cb.dataset.amenity);
+        });
+
+        coaches.push(new Coach({ type, length, coachClass, coachNumber, amenities, open }));
+    });
+
+    group.coaches = coaches;
+    trainDisplay.updateAll();
+    document.getElementById('formation_modal').classList.add('hidden');
+}
+
+// ==========================================
+// Event-Handler
+// ==========================================
+
+export function initEvents() {
+    const journeyList = document.getElementById('journey_list');
+
+    // --- Journey-Liste rendern ---
+    renderJourneyList();
+
+    // --- Journey hinzufügen ---
+    document.getElementById('add_journey_btn')?.addEventListener('click', () => {
+        journeyStore.addJourney();
+        renderJourneyList();
+        trainDisplay.updateAll();
+    });
+
+    // --- Event Delegation auf Journey-Liste ---
+    journeyList?.addEventListener('click', (e) => {
+        const target = e.target.closest('[data-journey-id]');
+        if (!target) return;
+        const journeyId = target.dataset.journeyId;
+
+        // Sichtbarkeit togglen
+        if (target.classList.contains('visibility-toggle')) {
+            const journey = journeyStore.getJourney(journeyId);
+            if (journey) {
+                journey.visible = !journey.visible;
+                renderJourneyList();
+                trainDisplay.updateAll();
+            }
+            return;
+        }
+
+        // Details auf-/zuklappen
+        if (target.classList.contains('expand-toggle') || target.classList.contains('journey-summary')) {
+            expandedJourneyId = expandedJourneyId === journeyId ? null : journeyId;
+            renderJourneyList();
+            return;
+        }
+
+        // Löschen
+        if (target.classList.contains('delete-journey-btn')) {
+            journeyStore.removeJourney(journeyId);
+            if (expandedJourneyId === journeyId) expandedJourneyId = null;
+            renderJourneyList();
+            trainDisplay.updateAll();
+            return;
+        }
+
+        // Formation bearbeiten
+        if (target.classList.contains('edit-formation-btn')) {
+            showFormationEditor(journeyId);
+            return;
+        }
+
+        // Koppeln/Entkoppeln
+        if (target.classList.contains('couple-btn')) {
+            const journey = journeyStore.getJourney(journeyId);
+            if (!journey) return;
+            if (journey.couplingGroupId) {
+                journeyStore.uncoupleJourney(journeyId);
+            } else {
+                // Finde die nächste Journey und koppele damit
+                const idx = journeyStore.journeys.findIndex(j => j.id === journeyId);
+                const next = journeyStore.journeys[idx + 1];
+                if (next) {
+                    journeyStore.coupleJourneys(journeyId, next.id);
                 }
-                
-                coachData.length = parseFloat(coachData.length) || 25;
-                coachesToExport.push(coachData);
-            });
-
-            const blob = new Blob([JSON.stringify(coachesToExport, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `zug_${departureIndex + 1}_gruppe_${groupIndex + 1}_formation.json`;
-            link.click();
-            URL.revokeObjectURL(url);
+            }
+            renderJourneyList();
+            trainDisplay.updateAll();
+            return;
         }
-        if (e.target.id === 'save-formation-btn') {
-            const newCoaches = [];
-            document.querySelectorAll('#coach-list-container .coach-editor-row').forEach(row => {
-                const coachData = {};
-                row.querySelectorAll('[data-prop]').forEach(input => {
-                    const prop = input.dataset.prop;
-                    if (input.type === 'checkbox') {
-                        coachData[prop] = input.checked;
-                    } else {
-                        coachData[prop] = input.value;
-                    }
-                });
-                
-                coachData.amenities = [];
-                row.querySelectorAll('.amenities-group input:checked').forEach(amenityInput => {
-                    coachData.amenities.push(amenityInput.dataset.amenity);
-                });
+    });
 
-                // Konvertiere 'null' String zurück zu null
-                if (coachData.coachClass === 'null' || coachData.coachClass === undefined) {
-                    coachData.coachClass = null;
-                } else {
-                    // Konvertiere den String aus dem <select> in eine Zahl
-                    coachData.coachClass = parseInt(coachData.coachClass, 10);
-                }
+    // --- Feld-Änderungen in Details ---
+    journeyList?.addEventListener('input', (e) => {
+        const details = e.target.closest('.journey-details');
+        if (!details) return;
+        const journeyId = details.dataset.journeyId;
+        const journey = journeyStore.getJourney(journeyId);
+        if (!journey) return;
 
-                newCoaches.push(new Coach(coachData));
-            });
-            
-            trainData.departures[departureIndex].groups[groupIndex].coaches = newCoaches;
-            overlay.remove();
+        // Text/Number-Felder
+        if (e.target.classList.contains('jfield')) {
+            const field = e.target.dataset.field;
+            if (field.startsWith('via')) {
+                const idx = parseInt(field.replace('via', ''));
+                while (journey.vias.length <= idx) journey.vias.push('');
+                journey.vias[idx] = e.target.value;
+            } else if (field === 'startMeter') {
+                journey[field] = parseFloat(e.target.value) || 0;
+            } else {
+                journey[field] = e.target.value;
+            }
             trainDisplay.updateAll();
         }
     });
 
-    // Drag and Drop Logic
-    let draggedItem = null;
+    journeyList?.addEventListener('change', (e) => {
+        const details = e.target.closest('.journey-details');
+        if (!details) return;
+        const journeyId = details.dataset.journeyId;
+        const journey = journeyStore.getJourney(journeyId);
+        if (!journey) return;
 
-    coachListContainer.addEventListener('dragstart', e => {
-        if (e.target.classList.contains('coach-editor-row')) {
-            draggedItem = e.target;
-            setTimeout(() => {
-                e.target.style.opacity = '0.5';
-            }, 0);
+        // Checkboxen
+        if (e.target.classList.contains('jcheck')) {
+            journey[e.target.dataset.field] = e.target.checked;
+            trainDisplay.updateAll();
+            renderJourneyList(); // Badges aktualisieren
+        }
+
+        // Radio-Buttons (Richtung)
+        if (e.target.classList.contains('jradio')) {
+            journey[e.target.dataset.field] = parseInt(e.target.value);
+            trainDisplay.updateAll();
         }
     });
 
-    coachListContainer.addEventListener('dragend', e => {
-        if (draggedItem) {
-            draggedItem.style.opacity = '1';
-            draggedItem = null;
+    // --- Formation Editor Events ---
+    document.getElementById('formation_save_btn')?.addEventListener('click', saveFormation);
+
+    document.getElementById('formation_add_coach_btn')?.addEventListener('click', () => {
+        const body = document.getElementById('formation_editor_body');
+        const list = body?.querySelector('.coach-editor-list');
+        if (!list) return;
+        const index = list.children.length;
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = renderCoachRow(new Coach(), index);
+        list.appendChild(tempDiv.firstElementChild);
+    });
+
+    document.getElementById('formation_editor_body')?.addEventListener('click', (e) => {
+        if (e.target.closest('.remove-coach-btn')) {
+            e.target.closest('.coach-editor-row')?.remove();
         }
     });
 
-    coachListContainer.addEventListener('dragover', e => {
-        e.preventDefault();
-        const afterElement = getDragAfterElement(coachListContainer, e.clientY);
-        const currentDragged = document.querySelector('.dragging');
-        if (afterElement == null) {
-            coachListContainer.appendChild(draggedItem);
-        } else {
-            coachListContainer.insertBefore(draggedItem, afterElement);
-        }
+    document.getElementById('formation_export_btn')?.addEventListener('click', () => {
+        const journey = journeyStore.getJourney(editingFormationJourneyId);
+        if (!journey) return;
+        const group = journey.formation.groups[editingFormationGroupIndex];
+        if (!group) return;
+        const blob = new Blob([JSON.stringify(group.coaches, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `formation_${journey.effectiveDisplayName.replace(/\s/g, '_')}.json`;
+        a.click();
     });
 
-    function getDragAfterElement(container, y) {
-        const draggableElements = [...container.querySelectorAll('.coach-editor-row:not(.dragging)')];
-
-        return draggableElements.reduce((closest, child) => {
-            const box = child.getBoundingClientRect();
-            const offset = y - box.top - box.height / 2;
-            if (offset < 0 && offset > closest.offset) {
-                return { offset: offset, element: child };
-            } else {
-                return closest;
-            }
-        }, { offset: Number.NEGATIVE_INFINITY }).element;
-    }
-}
-
-function resizeDisplay() {
-    const canvas = document.getElementById('zimCanvas');
-    if (!canvas) return;
-    
-    // Die dynamische Auflösung des aktuell gewählten Layouts
-    const currentWidth = document.getElementById('zimCanvas').width;
-    const currentHeight = document.getElementById('zimCanvas').height;
-
-    let container = document.querySelector('.display-container');
-    let wrapper = document.querySelector('.screen-wrapper');
-    
-    // Dynamisch den Wrapper erzeugen, falls er im HTML fehlt, um Clipping zu verhindern
-    if (!wrapper && container) {
-        wrapper = document.createElement('div');
-        wrapper.className = 'screen-wrapper';
-        while (container.firstChild) {
-            wrapper.appendChild(container.firstChild);
-        }
-        container.appendChild(wrapper);
-    }
-
-    if (!wrapper) {
-        console.warn('DOM elements not found in resizeDisplay');
-        return; // Prevent errors if DOM isn’t ready
-    }
-
-    // Wrapper zwingend auf Originalgröße setzen
-    wrapper.style.width = `${currentWidth}px`;
-    wrapper.style.height = `${currentHeight}px`;
-    wrapper.style.transformOrigin = 'top left';
-
-    // Behebt das Abschneiden: Das innere #display-container HTML-Element (welches den Canvas hält) 
-    // muss sich vollflächig an den Wrapper anpassen, da es sonst den Canvas abschneidet.
-    const innerContainer = document.getElementById('display-container');
-    if (innerContainer) {
-        innerContainer.style.width = '100%';
-        innerContainer.style.height = '100%';
-    }
-
-    const scaleX = window.innerWidth / currentWidth;
-    const scaleY = window.innerHeight / currentHeight;
-    const scale = Math.min(scaleX, scaleY) * 0.95; // 95% um Ränder zu behalten
-
-    wrapper.style.transform = `scale(${scale})`;
-    if (container) {
-        container.style.height = `${currentHeight * scale}px`;
-        container.style.width = `${currentWidth * scale}px`;
-        container.style.margin = '0 auto';
-    }
-}
-
-export function initEvents() {
-
-    // Default departure time to current local time
-    const departureTime = document.getElementById("departureTime");
-    if (departureTime) {
-        const now = new Date();
-        now.setMinutes(now.getMinutes() - now.getTimezoneOffset()); // adjust for local timezone
-        departureTime.value = now.toISOString().slice(0, 16); // format YYYY-MM-DDTHH:mm
-    }
-
-    document.getElementById('layout_select')?.addEventListener('change', (e) => {
-        trainDisplay.switchLayout(e.target.value);
+    document.getElementById('formation_import_btn')?.addEventListener('click', () => {
+        document.getElementById('formation-file-input')?.click();
     });
 
-    document.querySelectorAll('input[name="wahl"]').forEach(radio => {
-        radio.addEventListener('change', () => {
-            console.log('Feature selection:', radio.value);
-            trainDisplay.onFeatureButtonChange(radio.value);
-        });
-    });
-
-    document.getElementById('display3_rotieren_checkbox').addEventListener('change', (e) => {
-        config.rotate_3_6 = e.target.checked;
-        if (config.rotate_3_6) {
-            startRotation();
-        } else {
-            if (config.zug_rotation_timer) clearTimeout(config.zug_rotation_timer);
-            config.current_rotating_zug = 3;
-            const selectedRadio = document.querySelector('input[name="zug_select"]:checked');
-            const selectedZug = selectedRadio ? parseInt(selectedRadio.value) : 3;
-            if (selectedZug >= 3 && selectedZug <= 6) {
-                config.current_display3_zug = selectedZug;
-            } else {
-                config.current_display3_zug = 3;
-            }
-            trainDisplay.update(config.current_display3_zug - 1, 'display2_zug2', 'display2_zug2_wagenreihung', false);
-        }
-        // Preserve feature rotation
-        if (trainDisplay.rotating) {
-            console.log('Restarting feature rotation to preserve state');
-            trainDisplay.onFeatureButtonChange('rotierend');
-        }
-    });
-
-    document.querySelectorAll('input[name="zug_select"]').forEach(radio => {
-        radio.addEventListener('change', (e) => {
-            const selectedZug = e.target.value;
-            document.querySelectorAll('.settings-frame[id^="zug"]').forEach(frame => {
-                frame.classList.add('hidden');
-            });
-            document.getElementById(`zug${selectedZug}_settings`).classList.remove('hidden');
-            const selZugInt = parseInt(selectedZug);
-            if (!config.rotate_3_6 && selZugInt >= 3 && selZugInt <= 6) {
-                config.current_display3_zug = selZugInt;
-                trainDisplay.update(config.current_display3_zug - 1, 'display2_zug2', 'display2_zug2_wagenreihung', false);
-            }
-        });
-    });
-
-    document.getElementById('platform_length_input').addEventListener('input', (e) => {
-        trainData.platform.length = parseFloat(e.target.value) || 420;
-        trainDisplay.updateAll();
-    });
-
-    document.getElementById('entry_stop_name')?.addEventListener('input', (e) => {
-        trainData.current_stop = e.target.value;
-        trainDisplay.updateAll();
-    });
-
-    document.getElementById('entry_gleis')?.addEventListener('input', (e) => {
-        trainData.current_platform = e.target.value;
-        trainDisplay.updateAll();
-    });
-
-    let abfahrten = false;
-    let ankuenfte = false;
-    document.getElementById('abfahrten_checkbox')?.addEventListener('change', (e) => {
-        abfahrten = e.target.checked;
-        // For future API use
-    });
-    document.getElementById('ankuenfte_checkbox')?.addEventListener('change', (e) => {
-        ankuenfte = e.target.checked;
-        // For future API use
-    });
-
-    document.getElementById('import_all_btn').addEventListener('click', () => {
-        document.getElementById('file-input').click();
-    });
-
-    document.getElementById('file-input').addEventListener('change', (e) => {
-        const file = e.target.files[0];
+    document.getElementById('formation-file-input')?.addEventListener('change', (e) => {
+        const file = e.target.files?.[0];
         if (!file) return;
         const reader = new FileReader();
         reader.onload = (ev) => {
             try {
                 const data = JSON.parse(ev.target.result);
-
-                // Unterstützt neues und altes JSON-Format
-                if (Array.isArray(data.departures)) { // Neues Format
-                    trainData.departures = data.departures.map(d => new Departure(d));
-                    if (data.platform) {
-                        trainData.platform = new Platform(data.platform);
-                    }
-                } else { // Altes Format: Konvertieren
-                    trainData.departures = [];
-                    for (let i = 1; i <= 6; i++) {
-                        const oldData = data[`zug_${i}`];
-                        if (!oldData) {
-                            trainData.departures.push(new Departure());
-                            continue;
-                        }
-                        const group = {
-                            trainNumber: oldData.Zugnummer,
-                            destination: oldData.Ziel,
-                            vias: [oldData['Via-Halte 1 Small'], oldData['Via-Halte 2 Small'], oldData['Via-Halte 3 Small']].filter(Boolean),
-                            scheduledTime: oldData.Abfahrt,
-                            expectedTime: oldData.Abweichend,
-                            coaches: (oldData.Wagenreihung || []).map(c => new Coach(c))
-                        };
-                        const departure = {
-                            direction: oldData.Richtung,
-                            startMeter: oldData.TrainStart,
-                            scrollText: oldData.Informationen,
-                            groups: [group],
-                            ankunft: oldData.Ankunft,
-                            ausfall: oldData.Ausfall,
-                            gleiswechsel: oldData.Gleiswechsel,
-                            infoscreen: oldData.Infoscreen,
-                            skalieren: oldData.Skalieren,
-                            verkehrtAb: oldData.VerkehrtAb,
-                        };
-                        trainData.departures.push(new Departure(departure));
-                    }
-                }
-
-                // Synchronisiere alle UI-Felder mit dem geladenen Modell
-                trainData.departures.forEach((departure, index) => {
-                    const zugId = index + 1;
-
-                    // Abfahrts-spezifische Felder aktualisieren
-                    const setValue = (field, value) => {
-                        const el = document.querySelector(`.zug_entry[data-zug="${zugId}"][data-field="${field}"]`);
-                        if (el) el.value = value || '';
-                    };
-                    const setCheck = (field, checked) => {
-                        const el = document.querySelector(`.zug_checkbox[data-zug="${zugId}"][data-field="${field}"]`);
-                        if (el) el.checked = !!checked;
-                    };
-                    const setRadio = (name, value) => {
-                        const el = document.querySelector(`input[name="${name}"][value="${value}"]`);
-                        if (el) el.checked = true;
-                    };
-
-                    setValue('Informationen', departure.scrollText);
-                    setValue('TrainStart', departure.startMeter);
-                    setValue('Gleiswechsel', departure.gleiswechsel);
-                    setValue('VerkehrtAb', departure.verkehrtAb);
-
-                    setCheck('Ankunft', departure.ankunft);
-                    setCheck('Infoscreen', departure.infoscreen);
-                    setCheck('Ausfall', departure.ausfall);
-                    setCheck('Skalieren', departure.skalieren);
-
-                    setRadio(`richtung${zugId}`, departure.direction);
-
-                    // Rendere die Gruppen-UI für diese Abfahrt neu
-                    renderGroupsUI(index);
-                });
-
-                // Globale Felder
-                const platformLengthInput = document.querySelector('.zug_entry[data-field="PlatformLength"]');
-                if (platformLengthInput) platformLengthInput.value = trainData.platform.length;
-
-                trainDisplay.updateAll();
-            } catch (error) {
-                console.error('Failed to load JSON:', error);
-                alert('Error loading JSON file. Please check the file format and console for details.');
-                trainDisplay.updateAll();
+                const coaches = Array.isArray(data) ? data : (data.coaches || data.vehicles || []);
+                const body = document.getElementById('formation_editor_body');
+                const list = body?.querySelector('.coach-editor-list');
+                if (!list) return;
+                list.innerHTML = coaches.map((c, i) => renderCoachRow(new Coach(c), i)).join('');
+            } catch (err) {
+                console.error('Formation import error:', err);
+                alert('Fehler beim Importieren: ' + err.message);
             }
         };
         reader.readAsText(file);
+        e.target.value = '';
     });
 
-    document.getElementById('export_all_btn').addEventListener('click', () => {
-        const data = {
-            platform: trainData.platform,
-            departures: trainData.departures
-        };
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = 'train_data.json';
-        link.click();
-        URL.revokeObjectURL(url);
+    // --- Modal schließen ---
+    document.querySelectorAll('[data-close-modal]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const modalId = btn.dataset.closeModal;
+            document.getElementById(modalId)?.classList.add('hidden');
+        });
     });
 
-    document.getElementById('download-btn').addEventListener('click', () => {
-        // Ensure all displays are updated before capturing
+    // --- Wagenreihungs-Feature-Auswahl ---
+    document.querySelectorAll('input[name="wahl"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+            trainDisplay.onFeatureButtonChange(radio.value);
+        });
+    });
+
+    // --- Layout-Auswahl ---
+    document.querySelectorAll('input[name="layout_select"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+            trainDisplay.switchLayout(radio.value);
+        });
+    });
+
+    // --- Bahnhof/Station ---
+    document.getElementById('entry_stop_name')?.addEventListener('input', (e) => {
+        journeyStore.stationContext.stationName = e.target.value;
+    });
+
+    document.getElementById('entry_stop_id')?.addEventListener('input', (e) => {
+        journeyStore.stationContext.stationId = e.target.value;
+        // Alle Journeys mit Stops synchronisieren
+        journeyStore.journeys.forEach(j => {
+            if (j.stops.length > 0) {
+                j.syncFromCurrentStop(e.target.value);
+            }
+        });
+        renderJourneyList();
         trainDisplay.updateAll();
-        setTimeout(() => {
-            const container = document.querySelector('.display-container');
-            const wrapper = document.querySelector('.screen-wrapper') || container;
-            const screenWrapper = wrapper;  // Capture the correct wrapper
-            
-            const layoutWidth = trainDisplay.currentLayout.width;
-            const layoutHeight = trainDisplay.currentLayout.height;
-
-            // Save old styles
-            const oldContainerWidth = container.style.width;
-            const oldContainerHeight = container.style.height;
-            const oldWrapperTransform = wrapper.style.transform;
-            const oldWrapperLeft = wrapper.style.left;
-            const oldWrapperPosition = wrapper.style.position;
-            // Set to full size
-            container.style.width = `${layoutWidth}px`;
-            container.style.height = `${layoutHeight}px`;
-            wrapper.style.position = 'static';
-            wrapper.style.left = '0';
-            wrapper.style.transform = 'none';
-            html2canvas(screenWrapper, {
-                scale: 1,
-                useCORS: true,
-                backgroundColor: 'navy',
-                width: layoutWidth,
-                height: layoutHeight,
-                windowWidth: layoutWidth,
-                windowHeight: layoutHeight,
-                x: 0,
-                y: 0,
-                scrollX: 0,
-                scrollY: 0
-            }).then(canvas => {
-                const link = document.createElement('a');
-                // Dynamic filename with timestamp
-                const now = new Date();
-                const timestamp = now.getDate().toString().padStart(2, '0') + '.' +
-                    (now.getMonth() + 1).toString().padStart(2, '0') + '.' +
-                    now.getFullYear() + '_' +
-                    now.getHours().toString().padStart(2, '0') + '.' +
-                    now.getMinutes().toString().padStart(2, '0') + '.' +
-                    now.getSeconds().toString().padStart(2, '0');
-                link.download = `zim_${timestamp}.png`;
-                link.href = canvas.toDataURL('image/png', 1.0);
-                link.click();
-                // Restore styles
-                container.style.width = oldContainerWidth;
-                container.style.height = oldContainerHeight;
-                wrapper.style.transform = oldWrapperTransform;
-                wrapper.style.left = oldWrapperLeft;
-                wrapper.style.position = oldWrapperPosition;
-            }).catch(error => {
-                console.error('Screenshot failed:', error);
-                alert('Failed to generate screenshot. Check console for details.');
-                // Restore anyway
-                container.style.width = oldContainerWidth;
-                container.style.height = oldContainerHeight;
-                wrapper.style.transform = oldWrapperTransform;
-                wrapper.style.left = oldWrapperLeft;
-                wrapper.style.position = oldWrapperPosition;
-            });
-        }, 500); // Delay to ensure all rendering is complete
     });
 
-    // --- Event Delegation für dynamische UI-Elemente ---
-    const settingsContainer = document.getElementById('train_settings_container');
-    if (!settingsContainer) return;
+    document.getElementById('platform_length')?.addEventListener('input', (e) => {
+        journeyStore.stationContext.platform.length = parseInt(e.target.value) || 420;
+        trainDisplay.updateAll();
+    });
 
-    // Klick-Events (Buttons)
-    settingsContainer.addEventListener('click', e => {
-        // "Zugteil hinzufügen" Button
-        if (e.target.matches('.edit-formation-btn')) {
-            const departureIndex = parseInt(e.target.dataset.zug) - 1;
-            const groupIndex = parseInt(e.target.dataset.groupIndex);
-            showFormationEditor(departureIndex, groupIndex);
-        }
+    // --- NRW-Modus ---
+    document.getElementById('nrw_mode_checkbox')?.addEventListener('change', (e) => {
+        journeyStore.nrwMode = e.target.checked;
+        renderJourneyList();
+        trainDisplay.updateAll();
+    });
 
+    // --- Screenshot ---
+    document.getElementById('download-btn')?.addEventListener('click', () => {
+        const container = document.getElementById('display-container');
+        if (!container) return;
+        html2canvas(container, { useCORS: true, scale: 1, backgroundColor: null }).then(canvas => {
+            const a = document.createElement('a');
+            a.href = canvas.toDataURL('image/png');
+            a.download = 'ZIMSim_screenshot.png';
+            a.click();
+        });
+    });
 
-        if (e.target.matches('.add-group-btn')) {
-            const departureIndex = parseInt(e.target.dataset.zug) - 1;
-            const { departure } = getDepartureAndGroup(departureIndex);
-            departure.groups.push(new TrainGroup());
-            renderGroupsUI(departureIndex);
-            trainDisplay.updateAll();
-        }
+    // --- Export ---
+    document.getElementById('export_all_btn')?.addEventListener('click', () => {
+        const data = journeyStore.exportAll();
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'zimsim_export.json';
+        a.click();
+    });
 
-        // "Zugteil entfernen" Button
-        if (e.target.matches('.remove-group-btn')) {
-            const departureIndex = parseInt(e.target.dataset.zug) - 1;
-            const groupIndex = parseInt(e.target.dataset.groupIndex);
-            const { departure } = getDepartureAndGroup(departureIndex);
-            if (departure.groups.length > 1) {
-                departure.groups.splice(groupIndex, 1);
-                renderGroupsUI(departureIndex);
+    // --- Import (eigenes Format) ---
+    document.getElementById('import_all_btn')?.addEventListener('click', () => {
+        document.getElementById('file-input')?.click();
+    });
+
+    document.getElementById('file-input')?.addEventListener('change', (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            try {
+                const data = JSON.parse(ev.target.result);
+                journeyStore.importAll(data);
+                renderJourneyList();
                 trainDisplay.updateAll();
-            } else {
-                alert("Der letzte Zugteil kann nicht entfernt werden.");
+            } catch (err) {
+                console.error('Import error:', err);
+                alert('Fehler beim Importieren: ' + err.message);
             }
-        }
-
+        };
+        reader.readAsText(file);
+        e.target.value = '';
     });
 
-    // Input-Events (Textfelder)
-    settingsContainer.addEventListener('input', e => {
-        if (e.target.matches('.zug_entry')) {
-            const departureIndex = parseInt(e.target.dataset.zug) - 1;
-            const groupIndex = parseInt(e.target.dataset.groupIndex); // Wird bei Gruppen-Feldern vorhanden sein
-            const field = e.target.dataset.field;
+    // --- DB-Import Modal ---
+    document.getElementById('import_db_btn')?.addEventListener('click', () => {
+        document.getElementById('db_import_modal')?.classList.remove('hidden');
+    });
 
-            if (!isNaN(groupIndex)) { // Es ist ein Gruppen-Feld
-                const { group } = getDepartureAndGroupByIndex(departureIndex, groupIndex);
-                if (field.startsWith('Via-Halte')) {
-                    const viaIndex = parseInt(field.split(' ')[2]) - 1;
-                    group.vias = group.vias || [];
-                    group.vias[viaIndex] = e.target.value;
-                    group.vias = group.vias.filter(v => v && v.trim() !== '');
+    document.querySelectorAll('input[name="import_type"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+            const hint = document.getElementById('import_type_hint');
+            if (!hint) return;
+            const hints = {
+                'departure_list': 'Füge das JSON einer DB-Abfahrtstafel ein (entries[]-Array).',
+                'journey': 'Füge das JSON eines DB-Zuglaufs ein (halte[]-Array).',
+                'formation': 'Füge das JSON einer DB-Wagenreihung ein (groups[]-Array). Wähle anschließend die Fahrt, der sie zugewiesen werden soll.'
+            };
+            hint.textContent = hints[radio.value] || '';
+        });
+    });
+
+    document.getElementById('db_import_execute')?.addEventListener('click', () => {
+        const type = document.querySelector('input[name="import_type"]:checked')?.value;
+        const text = document.getElementById('db_import_textarea')?.value;
+        if (!text) return;
+
+        try {
+            const data = JSON.parse(text);
+
+            if (type === 'departure_list') {
+                journeyStore.importFromDepartureList(data);
+            } else if (type === 'journey') {
+                journeyStore.importFromJourney(data);
+            } else if (type === 'formation') {
+                // Formation einer bestehenden Journey zuweisen
+                const visible = journeyStore.getVisibleJourneys();
+                if (visible.length > 0) {
+                    visible[0].formation = new Formation(data);
                 } else {
-                    const modelField = { 'Zugnummer': 'trainNumber', 'Ziel': 'destination', 'Abfahrt': 'scheduledTime', 'Abweichend': 'expectedTime' }[field];
-                    if(modelField) group[modelField] = e.target.value;
+                    alert('Erstelle zuerst eine Fahrt, der die Formation zugewiesen werden soll.');
+                    return;
                 }
-            } else { // Es ist ein Abfahrts-Feld
-                const { departure } = getDepartureAndGroup(departureIndex);
-                const modelField = { 'Informationen': 'scrollText', 'TrainStart': 'startMeter', 'Gleiswechsel': 'gleiswechsel', 'VerkehrtAb': 'verkehrtAb' }[field];
-                if(modelField) departure[modelField] = e.target.value;
             }
+
+            renderJourneyList();
             trainDisplay.updateAll();
+            document.getElementById('db_import_modal')?.classList.add('hidden');
+            document.getElementById('db_import_textarea').value = '';
+        } catch (err) {
+            console.error('DB Import error:', err);
+            alert('Fehler beim Importieren: ' + err.message);
         }
     });
 
-    // Change-Events (Checkboxes, Radios)
-    settingsContainer.addEventListener('change', e => {
-        if (e.target.matches('.zug_checkbox') || e.target.matches('.richtung_radio')) {
-            const departureIndex = parseInt(e.target.dataset.zug) - 1;
-            const { departure } = getDepartureAndGroup(departureIndex);
-            const field = e.target.dataset.field;
+    // --- Drag & Drop für Coach-Rows im Formation-Editor ---
+    let dragSrcRow = null;
+    const formationBody = document.getElementById('formation_editor_body');
 
-            if (e.target.matches('.richtung_radio')) {
-                departure.direction = parseInt(e.target.value);
-            } else { // Checkbox
-                departure[field.toLowerCase()] = e.target.checked;
-            }
-            trainDisplay.updateAll();
+    formationBody?.addEventListener('dragstart', (e) => {
+        const row = e.target.closest('.coach-editor-row');
+        if (!row) return;
+        dragSrcRow = row;
+        row.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+    });
+
+    formationBody?.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        const row = e.target.closest('.coach-editor-row');
+        if (!row || row === dragSrcRow) return;
+        const rect = row.getBoundingClientRect();
+        const after = e.clientY > rect.top + rect.height / 2;
+        const list = row.parentElement;
+        if (after) {
+            list.insertBefore(dragSrcRow, row.nextSibling);
+        } else {
+            list.insertBefore(dragSrcRow, row);
         }
     });
 
-    window.addEventListener('resize', resizeDisplay);
-    resizeDisplay();
+    formationBody?.addEventListener('dragend', () => {
+        dragSrcRow?.classList.remove('dragging');
+        dragSrcRow = null;
+    });
 
-    // Initiales Rendern aller Gruppen-UIs
-    for (let i = 0; i < 6; i++) {
-        renderGroupsUI(i);
-    }
+    // --- Window Resize (Skalierung) ---
+    window.addEventListener('resize', () => {
+        const canvas = document.getElementById('zimCanvas');
+        const container = document.getElementById('display-container');
+        if (!canvas || !container) return;
+
+        const layoutWidth = trainDisplay.currentLayout.width;
+        const layoutHeight = trainDisplay.currentLayout.height;
+        const containerWidth = container.clientWidth;
+        if (containerWidth === 0) return; // Container noch nicht gerendert
+
+        const scale = containerWidth / layoutWidth;
+        const scaledHeight = layoutHeight * scale;
+
+        canvas.style.transform = `scale(${scale})`;
+        canvas.style.transformOrigin = 'top left';
+        container.style.height = `${scaledHeight}px`;
+
+        // Bezel wird nicht mehr mit Bild bestückt — das Hintergrundbild
+        // wird ausschließlich via drawFullBackground() auf dem Canvas gezeichnet.
+        // Die Bezel-Div bleibt transparent (nur für zukünftige Overlays nutzbar).
+    });
+
+    // Initiale Skalierung
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
 }

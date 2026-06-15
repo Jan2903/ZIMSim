@@ -1,96 +1,90 @@
 // js/main.js
-import { TrainData } from './models/trainData.js';
+import { JourneyStore } from './models/journeyStore.js';
+import { Journey } from './models/journey.js';
+import { Formation } from './models/formation.js';
 import { TrainDisplay } from './displays/trainDisplay.js';
 import { initEvents } from './events.js';
 import { preloadImages } from './utils/utils.js';
 
-export const trainData = new TrainData();
-export const trainDisplay = new TrainDisplay(trainData);
+export const journeyStore = new JourneyStore();
+export const trainDisplay = new TrainDisplay(journeyStore);
 
-// Baut das HTML für Zug 1 bis 6 dynamisch auf (DRY-Prinzip)
-function generateTrainSettingsUI() {
-    const container = document.getElementById('train_settings_container');
-    if (!container) return;
-
-    let html = `
-        <div class="settings-frame">
-            <h3>Globale Einstellungen</h3>
-            <div class="form-row">
-                <label>Bahnsteiglänge (m): <input type="text" id="platform_length_input" class="short-input" value="420"></label>
-                <label>Aktueller Halt: <input type="text" id="entry_stop_name" placeholder="z.B. Hannover Hbf"></label>
-                <label>Aktuelles Gleis: <input type="text" id="entry_gleis" class="short-input" placeholder="z.B. 10"></label>
-                <label>Layout wählen:
-                    <select id="layout_select">
-                        <option value="standard">Standard</option>
-                        <option value="voranzeiger">Voranzeiger</option>
-                    </select>
-                </label>
-            </div>
-        </div>
-    `;
-    
-    for (let i = 1; i <= 6; i++) {
-        // Zug 1 ist standardmäßig sichtbar, 2-6 sind versteckt
-        const isHidden = i === 1 ? '' : 'hidden';
-        
-        let extraFieldsRow1 = '';
-        let extraFieldsRow2 = '';
-
-        // Nur Züge 3 bis 6 haben diese Extra-Optionen für Störungen
-        if (i >= 3) {
-            extraFieldsRow1 = `
-                <label class="checkbox-label-vertical">Infoscreen: <input type="checkbox" class="zug_checkbox" data-zug="${i}" data-field="Infoscreen"></label>
-            `;
-            extraFieldsRow2 = `
-                <label>Gleiswechsel: <input type="text" class="zug_entry short-input" data-zug="${i}" data-field="Gleiswechsel" value="0"></label>
-                <label>Verkehrt ab: <input type="text" class="zug_entry short-input" data-zug="${i}" data-field="VerkehrtAb" value="0"></label>
-                <label class="checkbox-label-vertical">Ausfall: <input type="checkbox" class="zug_checkbox" data-zug="${i}" data-field="Ausfall"></label>
-            `;
+/**
+ * Erstellt die Beispiel-Daten (ein ICE-Flügelzug als Demo).
+ */
+function createDemoData() {
+    const j1 = journeyStore.addJourney({
+        category: 'ICE',
+        number: '543',
+        destination: 'Düsseldorf Hbf',
+        scheduledTime: '14:30',
+        expectedTime: '14:32',
+        vias: ['Hamm (Westf) Hbf', 'Dortmund Hbf', 'Bochum Hbf'],
+        direction: 1,
+        startMeter: 50,
+        scrollText: 'Zugteilung in Hamm (Westf) Hbf',
+        formation: {
+            groups: [{
+                name: 'ICE543',
+                transport: {
+                    category: 'ICE',
+                    destination: { name: 'Düsseldorf Hbf' },
+                    number: 543
+                },
+                coaches: [
+                    { type: 'control_car', length: 25, coachClass: 1, coachNumber: '37', amenities: [], open: true },
+                    { type: 'middle_car',  length: 25, coachClass: 2, coachNumber: '36', amenities: [], open: true },
+                    { type: 'middle_car',  length: 25, coachClass: 2, coachNumber: '35', amenities: [], open: true },
+                    { type: 'middle_car',  length: 25, coachClass: 2, coachNumber: '34', amenities: ['g'], open: true },
+                    { type: 'middle_car',  length: 25, coachClass: 2, coachNumber: '33', amenities: [], open: true },
+                    { type: 'middle_car',  length: 25, coachClass: 2, coachNumber: '32', amenities: [], open: true },
+                    { type: 'control_car', length: 25, coachClass: 2, coachNumber: '31', amenities: ['f'], open: true }
+                ]
+            }]
         }
+    });
 
-        // HTML für einen einzelnen Zug zusammenbauen
-        html += `
-            <div class="settings-frame ${isHidden}" id="zug${i}_settings">
-                <h3>Einstellungen für Zug ${i}</h3>
-                <div class="form-row">
-                    <label>Informationen (Lauftext): <input type="text" class="zug_entry" data-zug="${i}" data-field="Informationen"></label>
-                    <label class="radio-group">Richtung:
-                        <div class="options">
-                            <label><input type="radio" name="richtung${i}" value="0" class="richtung_radio" data-zug="${i}"> Links</label>
-                            <label><input type="radio" name="richtung${i}" value="1" checked class="richtung_radio" data-zug="${i}"> Rechts</label>
-                        </div>
-                    </label>
-                    <label>Startmeter: <input type="text" class="zug_entry short-input" data-zug="${i}" data-field="TrainStart" value="0"></label>
-                </div>
-                <div class="form-row">
-                    <label class="checkbox-label-vertical">Ankunft: <input type="checkbox" class="zug_checkbox" data-zug="${i}" data-field="Ankunft"></label>
-                    <label class="checkbox-label-vertical">Skalieren: <input type="checkbox" class="zug_checkbox" data-zug="${i}" data-field="Skalieren"></label>
-                    ${extraFieldsRow1}
-                    ${extraFieldsRow2}
-                </div>
+    const j2 = journeyStore.addJourney({
+        category: 'ICE',
+        number: '553',
+        destination: 'Köln Hbf',
+        scheduledTime: '14:30',
+        expectedTime: '14:32',
+        vias: ['Hamm (Westf) Hbf', 'Wuppertal Hbf', 'Solingen Hbf'],
+        direction: 1,
+        startMeter: 50,
+        scrollText: 'Zugteilung in Hamm (Westf) Hbf',
+        formation: {
+            groups: [{
+                name: 'ICE553',
+                transport: {
+                    category: 'ICE',
+                    destination: { name: 'Köln Hbf' },
+                    number: 553
+                },
+                coaches: [
+                    { type: 'control_car', length: 25, coachClass: 1, coachNumber: '27', amenities: [], open: true },
+                    { type: 'middle_car',  length: 25, coachClass: 1, coachNumber: '26', amenities: [], open: true },
+                    { type: 'middle_car',  length: 25, coachClass: 2, coachNumber: '25', amenities: [], open: true },
+                    { type: 'middle_car',  length: 25, coachClass: 2, coachNumber: '24', amenities: [], open: true },
+                    { type: 'middle_car',  length: 25, coachClass: 2, coachNumber: '23', amenities: ['g'], open: true },
+                    { type: 'middle_car',  length: 25, coachClass: 2, coachNumber: '22', amenities: [], open: true },
+                    { type: 'control_car', length: 25, coachClass: 2, coachNumber: '21', amenities: ['f'], open: true }
+                ]
+            }]
+        }
+    });
 
-                <!-- Container für die Zugteile (Train Groups) -->
-                <div class="train-groups-container" id="zug${i}_groups_container">
-                    <!-- Dynamisch durch events.js befüllt -->
-                </div>
-
-                <div class="form-row action-row">
-                    <button class="add-group-btn btn-secondary" data-zug="${i}">+ Zugteil hinzufügen</button>
-                </div>
-            </div>
-        `;
-    }
-    
-    // Alles auf einmal ins DOM schreiben (Performant!)
-    container.innerHTML = html;
+    // Koppeln (Flügelzug)
+    journeyStore.coupleJourneys(j1.id, j2.id);
 }
 
 // Warten, bis das DOM vollständig geladen ist
 document.addEventListener('DOMContentLoaded', () => {
-    generateTrainSettingsUI(); // WICHTIG: Muss vor initEvents() aufgerufen werden!
+    createDemoData();
     initEvents();
     preloadImages().then(() => {
-        document.fonts.ready.then(() => { //Possible Fix for Safari Font Loading 
+        document.fonts.ready.then(() => {
             trainDisplay.updateAll();
         });
     });

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 
 <head>
     <meta charset="UTF-8">
@@ -18,31 +18,27 @@
 
     <div class="display-container">
         <div id="display-container" style="position: relative; width: 100%; height: 100%; background-color: var(--db-dark); overflow: hidden;">
-            <div id="hardware-bezel" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 20; pointer-events: none; background-size: cover;"></div>
-            <canvas id="zimCanvas" width="4140" height="1280" style="position: absolute; top: 0; left: 0; z-index: 10;"></canvas>
+            <div id="hardware-bezel" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 20; pointer-events: none;"></div>
+            <canvas id="zimCanvas" width="4428" height="1600" style="position: absolute; top: 0; left: 0; z-index: 10;"></canvas>
         </div>
     </div>
 
     <div class="settings-container">
         <div class="dashboard-grid">
             <div class="main-controls">
-                <div class="settings-frame tab-container" id="train_selection">
-                        <div class="tab-bar">
-                        <label class="tab"><input type="radio" name="zug_select" value="1" checked> Zug 1</label>
-                        <label class="tab"><input type="radio" name="zug_select" value="2"> Zug 2</label>
-                        <label class="tab"><input type="radio" name="zug_select" value="3"> Zug 3</label>
-                        <label class="tab"><input type="radio" name="zug_select" value="4"> Zug 4</label>
-                        <label class="tab"><input type="radio" name="zug_select" value="5"> Zug 5</label>
-                        <label class="tab"><input type="radio" name="zug_select" value="6"> Zug 6</label>
+                <!-- Fahrten-Liste (ersetzt die alten 6 Tabs) -->
+                <div class="settings-frame" id="journey_list_frame">
+                    <div class="journey-list-header">
+                        <h3>Fahrten</h3>
+                        <div class="journey-list-actions">
+                            <button id="add_journey_btn" class="btn-primary btn-sm">+ Fahrt hinzufügen</button>
                         </div>
-                        <div class="tab-actions">
-                        <label class="checkbox-label"><input type="checkbox" id="display3_rotieren_checkbox"> 3-6 rotieren</label>
-                        <button id="edit_formation_btn" class="btn-secondary">Wagenreihung bearbeiten</button>
-                        </div>
+                    </div>
+                    <div id="journey_list" class="journey-list">
+                        <!-- Dynamisch generiert von events.js -->
+                    </div>
                 </div>
-
-                <div id="train_settings_container"></div>
-        </div>
+            </div>
 
             <div class="side-controls">
                 <div class="settings-frame" id="frame_links_oben">
@@ -53,28 +49,84 @@
                         <label class="radio-card"><input type="radio" name="wahl" value="ausstattung"> Ausstattung</label>
                         <label class="radio-card"><input type="radio" name="wahl" value="klasse"> Klasse</label>
                     </div>
+
+                    <h3 style="margin-top: 25px;">Layout</h3>
+                    <div class="options-grid">
+                        <label class="radio-card"><input type="radio" name="layout_select" value="standard" checked> Standard</label>
+                        <label class="radio-card"><input type="radio" name="layout_select" value="voranzeiger"> Voranzeiger</label>
+                    </div>
                     
                     <h3 style="margin-top: 25px;">Bahnhof/Station</h3>
                     <div class="form-row column-layout">
                         <label>Name: <input type="text" id="entry_stop_name" placeholder="z.B. Hannover Hbf"></label>
+                        <label>EVA-Nr: <input type="text" id="entry_stop_id" class="short-input" placeholder="8000152"></label>
                         <label>Gleis: <input type="text" id="entry_gleis" class="short-input"></label>
-                        <label>Zeit: <input type="datetime-local" id="departureTime" name="departureTime"></label>
                         <div class="checkbox-group">
-                            <label class="checkbox-label"><input type="checkbox" id="abfahrten_checkbox"> Abfahrten</label>
-                            <label class="checkbox-label"><input type="checkbox" id="ankuenfte_checkbox"> Ankünfte</label>
+                            <label class="checkbox-label"><input type="checkbox" id="nrw_mode_checkbox"> NRW-Modus</label>
                         </div>
-                        <div class="button-group-vertical">
-                            <button id="fetch_data_btn" class="btn-primary">Daten abrufen</button>
-                            <button id="export_all_btn" class="btn-secondary">Exportieren</button>
-                            <button id="import_all_btn" class="btn-secondary">Importieren</button>
-                        </div>
+                    </div>
+
+                    <h3 style="margin-top: 25px;">Bahnsteig</h3>
+                    <div class="form-row column-layout">
+                        <label>Länge (m): <input type="number" id="platform_length" class="short-input" value="420"></label>
+                    </div>
+
+                    <div class="button-group-vertical" style="margin-top: 15px;">
+                        <button id="export_all_btn" class="btn-secondary">📤 Exportieren</button>
+                        <button id="import_all_btn" class="btn-secondary">📥 Importieren</button>
+                        <button id="import_db_btn" class="btn-secondary">🚄 DB-Daten importieren</button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    
+
+    <!-- Import-Modal für DB-Daten -->
+    <div id="db_import_modal" class="modal-overlay hidden">
+        <div class="modal-content modal-wide">
+            <div class="modal-header">
+                <h3>DB-Daten importieren</h3>
+                <button class="modal-close" data-close-modal="db_import_modal">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="import-tabs">
+                    <label class="radio-card"><input type="radio" name="import_type" value="departure_list" checked> Abfahrtstafel</label>
+                    <label class="radio-card"><input type="radio" name="import_type" value="journey"> Zuglauf</label>
+                    <label class="radio-card"><input type="radio" name="import_type" value="formation"> Formation</label>
+                </div>
+                <textarea id="db_import_textarea" rows="12" placeholder='JSON hier einfügen...'></textarea>
+                <div class="import-info">
+                    <p id="import_type_hint">Füge das JSON einer DB-Abfahrtstafel ein (entries[]-Array).</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="db_import_execute" class="btn-primary">Importieren</button>
+                <button class="btn-secondary" data-close-modal="db_import_modal">Abbrechen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formation-Editor Modal (bleibt grundsätzlich gleich) -->
+    <div id="formation_modal" class="modal-overlay hidden">
+        <div class="modal-content modal-wide">
+            <div class="modal-header">
+                <h3 id="formation_modal_title">Wagenreihung bearbeiten</h3>
+                <button class="modal-close" data-close-modal="formation_modal">✕</button>
+            </div>
+            <div class="modal-body" id="formation_editor_body">
+                <!-- Dynamisch generiert -->
+            </div>
+            <div class="modal-footer">
+                <button id="formation_import_btn" class="btn-secondary">📥 Import</button>
+                <button id="formation_export_btn" class="btn-secondary">📤 Export</button>
+                <button id="formation_add_coach_btn" class="btn-secondary">+ Wagen</button>
+                <button id="formation_save_btn" class="btn-primary">Speichern</button>
+            </div>
+        </div>
+    </div>
+
     <input type="file" id="file-input" style="display:none;" accept=".json">
+    <input type="file" id="formation-file-input" style="display:none;" accept=".json">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script type="module" src="js/main.js"></script>
 

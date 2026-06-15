@@ -7,10 +7,11 @@
  * TODO: Implementierung ausstehend — wird in einem zukünftigen Feature umgesetzt.
  *
  * @param {CanvasRenderingContext2D} ctx - Der Canvas-Kontext.
- * @param {import('../models/departure.js').Departure} departure - Die Abfahrtsdaten.
+ * @param {import('../models/journey.js').Journey} journey - Die Fahrt-Daten.
  * @param {number} width - Die verfügbare Breite.
  * @param {number} height - Die verfügbare Höhe.
  */
-export function drawListeRow(ctx, departure, width, height) {
+export function drawListeRow(ctx, journey, width, height) {
     // Platzhalter — wird in einem zukünftigen Schritt implementiert
 }
+
