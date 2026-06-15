@@ -7,6 +7,7 @@ import { ScrollManager } from './scrollManager.js';
 import { drawFormation } from './formationRenderer.js';
 import { drawTrainInfo } from './trainInfoRenderer.js';
 import { drawListeRow } from './listeRenderer.js';
+import { drawVitrine32Wagenstand } from './vitrineRenderer.js';
 
 export class TrainDisplay {
     constructor(journeyStore) {
@@ -18,6 +19,10 @@ export class TrainDisplay {
         this.scrollManager = new ScrollManager();
         this.currentLayout = LAYOUTS.standard;
         this._isRendering = false; // Re-entrance Guard
+        this.featureAlpha = 1.0;
+        this.vitrineProgress = 0.0;
+        this.activeFeatureIndex = 0;
+        this._startAnimationLoop();
     }
 
     // ==========================================
@@ -111,6 +116,47 @@ export class TrainDisplay {
         window.dispatchEvent(new Event('resize'));
     }
 
+    _startAnimationLoop() {
+        if (this._animId) return;
+        const loop = () => {
+            const isVitrine = this.currentLayout === LAYOUTS.zimvitrine32wagenstand;
+            
+            if (isVitrine || this.rotating) {
+                const now = Date.now();
+                const cycle = now % 12000;
+                
+                let newFeatureStr;
+                let featureIndex;
+                if (cycle < 4000) { newFeatureStr = 'klasse'; featureIndex = 2; }
+                else if (cycle < 8000) { newFeatureStr = 'ausstattung'; featureIndex = 1; }
+                else { newFeatureStr = 'wagennummern'; featureIndex = 0; }
+                
+                const t = cycle % 4000;
+                let alpha = 1.0;
+                if (t < 1000) alpha = t / 1000;
+                else if (t > 3000) alpha = 1.0 - ((t - 3000) / 1000);
+                
+                this.vitrineProgress = cycle / 12000;
+                this.activeFeatureIndex = featureIndex;
+                
+                // Keep activeFeature if we are rotating globally or vitrine
+                this.activeFeature = newFeatureStr;
+                this.featureAlpha = alpha;
+                
+                if (!this._isRendering) {
+                    this._renderDynamicScreens();
+                }
+            } else {
+                if (this.featureAlpha !== 1.0) {
+                    this.featureAlpha = 1.0;
+                    if (!this._isRendering) this._renderDynamicScreens();
+                }
+            }
+            this._animId = requestAnimationFrame(loop);
+        };
+        this._animId = requestAnimationFrame(loop);
+    }
+
     /**
      * Reagiert auf Feature-Radio-Button-Änderungen.
      * @param {string} value - 'rotierend', 'wagennummern', 'ausstattung' oder 'klasse'.
@@ -118,25 +164,19 @@ export class TrainDisplay {
     onFeatureButtonChange(value) {
         if (value === "rotierend") {
             this.rotating = true;
-            if (config.feature_rotation_timer) clearTimeout(config.feature_rotation_timer);
-            this.startFeatureRotation();
         } else {
             this.rotating = false;
-            if (config.feature_rotation_timer) clearTimeout(config.feature_rotation_timer);
             this.activeFeature = value;
+            this.featureAlpha = 1.0;
             this.updateAll();
         }
     }
 
     /**
-     * Rotiert automatisch zwischen den drei Features alle 3 Sekunden.
+     * Obsolet: startFeatureRotation wird vom neuen AnimationLoop übernommen.
      */
     startFeatureRotation() {
-        if (!this.rotating) return;
-        this.activeFeature = this.features[this.rotationIndex];
-        this.rotationIndex = (this.rotationIndex + 1) % this.features.length;
-        this.updateAll();
-        config.feature_rotation_timer = setTimeout(() => this.startFeatureRotation(), 3000);
+        // Nothing to do
     }
 
     // ==========================================
@@ -171,7 +211,7 @@ export class TrainDisplay {
 
             if (!journeys || journeys.length === 0) {
                 this.drawOnScreen(screen, (ctx, width, height) => {
-                    ctx.clearRect(0, 0, width, height);
+                    // Nothing to draw
                 });
                 this.scrollManager.clearForZug(zugID);
                 return;
@@ -189,6 +229,7 @@ export class TrainDisplay {
                 drawFormation(ctx, journeys, this.journeyStore.platform, {
                     fullScreen,
                     activeFeature: this.activeFeature,
+                    featureAlpha: this.featureAlpha
                 });
                 ctx.restore();
             });
@@ -227,7 +268,6 @@ export class TrainDisplay {
      * Zeichnet alle Monitore neu. Haupteinstieg nach Datenänderungen.
      */
     updateAll() {
-        // Re-entrance Guard: Verhindere gleichzeitige Render-Durchläufe
         if (this._isRendering) return;
         this._isRendering = true;
 
@@ -235,7 +275,6 @@ export class TrainDisplay {
             const canvas = document.getElementById('zimCanvas');
             if (!canvas) return;
 
-            // Stelle sicher, dass das Canvas immer die tatsächlichen Maße des aktuellen Layouts hat
             if (canvas.width !== this.currentLayout.width || canvas.height !== this.currentLayout.height) {
                 canvas.width = this.currentLayout.width;
                 canvas.height = this.currentLayout.height;
@@ -244,22 +283,34 @@ export class TrainDisplay {
 
             this.ctx = canvas.getContext('2d');
             this.drawFullBackground();
+        } catch (err) {
+            console.error('Error in updateAll:', err);
+        } finally {
+            this._isRendering = false;
+        }
 
-            // CSS-Skalierungsfaktor ermitteln (für Scroll-Div-Positionierung)
+        this._renderDynamicScreens();
+    }
+
+    _renderDynamicScreens() {
+        if (this._isRendering) return;
+        this._isRendering = true;
+
+        try {
+            const canvas = document.getElementById('zimCanvas');
+            if (!canvas) return;
+
             const container = canvas.parentElement;
             const cssScale = container ? (container.clientWidth / this.currentLayout.width) : 1;
-
-            // Journey-Gruppen einmalig aufbauen (layout-spezifisch)
             const screenAssignments = this._buildScreenAssignments();
 
             this.currentLayout.screens.forEach(screen => {
                 try {
                     const assignment = screenAssignments.get(screen.id) || { journeys: [], zugID: 1 };
-                    const { journeys, zugID } = assignment;
+                    const { journeys, journeyGroups, zugID } = assignment;
 
-                    // Leere Screens: mit Midnight Blue füllen und Scroll-Divs aufräumen
-                    if (!journeys || journeys.length === 0) {
-                        this.drawOnScreen(screen, () => {}); // Füllt mit MIDNIGHT_BLUE
+                    if ((!journeys || journeys.length === 0) && (!journeyGroups || journeyGroups.length === 0)) {
+                        this.drawOnScreen(screen, () => {});
                         this.scrollManager.clearForZug(zugID);
                         return;
                     }
@@ -277,10 +328,19 @@ export class TrainDisplay {
                             drawFormation(ctx, journeys, this.journeyStore.platform, {
                                 fullScreen,
                                 activeFeature: this.activeFeature,
+                                featureAlpha: this.featureAlpha
                             });
                             ctx.restore();
                         } else if (screen.type === 'liste') {
                             drawListeRow(ctx, journeys[0], width, height);
+                        } else if (screen.type === 'vitrine32') {
+                            const trackNumber = document.getElementById('entry_gleis') ? document.getElementById('entry_gleis').value : '';
+                            drawVitrine32Wagenstand(ctx, journeyGroups || [], this.journeyStore.platform, width, height, trackNumber, {
+                                activeFeatureIndex: this.activeFeatureIndex,
+                                activeFeatureStr: this.activeFeature,
+                                progress: this.vitrineProgress,
+                                featureAlpha: this.featureAlpha
+                            });
                         }
                     });
 
@@ -290,7 +350,7 @@ export class TrainDisplay {
                 }
             });
         } catch (err) {
-            console.error('Error in updateAll:', err);
+            console.error('Error in _renderDynamicScreens:', err);
         } finally {
             this._isRendering = false;
         }
@@ -315,6 +375,8 @@ export class TrainDisplay {
             this._assignStandard(assignments);
         } else if (layout === LAYOUTS.voranzeiger) {
             this._assignVoranzeiger(assignments);
+        } else if (layout === LAYOUTS.zimvitrine32wagenstand) {
+            this._assignVitrine(assignments);
         } else {
             // Fallback: einfache Slot-basierte Zuweisung
             this._assignGeneric(assignments);
@@ -386,6 +448,18 @@ export class TrainDisplay {
                 journeys: groups[index] || [],
                 zugID: index + 1,
             });
+        }
+    }
+
+    _assignVitrine(assignments) {
+        const groups = this._getVisibleJourneyGroups();
+        for (const screen of this.currentLayout.screens) {
+            if (screen.type === 'vitrine32') {
+                assignments.set(screen.id, {
+                    journeyGroups: groups.slice(0, 3),
+                    zugID: 1,
+                });
+            }
         }
     }
 

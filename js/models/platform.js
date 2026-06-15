@@ -1,6 +1,7 @@
 export class Platform {
     constructor(data = {}) {
         this.length = data.length || 420;
+        this.currentLocation = data.currentLocation !== undefined ? data.currentLocation : 100;
         this.sections = data.sections || [
             // Standard-Sektoren, falls nichts übergeben wird
             { name: 'A', startMeter: 0, endMeter: 50, cubePosition: 25 },
