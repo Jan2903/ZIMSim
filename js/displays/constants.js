@@ -10,6 +10,12 @@ export const COLORS = {
     DARK_RED: 'DarkRed',
     DIM_GREY: 'DimGrey',
     LIME: 'lime',
+    RED: 'red',
+    GREEN: 'green',
+    YELLOW: 'yellow',
+    BLUE: 'blue',
+    CYAN: 'cyan',
+    MAGENTA: 'magenta',
 };
 
 /** Schrift-Hilfsfunktionen für "Open Sans Condensed" */

@@ -18,13 +18,20 @@ import {
  * @param {Array<[string, number]>} sectors - Array von [Name, StartMeter]-Paaren.
  * @param {number} scaleFactor - Pixel pro Meter.
  */
-export function drawSectors(ctx, sectors, scaleFactor) {
+export function drawSectors(ctx, sectors, scaleFactor, startX = FORMATION.THRESHOLD, boxed = false) {
     ctx.fillStyle = COLORS.WHITE;
     ctx.font = FONTS.regular(45);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     sectors.forEach(([name, position]) => {
-        const displayPos = FORMATION.THRESHOLD + 50 + (position * scaleFactor);
+        const displayPos = startX + 50 + (position * scaleFactor);
+        
+        if (boxed) {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(displayPos - 22, 0, 44, 48);
+        }
+        
         ctx.fillText(name, displayPos, 2);
     });
 }
@@ -44,6 +51,11 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
     const {
         fullScreen = false,
         activeFeature = 'wagennummern',
+        hideSectors = false,
+        hideDestinations = false,
+        featureAlpha = 1.0,
+        customStartX = FORMATION.THRESHOLD,
+        customUsableWidth = fullScreen ? FORMATION.USABLE_WIDTH_FULL : FORMATION.USABLE_WIDTH_COMPACT
     } = options;
 
     const y = FORMATION.COACH_Y_OFFSET;
@@ -82,28 +94,28 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
         drawText(ctx, 'Neues Gleis', 50, 50, FONTS.regular(67), COLORS.WHITE, 'left');
         drawText(ctx, 'New Track', 50, 125, FONTS.italic(67), COLORS.WHITE, 'left');
         drawText(ctx, gleiswechsel, 920, 80, FONTS.regular(128), COLORS.WHITE, 'right');
-        return;
+        return null;
     } else if (infoscreen || ausfall || (verkehrtAb !== "0")) {
         ctx.fillStyle = COLORS.WHITE;
         ctx.fillRect(3, 0, 960, 280);
-        return;
+        return null;
     } else if (ankunft) {
         if (fullScreen) {
             ctx.textBaseline = 'top';
             const firstGroup = allFormationGroups[0] || {};
             drawText(ctx, 'von / from ' + (firstGroup.destination || ''), 105, 20, FONTS.regular(67), COLORS.WHITE, 'left');
         }
-        return;
+        return null;
     }
 
     // --- Normale Wagenreihung ---
 
-    if (allFormationGroups.length === 0 || allFormationGroups.every(g => g.coaches.length === 0)) return;
+    if (allFormationGroups.length === 0 || allFormationGroups.every(g => g.coaches.length === 0)) return null;
 
-    const threshold = FORMATION.THRESHOLD;
+    const threshold = customStartX;
     const coachGap = fullScreen ? FORMATION.COACH_GAP_FULL : FORMATION.COACH_GAP_COMPACT;
     const groupGap = FORMATION.GROUP_GAP;
-    const usableDisplayLength = fullScreen ? FORMATION.USABLE_WIDTH_FULL : FORMATION.USABLE_WIDTH_COMPACT;
+    const usableDisplayLength = customUsableWidth;
     const platformLengthMeters = platform.length;
     let pixelPerMeter = usableDisplayLength / platformLengthMeters;
 
@@ -119,7 +131,7 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
         });
     });
 
-    if (allCoaches.length === 0) return;
+    if (allCoaches.length === 0) return null;
 
     // Optional: Skalierung verdoppeln wenn der Zug sehr kurz ist
     let totalLengthMeters = allCoaches.reduce((sum, c) => sum + c.coach.length, 0);
@@ -219,7 +231,7 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
         }
 
         // Ziel-Label anzeigen bei mehreren Zugteilen
-        if (isFirstInGroup && allFormationGroups.length > 1) {
+        if (isFirstInGroup && allFormationGroups.length > 1 && !hideDestinations) {
             if ((!previousCoach || (previousCoach.destination !== destination)) && (!previousCoach || (previousCoach.trainNumber !== trainNumber))) {
                 ctx.fillStyle = COLORS.WHITE;
                 ctx.font = FONTS.regular(58);
@@ -239,15 +251,20 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
         } else {
             drawFirstClassBar(ctx, drawableCoach, x, y, fullScreen);
             if (fullScreen) {
+                ctx.save();
+                ctx.globalAlpha = featureAlpha;
                 if (activeFeature === "klasse") drawClassLabel(ctx, drawableCoach, x, y);
                 if (activeFeature === "ausstattung") drawAmenityIcon(ctx, drawableCoach, x, y);
                 if (activeFeature === "wagennummern") drawWagonNumber(ctx, drawableCoach, x, y);
+                ctx.restore();
             }
         }
     }
 
     // Kompakte Features für Nebenmonitore
     if (!fullScreen) {
+        ctx.save();
+        ctx.globalAlpha = featureAlpha;
         const scaledCoaches = drawableCoaches.map(dc => ({
             ...dc.coachData,
             start: dc.x,
@@ -257,9 +274,17 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
         if (activeFeature === "klasse") drawCompactClassLabels(ctx, scaledCoaches, y);
         if (activeFeature === "ausstattung") drawCompactAmenityIcons(ctx, scaledCoaches, y);
         if (activeFeature === "wagennummern") drawCompactWagonNumbers(ctx, scaledCoaches, y);
+        ctx.restore();
     }
 
     // Sektoren zeichnen (A, B, C, ...)
-    const platformSectors = platform.sections.map(s => [s.name, s.startMeter]);
-    drawSectors(ctx, platformSectors, pixelPerMeter);
+    if (!hideSectors) {
+        const platformSectors = platform.sections.map(s => [s.name, s.startMeter]);
+        drawSectors(ctx, platformSectors, pixelPerMeter, threshold);
+    }
+    
+    return {
+        trainPixelStart,
+        trainPixelEnd
+    };
 }

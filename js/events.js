@@ -495,6 +495,11 @@ export function initEvents() {
         trainDisplay.updateAll();
     });
 
+    document.getElementById('platform_location')?.addEventListener('input', (e) => {
+        journeyStore.stationContext.platform.currentLocation = parseInt(e.target.value) || 0;
+        trainDisplay.updateAll();
+    });
+
     // --- NRW-Modus ---
     document.getElementById('nrw_mode_checkbox')?.addEventListener('change', (e) => {
         journeyStore.nrwMode = e.target.checked;
