@@ -5,21 +5,20 @@ import { drawPictograms } from './pictogramRenderer.js';
 
 /**
  * Zeichnet die Störungs-Overlays (Ausfall, Gleiswechsel, VerkehrtAb) für Nebenmonitore.
- * Liest direkt die camelCase-Properties vom Departure-Model (bereinigt gegenüber der alten Version).
+ * Liest direkt die camelCase-Properties vom Journey-Model.
  *
  * @param {CanvasRenderingContext2D} ctx
- * @param {import('../models/departure.js').Departure} departure - Die Abfahrtsdaten.
+ * @param {import('../models/journey.js').Journey} journey - Die Fahrt-Daten.
  * @param {import('./textUtils.js').RenderContext} renderCtx - Render-Kontext.
  */
-export function drawDisruptionOverlay(ctx, departure, renderCtx) {
-    const mainGroup = departure.groups[0] || {};
-    const abfahrt = mainGroup.scheduledTime || "";
-    const abfahrtA = mainGroup.expectedTime || "";
-    const ziel = mainGroup.destination || "";
-    const vias = mainGroup.vias || [];
-    const trainNr = departure.groups.map(g => g.trainNumber).filter(Boolean).join(' / ') || "";
+export function drawDisruptionOverlay(ctx, journey, renderCtx) {
+    const abfahrt = journey.scheduledTime || "";
+    const abfahrtA = journey.expectedTime || "";
+    const ziel = journey.destination || "";
+    const vias = journey.vias || [];
+    const trainNr = journey.effectiveDisplayName || "";
 
-    const { gleiswechsel = "0", ausfall = false, verkehrtAb = "0" } = departure;
+    const { gleiswechsel = "0", ausfall = false, verkehrtAb = "0" } = journey;
 
     ctx.textBaseline = 'middle';
 
@@ -63,31 +62,31 @@ export function drawDisruptionOverlay(ctx, departure, renderCtx) {
  * Zeichnet den kompletten Info-Bereich eines Monitors:
  * Piktogramme, Lauftext, Abfahrtszeit, Ziel, Via-Halte, Störungen.
  *
- * Bereinigung: Liest jetzt direkt die camelCase-Properties vom Departure-Model
- * (statt der alten Großbuchstaben-Aliase wie `Gleiswechsel`, `Ausfall` etc.).
+ * Liest direkt die camelCase-Properties vom Journey-Model.
+ * Bei gekoppelten Zügen (Flügelzüge) enthält das Array mehrere Journeys.
  *
  * @param {CanvasRenderingContext2D} ctx
- * @param {import('../models/departure.js').Departure} departure - Die Abfahrtsdaten.
+ * @param {import('../models/journey.js').Journey[]} journeys - Array von Fahrt-Daten (1+ bei Flügelzügen).
  * @param {number} width - Die verfügbare Breite des Screens.
  * @param {import('./textUtils.js').RenderContext} renderCtx - Render-Kontext.
  */
-export function drawTrainInfo(ctx, departure, width, renderCtx) {
-    const { fullScreen, screen, scrollManager, zugID, canvas } = renderCtx;
+export function drawTrainInfo(ctx, journeys, width, renderCtx) {
+    const { fullScreen, screen, scrollManager, zugID, canvas, cssScale = 1 } = renderCtx;
+
+    const primary = journeys[0];
 
     const {
-        groups = [],
         scrollText = "",
         gleiswechsel = "0",
         ausfall = false,
         verkehrtAb = "0",
         ankunft = false,
         infoscreen = false,
-    } = departure;
+    } = primary;
 
-    const mainGroup = groups[0] || {};
-    const abfahrt = mainGroup.scheduledTime || "";
-    const abfahrtA = mainGroup.expectedTime || "";
-    const nr = groups.map(g => g.trainNumber).filter(Boolean).join(' / ') || "";
+    const abfahrt = primary.scheduledTime || "";
+    const abfahrtA = primary.expectedTime || "";
+    const nr = journeys.map(j => j.effectiveDisplayName).filter(Boolean).join(' / ') || "";
 
     // Piktogramme zeichnen (gibt X-Position nach letztem Icon zurück)
     let x = drawPictograms(ctx, scrollText, nr, fullScreen, ankunft);
@@ -107,12 +106,12 @@ export function drawTrainInfo(ctx, departure, width, renderCtx) {
     // Scrollenden Info-Text erstellen/aktualisieren
     scrollManager.createOrUpdate(
         canvas, zugID, "info", infoToScroll,
-        `${canvas.offsetLeft + screen.x + x + 5}px`,
-        `${canvas.offsetTop + screen.y}px`,
-        `${screen.w - x - 5}px`,
-        '100px',
+        `${(screen.x + x + 5) * cssScale}px`,
+        `${screen.y * cssScale}px`,
+        `${(screen.w - x - 5) * cssScale}px`,
+        `${100 * cssScale}px`,
         COLORS.NAVY,
-        FONTS.regular(67)
+        `${Math.round(67 * cssScale)}px "Open Sans Condensed"`
     );
 
     // --- Störungsanzeige für Nebenmonitore ---
@@ -122,7 +121,7 @@ export function drawTrainInfo(ctx, departure, width, renderCtx) {
             ctx.fillRect(0, 0, INFO.SIDE_SCREEN_WIDTH, 800);
             drawWrappedText(ctx, scrollText, 50, 120, 900, 80, FONTS.regular(70), COLORS.NAVY, 'left');
         } else {
-            drawDisruptionOverlay(ctx, departure, renderCtx);
+            drawDisruptionOverlay(ctx, primary, renderCtx);
         }
         return;
     }
@@ -145,22 +144,22 @@ export function drawTrainInfo(ctx, departure, width, renderCtx) {
             renderCtx, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true);
 
         if (ankunft) {
-            const fromDestination = mainGroup.destination || "";
+            const fromDestination = primary.destination || "";
             drawText(ctx, "Bitte nicht einsteigen", 110, 450, FONTS.regular(180), COLORS.WHITE, 'left');
             drawText(ctx, "Please do not board", 105, 670, FONTS.italic(180), COLORS.WHITE, 'left');
             drawText(ctx, 'von / from ' + fromDestination, 112, 850, FONTS.regular(70), COLORS.WHITE, 'left');
         } else {
             let yPos = 420;
-            const destFont = groups.length > 1 ? FONTS.regular(140) : FONTS.regular(180);
-            const viaFont = groups.length > 1 ? FONTS.regular(60) : FONTS.regular(70);
-            const lineSpacing = groups.length > 1 ? 150 : 200;
+            const destFont = journeys.length > 1 ? FONTS.regular(140) : FONTS.regular(180);
+            const viaFont = journeys.length > 1 ? FONTS.regular(60) : FONTS.regular(70);
+            const lineSpacing = journeys.length > 1 ? 150 : 200;
 
-            for (const group of groups) {
-                drawText(ctx, group.destination, 100, yPos, destFont, COLORS.WHITE, 'left');
-                drawTextInRectangle(ctx, group.trainNumber, 1855, yPos, FONTS.regular(100), 'right', 100, 15,
+            for (const journey of journeys) {
+                drawText(ctx, journey.destination, 100, yPos, destFont, COLORS.WHITE, 'left');
+                drawTextInRectangle(ctx, journey.effectiveDisplayName, 1855, yPos, FONTS.regular(100), 'right', 100, 15,
                     renderCtx, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true);
 
-                const viaText = (group.vias || []).join(' - ');
+                const viaText = (journey.vias || []).join(' - ');
                 drawText(ctx, viaText, 112, yPos + lineSpacing * 0.5, viaFont, COLORS.WHITE, 'left');
                 yPos += lineSpacing;
             }
@@ -175,27 +174,27 @@ export function drawTrainInfo(ctx, departure, width, renderCtx) {
             renderCtx, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true);
 
         if (ankunft) {
-            const fromDestination = mainGroup.destination || "";
+            const fromDestination = primary.destination || "";
             drawText(ctx, 'von / from ' + fromDestination, 50, 360, FONTS.regular(67), COLORS.WHITE, 'left');
             scrollManager.createOrUpdate(canvas, zugID, 'ankunft', "Bitte nicht einsteigen",
-                `${canvas.offsetLeft + screen.x + 50}px`, `${canvas.offsetTop + screen.y + 420}px`,
-                `${screen.w - 50}px`, '120px', COLORS.WHITE, FONTS.regular(120));
+                `${(screen.x + 50) * cssScale}px`, `${(screen.y + 420) * cssScale}px`,
+                `${(screen.w - 50) * cssScale}px`, `${120 * cssScale}px`, COLORS.WHITE, `${Math.round(120 * cssScale)}px "Open Sans Condensed"`);
             scrollManager.createOrUpdate(canvas, zugID, 'arrival', "Please do not board",
-                `${canvas.offsetLeft + screen.x + 50}px`, `${canvas.offsetTop + screen.y + 560}px`,
-                `${screen.w - 50}px`, '120px', COLORS.WHITE, FONTS.italic(120));
+                `${(screen.x + 50) * cssScale}px`, `${(screen.y + 560) * cssScale}px`,
+                `${(screen.w - 50) * cssScale}px`, `${120 * cssScale}px`, COLORS.WHITE, `italic ${Math.round(120 * cssScale)}px "Open Sans Condensed"`);
         } else {
             let yPos = 360;
-            const destFont = groups.length > 1 ? FONTS.regular(90) : FONTS.regular(120);
+            const destFont = journeys.length > 1 ? FONTS.regular(90) : FONTS.regular(120);
             const viaFont = FONTS.regular(70);
-            const destLineHeight = groups.length > 1 ? 100 : 160;
+            const destLineHeight = journeys.length > 1 ? 100 : 160;
             const viaLineHeight = 80;
 
-            for (const group of groups) {
-                drawText(ctx, group.destination, 50, yPos, destFont, COLORS.WHITE, 'left');
-                drawTextInRectangle(ctx, group.trainNumber, 890, yPos, FONTS.regular(75), 'right', 75, 10,
+            for (const journey of journeys) {
+                drawText(ctx, journey.destination, 50, yPos, destFont, COLORS.WHITE, 'left');
+                drawTextInRectangle(ctx, journey.effectiveDisplayName, 890, yPos, FONTS.regular(75), 'right', 75, 10,
                     renderCtx, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true);
                 yPos += destLineHeight;
-                const viaText = (group.vias || []).join(' ');
+                const viaText = (journey.vias || []).join(' ');
                 yPos = drawWrappedText(ctx, viaText, 50, yPos, 880, viaLineHeight, viaFont, COLORS.WHITE, 'left');
                 yPos += 20;
             }

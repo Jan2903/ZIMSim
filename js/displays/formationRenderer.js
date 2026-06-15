@@ -30,17 +30,17 @@ export function drawSectors(ctx, sectors, scaleFactor) {
 }
 
 /**
- * Zeichnet die gesamte Wagenreihung für eine Abfahrt inkl. Wagen-Shapes,
+ * Zeichnet die gesamte Wagenreihung für eine oder mehrere Journeys inkl. Wagen-Shapes,
  * Sektoren, Richtungspfeile und Features (Nummern/Klasse/Ausstattung).
  *
  * @param {CanvasRenderingContext2D} ctx
- * @param {import('../models/departure.js').Departure} departure - Die Abfahrtsdaten.
- * @param {import('../models/trainData.js').TrainData} trainData - Gesamte Zugdaten (für Bahnsteig).
+ * @param {import('../models/journey.js').Journey[]} journeys - Array von Fahrt-Daten (1+ bei Flügelzügen).
+ * @param {import('../models/platform.js').Platform} platform - Das Bahnsteig-Objekt.
  * @param {object} options
  * @param {boolean} options.fullScreen - Hauptmonitor (true) oder Nebenmonitor (false).
  * @param {string} options.activeFeature - 'wagennummern', 'ausstattung' oder 'klasse'.
  */
-export function drawFormation(ctx, departure, trainData, options = {}) {
+export function drawFormation(ctx, journeys, platform, options = {}) {
     const {
         fullScreen = false,
         activeFeature = 'wagennummern',
@@ -48,17 +48,21 @@ export function drawFormation(ctx, departure, trainData, options = {}) {
 
     const y = FORMATION.COACH_Y_OFFSET;
 
+    const primary = journeys[0];
+
     const {
         direction = 1,
         startMeter = 0,
-        groups = [],
         skalieren = false,
         gleiswechsel = "0",
         ausfall = false,
         verkehrtAb = "0",
         ankunft = false,
         infoscreen = false,
-    } = departure;
+    } = primary;
+
+    // FormationGroups aus allen Journeys zusammenführen (für Flügelzüge)
+    const allFormationGroups = journeys.flatMap(j => j.formation ? j.formation.groups : []);
 
     // Trennlinie am linken Rand (nur Nebenmonitore)
     if (!fullScreen) {
@@ -86,7 +90,7 @@ export function drawFormation(ctx, departure, trainData, options = {}) {
     } else if (ankunft) {
         if (fullScreen) {
             ctx.textBaseline = 'top';
-            const firstGroup = groups[0] || {};
+            const firstGroup = allFormationGroups[0] || {};
             drawText(ctx, 'von / from ' + (firstGroup.destination || ''), 105, 20, FONTS.regular(67), COLORS.WHITE, 'left');
         }
         return;
@@ -94,18 +98,18 @@ export function drawFormation(ctx, departure, trainData, options = {}) {
 
     // --- Normale Wagenreihung ---
 
-    if (groups.length === 0 || groups.every(g => g.coaches.length === 0)) return;
+    if (allFormationGroups.length === 0 || allFormationGroups.every(g => g.coaches.length === 0)) return;
 
     const threshold = FORMATION.THRESHOLD;
     const coachGap = fullScreen ? FORMATION.COACH_GAP_FULL : FORMATION.COACH_GAP_COMPACT;
     const groupGap = FORMATION.GROUP_GAP;
     const usableDisplayLength = fullScreen ? FORMATION.USABLE_WIDTH_FULL : FORMATION.USABLE_WIDTH_COMPACT;
-    const platformLengthMeters = trainData.platform.length;
+    const platformLengthMeters = platform.length;
     let pixelPerMeter = usableDisplayLength / platformLengthMeters;
 
     // Alle Wagen aller Zugteile in eine flache Liste bringen
     const allCoaches = [];
-    groups.forEach(group => {
+    allFormationGroups.forEach(group => {
         group.coaches.forEach((coach, index) => {
             allCoaches.push({
                 coach, group,
@@ -215,7 +219,7 @@ export function drawFormation(ctx, departure, trainData, options = {}) {
         }
 
         // Ziel-Label anzeigen bei mehreren Zugteilen
-        if (isFirstInGroup && groups.length > 1) {
+        if (isFirstInGroup && allFormationGroups.length > 1) {
             if ((!previousCoach || (previousCoach.destination !== destination)) && (!previousCoach || (previousCoach.trainNumber !== trainNumber))) {
                 ctx.fillStyle = COLORS.WHITE;
                 ctx.font = FONTS.regular(58);
@@ -256,6 +260,6 @@ export function drawFormation(ctx, departure, trainData, options = {}) {
     }
 
     // Sektoren zeichnen (A, B, C, ...)
-    const platformSectors = trainData.platform.sections.map(s => [s.name, s.startMeter]);
+    const platformSectors = platform.sections.map(s => [s.name, s.startMeter]);
     drawSectors(ctx, platformSectors, pixelPerMeter);
 }
