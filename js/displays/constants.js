@@ -32,6 +32,7 @@ export const FORMATION = {
     COACH_HEIGHT: 80,           // Höhe der Wagen-Box
     PLATFORM_LINE_Y: 150,       // Y-Position der Bahnsteig-Linie
     THRESHOLD: 50,              // Linker Rand
+    ARROW_BUFFER: 50,           // Fixer Puffer pro Seite für Richtungspfeil
     COACH_GAP_FULL: 8,          // Abstand zwischen Wagen (Vollbild)
     COACH_GAP_COMPACT: 0,       // Abstand zwischen Wagen (Kompakt)
     GROUP_GAP: 28,              // Abstand zwischen Zugteilen

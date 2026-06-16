@@ -1,4 +1,4 @@
-import { COLORS, FONTS } from './constants.js';
+import { COLORS, FONTS, FORMATION } from './constants.js';
 import { drawFormation, drawSectors } from './formationRenderer.js';
 import { drawText } from './textUtils.js';
 import { drawDBLogo, drawAnalogClock } from './sharedRenderers.js';
@@ -137,19 +137,20 @@ export function drawVitrine32Wagenstand(ctx, journeyGroups, platform, width, hei
 
     const startX = 288; // 15% von 1920
     const usableWidth = 1344; // 70% von 1920 (85% - 15%)
-    const pixelPerMeter = usableWidth / (platform.length || 420);
+    const arrowBuffer = FORMATION.ARROW_BUFFER;
+    const meterAreaPixels = usableWidth - 2 * arrowBuffer;
+    const pixelPerMeter = meterAreaPixels / (platform.length || 420);
+    const meterOrigin = startX + arrowBuffer;
 
     // Draw platform sectors at the top
     ctx.save();
     ctx.translate(0, 160);
-    const platformSectors = platform.sections.map(s => [s.name, s.startMeter]);
-    // drawSectors fügt intern nochmal 50 Pixel hinzu für den Puffer, also: startX + 50
-    drawSectors(ctx, platformSectors, pixelPerMeter, startX, true);
+    drawSectors(ctx, platform.sections, pixelPerMeter, meterOrigin, true);
     ctx.restore();
 
     // Rote Standort-Linie
     const currentLocation = platform.currentLocation !== undefined ? platform.currentLocation : 100;
-    const redLineX = startX + 50 + (currentLocation * pixelPerMeter);
+    const redLineX = meterOrigin + (currentLocation * pixelPerMeter);
     
     ctx.strokeStyle = COLORS.RED;
     ctx.fillStyle = COLORS.RED;
