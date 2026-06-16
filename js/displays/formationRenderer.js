@@ -5,14 +5,19 @@ import { drawText } from './textUtils.js';
 import {
     drawLocomotive, drawStartWagon, drawEndWagon, drawMiddleWagon,
     drawCoupling, drawDirectionArrow, drawFirstClassBar,
-    drawClassLabel, drawCompactClassLabels,
-    drawAmenityIcon, drawCompactAmenityIcons,
-    drawWagonNumber, drawCompactWagonNumbers,
-    mapCoachType
+    drawFullscreenClassLabels, drawCompactClassLabels,
+    drawFullscreenAmenityIcons, drawCompactAmenityIcons,
+    drawFullscreenWagonNumbers, drawCompactWagonNumbers,
+    mapCoachType, getSafeCenter
 } from './coachRenderer.js';
 
 // Debug-Schalter: Meter-Markierungen am Bahnsteig anzeigen
-const DEBUG_METERS = true;
+export let DEBUG_METERS = false;
+
+export function toggleDebugMeters() {
+    DEBUG_METERS = !DEBUG_METERS;
+    return DEBUG_METERS;
+}
 
 /**
  * Zeichnet die Bahnsteig-Sektoren (A, B, C, ...) über der Wagenreihung.
@@ -292,38 +297,40 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
         // Wagen-Inhalt zeichnen (X für geschlossen, sonst Features)
         if (!coachData.open) {
             ctx.font = FONTS.bold(48);
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillStyle = COLORS.WHITE;
-            ctx.fillText("X", x + (drawableCoach.length / 2), y + 44);
+            const textWidth = ctx.measureText("X").width;
+            const safeX = getSafeCenter(x + (drawableCoach.length / 2), textWidth, x, x + drawableCoach.length);
+            
+            if (safeX !== null) {
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = COLORS.WHITE;
+                ctx.fillText("X", safeX, y + 44);
+            }
         } else {
             drawFirstClassBar(ctx, drawableCoach, x, y, fullScreen);
-            if (fullScreen) {
-                ctx.save();
-                ctx.globalAlpha = featureAlpha;
-                if (activeFeature === "klasse") drawClassLabel(ctx, drawableCoach, x, y);
-                if (activeFeature === "ausstattung") drawAmenityIcon(ctx, drawableCoach, x, y);
-                if (activeFeature === "wagennummern") drawWagonNumber(ctx, drawableCoach, x, y);
-                ctx.restore();
-            }
         }
     }
 
-    // Kompakte Features für Nebenmonitore
-    if (!fullScreen) {
-        ctx.save();
-        ctx.globalAlpha = featureAlpha;
-        const scaledCoaches = drawableCoaches.map(dc => ({
-            ...dc.coachData,
-            start: dc.x,
-            length: dc.pixelLength,
-            coach_type: mapCoachType(dc)
-        }));
+    // Layout-basierte Features für Vollbild und Kompakt
+    ctx.save();
+    ctx.globalAlpha = featureAlpha;
+    const scaledCoaches = drawableCoaches.map(dc => ({
+        ...dc.coachData,
+        start: dc.x,
+        length: dc.pixelLength,
+        coach_type: mapCoachType(dc)
+    }));
+    
+    if (fullScreen) {
+        if (activeFeature === "klasse") drawFullscreenClassLabels(ctx, scaledCoaches, y);
+        if (activeFeature === "ausstattung") drawFullscreenAmenityIcons(ctx, scaledCoaches, y);
+        if (activeFeature === "wagennummern") drawFullscreenWagonNumbers(ctx, scaledCoaches, y);
+    } else {
         if (activeFeature === "klasse") drawCompactClassLabels(ctx, scaledCoaches, y);
         if (activeFeature === "ausstattung") drawCompactAmenityIcons(ctx, scaledCoaches, y);
         if (activeFeature === "wagennummern") drawCompactWagonNumbers(ctx, scaledCoaches, y);
-        ctx.restore();
     }
+    ctx.restore();
 
     // Sektoren zeichnen (A, B, C, ...)
     if (!hideSectors) {
