@@ -177,7 +177,10 @@ export function drawCompactClassLabels(ctx, scaledCoaches, y) {
     };
 
     for (const coach of scaledCoaches) {
-        if (currentGroup.length > 0 && coach.coachClass === currentGroup[0].coachClass) {
+        if (coach.open === false) {
+            processGroup(currentGroup);
+            currentGroup = [];
+        } else if (currentGroup.length > 0 && coach.coachClass === currentGroup[0].coachClass) {
             currentGroup.push(coach);
         } else {
             processGroup(currentGroup);
@@ -251,7 +254,10 @@ export function drawCompactAmenityIcons(ctx, scaledCoaches, y) {
     };
 
     for (const coach of scaledCoaches) {
-        if (currentGroup.length > 0 && arraysAreEqual(coach.amenities, currentGroup[0].amenities)) {
+        if (coach.open === false) {
+            processGroup(currentGroup);
+            currentGroup = [];
+        } else if (currentGroup.length > 0 && arraysAreEqual(coach.amenities, currentGroup[0].amenities)) {
             currentGroup.push(coach);
         } else {
             processGroup(currentGroup);
@@ -308,8 +314,8 @@ export function drawCompactWagonNumbers(ctx, scaledCoaches, y) {
     };
 
     for (const coach of scaledCoaches) {
-        // Wagen muss eine Nummer haben, um zu einer Gruppe zu gehören
-        if (coach.coachNumber && coach.coachNumber !== '0' && coach.coachNumber !== '') {
+        // Wagen muss eine Nummer haben und geöffnet sein, um zu einer Gruppe zu gehören
+        if (coach.open !== false && coach.coachNumber && coach.coachNumber !== '0' && coach.coachNumber !== '') {
             currentGroup.push(coach);
         } else {
             // Ende einer Gruppe
