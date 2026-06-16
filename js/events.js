@@ -5,6 +5,7 @@ import { Journey } from './models/journey.js';
 import { Formation, FormationGroup } from './models/formation.js';
 import { Coach } from './models/coach.js';
 import { config } from './utils/config.js';
+import { toggleDebugMeters } from './displays/formationRenderer.js';
 
 // Aktuell aufgeklappte Journey-ID (oder null)
 let expandedJourneyId = null;
@@ -280,6 +281,16 @@ function saveFormation() {
 
 export function initEvents() {
     const journeyList = document.getElementById('journey_list');
+
+    // --- Tastenkombination (Alt + M) für Debug-Meter ---
+    document.addEventListener('keydown', (e) => {
+        // Alt + M
+        if (e.altKey && e.key.toLowerCase() === 'm') {
+            e.preventDefault();
+            toggleDebugMeters();
+            trainDisplay.updateAll();
+        }
+    });
 
     // --- Journey-Liste rendern ---
     renderJourneyList();
