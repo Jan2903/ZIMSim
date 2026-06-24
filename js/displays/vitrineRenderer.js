@@ -89,7 +89,8 @@ function drawVitrineRow(ctx, journeys, yOffset, width, platform, activeFeatureSt
         hideDestinations: true,
         customStartX: startX,
         customUsableWidth: usableWidth,
-        featureAlpha: featureAlpha
+        featureAlpha: featureAlpha,
+        isVitrine: true
     });
     ctx.restore();
 
