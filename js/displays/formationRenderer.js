@@ -26,12 +26,17 @@ export function toggleDebugMeters() {
  * @param {Array<[string, number]>} sectors - Array von [Name, StartMeter]-Paaren.
  * @param {number} scaleFactor - Pixel pro Meter.
  */
-export function drawSectors(ctx, sections, scaleFactor, startX = FORMATION.THRESHOLD, boxed = false) {
+export function drawSectors(ctx, sections, scaleFactor, startX = FORMATION.THRESHOLD, boxed = false, meterRange = null) {
     ctx.fillStyle = COLORS.WHITE;
     ctx.font = FONTS.regular(45);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     sections.forEach(s => {
+        if (meterRange) {
+            if (s.startMeter >= meterRange.end || s.endMeter <= meterRange.start) {
+                return; // Sektor liegt nicht im gezoomten sichtbaren Bereich
+            }
+        }
         const position = (s.cubePosition !== undefined && s.cubePosition !== null) ? s.cubePosition : (s.startMeter + s.endMeter) / 2;
         const displayPos = startX + (position * scaleFactor);
         
@@ -64,7 +69,8 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
         hideDestinations = false,
         featureAlpha = 1.0,
         customStartX = FORMATION.THRESHOLD,
-        customUsableWidth = fullScreen ? FORMATION.USABLE_WIDTH_FULL : FORMATION.USABLE_WIDTH_COMPACT
+        customUsableWidth = fullScreen ? FORMATION.USABLE_WIDTH_FULL : FORMATION.USABLE_WIDTH_COMPACT,
+        isVitrine = false
     } = options;
 
     const y = FORMATION.COACH_Y_OFFSET;
@@ -129,23 +135,47 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
     const arrowBuffer = FORMATION.ARROW_BUFFER;
     const meterAreaPixels = usableDisplayLength - 2 * arrowBuffer;
     let pixelPerMeter = meterAreaPixels / platformLengthMeters;
-    const meterOrigin = threshold + arrowBuffer; // Pixel-Position von Meter 0
+    let meterOrigin = threshold + arrowBuffer; // Pixel-Position von Meter 0
 
-    // Alle Wagen aller Zugteile in eine flache Liste bringen
-    const allCoaches = [];
+    // Vererbung von leeren Zielen/Zugnummern für den Kupplungs-Check
+    const groupProperties = new Map();
+    let lastValidDest = '';
+    let lastValidNum = '';
+    
     allFormationGroups.forEach(group => {
-        group.coaches.forEach((coach, index) => {
+        const dest = group.destination || lastValidDest;
+        const num = group.trainNumber || lastValidNum;
+        
+        groupProperties.set(group, { destination: dest, trainNumber: num });
+        
+        if (group.destination) lastValidDest = group.destination;
+        if (group.trainNumber) lastValidNum = group.trainNumber;
+    });
+
+    const uniqueTrainNumbers = new Set();
+    groupProperties.forEach(props => {
+        if (props.trainNumber) uniqueTrainNumbers.add(props.trainNumber);
+    });
+    const isMultipleTrains = uniqueTrainNumbers.size > 1;
+
+    // 1. Zuerst ALLE Wagen (inklusive Loks) in eine flache Liste bringen,
+    // um die physischen Meter-Positionen korrekt aufzusummieren.
+    let allCoaches = [];
+    allFormationGroups.forEach(group => {
+        const props = groupProperties.get(group);
+        group.coaches.forEach(coach => {
             allCoaches.push({
-                coach, group,
-                isFirstInGroup: index === 0,
-                isLastInGroup: index === group.coaches.length - 1
+                coach, 
+                group,
+                inheritedDestination: props.destination,
+                inheritedTrainNumber: props.trainNumber
             });
         });
     });
 
     if (allCoaches.length === 0) return null;
 
-    // Start- und End-Meter für jeden Wagen sicherstellen (als absolute Koordinaten)
+    // 2. Start- und End-Meter für jeden Wagen sicherstellen (als absolute Koordinaten)
     let currentMeter = startMeter;
     allCoaches.forEach(item => {
         if (item.coach.platformPosition && typeof item.coach.platformPosition.start === 'number') {
@@ -159,10 +189,74 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
         }
     });
 
-    // Optional: Skalierung verdoppeln wenn der Zug sehr kurz ist
+    // 3. Loks aus dem Neben-Display herausfiltern
+    if (!fullScreen) {
+        allCoaches = allCoaches.filter(c => c.coach.type !== 'locomotive');
+    }
+
+    if (allCoaches.length === 0) return null;
+
+    // 4. Group- und TrainUnit-Flags für die verbleibenden Wagen neu berechnen
+    let lastTrainUnitNum = null;
+    let currentGroupId = null;
+    let groupStartIndex = 0;
+
+    for (let i = 0; i < allCoaches.length; i++) {
+        const item = allCoaches[i];
+        
+        // Train Unit Erkennung
+        item.isFirstInTrainUnit = (lastTrainUnitNum !== item.inheritedTrainNumber);
+        lastTrainUnitNum = item.inheritedTrainNumber;
+
+        // Group Erkennung
+        if (item.group !== currentGroupId) {
+            currentGroupId = item.group;
+            groupStartIndex = i;
+        }
+        item.isFirstInGroup = (i === groupStartIndex);
+
+        // isLastInGroup: Stimmt, wenn der nächste Wagen zu einer anderen Gruppe gehört (oder Ende der Liste)
+        const nextItem = allCoaches[i + 1];
+        item.isLastInGroup = !nextItem || nextItem.group !== currentGroupId;
+    }
+
+    // Zoom-Logik
     let totalLengthMeters = allCoaches[allCoaches.length - 1].endM - allCoaches[0].startM;
-    if (skalieren && (totalLengthMeters * pixelPerMeter) < (usableDisplayLength / 2)) {
-        pixelPerMeter *= 2;
+    let trainStartM = allCoaches[0].startM;
+    let trainEndM = allCoaches[allCoaches.length - 1].endM;
+    let isZoomed = false;
+    let displayedMeterRange = null;
+
+    if (skalieren && !isVitrine) {
+        let avgWagonLengthPixels = (totalLengthMeters / allCoaches.length) * pixelPerMeter;
+        
+        // Threshold: Wenn Wagen zu klein dargestellt würden (z.B. < 60px) oder Zuglänge < 60% Display
+        if (avgWagonLengthPixels < 80 || (totalLengthMeters * pixelPerMeter) < (usableDisplayLength * 0.6)) {
+            // Max Zoom: Zug füllt den verfügbaren Platz maximal aus
+            let maxPixelPerMeter = meterAreaPixels / totalLengthMeters;
+            pixelPerMeter = maxPixelPerMeter;
+            
+            // Auto-Faktor in Journey speichern, damit UI nachzieht
+            if (primary) {
+                primary.scaleFactor = parseFloat((pixelPerMeter / (meterAreaPixels / platformLengthMeters)).toFixed(2));
+            }
+            isZoomed = true;
+        }
+    } else if (!skalieren && primary && primary.scaleFactor && primary.scaleFactor !== 1.0) {
+        // Manueller Skalierungsfaktor
+        pixelPerMeter *= primary.scaleFactor;
+        if (primary.scaleFactor > 1.05) {
+            isZoomed = true;
+        }
+    }
+
+    if (isZoomed) {
+        // Verschiebung: Zuganfang an den linken Display-Rand legen
+        meterOrigin = threshold + arrowBuffer - (trainStartM * pixelPerMeter);
+        
+        // Sektoren nur im Meter-Bereich des Zuges anzeigen,
+        // um zu verhindern, dass Sektoren "weit draußen" auf dem verbleibenden Strich gezeichnet werden.
+        displayedMeterRange = { start: trainStartM, end: trainEndM };
     }
 
     // Position und Pixellänge jedes Wagens berechnen
@@ -183,7 +277,10 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
         if (i > 0) {
             const prevItem = allCoaches[i - 1];
             if (prevItem.group !== group) {
-                if (prevItem.group.destination !== group.destination || prevItem.group.trainNumber !== group.trainNumber) {
+                const currentProps = groupProperties.get(group);
+                const prevProps = groupProperties.get(prevItem.group);
+
+                if (prevProps.destination !== currentProps.destination || prevProps.trainNumber !== currentProps.trainNumber) {
                     leftGap = groupGap;
                 } else {
                     leftGap = groupGap / 3;
@@ -196,7 +293,10 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
         if (i < allCoaches.length - 1) {
             const nextItem = allCoaches[i + 1];
             if (group !== nextItem.group) {
-                if (group.destination !== nextItem.group.destination || group.trainNumber !== nextItem.group.trainNumber) {
+                const currentProps = groupProperties.get(group);
+                const nextProps = groupProperties.get(nextItem.group);
+
+                if (currentProps.destination !== nextProps.destination || currentProps.trainNumber !== nextProps.trainNumber) {
                     rightGap = groupGap;
                 } else {
                     rightGap = groupGap / 3;
@@ -224,7 +324,10 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
         if (i < allCoaches.length - 1) {
             const nextItem = allCoaches[i + 1];
             if (group !== nextItem.group) {
-                if (group.destination !== nextItem.group.destination || group.trainNumber !== nextItem.group.trainNumber) {
+                const currentProps = groupProperties.get(group);
+                const nextProps = groupProperties.get(nextItem.group);
+
+                if (currentProps.destination !== nextProps.destination && currentProps.trainNumber !== nextProps.trainNumber) {
                     // Kupplung exakt auf die Berührungsgrenze zeichnen
                     drawCoupling(ctx, rawEndX, y);
                 }
@@ -283,14 +386,15 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
             drawMiddleWagon(ctx, drawableCoach, isStart, isEnd, x, y);
         }
 
-        // Ziel-Label anzeigen bei mehreren Zugteilen
-        if (isFirstInGroup && allFormationGroups.length > 1 && !hideDestinations) {
-            if ((!previousCoach || (previousCoach.destination !== destination)) && (!previousCoach || (previousCoach.trainNumber !== trainNumber))) {
+        // Ziel-Label anzeigen bei mehreren Zugeinheiten (Flügelzug)
+        if (fullScreen && isMultipleTrains && !hideDestinations && item.isFirstInTrainUnit) {
+            const displayDest = item.inheritedDestination || destination || '';
+            if (displayDest) {
                 ctx.fillStyle = COLORS.WHITE;
                 ctx.font = FONTS.regular(58);
                 ctx.textAlign = 'left';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(destination, x, y + 155);
+                ctx.fillText(displayDest, x, y + 155);
             }
         }
 
@@ -334,7 +438,7 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
 
     // Sektoren zeichnen (A, B, C, ...)
     if (!hideSectors) {
-        drawSectors(ctx, platform.sections, pixelPerMeter, meterOrigin);
+        drawSectors(ctx, platform.sections, pixelPerMeter, meterOrigin, false, displayedMeterRange);
     }
 
     // Debug: Meter-Markierungen am virtuellen Bahnsteig

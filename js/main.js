@@ -77,6 +77,49 @@ function createDemoData() {
 
     // Koppeln (Flügelzug)
     journeyStore.coupleJourneys(j1.id, j2.id);
+
+    // Dritter Zug: ICE L 2310 nach Westerland(Sylt) - Langes Gleis, kurzer Zug -> Gut für Zoom
+    journeyStore.addJourney({
+        category: 'ICE',
+        number: '2310',
+        destination: 'Westerland(Sylt)',
+        scheduledTime: '15:15',
+        expectedTime: '15:15',
+        vias: ['Hamburg Hbf', 'Husum', 'Niebüll'],
+        direction: 1,
+        startMeter: 19.975,
+        skalieren: true, // Auto-Zoom per Default an
+        formation: {
+            groups: [{
+                name: 'ICE1808',
+                transport: {
+                    category: 'ICE',
+                    destination: { name: 'Westerland(Sylt)' },
+                    number: 2310
+                },
+                coaches: [
+                    { type: 'locomotive', length: 19.975, coachClass: null, coachNumber: '', amenities: [], open: true },
+                    { type: 'middle_car', length: 18.317, coachClass: 2, coachNumber: '1', amenities: ['f'], open: true },
+                    { type: 'middle_car', length: 13.3, coachClass: 2, coachNumber: '2', amenities: [], open: true },
+                    { type: 'middle_car', length: 13.3, coachClass: 2, coachNumber: '3', amenities: [], open: true },
+                    { type: 'middle_car', length: 13.3, coachClass: 2, coachNumber: '4', amenities: [], open: true },
+                    { type: 'middle_car', length: 13.3, coachClass: 2, coachNumber: '5', amenities: [], open: true },
+                    { type: 'middle_car', length: 13.3, coachClass: 2, coachNumber: '6', amenities: [], open: true },
+                    { type: 'middle_car', length: 13.3, coachClass: 2, coachNumber: '7', amenities: [], open: true },
+                    { type: 'middle_car', length: 13.3, coachClass: 2, coachNumber: '8', amenities: [], open: true },
+                    { type: 'middle_car', length: 13.3, coachClass: 2, coachNumber: '9', amenities: ['r'], open: true },
+                    { type: 'middle_car', length: 13.3, coachClass: 2, coachNumber: '10', amenities: [], open: true },
+                    { type: 'middle_car', length: 13.3, coachClass: 2, coachNumber: '11', amenities: [], open: true },
+                    { type: 'middle_car', length: 13.3, coachClass: 2, coachNumber: '12', amenities: [], open: true },
+                    { type: 'middle_car', length: 13.3, coachClass: 2, coachNumber: '13', amenities: ['r'], open: true },
+                    { type: 'middle_car', length: 13.3, coachClass: null, coachNumber: '14', amenities: ['g'], open: true },
+                    { type: 'middle_car', length: 13.3, coachClass: 1, coachNumber: '15', amenities: ['r'], open: true },
+                    { type: 'middle_car', length: 13.3, coachClass: 1, coachNumber: '16', amenities: [], open: true },
+                    { type: 'control_car', length: 18.33, coachClass: 1, coachNumber: '17', amenities: [], open: true }
+                ]
+            }]
+        }
+    });
 }
 
 // Warten, bis das DOM vollständig geladen ist

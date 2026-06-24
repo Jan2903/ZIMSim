@@ -34,6 +34,7 @@ export class Journey {
         this.direction = data.direction !== undefined ? data.direction : 1; // 0=Links, 1=Rechts
         this.startMeter = data.startMeter || 0;
         this.skalieren = data.skalieren || false;
+        this.scaleFactor = data.scaleFactor !== undefined ? parseFloat(data.scaleFactor) : 1.0;
         this.formation = data.formation ? new Formation(data.formation) : new Formation();
 
         // === Störungen / Flags ===
