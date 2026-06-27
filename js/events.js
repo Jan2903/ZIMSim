@@ -9,9 +9,8 @@ import { toggleDebugMeters } from './displays/formationRenderer.js';
 
 // Aktuell aufgeklappte Journey-ID (oder null)
 let expandedJourneyId = null;
-// Aktuell im Formation-Editor bearbeitete Journey-ID + Group-Index
-let editingFormationJourneyId = null;
-let editingFormationGroupIndex = 0;
+// IDs der aktuell aufgeklappten FormationGroups (Format: "journeyId_groupIndex")
+const expandedGroups = new Set();
 
 // ==========================================
 // Journey-Liste rendern
@@ -145,14 +144,43 @@ function renderJourneyDetails(journey) {
                     </div>
                 </div>
             </div>
-            <div class="details-actions">
-                <button class="btn-secondary edit-formation-btn" data-journey-id="${journey.id}">✏️ Wagenreihung</button>
+            
+            <div class="detail-section" style="margin-top: 15px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h4>Wagenreihung</h4>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn-secondary formation_import_btn" data-journey-id="${journey.id}">📥 Import</button>
+                        <button class="btn-secondary formation_export_btn" data-journey-id="${journey.id}">📤 Export</button>
+                        <button class="btn-secondary formation_reverse_btn" data-journey-id="${journey.id}" title="Dreht die Reihenfolge aller Gruppen und Wagen um">🔁 Komplett drehen</button>
+                        <button class="btn-secondary formation_add_group_btn" data-journey-id="${journey.id}">+ Neue Gruppe</button>
+                    </div>
+                </div>
+                <div class="inline-formation-editor" data-journey-id="${journey.id}">
+                    ${renderInlineFormation(journey)}
+                </div>
+            </div>
+
+            <div class="details-actions" style="margin-top: 20px;">
                 <button class="btn-secondary couple-btn" data-journey-id="${journey.id}">${journey.couplingGroupId ? '🔗 Entkoppeln' : '🔗 Koppeln'}</button>
                 <button class="btn-danger delete-journey-btn" data-journey-id="${journey.id}">🗑️ Löschen</button>
             </div>
             ${journey.stops.length > 0 ? renderStopsList(journey) : ''}
         </div>
     `;
+}
+
+function renderInlineFormation(journey) {
+    if (journey.formation.groups.length === 0) {
+        journey.formation.groups.push(new FormationGroup({
+            transport: { category: journey.category, destination: { name: journey.destination }, number: journey.number }
+        }));
+    }
+    
+    let html = '';
+    journey.formation.groups.forEach((group, gIndex) => {
+        html += renderFormationGroup(group, gIndex, journey.id);
+    });
+    return html;
 }
 
 /**
@@ -211,29 +239,36 @@ function showFormationEditor(journeyId) {
     modal.classList.remove('hidden');
 }
 
-function renderFormationGroup(group, gIndex) {
+function renderFormationGroup(group, gIndex, journeyId) {
     let coachesHtml = '';
     group.coaches.forEach((coach, i) => {
         coachesHtml += renderCoachRow(coach, i, gIndex);
     });
 
+    const groupId = `${journeyId}_${gIndex}`;
+    const isExpanded = expandedGroups.has(groupId);
+    const displayStyle = isExpanded ? 'block' : 'none';
+    const chevron = isExpanded ? '▼' : '▶';
+
     return `
-        <div class="formation-group-editor" data-group-index="${gIndex}" style="border: 1px solid #444; margin-bottom: 15px; padding: 10px; border-radius: 5px; background: rgba(0,0,0,0.2);" draggable="true">
-            <div class="group-editor-header" style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px; cursor: move;">
-                <span class="group-drag-handle" title="Gruppe verschieben" style="font-size: 20px;">⠿</span>
+        <div class="formation-group-editor" data-group-index="${gIndex}" style="border: 1px solid #444; margin-bottom: 10px; border-radius: 5px; background: rgba(0,0,0,0.2);" draggable="true">
+            <div class="group-editor-header formation-accordion-toggle" data-group-id="${groupId}" style="display: flex; gap: 10px; align-items: center; padding: 10px; cursor: pointer; border-bottom: ${isExpanded ? '1px solid #444' : 'none'};">
+                <span class="group-drag-handle" title="Gruppe verschieben" style="font-size: 20px; cursor: move;">⠿</span>
+                <span style="width: 20px; text-align: center; font-weight: bold;">${chevron}</span>
                 <strong>Zugteil</strong>
-                <input type="text" class="group-prop" data-prop="category" placeholder="ICE" value="${group.transport.category || ''}" title="Kategorie (z.B. ICE)" style="width:50px">
-                <input type="text" class="group-prop" data-prop="number" placeholder="2310" value="${group.transport.number || ''}" title="Zugnummer" style="width:70px">
-                <input type="text" class="group-prop" data-prop="destination" placeholder="Ziel" value="${group.transport.destination?.name || ''}" title="Ziel" style="flex-grow:1">
-                <input type="text" class="group-prop" data-prop="name" placeholder="Name/Triebzug" value="${group.name || ''}" title="Name/Triebzug" style="width:120px">
+                <input type="text" class="f-prop group-prop" data-prop="category" placeholder="ICE" value="${group.transport.category || ''}" title="Kategorie (z.B. ICE)" style="width:50px">
+                <input type="text" class="f-prop group-prop" data-prop="number" placeholder="2310" value="${group.transport.number || ''}" title="Zugnummer" style="width:70px">
+                <input type="text" class="f-prop group-prop" data-prop="destination" placeholder="Ziel" value="${group.transport.destination?.name || ''}" title="Ziel" style="flex-grow:1">
+                <input type="text" class="f-prop group-prop" data-prop="name" placeholder="Name/Triebzug" value="${group.name || ''}" title="Name/Triebzug" style="width:120px">
                 
                 <button class="btn-icon move-group-up" title="Nach oben">⬆️</button>
                 <button class="btn-icon move-group-down" title="Nach unten">⬇️</button>
+                <button class="btn-icon reverse-group-btn" title="Reihenfolge der Wagen in dieser Gruppe umkehren">🔁</button>
                 <button class="btn-icon export-group-btn" title="Gruppe exportieren">📤</button>
                 <button class="btn-secondary add-coach-btn" data-group-index="${gIndex}">+ Wagen</button>
                 <button class="btn-danger delete-group-btn" title="Gruppe löschen">🗑️</button>
             </div>
-            <div class="coach-editor-list" data-group-index="${gIndex}" style="min-height: 50px;">
+            <div class="coach-editor-list" data-group-index="${gIndex}" style="min-height: 20px; padding: 10px; display: ${displayStyle};">
                 ${coachesHtml}
             </div>
         </div>
@@ -244,7 +279,7 @@ function renderCoachRow(coach, index, gIndex = 0) {
     const amenityTypes = ['f', 'r', 'g', 'm'];
     const amenityLabels = { f: '🚲', r: '♿', g: '🍽️', m: '📦' };
     const amenityChecks = amenityTypes.map(a =>
-        `<label title="${a}"><input type="checkbox" class="amenity-check" data-amenity="${a}" ${coach.hasAmenity(a) ? 'checked' : ''}> ${amenityLabels[a]}</label>`
+        `<label title="${a}"><input type="checkbox" class="f-prop amenity-check" data-amenity="${a}" ${coach.hasAmenity(a) ? 'checked' : ''}> ${amenityLabels[a]}</label>`
     ).join('');
 
     return `
@@ -252,107 +287,101 @@ function renderCoachRow(coach, index, gIndex = 0) {
             <span class="drag-handle" title="Drag & Drop" style="cursor: move;">⠿</span>
             <button class="btn-icon move-coach-up" title="Nach oben">⬆️</button>
             <button class="btn-icon move-coach-down" title="Nach unten">⬇️</button>
-            <select data-prop="type">
+            <select class="f-prop" data-prop="type">
                 <option value="locomotive" ${coach.type === 'locomotive' ? 'selected' : ''}>Lok</option>
                 <option value="control_car" ${coach.type === 'control_car' ? 'selected' : ''}>Steuerwagen</option>
                 <option value="middle_car" ${coach.type === 'middle_car' ? 'selected' : ''}>Mittelwagen</option>
             </select>
-            <input type="number" data-prop="length" value="${coach.length}" style="width:60px" title="Länge">
-            <select data-prop="coachClass" style="width:55px">
+            <input type="number" class="f-prop" data-prop="length" value="${coach.length}" style="width:60px" title="Länge">
+            <select class="f-prop" data-prop="coachClass" style="width:55px">
                 <option value="1" ${coach.coachClass === 1 ? 'selected' : ''}>1.</option>
                 <option value="2" ${coach.coachClass === 2 ? 'selected' : ''}>2.</option>
                 <option value="null" ${coach.coachClass === null ? 'selected' : ''}>—</option>
             </select>
-            <input type="text" data-prop="coachNumber" value="${coach.coachNumber}" style="width:50px" placeholder="Nr" title="Wagennummer">
+            <input type="text" class="f-prop" data-prop="coachNumber" value="${coach.coachNumber}" style="width:50px" placeholder="Nr" title="Wagennummer">
             <div class="amenity-checks">${amenityChecks}</div>
-            <label title="Offen"><input type="checkbox" data-prop="open" ${coach.open ? 'checked' : ''}> ✓</label>
+            <label title="Offen"><input type="checkbox" class="f-prop" data-prop="open" ${coach.open ? 'checked' : ''}> ✓</label>
             <button class="btn-icon remove-coach-btn" title="Wagen entfernen">✕</button>
         </div>
     `;
 }
 
-function saveFormation() {
-    const journey = journeyStore.getJourney(editingFormationJourneyId);
+function saveInlineFormation(journeyId) {
+    const journey = journeyStore.getJourney(journeyId);
     if (!journey) return;
 
-    const groupEditors = document.querySelectorAll('#formation_editor_body .formation-group-editor');
+    const details = document.querySelector(`.journey-details[data-journey-id="${journeyId}"]`);
+    if (!details) return;
+
+    const groupEditors = details.querySelectorAll('.formation-group-editor');
     const newGroups = [];
     let hasSplitAny = false;
 
-    groupEditors.forEach(groupEditor => {
-        const category = groupEditor.querySelector('[data-prop="category"]').value;
-        const numberStr = groupEditor.querySelector('[data-prop="number"]').value;
-        const number = numberStr ? parseInt(numberStr) : 0;
-        const destination = groupEditor.querySelector('[data-prop="destination"]').value;
-        const name = groupEditor.querySelector('[data-prop="name"]').value;
-
+    groupEditors.forEach((groupEl) => {
         const groupData = {
-            name: name,
             transport: {
-                category: category,
-                number: number,
-                destination: { name: destination }
+                category: groupEl.querySelector('.group-prop[data-prop="category"]')?.value || '',
+                number: parseInt(groupEl.querySelector('.group-prop[data-prop="number"]')?.value) || 0,
+                destination: { name: groupEl.querySelector('.group-prop[data-prop="destination"]')?.value || '' }
             },
+            name: groupEl.querySelector('.group-prop[data-prop="name"]')?.value || '',
             coaches: []
         };
 
-        const rows = groupEditor.querySelectorAll('.coach-editor-row');
-        let currentSubGroupCoaches = [];
-        let currentSubGroupIsLoco = null;
-        let wasSplit = false;
-
-        rows.forEach(row => {
-            const type = row.querySelector('[data-prop="type"]').value;
-            const length = parseFloat(row.querySelector('[data-prop="length"]').value) || 25;
-            let coachClass = row.querySelector('[data-prop="coachClass"]').value;
+        const coachRows = groupEl.querySelectorAll('.coach-editor-row');
+        coachRows.forEach(row => {
+            const type = row.querySelector('[data-prop="type"]')?.value || 'middle_car';
+            const length = parseFloat(row.querySelector('[data-prop="length"]')?.value) || 25;
+            let coachClass = row.querySelector('[data-prop="coachClass"]')?.value;
             coachClass = coachClass === 'null' ? null : parseInt(coachClass);
-            const coachNumber = row.querySelector('[data-prop="coachNumber"]').value;
-            const open = row.querySelector('[data-prop="open"]').checked;
+            const coachNumber = row.querySelector('[data-prop="coachNumber"]')?.value || '';
+            const open = row.querySelector('[data-prop="open"]')?.checked || false;
 
             const amenities = [];
-            row.querySelectorAll('.amenity-check:checked').forEach(cb => {
-                amenities.push(cb.dataset.amenity);
+            row.querySelectorAll('.amenity-check').forEach(chk => {
+                if (chk.checked) amenities.push(chk.dataset.amenity);
             });
 
-            const coachData = new Coach({ type, length, coachClass, coachNumber, amenities, open });
-            const isLoco = (type === 'locomotive');
-
-            if (currentSubGroupIsLoco === null) {
-                currentSubGroupIsLoco = isLoco;
-            }
-
-            if (isLoco !== currentSubGroupIsLoco) {
-                // Typ hat gewechselt -> abspalten in neue Gruppe
-                const newGroupData = JSON.parse(JSON.stringify(groupData)); // Deep Clone Transport-Daten
-                newGroupData.coaches = currentSubGroupCoaches;
-                newGroups.push(new FormationGroup(newGroupData));
-                
-                currentSubGroupCoaches = [];
-                currentSubGroupIsLoco = isLoco;
-                wasSplit = true;
-            }
-
-            currentSubGroupCoaches.push(coachData);
+            groupData.coaches.push(new Coach({
+                type, length, coachClass, coachNumber, open, amenities
+            }));
         });
 
-        if (currentSubGroupCoaches.length > 0) {
-            const newGroupData = JSON.parse(JSON.stringify(groupData));
-            newGroupData.coaches = currentSubGroupCoaches;
-            newGroups.push(new FormationGroup(newGroupData));
-        }
-
-        if (wasSplit) {
+        // Automatische Auslagerung von Loks, wenn gemischt
+        const hasLoco = groupData.coaches.some(c => c.type === 'locomotive');
+        const hasOthers = groupData.coaches.some(c => c.type !== 'locomotive');
+        
+        if (hasLoco && hasOthers) {
             hasSplitAny = true;
+            let currentSplitGroup = { ...groupData, coaches: [] };
+
+            groupData.coaches.forEach(c => {
+                if (c.type === 'locomotive') {
+                    if (currentSplitGroup.coaches.length > 0) {
+                        newGroups.push(new FormationGroup(currentSplitGroup));
+                        currentSplitGroup = { ...groupData, coaches: [] };
+                    }
+                    newGroups.push(new FormationGroup({ ...groupData, coaches: [c] }));
+                } else {
+                    currentSplitGroup.coaches.push(c);
+                }
+            });
+            if (currentSplitGroup.coaches.length > 0) {
+                newGroups.push(new FormationGroup(currentSplitGroup));
+            }
+        } else {
+            newGroups.push(new FormationGroup(groupData));
         }
     });
 
-    if (hasSplitAny) {
-        alert("Hinweis: Eine oder mehrere Loks wurden automatisch in eigene Zugteile separiert.");
-    }
-
     journey.formation.groups = newGroups;
     trainDisplay.updateAll();
-    document.getElementById('formation_modal').classList.add('hidden');
+}
+
+function toggleOrientation(orientation) {
+    if (orientation === 'FORWARDS') return 'BACKWARDS';
+    if (orientation === 'BACKWARDS') return 'FORWARDS';
+    return orientation;
 }
 
 // ==========================================
@@ -415,10 +444,184 @@ export function initEvents() {
             return;
         }
 
-        // Formation bearbeiten
-        if (target.classList.contains('edit-formation-btn')) {
-            showFormationEditor(journeyId);
-            return;
+        // Accordion Toggle für Wagenreihung
+        const header = e.target.closest('.formation-accordion-toggle');
+        if (header) {
+            const isInputOrButton = e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON' || e.target.tagName === 'SELECT' || e.target.closest('.btn-icon');
+            if (!isInputOrButton) {
+                const groupId = header.dataset.groupId;
+                if (expandedGroups.has(groupId)) {
+                    expandedGroups.delete(groupId);
+                } else {
+                    expandedGroups.add(groupId);
+                }
+                renderJourneyList();
+                return;
+            }
+        }
+
+        // --- Inline Formation Editor Actions ---
+        const details = e.target.closest('.journey-details');
+        if (details) {
+            const jId = details.dataset.journeyId;
+            
+            // Neue Gruppe hinzufügen
+            if (e.target.closest('.formation_add_group_btn')) {
+                const body = details.querySelector('.inline-formation-editor');
+                const gIndex = body.querySelectorAll('.formation-group-editor').length;
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = renderFormationGroup(new FormationGroup(), gIndex, jId);
+                body.appendChild(tempDiv.firstElementChild);
+                expandedGroups.add(`${jId}_${gIndex}`);
+                saveInlineFormation(jId);
+                return;
+            }
+
+            // Ganzen Zug drehen
+            if (e.target.closest('.formation_reverse_btn')) {
+                saveInlineFormation(jId); // Vorher speichern
+                const journey = journeyStore.getJourney(jId);
+                if (journey && journey.formation.groups) {
+                    journey.formation.groups.reverse();
+                    journey.formation.groups.forEach(group => {
+                        if (group.coaches) {
+                            group.coaches.reverse();
+                            group.coaches.forEach(c => {
+                                c.orientation = toggleOrientation(c.orientation);
+                            });
+                        }
+                    });
+                    renderJourneyList();
+                    trainDisplay.updateAll();
+                }
+                return;
+            }
+
+            // Einzelne Gruppe drehen
+            if (e.target.closest('.reverse-group-btn')) {
+                saveInlineFormation(jId); // Vorher speichern
+                const journey = journeyStore.getJourney(jId);
+                const groupEditor = e.target.closest('.formation-group-editor');
+                const gIndex = Array.from(groupEditor.parentNode.children).indexOf(groupEditor);
+                if (journey && journey.formation.groups[gIndex]) {
+                    const group = journey.formation.groups[gIndex];
+                    if (group.coaches) {
+                        group.coaches.reverse();
+                        group.coaches.forEach(c => {
+                            c.orientation = toggleOrientation(c.orientation);
+                        });
+                    }
+                    renderJourneyList();
+                    trainDisplay.updateAll();
+                }
+                return;
+            }
+
+            // Wagen löschen
+            if (e.target.closest('.remove-coach-btn')) {
+                e.target.closest('.coach-editor-row')?.remove();
+                saveInlineFormation(jId);
+                return;
+            }
+
+            // Gruppe löschen
+            if (e.target.closest('.delete-group-btn')) {
+                e.target.closest('.formation-group-editor')?.remove();
+                saveInlineFormation(jId);
+                return;
+            }
+
+            // Wagen hinzufügen
+            if (e.target.closest('.add-coach-btn')) {
+                const btn = e.target.closest('.add-coach-btn');
+                const groupEditor = btn.closest('.formation-group-editor');
+                const list = groupEditor.querySelector('.coach-editor-list');
+                const gIndex = groupEditor.dataset.groupIndex;
+                const cIndex = list.querySelectorAll('.coach-editor-row').length;
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = renderCoachRow(new Coach(), cIndex, gIndex);
+                list.appendChild(tempDiv.firstElementChild);
+                expandedGroups.add(`${jId}_${gIndex}`); // Sicherstellen, dass aufgeklappt ist
+                saveInlineFormation(jId);
+                renderJourneyList(); // Render, damit es aufklappt
+                return;
+            }
+
+            // Coach verschieben (Up)
+            if (e.target.closest('.move-coach-up')) {
+                const row = e.target.closest('.coach-editor-row');
+                if (row.previousElementSibling) {
+                    row.parentNode.insertBefore(row, row.previousElementSibling);
+                    saveInlineFormation(jId);
+                }
+                return;
+            }
+
+            // Coach verschieben (Down)
+            if (e.target.closest('.move-coach-down')) {
+                const row = e.target.closest('.coach-editor-row');
+                if (row.nextElementSibling) {
+                    row.parentNode.insertBefore(row.nextElementSibling, row);
+                    saveInlineFormation(jId);
+                }
+                return;
+            }
+
+            // Gruppe verschieben (Up)
+            if (e.target.closest('.move-group-up')) {
+                const groupEditor = e.target.closest('.formation-group-editor');
+                if (groupEditor.previousElementSibling) {
+                    groupEditor.parentNode.insertBefore(groupEditor, groupEditor.previousElementSibling);
+                    saveInlineFormation(jId);
+                }
+                return;
+            }
+
+            // Gruppe verschieben (Down)
+            if (e.target.closest('.move-group-down')) {
+                const groupEditor = e.target.closest('.formation-group-editor');
+                if (groupEditor.nextElementSibling) {
+                    groupEditor.parentNode.insertBefore(groupEditor.nextElementSibling, groupEditor);
+                    saveInlineFormation(jId);
+                }
+                return;
+            }
+
+            // Export Gruppe
+            if (e.target.closest('.export-group-btn')) {
+                const groupEditor = e.target.closest('.formation-group-editor');
+                saveInlineFormation(jId);
+                const journey = journeyStore.getJourney(jId);
+                const gIndex = Array.from(groupEditor.parentNode.children).indexOf(groupEditor);
+                const group = journey.formation.groups[gIndex];
+                if (group) {
+                    const blob = new Blob([JSON.stringify(group, null, 2)], { type: 'application/json' });
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = `group_${group.trainNumber || 'export'}.json`;
+                    a.click();
+                }
+                return;
+            }
+
+            // Export Ganze Formation
+            if (e.target.closest('.formation_export_btn')) {
+                saveInlineFormation(jId);
+                const journey = journeyStore.getJourney(jId);
+                const blob = new Blob([JSON.stringify(journey.formation.groups, null, 2)], { type: 'application/json' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `formation_${journey.effectiveDisplayName.replace(/\s/g, '_')}.json`;
+                a.click();
+                return;
+            }
+
+            // Import Ganze Formation
+            if (e.target.closest('.formation_import_btn')) {
+                editingFormationJourneyId = jId; // Zustand für FileReader
+                document.getElementById('formation-file-input')?.click();
+                return;
+            }
         }
 
         // Koppeln/Entkoppeln
@@ -449,7 +652,7 @@ export function initEvents() {
         const journey = journeyStore.getJourney(journeyId);
         if (!journey) return;
 
-        // Text/Number-Felder
+        // Text/Number-Felder in Journey-Details
         if (e.target.classList.contains('jfield')) {
             const field = e.target.dataset.field;
             if (field.startsWith('via')) {
@@ -468,6 +671,11 @@ export function initEvents() {
             }
             trainDisplay.updateAll();
         }
+
+        // Auto-Save für Formation-Eingaben
+        if (e.target.classList.contains('f-prop')) {
+            saveInlineFormation(journeyId);
+        }
     });
 
     journeyList?.addEventListener('change', (e) => {
@@ -484,115 +692,25 @@ export function initEvents() {
             renderJourneyList(); // Badges aktualisieren
         }
 
+        // Auto-Save für Checkboxen der Formation (z.B. Offen, Amenities)
+        if (e.target.classList.contains('f-prop') && e.target.type === 'checkbox') {
+            saveInlineFormation(journeyId);
+        }
+
         // Radio-Buttons (Richtung)
         if (e.target.classList.contains('jradio')) {
             journey[e.target.dataset.field] = parseInt(e.target.value);
             trainDisplay.updateAll();
         }
-    });
 
-    // --- Formation Editor Events ---
-    document.getElementById('formation_save_btn')?.addEventListener('click', saveFormation);
-
-    document.getElementById('formation_add_group_btn')?.addEventListener('click', () => {
-        const body = document.getElementById('formation_editor_body');
-        const gIndex = body.children.length;
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = renderFormationGroup(new FormationGroup(), gIndex);
-        body.appendChild(tempDiv.firstElementChild);
-    });
-
-    document.getElementById('formation_editor_body')?.addEventListener('click', (e) => {
-        const target = e.target;
-        
-        if (target.closest('.remove-coach-btn')) {
-            target.closest('.coach-editor-row')?.remove();
-            return;
-        }
-
-        if (target.closest('.delete-group-btn')) {
-            target.closest('.formation-group-editor')?.remove();
-            return;
-        }
-
-        if (target.closest('.add-coach-btn')) {
-            const btn = target.closest('.add-coach-btn');
-            const groupEditor = btn.closest('.formation-group-editor');
-            const list = groupEditor.querySelector('.coach-editor-list');
-            const gIndex = groupEditor.dataset.groupIndex;
-            const cIndex = list.children.length;
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = renderCoachRow(new Coach(), cIndex, gIndex);
-            list.appendChild(tempDiv.firstElementChild);
-            return;
-        }
-
-        if (target.closest('.move-coach-up')) {
-            const row = target.closest('.coach-editor-row');
-            if (row.previousElementSibling) {
-                row.parentNode.insertBefore(row, row.previousElementSibling);
-            }
-            return;
-        }
-
-        if (target.closest('.move-coach-down')) {
-            const row = target.closest('.coach-editor-row');
-            if (row.nextElementSibling) {
-                row.parentNode.insertBefore(row.nextElementSibling, row);
-            }
-            return;
-        }
-
-        if (target.closest('.move-group-up')) {
-            const groupEditor = target.closest('.formation-group-editor');
-            if (groupEditor.previousElementSibling) {
-                groupEditor.parentNode.insertBefore(groupEditor, groupEditor.previousElementSibling);
-            }
-            return;
-        }
-
-        if (target.closest('.move-group-down')) {
-            const groupEditor = target.closest('.formation-group-editor');
-            if (groupEditor.nextElementSibling) {
-                groupEditor.parentNode.insertBefore(groupEditor.nextElementSibling, groupEditor);
-            }
-            return;
-        }
-
-        if (target.closest('.export-group-btn')) {
-            const groupEditor = target.closest('.formation-group-editor');
-            // Save temporarily to get the latest DOM state
-            saveFormation(); 
-            const journey = journeyStore.getJourney(editingFormationJourneyId);
-            const gIndex = Array.from(groupEditor.parentNode.children).indexOf(groupEditor);
-            const group = journey.formation.groups[gIndex];
-            if (!group) return;
-            const blob = new Blob([JSON.stringify(group.coaches, null, 2)], { type: 'application/json' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = `formation_group_${group.trainNumber || gIndex}.json`;
-            a.click();
-            // Modal wieder öffnen, da saveFormation es schließt
-            showFormationEditor(editingFormationJourneyId);
-            return;
+        // Auto-Save für Selects (Dropdowns) der Formation (Lok/Mittelwagen, Klasse)
+        if (e.target.classList.contains('f-prop') && e.target.tagName === 'SELECT') {
+            saveInlineFormation(journeyId);
         }
     });
 
-    document.getElementById('formation_export_btn')?.addEventListener('click', () => {
-        saveFormation();
-        const journey = journeyStore.getJourney(editingFormationJourneyId);
-        if (!journey) return;
-        const blob = new Blob([JSON.stringify(journey.formation.groups, null, 2)], { type: 'application/json' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `formation_${journey.effectiveDisplayName.replace(/\s/g, '_')}.json`;
-        a.click();
-        showFormationEditor(editingFormationJourneyId);
-    });
-
-    document.getElementById('formation_import_btn')?.addEventListener('click', () => {
-        document.getElementById('formation-file-input')?.click();
-    });
+    // Die alten Modal-Event-Listener für Wagenreihung wurden entfernt, 
+    // da alles per Delegation in der Journey-Liste abgehandelt wird.
 
     document.getElementById('formation-file-input')?.addEventListener('change', (e) => {
         const file = e.target.files?.[0];
@@ -779,24 +897,18 @@ export function initEvents() {
     // --- Drag & Drop im Formation-Editor ---
     let dragSrcElement = null;
     let dragType = null; // 'coach' or 'group'
-    const formationBody = document.getElementById('formation_editor_body');
+    let dragJourneyId = null;
 
-    formationBody?.addEventListener('dragstart', (e) => {
+    journeyList?.addEventListener('dragstart', (e) => {
         const coachRow = e.target.closest('.coach-editor-row');
         const groupEditor = e.target.closest('.formation-group-editor');
 
-        // Check which one is being dragged. We need to prevent the group from being dragged
-        // if the user is dragging a coach inside it.
         if (coachRow && (e.target === coachRow || coachRow.contains(e.target))) {
-            // Is it dragging by the handle or just generally dragging the coach?
-            // HTML5 drag doesn't easily let us filter by handle after dragstart, 
-            // but we can assume if the user clicked the coach row, it's a coach drag.
-            // Wait, actually `e.target` is the element that triggered dragstart.
-            // We'll see if it's the group header or the coach row.
             const groupHeader = e.target.closest('.group-editor-header');
             if (!groupHeader) {
                 dragSrcElement = coachRow;
                 dragType = 'coach';
+                dragJourneyId = coachRow.closest('.journey-details')?.dataset.journeyId;
                 coachRow.classList.add('dragging');
                 e.dataTransfer.effectAllowed = 'move';
                 e.stopPropagation();
@@ -807,14 +919,21 @@ export function initEvents() {
         if (groupEditor) {
             dragSrcElement = groupEditor;
             dragType = 'group';
+            dragJourneyId = groupEditor.closest('.journey-details')?.dataset.journeyId;
             groupEditor.classList.add('dragging');
             e.dataTransfer.effectAllowed = 'move';
         }
     });
 
-    formationBody?.addEventListener('dragover', (e) => {
+    journeyList?.addEventListener('dragover', (e) => {
         e.preventDefault();
-        if (!dragSrcElement) return;
+        if (!dragSrcElement || !dragJourneyId) return;
+
+        const details = e.target.closest('.journey-details');
+        if (!details || details.dataset.journeyId !== dragJourneyId) {
+            // Drop nur innerhalb der gleichen Journey erlauben
+            return;
+        }
 
         if (dragType === 'coach') {
             const row = e.target.closest('.coach-editor-row');
@@ -829,7 +948,6 @@ export function initEvents() {
                     row.parentNode.insertBefore(dragSrcElement, row);
                 }
             } else if (groupList && groupList !== dragSrcElement.parentNode && groupList.children.length === 0) {
-                // Drop into an empty group
                 groupList.appendChild(dragSrcElement);
             }
         } else if (dragType === 'group') {
@@ -846,10 +964,16 @@ export function initEvents() {
         }
     });
 
-    formationBody?.addEventListener('dragend', () => {
-        dragSrcElement?.classList.remove('dragging');
+    journeyList?.addEventListener('dragend', () => {
+        if (dragSrcElement) {
+            dragSrcElement.classList.remove('dragging');
+            if (dragJourneyId) {
+                saveInlineFormation(dragJourneyId);
+            }
+        }
         dragSrcElement = null;
         dragType = null;
+        dragJourneyId = null;
     });
 
     // --- Window Resize (Skalierung) ---
