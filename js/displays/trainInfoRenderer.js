@@ -3,6 +3,38 @@ import { COLORS, FONTS, INFO } from './constants.js';
 import { drawText, drawWrappedText, drawInfoTopText, drawTextInRectangle } from './textUtils.js';
 import { drawPictograms } from './pictogramRenderer.js';
 
+function areJourneysMerged(journeys) {
+    if (!journeys || journeys.length <= 1) return true;
+    const firstDest = (journeys[0].destination || "").trim();
+    const firstVias = (journeys[0].vias || []).join('|').trim();
+    const firstTime = (journeys[0].scheduledTime || "").trim();
+    for (let i = 1; i < journeys.length; i++) {
+        if ((journeys[i].destination || "").trim() !== firstDest) return false;
+        if ((journeys[i].vias || []).join('|').trim() !== firstVias) return false;
+        if ((journeys[i].scheduledTime || "").trim() !== firstTime) return false;
+    }
+    return true;
+}
+
+function getPlatformSectors(journey) {
+    if (journey.sectors) return journey.sectors;
+    if (!journey || !journey.formation || !journey.formation.groups) return "";
+    const sectors = new Set();
+    for (const group of journey.formation.groups) {
+        for (const coach of group.coaches) {
+            const pos = coach.platformPosition;
+            if (pos) {
+                if (pos.sector) sectors.add(pos.sector);
+                else if (pos.name && pos.name.length === 1) sectors.add(pos.name);
+            }
+        }
+    }
+    const sectorArr = Array.from(sectors).sort();
+    if (sectorArr.length === 0) return "";
+    if (sectorArr.length === 1) return sectorArr[0];
+    return `${sectorArr[0]}-${sectorArr[sectorArr.length - 1]}`;
+}
+
 /**
  * Zeichnet die Störungs-Overlays (Ausfall, Gleiswechsel, VerkehrtAb) für Nebenmonitore.
  * Liest direkt die camelCase-Properties vom Journey-Model.
@@ -135,43 +167,81 @@ export function drawTrainInfo(ctx, journeys, width, renderCtx) {
         ctx.stroke();
     }
 
+    const isMerged = areJourneysMerged(journeys);
+
     // === HAUPTMONITOR (fullScreen) ===
     if (fullScreen) {
-        drawText(ctx, abfahrt, 100, 220, FONTS.regular(180), COLORS.WHITE, 'left');
-        drawTextInRectangle(ctx, abfahrtA, 520, 215, FONTS.regular(120), 'left', 120, 20,
-            renderCtx, 0, COLORS.WHITE, COLORS.NAVY);
-        drawTextInRectangle(ctx, nr, 1855, 220, FONTS.regular(100), 'right', 100, 15,
-            renderCtx, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true);
-
         if (ankunft) {
+            drawText(ctx, abfahrt, 100, 220, FONTS.regular(180), COLORS.WHITE, 'left');
+            if (abfahrtA && abfahrtA !== abfahrt) {
+                drawTextInRectangle(ctx, abfahrtA, 520, 215, FONTS.regular(120), 'left', 120, 20,
+                    renderCtx, 0, COLORS.WHITE, COLORS.NAVY);
+            }
+            drawTextInRectangle(ctx, nr, 1855, 220, FONTS.regular(100), 'right', 100, 15,
+                renderCtx, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true);
+
             const fromDestination = primary.destination || "";
             drawText(ctx, "Bitte nicht einsteigen", 110, 450, FONTS.regular(180), COLORS.WHITE, 'left');
             drawText(ctx, "Please do not board", 105, 670, FONTS.italic(180), COLORS.WHITE, 'left');
             drawText(ctx, 'von / from ' + fromDestination, 112, 850, FONTS.regular(70), COLORS.WHITE, 'left');
-        } else {
-            let yPos = 420;
-            const destFont = journeys.length > 1 ? FONTS.regular(140) : FONTS.regular(180);
-            const viaFont = journeys.length > 1 ? FONTS.regular(60) : FONTS.regular(70);
-            const lineSpacing = journeys.length > 1 ? 150 : 200;
+        } else if (isMerged) {
+            drawText(ctx, abfahrt, 100, 220, FONTS.regular(180), COLORS.WHITE, 'left');
+            if (abfahrtA && abfahrtA !== abfahrt) {
+                drawTextInRectangle(ctx, abfahrtA, 520, 215, FONTS.regular(120), 'left', 120, 20,
+                    renderCtx, 0, COLORS.WHITE, COLORS.NAVY);
+            }
+            drawTextInRectangle(ctx, nr, 1855, 220, FONTS.regular(100), 'right', 100, 15,
+                renderCtx, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true);
 
-            for (const journey of journeys) {
-                drawText(ctx, journey.destination, 100, yPos, destFont, COLORS.WHITE, 'left');
-                drawTextInRectangle(ctx, journey.effectiveDisplayName, 1855, yPos, FONTS.regular(100), 'right', 100, 15,
+            let yPos = 420;
+            drawText(ctx, primary.destination, 100, yPos, FONTS.regular(180), COLORS.WHITE, 'left');
+            const viaText = (primary.vias || []).join(' - ');
+            drawText(ctx, viaText, 112, yPos + 100, FONTS.regular(70), COLORS.WHITE, 'left');
+        } else {
+            const zoneWidth = width / 2; // Split screen for true wing trains
+            const maxTrains = Math.min(journeys.length, 2);
+
+            for (let i = 0; i < maxTrains; i++) {
+                const journey = journeys[i];
+                const xOffset = i * zoneWidth;
+                
+                const jAbfahrt = journey.scheduledTime || "";
+                const jAbfahrtA = journey.expectedTime || "";
+                
+                const drawTime = (i === 0) || (jAbfahrt !== primary.scheduledTime || jAbfahrtA !== primary.expectedTime);
+
+                if (drawTime) {
+                    drawText(ctx, jAbfahrt, xOffset + 50, 200, FONTS.regular(120), COLORS.WHITE, 'left');
+                    if (jAbfahrtA && jAbfahrtA !== jAbfahrt) {
+                        drawTextInRectangle(ctx, jAbfahrtA, xOffset + 330, 195, FONTS.regular(90), 'left', 90, 10,
+                            renderCtx, 0, COLORS.WHITE, COLORS.NAVY);
+                    }
+                }
+                
+                const rightAlignX = xOffset + zoneWidth - 70; // Matches 890 for 960 width
+                drawTextInRectangle(ctx, journey.effectiveDisplayName, rightAlignX, 200, FONTS.regular(75), 'right', 75, 10,
                     renderCtx, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true);
 
+                let yPos = 360;
+                drawText(ctx, journey.destination, xOffset + 50, yPos, FONTS.regular(120), COLORS.WHITE, 'left');
+                yPos += 160;
                 const viaText = (journey.vias || []).join(' - ');
-                drawText(ctx, viaText, 112, yPos + lineSpacing * 0.5, viaFont, COLORS.WHITE, 'left');
-                yPos += lineSpacing;
+                drawWrappedText(ctx, viaText, xOffset + 50, yPos, zoneWidth - 100, 80, FONTS.regular(70), COLORS.WHITE, 'left');
             }
         }
 
     // === NEBENMONITOR (compact) ===
     } else {
         drawText(ctx, abfahrt, 50, 200, FONTS.regular(120), COLORS.WHITE, 'left');
-        drawTextInRectangle(ctx, abfahrtA, 330, 195, FONTS.regular(90), 'left', 90, 10,
-            renderCtx, 0, COLORS.WHITE, COLORS.NAVY);
-        drawTextInRectangle(ctx, nr, 890, 200, FONTS.regular(75), 'right', 75, 10,
-            renderCtx, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true);
+        if (abfahrtA && abfahrtA !== abfahrt) {
+            drawTextInRectangle(ctx, abfahrtA, 330, 195, FONTS.regular(90), 'left', 90, 10,
+                renderCtx, 0, COLORS.WHITE, COLORS.NAVY);
+        }
+        
+        if (isMerged) {
+            drawTextInRectangle(ctx, nr, 890, 200, FONTS.regular(75), 'right', 75, 10,
+                renderCtx, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true);
+        }
 
         if (ankunft) {
             const fromDestination = primary.destination || "";
@@ -182,22 +252,44 @@ export function drawTrainInfo(ctx, journeys, width, renderCtx) {
             scrollManager.createOrUpdate(canvas, zugID, 'arrival', "Please do not board",
                 `${(screen.x + 50) * cssScale}px`, `${(screen.y + 560) * cssScale}px`,
                 `${(screen.w - 50) * cssScale}px`, `${120 * cssScale}px`, COLORS.WHITE, `italic ${Math.round(120 * cssScale)}px "Open Sans Condensed"`);
+        } else if (isMerged) {
+            let yPos = 360;
+            drawText(ctx, primary.destination, 50, yPos, FONTS.regular(120), COLORS.WHITE, 'left');
+            yPos += 160;
+            const viaText = (primary.vias || []).join(' ');
+            drawWrappedText(ctx, viaText, 50, yPos, 880, 80, FONTS.regular(70), COLORS.WHITE, 'left');
         } else {
             let yPos = 360;
-            const destFont = journeys.length > 1 ? FONTS.regular(90) : FONTS.regular(120);
-            const viaFont = FONTS.regular(70);
-            const destLineHeight = journeys.length > 1 ? 100 : 160;
-            const viaLineHeight = 80;
+            const destFont = FONTS.regular(90);
+            const bracketX = 20;
+            const bracketStartY = yPos; 
+            let lastYPos = yPos;
 
             for (const journey of journeys) {
                 drawText(ctx, journey.destination, 50, yPos, destFont, COLORS.WHITE, 'left');
                 drawTextInRectangle(ctx, journey.effectiveDisplayName, 890, yPos, FONTS.regular(75), 'right', 75, 10,
                     renderCtx, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true);
-                yPos += destLineHeight;
-                const viaText = (journey.vias || []).join(' ');
-                yPos = drawWrappedText(ctx, viaText, 50, yPos, 880, viaLineHeight, viaFont, COLORS.WHITE, 'left');
-                yPos += 20;
+                
+                const sectors = getPlatformSectors(journey);
+                if (sectors) {
+                    drawText(ctx, sectors, 890, yPos + 60, FONTS.regular(45), COLORS.WHITE, 'right');
+                }
+                
+                lastYPos = yPos;
+                yPos += 200;
             }
+
+            const bracketEndY = lastYPos;
+            const bracketHeight = bracketEndY - bracketStartY;
+            
+            ctx.strokeStyle = COLORS.WHITE;
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(bracketX + 15, bracketStartY);
+            ctx.lineTo(bracketX, bracketStartY);
+            ctx.lineTo(bracketX, bracketStartY + bracketHeight);
+            ctx.lineTo(bracketX + 15, bracketStartY + bracketHeight);
+            ctx.stroke();
         }
     }
 }

@@ -68,15 +68,84 @@ export class JourneyStore {
     }
 
     /**
-     * Verschiebt eine Journey an eine neue Position.
+     * Ermittelt Start- und Endindex eines Journey-Blocks (inklusive Kupplung).
      * @param {string} id - Journey-ID
-     * @param {number} newIndex - Neue Position
+     * @returns {{startIndex: number, endIndex: number}|null}
      */
-    moveJourney(id, newIndex) {
-        const oldIdx = this.journeys.findIndex(j => j.id === id);
-        if (oldIdx < 0 || newIndex < 0 || newIndex >= this.journeys.length) return;
-        const [journey] = this.journeys.splice(oldIdx, 1);
-        this.journeys.splice(newIndex, 0, journey);
+    getJourneyBlockBounds(id) {
+        const journeyIdx = this.journeys.findIndex(j => j.id === id);
+        if (journeyIdx < 0) return null;
+
+        const journey = this.journeys[journeyIdx];
+        if (!journey.couplingGroupId) {
+            return { startIndex: journeyIdx, endIndex: journeyIdx };
+        }
+
+        const groupId = journey.couplingGroupId;
+        const startIndex = this.journeys.findIndex(j => j.couplingGroupId === groupId);
+        let endIndex = startIndex;
+        while (endIndex + 1 < this.journeys.length && this.journeys[endIndex + 1].couplingGroupId === groupId) {
+            endIndex++;
+        }
+        
+        return { startIndex, endIndex };
+    }
+
+    /**
+     * Verschiebt einen Block (einzeln oder gekuppelt) um eine Position nach oben.
+     * @param {string} id - Journey-ID aus dem Block
+     */
+    moveJourneyGroupUp(id) {
+        const bounds = this.getJourneyBlockBounds(id);
+        if (!bounds || bounds.startIndex === 0) return; // Schon ganz oben
+
+        const prevJourney = this.journeys[bounds.startIndex - 1];
+        const prevBounds = this.getJourneyBlockBounds(prevJourney.id);
+        
+        const blockLength = bounds.endIndex - bounds.startIndex + 1;
+        const block = this.journeys.splice(bounds.startIndex, blockLength);
+        this.journeys.splice(prevBounds.startIndex, 0, ...block);
+    }
+
+    /**
+     * Verschiebt einen Block (einzeln oder gekuppelt) um eine Position nach unten.
+     * @param {string} id - Journey-ID aus dem Block
+     */
+    moveJourneyGroupDown(id) {
+        const bounds = this.getJourneyBlockBounds(id);
+        if (!bounds || bounds.endIndex === this.journeys.length - 1) return; // Schon ganz unten
+
+        const nextJourney = this.journeys[bounds.endIndex + 1];
+        const nextBounds = this.getJourneyBlockBounds(nextJourney.id);
+
+        const blockLength = bounds.endIndex - bounds.startIndex + 1;
+        const block = this.journeys.splice(bounds.startIndex, blockLength);
+        
+        const newIndex = nextBounds.endIndex - blockLength + 1;
+        this.journeys.splice(newIndex, 0, ...block);
+    }
+
+    /**
+     * Verschiebt einen Block an einen Ziel-Index (Drag & Drop).
+     * @param {string} id - Journey-ID aus dem gezogenen Block
+     * @param {number} targetIndex - Wo der Block eingefügt werden soll (vor der Entnahme berechnet!)
+     */
+    moveJourneyGroupToIndex(id, targetIndex) {
+        const bounds = this.getJourneyBlockBounds(id);
+        if (!bounds) return;
+
+        // Wenn der Target-Index innerhalb des eigenen Blocks liegt, tun wir nichts
+        if (targetIndex >= bounds.startIndex && targetIndex <= bounds.endIndex + 1) return;
+
+        const blockLength = bounds.endIndex - bounds.startIndex + 1;
+        
+        let adjustedTarget = targetIndex;
+        if (targetIndex > bounds.endIndex) {
+            adjustedTarget -= blockLength;
+        }
+
+        const block = this.journeys.splice(bounds.startIndex, blockLength);
+        this.journeys.splice(adjustedTarget, 0, ...block);
     }
 
     // ==========================================

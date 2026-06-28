@@ -27,6 +27,7 @@ export class Journey {
         this.scheduledTime = data.scheduledTime || '';
         this.expectedTime = data.expectedTime || '';
         this.platform = data.platform || '';
+        this.sectors = data.sectors || '';
         this.vias = data.vias || [];
         this.scrollText = data.scrollText || '';
 
