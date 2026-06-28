@@ -70,7 +70,8 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
         featureAlpha = 1.0,
         customStartX = FORMATION.THRESHOLD,
         customUsableWidth = fullScreen ? FORMATION.USABLE_WIDTH_FULL : FORMATION.USABLE_WIDTH_COMPACT,
-        isVitrine = false
+        isVitrine = false,
+        drawLayer = 'all' // 'all', 'static', 'dynamic'
     } = options;
 
     const y = FORMATION.COACH_Y_OFFSET;
@@ -92,7 +93,7 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
     const allFormationGroups = journeys.flatMap(j => j.formation ? j.formation.groups : []);
 
     // Trennlinie am linken Rand (nur Nebenmonitore)
-    if (!fullScreen) {
+    if (!fullScreen && (drawLayer === 'all' || drawLayer === 'static')) {
         ctx.strokeStyle = COLORS.WHITE;
         ctx.lineWidth = 3;
         ctx.beginPath();
@@ -103,19 +104,23 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
     // --- Sonder-Overlays, die die Wagenreihung ersetzen ---
 
     if (gleiswechsel !== "0") {
-        ctx.fillStyle = COLORS.ORANGE;
-        ctx.fillRect(3, 0, 960, 280);
-        ctx.fillStyle = COLORS.WHITE;
-        drawText(ctx, 'Neues Gleis', 50, 50, FONTS.regular(67), COLORS.WHITE, 'left');
-        drawText(ctx, 'New Track', 50, 125, FONTS.italic(67), COLORS.WHITE, 'left');
-        drawText(ctx, gleiswechsel, 920, 80, FONTS.regular(128), COLORS.WHITE, 'right');
+        if (drawLayer === 'all' || drawLayer === 'static') {
+            ctx.fillStyle = COLORS.ORANGE;
+            ctx.fillRect(3, 0, 960, 280);
+            ctx.fillStyle = COLORS.WHITE;
+            drawText(ctx, 'Neues Gleis', 50, 50, FONTS.regular(67), COLORS.WHITE, 'left');
+            drawText(ctx, 'New Track', 50, 125, FONTS.italic(67), COLORS.WHITE, 'left');
+            drawText(ctx, gleiswechsel, 920, 80, FONTS.regular(128), COLORS.WHITE, 'right');
+        }
         return null;
     } else if (infoscreen || ausfall || (verkehrtAb !== "0")) {
-        ctx.fillStyle = COLORS.WHITE;
-        ctx.fillRect(3, 0, 960, 280);
+        if (drawLayer === 'all' || drawLayer === 'static') {
+            ctx.fillStyle = COLORS.WHITE;
+            ctx.fillRect(3, 0, 960, 280);
+        }
         return null;
     } else if (ankunft) {
-        if (fullScreen) {
+        if (fullScreen && (drawLayer === 'all' || drawLayer === 'static')) {
             ctx.textBaseline = 'top';
             const firstGroup = allFormationGroups[0] || {};
             drawText(ctx, 'von / from ' + (firstGroup.destination || ''), 105, 20, FONTS.regular(67), COLORS.WHITE, 'left');
@@ -338,111 +343,115 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
     const trainPixelStart = meterOrigin + (allCoaches[0].startM * pixelPerMeter);
     const trainPixelEnd = meterOrigin + (allCoaches[allCoaches.length - 1].endM * pixelPerMeter);
 
-    // Bahnsteig-Linie (links und rechts vom Zug)
-    ctx.strokeStyle = COLORS.WHITE;
-    ctx.lineWidth = 6;
-    ctx.beginPath();
-    ctx.moveTo(threshold, FORMATION.PLATFORM_LINE_Y);
-    ctx.lineTo(trainPixelStart - 10, FORMATION.PLATFORM_LINE_Y);
-    ctx.moveTo(trainPixelEnd + 10, FORMATION.PLATFORM_LINE_Y);
-    ctx.lineTo(threshold + usableDisplayLength, FORMATION.PLATFORM_LINE_Y);
-    ctx.stroke();
+    if (drawLayer === 'all' || drawLayer === 'static') {
+        // Bahnsteig-Linie (links und rechts vom Zug)
+        ctx.strokeStyle = COLORS.WHITE;
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.moveTo(threshold, FORMATION.PLATFORM_LINE_Y);
+        ctx.lineTo(trainPixelStart - 10, FORMATION.PLATFORM_LINE_Y);
+        ctx.moveTo(trainPixelEnd + 10, FORMATION.PLATFORM_LINE_Y);
+        ctx.lineTo(threshold + usableDisplayLength, FORMATION.PLATFORM_LINE_Y);
+        ctx.stroke();
 
-    // Richtungspfeil
-    if (direction === 0) {
-        drawDirectionArrow(ctx, direction, trainPixelStart - 40, y);
-    } else {
-        drawDirectionArrow(ctx, direction, trainPixelEnd + 10, y);
-    }
-
-    // Jeden Wagen zeichnen
-    for (let i = 0; i < drawableCoaches.length; i++) {
-        const item = drawableCoaches[i];
-        const { coachData, x, pixelLength, isFirstInGroup, isLastInGroup, destination, trainNumber } = item;
-        const drawableCoach = new Coach({ ...coachData, length: pixelLength });
-
-        // Wagen-Shape zeichnen
-        if (coachData.type === 'locomotive' && fullScreen) {
-            drawLocomotive(ctx, drawableCoach, x, y);
-        } else if (coachData.type === 'control_car' && isFirstInGroup) {
-            drawStartWagon(ctx, drawableCoach, x, y);
-        } else if (coachData.type === 'control_car' && isLastInGroup) {
-            drawEndWagon(ctx, drawableCoach, x, y);
-        }
-
-        let isStart = isFirstInGroup;
-        let isEnd = isLastInGroup;
-
-        const previousCoach = i > 0 ? drawableCoaches[i - 1].coachData : null;
-        const nextCoach = i < drawableCoaches.length - 1 ? drawableCoaches[i + 1].coachData : null;
-
-        if (coachData.type === 'middle_car') {
-            if (isLastInGroup && nextCoach && nextCoach.type === 'middle_car') {
-                isEnd = false;
-            }
-            if (isFirstInGroup && previousCoach && previousCoach.type === 'middle_car') {
-                isStart = false;
-            }
-            drawMiddleWagon(ctx, drawableCoach, isStart, isEnd, x, y);
-        }
-
-        // Ziel-Label anzeigen bei mehreren Zugeinheiten (Flügelzug)
-        if (fullScreen && isMultipleTrains && !hideDestinations && item.isFirstInTrainUnit) {
-            const displayDest = item.inheritedDestination || destination || '';
-            if (displayDest) {
-                ctx.fillStyle = COLORS.WHITE;
-                ctx.font = FONTS.regular(58);
-                ctx.textAlign = 'left';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(displayDest, x, y + 155);
-            }
-        }
-
-        // Wagen-Inhalt zeichnen (X für geschlossen, sonst Features)
-        if (!coachData.open) {
-            ctx.font = FONTS.bold(48);
-            const textWidth = ctx.measureText("X").width;
-            const safeX = getSafeCenter(x + (drawableCoach.length / 2), textWidth, x, x + drawableCoach.length);
-            
-            if (safeX !== null) {
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillStyle = COLORS.WHITE;
-                ctx.fillText("X", safeX, y + 44);
-            }
+        // Richtungspfeil
+        if (direction === 0) {
+            drawDirectionArrow(ctx, direction, trainPixelStart - 40, y);
         } else {
-            drawFirstClassBar(ctx, drawableCoach, x, y, fullScreen);
+            drawDirectionArrow(ctx, direction, trainPixelEnd + 10, y);
+        }
+
+        // Jeden Wagen zeichnen
+        for (let i = 0; i < drawableCoaches.length; i++) {
+            const item = drawableCoaches[i];
+            const { coachData, x, pixelLength, isFirstInGroup, isLastInGroup, destination, trainNumber } = item;
+            const drawableCoach = new Coach({ ...coachData, length: pixelLength });
+
+            // Wagen-Shape zeichnen
+            if (coachData.type === 'locomotive' && fullScreen) {
+                drawLocomotive(ctx, drawableCoach, x, y);
+            } else if (coachData.type === 'control_car' && isFirstInGroup) {
+                drawStartWagon(ctx, drawableCoach, x, y);
+            } else if (coachData.type === 'control_car' && isLastInGroup) {
+                drawEndWagon(ctx, drawableCoach, x, y);
+            }
+
+            let isStart = isFirstInGroup;
+            let isEnd = isLastInGroup;
+
+            const previousCoach = i > 0 ? drawableCoaches[i - 1].coachData : null;
+            const nextCoach = i < drawableCoaches.length - 1 ? drawableCoaches[i + 1].coachData : null;
+
+            if (coachData.type === 'middle_car') {
+                if (isLastInGroup && nextCoach && nextCoach.type === 'middle_car') {
+                    isEnd = false;
+                }
+                if (isFirstInGroup && previousCoach && previousCoach.type === 'middle_car') {
+                    isStart = false;
+                }
+                drawMiddleWagon(ctx, drawableCoach, isStart, isEnd, x, y);
+            }
+
+            // Ziel-Label anzeigen bei mehreren Zugeinheiten (Flügelzug)
+            if (fullScreen && isMultipleTrains && !hideDestinations && item.isFirstInTrainUnit) {
+                const displayDest = item.inheritedDestination || destination || '';
+                if (displayDest) {
+                    ctx.fillStyle = COLORS.WHITE;
+                    ctx.font = FONTS.regular(58);
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(displayDest, x, y + 155);
+                }
+            }
+
+            // Wagen-Inhalt zeichnen (X für geschlossen, sonst Features)
+            if (!coachData.open) {
+                ctx.font = FONTS.bold(48);
+                const textWidth = ctx.measureText("X").width;
+                const safeX = getSafeCenter(x + (drawableCoach.length / 2), textWidth, x, x + drawableCoach.length);
+                
+                if (safeX !== null) {
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillStyle = COLORS.WHITE;
+                    ctx.fillText("X", safeX, y + 44);
+                }
+            } else {
+                drawFirstClassBar(ctx, drawableCoach, x, y, fullScreen);
+            }
         }
     }
 
-    // Layout-basierte Features für Vollbild und Kompakt
-    ctx.save();
-    ctx.globalAlpha = featureAlpha;
-    const scaledCoaches = drawableCoaches.map(dc => ({
-        ...dc.coachData,
-        start: dc.x,
-        length: dc.pixelLength,
-        coach_type: mapCoachType(dc)
-    }));
-    
-    if (fullScreen) {
-        if (activeFeature === "klasse") drawFullscreenClassLabels(ctx, scaledCoaches, y);
-        if (activeFeature === "ausstattung") drawFullscreenAmenityIcons(ctx, scaledCoaches, y);
-        if (activeFeature === "wagennummern") drawFullscreenWagonNumbers(ctx, scaledCoaches, y);
-    } else {
-        if (activeFeature === "klasse") drawCompactClassLabels(ctx, scaledCoaches, y);
-        if (activeFeature === "ausstattung") drawCompactAmenityIcons(ctx, scaledCoaches, y);
-        if (activeFeature === "wagennummern") drawCompactWagonNumbers(ctx, scaledCoaches, y);
+    if (drawLayer === 'all' || drawLayer === 'dynamic') {
+        // Layout-basierte Features für Vollbild und Kompakt
+        ctx.save();
+        ctx.globalAlpha = featureAlpha;
+        const scaledCoaches = drawableCoaches.map(dc => ({
+            ...dc.coachData,
+            start: dc.x,
+            length: dc.pixelLength,
+            coach_type: mapCoachType(dc)
+        }));
+        
+        if (fullScreen) {
+            if (activeFeature === "klasse") drawFullscreenClassLabels(ctx, scaledCoaches, y);
+            if (activeFeature === "ausstattung") drawFullscreenAmenityIcons(ctx, scaledCoaches, y);
+            if (activeFeature === "wagennummern") drawFullscreenWagonNumbers(ctx, scaledCoaches, y);
+        } else {
+            if (activeFeature === "klasse") drawCompactClassLabels(ctx, scaledCoaches, y);
+            if (activeFeature === "ausstattung") drawCompactAmenityIcons(ctx, scaledCoaches, y);
+            if (activeFeature === "wagennummern") drawCompactWagonNumbers(ctx, scaledCoaches, y);
+        }
+        ctx.restore();
     }
-    ctx.restore();
 
     // Sektoren zeichnen (A, B, C, ...)
-    if (!hideSectors) {
+    if (!hideSectors && (drawLayer === 'all' || drawLayer === 'static')) {
         drawSectors(ctx, platform.sections, pixelPerMeter, meterOrigin, false, displayedMeterRange);
     }
 
     // Debug: Meter-Markierungen am virtuellen Bahnsteig
-    if (DEBUG_METERS) {
+    if (DEBUG_METERS && (drawLayer === 'all' || drawLayer === 'static')) {
         const debugBaseY = FORMATION.PLATFORM_LINE_Y;
         const displayStart = threshold;                              // Gesamter Display-Bereich
         const displayEnd = threshold + usableDisplayLength;

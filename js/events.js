@@ -6,6 +6,9 @@ import { Formation, FormationGroup } from './models/formation.js';
 import { Coach } from './models/coach.js';
 import { config } from './utils/config.js';
 import { toggleDebugMeters } from './displays/formationRenderer.js';
+import { debounce } from './utils/utils.js';
+
+const debouncedUpdateAll = debounce(() => trainDisplay.updateAll(), 300);
 
 // Aktuell aufgeklappte Journey-ID (oder null)
 let expandedJourneyId = null;
@@ -313,7 +316,7 @@ function renderCoachRow(coach, index, gIndex = 0) {
     `;
 }
 
-function saveInlineFormation(journeyId) {
+function saveInlineFormation(journeyId, immediate = true) {
     const journey = journeyStore.getJourney(journeyId);
     if (!journey) return;
 
@@ -382,7 +385,11 @@ function saveInlineFormation(journeyId) {
     });
 
     journey.formation.groups = newGroups;
-    trainDisplay.updateAll();
+    if (immediate) {
+        trainDisplay.updateAll();
+    } else {
+        debouncedUpdateAll();
+    }
 }
 
 function toggleOrientation(orientation) {
@@ -690,12 +697,12 @@ export function initEvents() {
             } else {
                 journey[field] = e.target.value;
             }
-            trainDisplay.updateAll();
+            debouncedUpdateAll();
         }
 
         // Auto-Save für Formation-Eingaben
         if (e.target.classList.contains('f-prop')) {
-            saveInlineFormation(journeyId);
+            saveInlineFormation(journeyId, false);
         }
     });
 
@@ -782,6 +789,16 @@ export function initEvents() {
             trainDisplay.switchLayout(radio.value);
         });
     });
+
+    // --- Performance Modus ---
+    const perfCheckbox = document.getElementById('performance_mode_checkbox');
+    if (perfCheckbox) {
+        perfCheckbox.checked = config.performance_mode;
+        perfCheckbox.addEventListener('change', (e) => {
+            config.performance_mode = e.target.checked;
+            localStorage.setItem('zimsim_performance_mode', e.target.checked);
+        });
+    }
 
     // --- Bahnhof/Station ---
     document.getElementById('entry_stop_name')?.addEventListener('input', (e) => {

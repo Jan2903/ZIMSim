@@ -9,36 +9,6 @@ import { preloadImages } from './utils/utils.js';
 export const journeyStore = new JourneyStore();
 export const trainDisplay = new TrainDisplay(journeyStore);
 
-/**
- * Globaler Fallback-Hack für Faux-Bold in Canvas:
- * Da der Firefox und einige andere Browser bei Web Fonts manchmal Probleme mit
- * künstlichem Fetten haben, wenn nur der SemiBold-Schnitt vorliegt,
- * zeichnen wir fette Schriften im Canvas zusätzlich mit einer feinen Kontur.
- */
-const originalFillText = CanvasRenderingContext2D.prototype.fillText;
-CanvasRenderingContext2D.prototype.fillText = function(text, x, y, maxWidth) {
-    originalFillText.call(this, text, x, y, maxWidth);
-    
-    if (this.font && this.font.includes('bold')) {
-        const sizeMatch = this.font.match(/(\d+)px/);
-        const size = sizeMatch ? parseInt(sizeMatch[1]) : 40;
-        
-        const oldStrokeStyle = this.strokeStyle;
-        const oldLineWidth = this.lineWidth;
-        
-        this.strokeStyle = this.fillStyle;
-        this.lineWidth = size * 0.05; // ca. 3.5% der Schriftgröße als Strichstärke
-        
-        if (maxWidth !== undefined) {
-            this.strokeText(text, x, y, maxWidth);
-        } else {
-            this.strokeText(text, x, y);
-        }
-        
-        this.strokeStyle = oldStrokeStyle;
-        this.lineWidth = oldLineWidth;
-    }
-};
 
 /**
  * Erstellt die Beispiel-Daten (ein ICE-Flügelzug als Demo).
