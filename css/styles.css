@@ -558,10 +558,19 @@ input:checked + .slider:before { transform: translateX(20px); }
 .journey-list { display: flex; flex-direction: column; gap: 2px; }
 .journey-empty { padding: 24px; text-align: center; color: var(--text-muted); font-style: italic; }
 
-.journey-row { display: flex; align-items: stretch; background: var(--bg-input); border-radius: 6px; overflow: hidden; transition: background 0.15s; }
+.journey-row { display: flex; align-items: stretch; background: var(--bg-input); border-radius: 6px; overflow: hidden; transition: background 0.15s, border 0.15s; border: 2px solid transparent; }
 .journey-row:hover { background: #1a2744; }
 .journey-row.journey-cancelled { opacity: 0.6; }
 .journey-row.journey-cancelled .journey-name { text-decoration: line-through; }
+.journey-row.dragging { opacity: 0.5; border-color: var(--accent); }
+.journey-row.drag-over-top { border-top-color: var(--accent); }
+.journey-row.drag-over-bottom { border-bottom-color: var(--accent); }
+
+.journey-col-reorder { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4px; background: rgba(0,0,0,0.15); width: 28px; }
+.journey-drag-handle { cursor: grab; font-size: 14px; color: var(--text-muted); margin-bottom: 4px; user-select: none; }
+.journey-drag-handle:active { cursor: grabbing; }
+.reorder-buttons { display: flex; flex-direction: column; gap: 2px; }
+.reorder-buttons .btn-icon { padding: 0; font-size: 10px; height: 16px; width: 100%; line-height: 16px; border-radius: 2px; }
 
 .journey-col-visibility { display: flex; align-items: flex-start; padding: 8px 4px 8px 8px; min-width: 36px; }
 

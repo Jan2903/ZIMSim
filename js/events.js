@@ -55,7 +55,14 @@ export function renderJourneyList() {
             ? `<span class="delay-indicator">${journey.expectedTime}</span>` : '';
 
         html += `
-            <div class="journey-row ${cancelledClass}" data-journey-id="${journey.id}">
+            <div class="journey-row ${cancelledClass}" data-journey-id="${journey.id}" draggable="true">
+                <div class="journey-col-reorder">
+                    <span class="journey-drag-handle" title="Drag & Drop">⠿</span>
+                    <div class="reorder-buttons">
+                        <button class="btn-icon btn-reorder-up" data-journey-id="${journey.id}" title="Nach oben">▲</button>
+                        <button class="btn-icon btn-reorder-down" data-journey-id="${journey.id}" title="Nach unten">▼</button>
+                    </div>
+                </div>
                 <div class="journey-col-visibility">
                     <button class="btn-icon visibility-toggle" data-journey-id="${journey.id}" title="Sichtbarkeit umschalten">${visibleIcon}</button>
                 </div>
@@ -425,6 +432,20 @@ export function initEvents() {
                 renderJourneyList();
                 trainDisplay.updateAll();
             }
+            return;
+        }
+
+        // Reorder (Hoch/Runter)
+        if (target.classList.contains('btn-reorder-up')) {
+            journeyStore.moveJourneyGroupUp(journeyId);
+            renderJourneyList();
+            trainDisplay.updateAll();
+            return;
+        }
+        if (target.classList.contains('btn-reorder-down')) {
+            journeyStore.moveJourneyGroupDown(journeyId);
+            renderJourneyList();
+            trainDisplay.updateAll();
             return;
         }
 
@@ -915,13 +936,23 @@ export function initEvents() {
                 return;
             }
         }
-        
         if (groupEditor) {
             dragSrcElement = groupEditor;
             dragType = 'group';
             dragJourneyId = groupEditor.closest('.journey-details')?.dataset.journeyId;
             groupEditor.classList.add('dragging');
             e.dataTransfer.effectAllowed = 'move';
+            return;
+        }
+
+        const journeyRow = e.target.closest('.journey-row');
+        if (journeyRow && !coachRow && !groupEditor) {
+            dragSrcElement = journeyRow;
+            dragType = 'journey';
+            dragJourneyId = journeyRow.dataset.journeyId;
+            journeyRow.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', dragJourneyId);
         }
     });
 
@@ -961,11 +992,64 @@ export function initEvents() {
                     row.parentNode.insertBefore(dragSrcElement, row);
                 }
             }
+        } else if (dragType === 'journey') {
+            e.preventDefault(); // allow drop
+            const row = e.target.closest('.journey-row');
+            if (row && row !== dragSrcElement) {
+                const rect = row.getBoundingClientRect();
+                const after = e.clientY > rect.top + rect.height / 2;
+                
+                document.querySelectorAll('.journey-row').forEach(r => {
+                    r.classList.remove('drag-over-top', 'drag-over-bottom');
+                });
+                
+                const targetJourneyId = row.dataset.journeyId;
+                const bounds = journeyStore.getJourneyBlockBounds(targetJourneyId);
+                if (bounds) {
+                    if (after) {
+                        const endRow = journeyList.children[bounds.endIndex];
+                        if (endRow) endRow.classList.add('drag-over-bottom');
+                    } else {
+                        const startRow = journeyList.children[bounds.startIndex];
+                        if (startRow) startRow.classList.add('drag-over-top');
+                    }
+                }
+            }
+        }
+    });
+
+    journeyList?.addEventListener('drop', (e) => {
+        if (dragType === 'journey') {
+            e.preventDefault();
+            const row = e.target.closest('.journey-row');
+            if (row && dragJourneyId) {
+                const targetJourneyId = row.dataset.journeyId;
+                const bounds = journeyStore.getJourneyBlockBounds(targetJourneyId);
+                if (bounds) {
+                    const rect = row.getBoundingClientRect();
+                    const after = e.clientY > rect.top + rect.height / 2;
+                    let targetIndex = after ? bounds.endIndex + 1 : bounds.startIndex;
+                    journeyStore.moveJourneyGroupToIndex(dragJourneyId, targetIndex);
+                    renderJourneyList();
+                    trainDisplay.updateAll();
+                }
+            }
+            dragSrcElement = null;
+            dragType = null;
+            dragJourneyId = null;
+            document.querySelectorAll('.journey-row').forEach(r => {
+                r.classList.remove('drag-over-top', 'drag-over-bottom');
+            });
         }
     });
 
     journeyList?.addEventListener('dragend', () => {
-        if (dragSrcElement) {
+        if (dragType === 'journey') {
+            if (dragSrcElement) dragSrcElement.classList.remove('dragging');
+            document.querySelectorAll('.journey-row').forEach(r => {
+                r.classList.remove('drag-over-top', 'drag-over-bottom');
+            });
+        } else if (dragSrcElement) {
             dragSrcElement.classList.remove('dragging');
             if (dragJourneyId) {
                 saveInlineFormation(dragJourneyId);

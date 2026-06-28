@@ -62,9 +62,9 @@ const PICTOGRAM_RULES = [
         }
     },
     {
-        match: (_, nr) => nr.includes("FLX"),
+        match: (info) => info.includes("Zug reservierungspflichtig"),
         draw: (ctx, x) => {
-            // Reservierungspflicht Flixtrain
+            // Reservierungspflicht FV
             ctx.lineWidth = "4";
             ctx.strokeStyle = COLORS.WHITE;
             ctx.strokeRect(x + 2, 2, 96, 96);
@@ -76,9 +76,9 @@ const PICTOGRAM_RULES = [
         }
     },
     {
-        match: (_, nr) => nr.includes("IC"),
+        match: (info) => info.includes("Fahrradmitnahme reservierungspflichtig"),
         draw: (ctx, x) => {
-            // Reservierungspflicht Fahrrad (IC/ICE)
+            // Reservierungspflicht Fahrrad (FV)
             ctx.lineWidth = "4";
             ctx.strokeStyle = COLORS.WHITE;
             ctx.strokeRect(x + 2, 2, 96, 96);
@@ -91,7 +91,7 @@ const PICTOGRAM_RULES = [
         }
     },
     {
-        match: (info) => info.includes("Heute mit Halt in"),
+        match: (info) => info.includes("Zusätzlicher Halt in"),
         draw: (ctx, x) => {
             // Zusätzlicher Halt: H+
             ctx.fillStyle = COLORS.WHITE;
@@ -106,9 +106,9 @@ const PICTOGRAM_RULES = [
         }
     },
     {
-        match: (info) => info.includes("Heute ohne Halt in"),
+        match: (info) => info.includes("Ohne Halt in"),
         draw: (ctx, x) => {
-            // Entfallener Halt: H-
+            // Entfallender Halt: H-
             ctx.fillStyle = COLORS.WHITE;
             ctx.fillRect(x, 0, INFO.PICTOGRAM_SIZE, INFO.PICTOGRAM_SIZE);
             ctx.fillStyle = COLORS.NAVY;
