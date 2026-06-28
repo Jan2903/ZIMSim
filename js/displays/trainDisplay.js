@@ -33,20 +33,22 @@ export class TrainDisplay {
      * Richtet den Canvas-Kontext für einen bestimmten Monitor-Bereich ein
      * (Clipping, Translation) und ruft die Zeichenfunktion auf.
      */
-    drawOnScreen(screen, drawFunction) {
+    drawOnScreen(screen, drawFunction, targetCanvas = null, clearBackground = true) {
         this.currentScreen = screen;
-        const canvas = document.getElementById('zimCanvas');
+        const canvas = targetCanvas || document.getElementById('zimCanvas');
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         if (!screen) return;
 
         ctx.save();
-        ctx.clearRect(screen.x, screen.y, screen.w, screen.h);
+        if (clearBackground) {
+            ctx.clearRect(screen.x, screen.y, screen.w, screen.h);
 
-        // Bereich des Monitors mit der Standard-Canvas-Farbe (navy) füllen,
-        // damit das Hintergrundbild nur außerhalb der Displays sichtbar bleibt
-        ctx.fillStyle = COLORS.MIDNIGHT_BLUE;
-        ctx.fillRect(screen.x, screen.y, screen.w, screen.h);
+            // Bereich des Monitors mit der Standard-Canvas-Farbe (navy) füllen,
+            // damit das Hintergrundbild nur außerhalb der Displays sichtbar bleibt
+            ctx.fillStyle = COLORS.MIDNIGHT_BLUE;
+            ctx.fillRect(screen.x, screen.y, screen.w, screen.h);
+        }
 
         ctx.translate(screen.x, screen.y);
         ctx.beginPath();
@@ -143,13 +145,21 @@ export class TrainDisplay {
                 this.activeFeature = newFeatureStr;
                 this.featureAlpha = alpha;
                 
+                if (config.performance_mode) {
+                    if (now - (this.lastRenderTime || 0) < 33) {
+                        this._animId = requestAnimationFrame(loop);
+                        return;
+                    }
+                }
+                this.lastRenderTime = now;
+                
                 if (!this._isRendering) {
-                    this._renderDynamicScreens();
+                    this._renderFrames();
                 }
             } else {
                 if (this.featureAlpha !== 1.0) {
                     this.featureAlpha = 1.0;
-                    if (!this._isRendering) this._renderDynamicScreens();
+                    if (!this._isRendering) this._renderFrames();
                 }
             }
             this._animId = requestAnimationFrame(loop);
@@ -206,40 +216,7 @@ export class TrainDisplay {
      * @param {number} zugID - Zug-ID für Scrolling (1, 2, 3).
      */
     update(journeys, screen, zugID) {
-        try {
-            const fullScreen = screen.type === 'haupt';
-
-            if (!journeys || journeys.length === 0) {
-                this.drawOnScreen(screen, (ctx, width, height) => {
-                    // Nothing to draw
-                });
-                this.scrollManager.clearForZug(zugID);
-                return;
-            }
-
-            const canvas = document.getElementById('zimCanvas');
-            const renderCtx = this._createRenderContext(canvas, screen, zugID, fullScreen);
-
-            this.scrollManager.beginRender();
-
-            this.drawOnScreen(screen, (ctx, width, height) => {
-                drawTrainInfo(ctx, journeys, width, renderCtx);
-                ctx.save();
-                ctx.translate(0, 800);
-                drawFormation(ctx, journeys, this.journeyStore.platform, {
-                    fullScreen,
-                    activeFeature: this.activeFeature,
-                    featureAlpha: this.featureAlpha
-                });
-                ctx.restore();
-            });
-
-            // Räume alle Scroll-Divs auf, die im aktuellen Render-Tick nicht mehr benötigt wurden
-            this.scrollManager.cleanupUnused(zugID);
-
-        } catch (err) {
-            console.error(`Error in update for zugID ${zugID}:`, err);
-        }
+        this.updateAll();
     }
 
     /**
@@ -281,26 +258,46 @@ export class TrainDisplay {
                 window.dispatchEvent(new Event('resize'));
             }
 
-            this.ctx = canvas.getContext('2d');
+            if (!this.offscreenCanvas) {
+                this.offscreenCanvas = document.createElement('canvas');
+            }
+            if (this.offscreenCanvas.width !== this.currentLayout.width || this.offscreenCanvas.height !== this.currentLayout.height) {
+                this.offscreenCanvas.width = this.currentLayout.width;
+                this.offscreenCanvas.height = this.currentLayout.height;
+            }
+
+            this.ctx = this.offscreenCanvas.getContext('2d');
             this.drawFullBackground();
+
+            this._renderDynamicScreens('static', this.offscreenCanvas);
         } catch (err) {
             console.error('Error in updateAll:', err);
         } finally {
             this._isRendering = false;
         }
 
-        this._renderDynamicScreens();
+        this._renderFrames();
     }
 
-    _renderDynamicScreens() {
-        if (this._isRendering) return;
-        this._isRendering = true;
+    _renderFrames() {
+        if (!this.offscreenCanvas) return;
+        const canvas = document.getElementById('zimCanvas');
+        if (!canvas) return;
+        
+        const mainCtx = canvas.getContext('2d');
+        mainCtx.clearRect(0, 0, canvas.width, canvas.height);
+        mainCtx.drawImage(this.offscreenCanvas, 0, 0);
 
+        this._renderDynamicScreens('dynamic', canvas);
+    }
+
+    _renderDynamicScreens(layer = 'all', targetCanvas = null) {
         try {
-            const canvas = document.getElementById('zimCanvas');
+            const canvas = targetCanvas || document.getElementById('zimCanvas');
             if (!canvas) return;
 
-            const container = canvas.parentElement;
+            const mainCanvas = document.getElementById('zimCanvas');
+            const container = mainCanvas ? mainCanvas.parentElement : null;
             const cssScale = container ? (container.clientWidth / this.currentLayout.width) : 1;
             const screenAssignments = this._buildScreenAssignments();
 
@@ -310,49 +307,56 @@ export class TrainDisplay {
                     const { journeys, journeyGroups, zugID } = assignment;
 
                     if ((!journeys || journeys.length === 0) && (!journeyGroups || journeyGroups.length === 0)) {
-                        this.drawOnScreen(screen, () => {});
-                        this.scrollManager.clearForZug(zugID);
+                        if (layer === 'all' || layer === 'static') {
+                            this.drawOnScreen(screen, () => {}, canvas);
+                        }
+                        if (layer === 'all') this.scrollManager.clearForZug(zugID);
                         return;
                     }
 
                     const fullScreen = screen.type === 'haupt';
-                    const renderCtx = this._createRenderContext(canvas, screen, zugID, fullScreen, cssScale);
+                    const renderCtx = this._createRenderContext(mainCanvas, screen, zugID, fullScreen, cssScale);
 
-                    this.scrollManager.beginRender();
+                    if (layer === 'all' || layer === 'static') this.scrollManager.beginRender();
 
+                    const clearBg = (layer === 'all' || layer === 'static');
                     this.drawOnScreen(screen, (ctx, width, height) => {
                         if (screen.type === 'haupt' || screen.type === 'neben' || screen.type === 'neben_rotierend') {
-                            drawTrainInfo(ctx, journeys, width, renderCtx);
+                            if (layer === 'all' || layer === 'static') {
+                                drawTrainInfo(ctx, journeys, width, renderCtx);
+                            }
                             ctx.save();
                             ctx.translate(0, 800);
                             drawFormation(ctx, journeys, this.journeyStore.platform, {
                                 fullScreen,
                                 activeFeature: this.activeFeature,
-                                featureAlpha: this.featureAlpha
+                                featureAlpha: this.featureAlpha,
+                                drawLayer: layer
                             });
                             ctx.restore();
                         } else if (screen.type === 'liste') {
-                            drawListeRow(ctx, journeys[0], width, height);
+                            if (layer === 'all' || layer === 'static') {
+                                drawListeRow(ctx, journeys[0], width, height);
+                            }
                         } else if (screen.type === 'vitrine32') {
                             const trackNumber = document.getElementById('entry_gleis') ? document.getElementById('entry_gleis').value : '';
                             drawVitrine32Wagenstand(ctx, journeyGroups || [], this.journeyStore.platform, width, height, trackNumber, {
                                 activeFeatureIndex: this.activeFeatureIndex,
                                 activeFeatureStr: this.activeFeature,
                                 progress: this.vitrineProgress,
-                                featureAlpha: this.featureAlpha
+                                featureAlpha: this.featureAlpha,
+                                drawLayer: layer
                             });
                         }
-                    });
+                    }, canvas, clearBg);
 
-                    this.scrollManager.cleanupUnused(zugID);
+                    if (layer === 'all' || layer === 'static') this.scrollManager.cleanupUnused(zugID);
                 } catch (screenErr) {
                     console.error(`Error rendering screen ${screen.id}:`, screenErr);
                 }
             });
         } catch (err) {
             console.error('Error in _renderDynamicScreens:', err);
-        } finally {
-            this._isRendering = false;
         }
     }
 

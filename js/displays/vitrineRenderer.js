@@ -54,29 +54,33 @@ function drawVitrineHeader(ctx, width, activeFeatureIndex, progress, trackNumber
     drawDBLogo(ctx, width - 110, 80);
 }
 
-function drawVitrineRow(ctx, journeys, yOffset, width, platform, activeFeatureStr, startX, usableWidth, featureAlpha = 1.0) {
-    // Horizontale Trennlinie
-    ctx.strokeStyle = COLORS.WHITE;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(0, yOffset); 
-    ctx.lineTo(width, yOffset);
-    ctx.stroke();
+function drawVitrineRow(ctx, journeys, yOffset, width, platform, activeFeatureStr, startX, usableWidth, featureAlpha = 1.0, drawLayer = 'all') {
+    if (drawLayer === 'all' || drawLayer === 'static') {
+        // Horizontale Trennlinie
+        ctx.strokeStyle = COLORS.WHITE;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, yOffset); 
+        ctx.lineTo(width, yOffset);
+        ctx.stroke();
+    }
 
     if (!journeys || journeys.length === 0) return;
 
-    // Journeys is an array of coupled trains, journeys[0] is the primary
     const primary = journeys[0];
-    const scheduled = primary.scheduledTime || "";
-    const expected = primary.expectedTime || "";
     
-    // Time
-    drawText(ctx, scheduled, 20, yOffset + 150, FONTS.regular(75), COLORS.WHITE, 'left', 'middle');
-    
-    if (expected && expected !== scheduled) {
-        ctx.fillStyle = COLORS.WHITE;
-        ctx.fillRect(180, yOffset + 95, 100, 55);
-        drawText(ctx, expected, 230, yOffset + 140, FONTS.bold(48), COLORS.MIDNIGHT_BLUE, 'center', 'middle');
+    if (drawLayer === 'all' || drawLayer === 'static') {
+        const scheduled = primary.scheduledTime || "";
+        const expected = primary.expectedTime || "";
+        
+        // Time
+        drawText(ctx, scheduled, 20, yOffset + 150, FONTS.regular(75), COLORS.WHITE, 'left', 'middle');
+        
+        if (expected && expected !== scheduled) {
+            ctx.fillStyle = COLORS.WHITE;
+            ctx.fillRect(180, yOffset + 95, 100, 55);
+            drawText(ctx, expected, 230, yOffset + 140, FONTS.bold(48), COLORS.MIDNIGHT_BLUE, 'center', 'middle');
+        }
     }
 
     // Formation zeichnen und Startposition abfragen
@@ -90,36 +94,39 @@ function drawVitrineRow(ctx, journeys, yOffset, width, platform, activeFeatureSt
         customStartX: startX,
         customUsableWidth: usableWidth,
         featureAlpha: featureAlpha,
-        isVitrine: true
+        isVitrine: true,
+        drawLayer: drawLayer
     });
     ctx.restore();
 
-    // Default Position, falls keine Formation gezeichnet wurde
-    let textX = 400; 
-    if (formationResult && formationResult.trainPixelStart !== undefined) {
-        textX = formationResult.trainPixelStart;
-    }
+    if (drawLayer === 'all' || drawLayer === 'static') {
+        // Default Position, falls keine Formation gezeichnet wurde
+        let textX = 400; 
+        if (formationResult && formationResult.trainPixelStart !== undefined) {
+            textX = formationResult.trainPixelStart;
+        }
 
-    // Zugname, Ziel, Vias
-    const trainName = primary.effectiveDisplayName || "";
-    const dest = primary.destination || "";
-    const vias = (primary.vias || []).join(" - ");
+        // Zugname, Ziel, Vias
+        const trainName = primary.effectiveDisplayName || "";
+        const dest = primary.destination || "";
+        const vias = (primary.vias || []).join(" - ");
 
-    // Kleines Label für Zugnummer
-    ctx.fillStyle = COLORS.DIM_GREY;
-    ctx.font = FONTS.bold(28);
-    const nameWidth = ctx.measureText(trainName).width;
-    ctx.fillRect(textX, yOffset + 37, nameWidth + 20, 35);
-    drawText(ctx, trainName, textX + 10, yOffset + 65, FONTS.bold(30), COLORS.WHITE, 'left', 'middle');
+        // Kleines Label für Zugnummer
+        ctx.fillStyle = COLORS.DIM_GREY;
+        ctx.font = FONTS.bold(28);
+        const nameWidth = ctx.measureText(trainName).width;
+        ctx.fillRect(textX, yOffset + 37, nameWidth + 20, 35);
+        drawText(ctx, trainName, textX + 10, yOffset + 65, FONTS.bold(30), COLORS.WHITE, 'left', 'middle');
 
-    // Ziel
-    ctx.font = FONTS.regular(65);
-    drawText(ctx, dest, textX, yOffset + 135, FONTS.regular(65), COLORS.WHITE, 'left', 'middle');
-    
-    // Vias
-    if (vias) {
-        const destWidth = ctx.measureText(dest + " ").width;
-        drawText(ctx, "über " + vias, textX + destWidth + 10, yOffset + 133, FONTS.regular(35), COLORS.WHITE, 'left', 'middle');
+        // Ziel
+        ctx.font = FONTS.regular(65);
+        drawText(ctx, dest, textX, yOffset + 135, FONTS.regular(65), COLORS.WHITE, 'left', 'middle');
+        
+        // Vias
+        if (vias) {
+            const destWidth = ctx.measureText(dest + " ").width;
+            drawText(ctx, "über " + vias, textX + destWidth + 10, yOffset + 133, FONTS.regular(35), COLORS.WHITE, 'left', 'middle');
+        }
     }
 }
 
@@ -131,10 +138,13 @@ export function drawVitrine32Wagenstand(ctx, journeyGroups, platform, width, hei
         activeFeatureIndex = 0,
         activeFeatureStr = 'wagennummern',
         progress = 0,
-        featureAlpha = 1.0
+        featureAlpha = 1.0,
+        drawLayer = 'all'
     } = animOptions;
 
-    drawVitrineHeader(ctx, width, activeFeatureIndex, progress, trackNumber, featureAlpha);
+    if (drawLayer === 'all' || drawLayer === 'dynamic') {
+        drawVitrineHeader(ctx, width, activeFeatureIndex, progress, trackNumber, featureAlpha);
+    }
 
     const startX = 288; // 15% von 1920
     const usableWidth = 1344; // 70% von 1920 (85% - 15%)
@@ -143,36 +153,38 @@ export function drawVitrine32Wagenstand(ctx, journeyGroups, platform, width, hei
     const pixelPerMeter = meterAreaPixels / (platform.length || 420);
     const meterOrigin = startX + arrowBuffer;
 
-    // Draw platform sectors at the top
-    ctx.save();
-    ctx.translate(0, 160);
-    drawSectors(ctx, platform.sections, pixelPerMeter, meterOrigin, true);
-    ctx.restore();
+    if (drawLayer === 'all' || drawLayer === 'static') {
+        // Draw platform sectors at the top
+        ctx.save();
+        ctx.translate(0, 160);
+        drawSectors(ctx, platform.sections, pixelPerMeter, meterOrigin, true);
+        ctx.restore();
 
-    // Rote Standort-Linie
-    const currentLocation = platform.currentLocation !== undefined ? platform.currentLocation : 100;
-    const redLineX = meterOrigin + (currentLocation * pixelPerMeter);
-    
-    ctx.strokeStyle = COLORS.RED;
-    ctx.fillStyle = COLORS.RED;
-    
-    // Draw the red dot at the top of the line
-    ctx.beginPath();
-    ctx.arc(redLineX, 190, 16, 0, Math.PI * 2);
-    ctx.fill();
+        // Rote Standort-Linie
+        const currentLocation = platform.currentLocation !== undefined ? platform.currentLocation : 100;
+        const redLineX = meterOrigin + (currentLocation * pixelPerMeter);
+        
+        ctx.strokeStyle = COLORS.RED;
+        ctx.fillStyle = COLORS.RED;
+        
+        // Draw the red dot at the top of the line
+        ctx.beginPath();
+        ctx.arc(redLineX, 190, 16, 0, Math.PI * 2);
+        ctx.fill();
 
-    // Line downwards
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(redLineX, 230);
-    ctx.lineTo(redLineX, height);
-    ctx.stroke();
+        // Line downwards
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(redLineX, 230);
+        ctx.lineTo(redLineX, height);
+        ctx.stroke();
+    }
 
     const rowHeight = 300;
     const startY = 225;
 
     for (let i = 0; i < 3; i++) {
         const journeys = journeyGroups[i] || [];
-        drawVitrineRow(ctx, journeys, startY + (i * rowHeight), width, platform, activeFeatureStr, startX, usableWidth, featureAlpha);
+        drawVitrineRow(ctx, journeys, startY + (i * rowHeight), width, platform, activeFeatureStr, startX, usableWidth, featureAlpha, drawLayer);
     }
 }
