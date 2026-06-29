@@ -1,6 +1,7 @@
 // js/displays/sharedRenderers.js
 import { COLORS, FONTS } from './constants.js';
 import { drawText } from './textUtils.js';
+import { getSimulatedTime } from '../utils/config.js';
 
 /**
  * Zeichnet das DB-Logo (abgerundetes Rechteck mit Text "DB")
@@ -17,7 +18,7 @@ export function drawDBLogo(ctx, x, y) {
 /**
  * Zeichnet eine virtuelle analoge Uhr inkl. Stunden- und Minutenzeiger.
  */
-export function drawAnalogClock(ctx, x, y, radius = 35) {
+export function drawAnalogClock(ctx, x, y, radius = 35, customTime = null) {
     ctx.strokeStyle = COLORS.WHITE;
     ctx.lineWidth = 4;
     ctx.beginPath();
@@ -25,7 +26,7 @@ export function drawAnalogClock(ctx, x, y, radius = 35) {
     ctx.stroke();
     
     // Hands
-    const now = new Date();
+    const now = customTime || getSimulatedTime();
     const hours = now.getHours() % 12;
     const minutes = now.getMinutes();
     const seconds = now.getSeconds();

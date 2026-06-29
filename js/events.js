@@ -4,7 +4,7 @@ import { journeyStore, trainDisplay } from './main.js';
 import { Journey } from './models/journey.js';
 import { Formation, FormationGroup } from './models/formation.js';
 import { Coach } from './models/coach.js';
-import { config } from './utils/config.js';
+import { config, timeConfig, setSimulatedTime, getSimulatedTime } from './utils/config.js';
 import { toggleDebugMeters } from './displays/formationRenderer.js';
 import { debounce } from './utils/utils.js';
 
@@ -833,6 +833,53 @@ export function initEvents() {
         renderJourneyList();
         trainDisplay.updateAll();
     });
+
+    // --- Zeit-Einstellungen ---
+    const customTimeInput = document.getElementById('custom_time_input');
+    const autoUpdateTimeCheckbox = document.getElementById('auto_update_time_checkbox');
+    const setCurrentTimeBtn = document.getElementById('set_current_time_btn');
+
+    function updateTimeInputFromState() {
+        if (!customTimeInput || document.activeElement === customTimeInput) return;
+        const simTime = getSimulatedTime();
+        // Format to YYYY-MM-DDTHH:mm:ss for datetime-local
+        const offset = simTime.getTimezoneOffset() * 60000;
+        const localISOTime = (new Date(simTime - offset)).toISOString().slice(0, 19);
+        customTimeInput.value = localISOTime;
+    }
+
+    if (customTimeInput) {
+        customTimeInput.addEventListener('change', (e) => {
+            const date = new Date(e.target.value);
+            if (!isNaN(date.getTime())) {
+                setSimulatedTime(date);
+            }
+        });
+    }
+
+    if (autoUpdateTimeCheckbox) {
+        autoUpdateTimeCheckbox.addEventListener('change', (e) => {
+            // By setting the time to the *current simulated time*, we effectively
+            // freeze it at this exact moment if pausing, or resume it from this moment if unpausing.
+            setSimulatedTime(getSimulatedTime(), e.target.checked);
+        });
+    }
+
+    if (setCurrentTimeBtn) {
+        setCurrentTimeBtn.addEventListener('click', () => {
+            setSimulatedTime(new Date());
+            updateTimeInputFromState();
+        });
+    }
+    
+    // Timer to update the input field visually if time is running
+    setInterval(() => {
+        if (timeConfig.isRunning) {
+            updateTimeInputFromState();
+        }
+    }, 1000);
+    // Initial update
+    updateTimeInputFromState();
 
     // --- Screenshot ---
     document.getElementById('download-btn')?.addEventListener('click', () => {
