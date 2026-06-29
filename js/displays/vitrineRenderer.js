@@ -2,13 +2,14 @@ import { COLORS, FONTS, FORMATION } from './constants.js';
 import { drawFormation, drawSectors } from './formationRenderer.js';
 import { drawText } from './textUtils.js';
 import { drawDBLogo, drawAnalogClock } from './sharedRenderers.js';
+import { getSimulatedTime } from '../utils/config.js';
 
 function drawVitrineHeader(ctx, width, activeFeatureIndex, progress, trackNumber, featureAlpha = 1.0) {
     // 1. Clock (Left)
     drawAnalogClock(ctx, 80, 80);
     
     // Digital Time
-    const now = new Date();
+    const now = getSimulatedTime();
     const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
     drawText(ctx, timeStr, 150, 110, FONTS.bold(86), COLORS.WHITE, 'left', 'middle');
 
