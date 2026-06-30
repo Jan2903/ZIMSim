@@ -8,6 +8,7 @@ import { config, timeConfig, setSimulatedTime, getSimulatedTime } from './utils/
 import { toggleDebugMeters } from './displays/formationRenderer.js';
 import { debounce } from './utils/utils.js';
 import { StationService } from './utils/stationService.js';
+import { MOT_PRESETS, MOT_ALL_KEYS, getSmartHeaderString, getMotForCategory } from './utils/motManager.js';
 
 const debouncedUpdateAll = debounce(() => trainDisplay.updateAll(), 300);
 
@@ -58,8 +59,12 @@ export function renderJourneyList() {
         const delayInfo = journey.expectedTime && journey.expectedTime !== journey.scheduledTime
             ? `<span class="delay-indicator">${journey.expectedTime}</span>` : '';
 
+        // Check if journey is filtered out by MOT
+        const mot = getMotForCategory(journey.produktGattung || journey.category);
+        const motHiddenClass = (mot && !journeyStore.activeMots.includes(mot)) ? 'mot-hidden' : '';
+
         html += `
-            <div class="journey-row ${cancelledClass}" data-journey-id="${journey.id}" draggable="true">
+            <div class="journey-row ${cancelledClass} ${motHiddenClass}" data-journey-id="${journey.id}" draggable="true">
                 <div class="journey-col-reorder">
                     <span class="journey-drag-handle" title="Drag & Drop">⠿</span>
                     <div class="reorder-buttons">
@@ -899,6 +904,52 @@ export function initEvents() {
         alert("API-Suche wird in einem späteren Schritt implementiert.");
     });
 
+    // --- Verkehrsmittel (MOT) Filter ---
+    const motCheckboxes = document.querySelectorAll('.mot_dep');
+    const motSummary = document.getElementById('mot_summary');
+    const motPresetBtns = document.querySelectorAll('.mot-preset-btn');
+
+    function updateMotSummary() {
+        if (!motSummary || motCheckboxes.length === 0) return;
+        const selected = Array.from(motCheckboxes)
+            .filter(cb => cb.checked)
+            .map(cb => cb.value);
+        
+        motSummary.innerText = getSmartHeaderString(selected);
+        
+        // Live Filter Trigger
+        journeyStore.activeMots = selected;
+        renderJourneyList();
+        trainDisplay.updateAll();
+    }
+
+    motCheckboxes.forEach(cb => {
+        cb.addEventListener('change', updateMotSummary);
+    });
+
+    motPresetBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const preset = btn.dataset.preset;
+            const valuesToSelect = MOT_PRESETS[preset] || [];
+            
+            motCheckboxes.forEach(cb => {
+                cb.checked = valuesToSelect.includes(cb.value);
+            });
+            
+            updateMotSummary();
+        });
+    });
+
+    // Initiale Zuweisung, ohne UpdateAll (passiert ohnehin in main.js)
+    if (motCheckboxes.length > 0) {
+        journeyStore.activeMots = Array.from(motCheckboxes)
+            .filter(cb => cb.checked)
+            .map(cb => cb.value);
+        if (motSummary) motSummary.innerText = getSmartHeaderString(journeyStore.activeMots);
+    }
+
+    // --- Bahnsteig Längen ---
     document.getElementById('platform_length')?.addEventListener('input', (e) => {
         journeyStore.stationContext.platform.length = parseInt(e.target.value) || 420;
         trainDisplay.updateAll();

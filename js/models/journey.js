@@ -18,6 +18,7 @@ export class Journey {
 
         // === Zug-Identifikation ===
         this.category = data.category || '';        // "ICE", "IC", "RE", "S", "FLX"
+        this.produktGattung = data.produktGattung || ''; // DB API Gattung (z.B. "REGIONAL")
         this.line = data.line || '';                 // Liniennummer ("20", "1", "S1")
         this.number = data.number || '';             // Zugnummer ("71", "7922")
         this.displayNameOverride = data.displayNameOverride || ''; // Manuell überschrieben
@@ -201,6 +202,7 @@ export class Journey {
         return new Journey({
             journeyId: entry.journeyId || '',
             category: cat,
+            produktGattung: vm.produktGattung || '',
             line: vm.linienNummer || '',
             number: num,
             destination: entry.terminus || '',
