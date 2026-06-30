@@ -2,7 +2,7 @@
 import { COLORS, FONTS, INFO } from './constants.js';
 import { drawText, drawWrappedText, drawInfoTopText, drawTextInRectangle } from './textUtils.js';
 import { drawPictograms } from './pictogramRenderer.js';
-import { calculateCoachPositions, getSectorsForMeterRange } from '../utils/formationUtils.js';
+import { calculateCoachPositions, getSectorsForCoaches } from '../utils/formationUtils.js';
 
 function areJourneysMerged(journeys) {
     if (!journeys || journeys.length <= 1) return true;
@@ -49,18 +49,16 @@ function getPlatformSectors(targetJourney, allJourneys, platform) {
         const { allCoaches } = calculateCoachPositions(allJourneys);
         const targetGroups = new Set(targetJourney.formation.groups);
         
-        let minMeter = Infinity;
-        let maxMeter = -Infinity;
+        const targetCoaches = [];
         
         for (const item of allCoaches) {
             if (targetGroups.has(item.group)) {
-                if (item.startM < minMeter) minMeter = item.startM;
-                if (item.endM > maxMeter) maxMeter = item.endM;
+                targetCoaches.push(item);
             }
         }
         
-        if (minMeter !== Infinity && maxMeter !== -Infinity) {
-            return getSectorsForMeterRange(minMeter, maxMeter, platform);
+        if (targetCoaches.length > 0) {
+            return getSectorsForCoaches(targetCoaches, platform);
         }
     }
 
@@ -304,7 +302,7 @@ export function drawTrainInfo(ctx, journeys, width, renderCtx) {
                 
                 const sectors = getPlatformSectors(journey, journeys, renderCtx.platform);
                 if (sectors) {
-                    drawText(ctx, sectors, 890, yPos + 60, FONTS.regular(45), COLORS.WHITE, 'right');
+                    drawText(ctx, sectors, 890, yPos + 100, FONTS.regular(64), COLORS.WHITE, 'right');
                 }
                 
                 lastYPos = yPos;

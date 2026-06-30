@@ -74,22 +74,27 @@ export function calculateCoachPositions(journeys) {
 }
 
 /**
- * Ermittelt die zutreffenden Sektoren für einen bestimmten Meter-Bereich am Bahnsteig.
+ * Ermittelt die zutreffenden Sektoren für eine Liste von Wagen basierend auf deren Mitte.
  *
- * @param {number} startM - Startposition in Metern.
- * @param {number} endM - Endposition in Metern.
+ * @param {Array} coaches - Array von Wagen-Objekten mit startM und endM.
  * @param {import('../models/platform.js').Platform} platform - Das Bahnsteig-Objekt.
  * @returns {string} Die Sektoren als String (z.B. "A", "A-C" oder "").
  */
-export function getSectorsForMeterRange(startM, endM, platform) {
+export function getSectorsForCoaches(coaches, platform) {
     if (!platform || !platform.sections || platform.sections.length === 0) return "";
 
     const activeSectors = new Set();
-    for (const sec of platform.sections) {
-        // Ein Sektor [sec.startMeter, sec.endMeter] überschneidet sich mit [startM, endM],
-        // wenn der Zug vor dem Ende des Sektors anfängt und nach dem Anfang des Sektors aufhört.
-        if (startM < sec.endMeter && endM > sec.startMeter) {
-            activeSectors.add(sec.name);
+    
+    for (const coach of coaches) {
+        if (typeof coach.startM !== 'number' || typeof coach.endM !== 'number') continue;
+        
+        const centerM = (coach.startM + coach.endM) / 2;
+        
+        for (const sec of platform.sections) {
+            if (centerM >= sec.startMeter && centerM <= sec.endMeter) {
+                activeSectors.add(sec.name);
+                break;
+            }
         }
     }
 

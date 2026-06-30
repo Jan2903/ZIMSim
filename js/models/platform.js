@@ -5,9 +5,9 @@ export class Platform {
         this.sections = data.sections || [
             // Standard-Sektoren, falls nichts übergeben wird
             { name: 'A', startMeter: 0, endMeter: 100, cubePosition: 50 },
-            { name: 'B', startMeter: 100, endMeter: 200, cubePosition: 150 },
-            { name: 'C', startMeter: 200, endMeter: 200, cubePosition: 200 },
-            { name: 'D', startMeter: 200, endMeter: 300, cubePosition: 250 },
+            { name: 'B', startMeter: 100, endMeter: 180, cubePosition: 150 },
+            { name: 'C', startMeter: 180, endMeter: 220, cubePosition: 200 },
+            { name: 'D', startMeter: 220, endMeter: 300, cubePosition: 250 },
             { name: 'E', startMeter: 300, endMeter: 400, cubePosition: 350 }
         ];
     }
