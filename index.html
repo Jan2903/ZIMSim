@@ -56,6 +56,9 @@
                         <label class="radio-card"><input type="radio" name="layout_select" value="voranzeiger"> Voranzeiger</label>
                         <label class="radio-card"><input type="radio" name="layout_select" value="zimvitrine32wagenstand"> Vitrine 32</label>
                     </div>
+                    <div class="checkbox-group" style="margin-top: 10px;">
+                        <label class="checkbox-label"><input type="checkbox" id="nrw_mode_checkbox"> Nur Liniennummern (NRW)</label>
+                    </div>
                     
                     <h3 style="margin-top: 25px;">Bahnhof/Station</h3>
                     <div class="form-row column-layout">
@@ -67,10 +70,20 @@
                             </div>
                             <button id="btn_api_station_search" class="btn-secondary" style="padding: 8px 12px; margin: 0;">API Suche</button>
                         </div>
-                        <label>Gleis: <input type="text" id="entry_gleis" class="short-input"></label>
-                        <div class="checkbox-group">
-                            <label class="checkbox-label"><input type="checkbox" id="nrw_mode_checkbox"> NRW-Modus</label>
-                        </div>
+                        <details class="mot-details" id="track_details">
+                            <summary class="mot-summary" id="track_summary">Gleise: Alle</summary>
+                            <div class="mot-content">
+                                <div class="mot-presets" style="display: flex; gap: 5px; margin-bottom: 10px;">
+                                    <button class="btn-secondary btn-sm" id="btn_invert_tracks">Auswahl invertieren</button>
+                                    <input type="text" id="manual_track_input" class="short-input" placeholder="Gl." style="width: 50px; margin: 0;">
+                                    <button class="btn-secondary btn-sm" id="btn_add_manual_track">+</button>
+                                </div>
+                                <div class="checkbox-group mot-checkboxes" id="track_checkbox_container">
+                                    <!-- Dynamisch generiert -->
+                                </div>
+                            </div>
+                        </details>
+
                         <label style="margin-top: 10px;">Datum/Uhrzeit: <input type="datetime-local" step="1" id="custom_time_input"></label>
                         <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 5px; margin-top: 5px;">
                             <button id="set_current_time_btn" class="btn-secondary btn-sm" style="flex: 1;">Systemzeit setzen</button>

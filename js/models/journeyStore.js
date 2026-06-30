@@ -26,6 +26,9 @@ export class JourneyStore {
 
         // Verkehrsmittel Filter
         this.activeMots = [...MOT_ALL_KEYS];
+
+        // Gleis Filter
+        this.activeTracks = [];
     }
 
     // ==========================================
@@ -170,6 +173,17 @@ export class JourneyStore {
             // zeigen wir ihn trotzdem an, oder falls der MOT aktiv ist.
             if (mot && !this.activeMots.includes(mot)) {
                 return false;
+            }
+
+            // Check Gleis Filter
+            if (this.activeTracks.length > 0) {
+                const hasPlatform = j.platform && this.activeTracks.includes(j.platform.toString());
+                const hasEzGleis = j.ezGleis && this.activeTracks.includes(j.ezGleis.toString());
+                const hasNoTrackCondition = (!j.platform && !j.ezGleis && this.activeTracks.includes('Ohne Gleis'));
+                
+                if (!hasPlatform && !hasEzGleis && !hasNoTrackCondition) {
+                    return false;
+                }
             }
             
             return true;
@@ -367,6 +381,39 @@ export class JourneyStore {
     }
 
     // ==========================================
+    // Tracks / Gleise
+    // ==========================================
+
+    /**
+     * Sammelt alle einzigartigen Gleise (Plan- und Echtzeit-Gleis) aus allen Journeys.
+     * @returns {string[]} Sortierte Liste der Gleise
+     */
+    getAllTracks() {
+        const tracks = new Set();
+        let hasNoTrack = false;
+
+        for (const j of this.journeys) {
+            if (j.platform) tracks.add(j.platform.toString());
+            if (j.ezGleis) tracks.add(j.ezGleis.toString());
+            
+            if (!j.platform && !j.ezGleis) {
+                hasNoTrack = true;
+            }
+        }
+
+        const sortedTracks = Array.from(tracks).sort((a, b) => {
+            // Natürliche Sortierung (z.B. '2' vor '10')
+            return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+        });
+
+        if (hasNoTrack) {
+            sortedTracks.push('Ohne Gleis');
+        }
+
+        return sortedTracks;
+    }
+
+    // ==========================================
     // Export
     // ==========================================
 
@@ -382,7 +429,8 @@ export class JourneyStore {
                 platform: this.stationContext.platform
             },
             journeys: this.journeys,
-            nrwMode: this.nrwMode
+            nrwMode: this.nrwMode,
+            activeTracks: this.activeTracks
         };
     }
 
@@ -400,6 +448,7 @@ export class JourneyStore {
         }
 
         this.nrwMode = data.nrwMode || false;
+        this.activeTracks = data.activeTracks || [];
 
         this.journeys = (data.journeys || []).map(j => new Journey(j));
     }
