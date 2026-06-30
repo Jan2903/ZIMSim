@@ -78,6 +78,32 @@
                         <div class="checkbox-group">
                             <label class="checkbox-label"><input type="checkbox" id="auto_update_time_checkbox" checked> Zeit automatisch simulieren</label>
                         </div>
+                        
+                        <details class="mot-details" id="mot_details">
+                            <summary class="mot-summary" id="mot_summary">Verkehrsmittel: Alle Verkehrsmittel</summary>
+                            <div class="mot-content">
+                                <div class="mot-presets">
+                                    <button class="btn-secondary btn-sm mot-preset-btn" data-preset="FV">FV</button>
+                                    <button class="btn-secondary btn-sm mot-preset-btn" data-preset="NV">NV</button>
+                                    <button class="btn-secondary btn-sm mot-preset-btn" data-preset="SPNV">SPNV</button>
+                                    <button class="btn-secondary btn-sm mot-preset-btn" data-preset="ÖPNV">ÖPNV</button>
+                                    <button class="btn-secondary btn-sm mot-preset-btn" data-preset="SPV">SPV</button>
+                                    <button class="btn-secondary btn-sm mot-preset-btn" data-preset="ALL">Alle</button>
+                                </div>
+                                <div class="checkbox-group mot-checkboxes">
+                                    <label class="checkbox-label"><input type="checkbox" class="mot_dep" value="ICE" checked> ICE</label>
+                                    <label class="checkbox-label"><input type="checkbox" class="mot_dep" value="EC_IC" checked> EC/IC</label>
+                                    <label class="checkbox-label"><input type="checkbox" class="mot_dep" value="IR" checked> IR</label>
+                                    <label class="checkbox-label"><input type="checkbox" class="mot_dep" value="REGIONAL" checked> Regional</label>
+                                    <label class="checkbox-label"><input type="checkbox" class="mot_dep" value="SBAHN" checked> S-Bahn</label>
+                                    <label class="checkbox-label"><input type="checkbox" class="mot_dep" value="BUS" checked> Bus</label>
+                                    <label class="checkbox-label"><input type="checkbox" class="mot_dep" value="SCHIFF" checked> Schiff</label>
+                                    <label class="checkbox-label"><input type="checkbox" class="mot_dep" value="UBAHN" checked> U-Bahn</label>
+                                    <label class="checkbox-label"><input type="checkbox" class="mot_dep" value="TRAM" checked> Straßenbahn</label>
+                                    <label class="checkbox-label"><input type="checkbox" class="mot_dep" value="ANRUFPFLICHTIG" checked> Anrufpflichtig</label>
+                                </div>
+                            </div>
+                        </details>
                     </div>
 
                     <h3 style="margin-top: 25px;">Bahnsteig</h3>

@@ -2,6 +2,7 @@
 import { Journey } from './journey.js';
 import { Formation } from './formation.js';
 import { Platform } from './platform.js';
+import { getMotForCategory, MOT_ALL_KEYS } from '../utils/motManager.js';
 
 /**
  * Zentrale Datenverwaltung — ersetzt das alte TrainData.
@@ -22,6 +23,9 @@ export class JourneyStore {
 
         // NRW-Modus (global)
         this.nrwMode = false;
+
+        // Verkehrsmittel Filter
+        this.activeMots = [...MOT_ALL_KEYS];
     }
 
     // ==========================================
@@ -153,11 +157,23 @@ export class JourneyStore {
     // ==========================================
 
     /**
-     * Gibt alle sichtbaren Journeys zurück (visible === true).
+     * Gibt alle sichtbaren Journeys zurück (visible === true und passendes Verkehrsmittel).
      * @returns {Journey[]}
      */
     getVisibleJourneys() {
-        return this.journeys.filter(j => j.visible);
+        return this.journeys.filter(j => {
+            if (!j.visible) return false;
+            
+            // Check Verkehrsmittel Filter
+            const mot = getMotForCategory(j.category);
+            // Wenn kein MOT gefunden wird (z.B. Testdaten ohne Kategorie), 
+            // zeigen wir ihn trotzdem an, oder falls der MOT aktiv ist.
+            if (mot && !this.activeMots.includes(mot)) {
+                return false;
+            }
+            
+            return true;
+        });
     }
 
     /**
