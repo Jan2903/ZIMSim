@@ -5,6 +5,7 @@ import { Formation } from './models/formation.js';
 import { TrainDisplay } from './displays/trainDisplay.js';
 import { initEvents } from './events.js';
 import { preloadImages } from './utils/utils.js';
+import { StationService } from './utils/stationService.js';
 
 export const journeyStore = new JourneyStore();
 export const trainDisplay = new TrainDisplay(journeyStore);
@@ -126,6 +127,7 @@ function createDemoData() {
 // Warten, bis das DOM vollständig geladen ist
 document.addEventListener('DOMContentLoaded', () => {
     createDemoData();
+    StationService.loadStations(); // Asynchrones Laden im Hintergrund starten
     initEvents();
     preloadImages().then(() => {
         document.fonts.ready.then(() => {

@@ -59,8 +59,14 @@
                     
                     <h3 style="margin-top: 25px;">Bahnhof/Station</h3>
                     <div class="form-row column-layout">
-                        <label>Name: <input type="text" id="entry_stop_name" placeholder="z.B. Hannover Hbf"></label>
-                        <label>EVA-Nr: <input type="text" id="entry_stop_id" class="short-input" placeholder="8000152"></label>
+                        <label style="margin-bottom: 5px; display: block;">Station (Suche):</label>
+                        <div style="display: flex; gap: 8px; align-items: flex-start; margin-bottom: 10px;">
+                            <div class="autocomplete-wrapper" style="flex: 1; position: relative;">
+                                <input type="text" id="entry_station_search" placeholder="z.B. Hannover Hbf oder 8000152" autocomplete="off" style="width: 100%; margin: 0;">
+                                <ul id="station_autocomplete_list" class="autocomplete-list"></ul>
+                            </div>
+                            <button id="btn_api_station_search" class="btn-secondary" style="padding: 8px 12px; margin: 0;">API Suche</button>
+                        </div>
                         <label>Gleis: <input type="text" id="entry_gleis" class="short-input"></label>
                         <div class="checkbox-group">
                             <label class="checkbox-label"><input type="checkbox" id="nrw_mode_checkbox"> NRW-Modus</label>
@@ -121,9 +127,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Formation Editor wurde inline in die Zugdetails verlegt -->
-
     <input type="file" id="file-input" style="display:none;" accept=".json">
     <input type="file" id="formation-file-input" style="display:none;" accept=".json">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
