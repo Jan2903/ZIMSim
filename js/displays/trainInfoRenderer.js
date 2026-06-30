@@ -276,7 +276,7 @@ export function drawTrainInfo(ctx, journeys, width, renderCtx) {
                 }
                 
                 lastYPos = yPos;
-                yPos += 200;
+                yPos += 240;
             }
 
             const bracketEndY = lastYPos;

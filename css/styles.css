@@ -643,3 +643,55 @@ input:checked + .slider:before { transform: translateX(20px); }
 .amenity-checks { display: flex; gap: 4px; font-size: 0.9em; }
 .amenity-checks label { cursor: pointer; }
 .remove-coach-btn { color: #ef4444 !important; font-weight: bold; }
+
+/* Autocomplete Dropdown Styles */
+.autocomplete-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    background: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 4px;
+    max-height: 250px;
+    overflow-y: auto;
+    margin: 4px 0 0 0;
+    padding: 0;
+    list-style: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    display: none;
+}
+
+.autocomplete-list.active {
+    display: block;
+}
+
+.autocomplete-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #2a2a2a;
+    font-size: 0.9em;
+    color: #e0e0e0;
+    transition: background 0.15s ease;
+}
+
+.autocomplete-item:last-child {
+    border-bottom: none;
+}
+
+.autocomplete-item:hover,
+.autocomplete-item.selected {
+    background: #2a2a2a;
+    color: #fff;
+}
+
+.autocomplete-item-title {
+    font-weight: 500;
+    margin-bottom: 2px;
+}
+
+.autocomplete-item-details {
+    font-size: 0.85em;
+    color: #888;
+}

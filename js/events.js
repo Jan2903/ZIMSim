@@ -7,6 +7,7 @@ import { Coach } from './models/coach.js';
 import { config, timeConfig, setSimulatedTime, getSimulatedTime } from './utils/config.js';
 import { toggleDebugMeters } from './displays/formationRenderer.js';
 import { debounce } from './utils/utils.js';
+import { StationService } from './utils/stationService.js';
 
 const debouncedUpdateAll = debounce(() => trainDisplay.updateAll(), 300);
 
@@ -801,20 +802,101 @@ export function initEvents() {
     }
 
     // --- Bahnhof/Station ---
-    document.getElementById('entry_stop_name')?.addEventListener('input', (e) => {
-        journeyStore.stationContext.stationName = e.target.value;
-    });
+    const searchInput = document.getElementById('entry_station_search');
+    const autocompleteList = document.getElementById('station_autocomplete_list');
+    let selectedIndex = -1;
 
-    document.getElementById('entry_stop_id')?.addEventListener('input', (e) => {
-        journeyStore.stationContext.stationId = e.target.value;
-        // Alle Journeys mit Stops synchronisieren
-        journeyStore.journeys.forEach(j => {
-            if (j.stops.length > 0) {
-                j.syncFromCurrentStop(e.target.value);
+    if (searchInput && autocompleteList) {
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value;
+            const results = StationService.searchStations(query, 50);
+            
+            autocompleteList.innerHTML = '';
+            selectedIndex = -1;
+
+            if (results.length === 0 || query.length < 2) {
+                autocompleteList.classList.remove('active');
+                return;
+            }
+
+            results.forEach((station, index) => {
+                const li = document.createElement('li');
+                li.className = 'autocomplete-item';
+                
+                const ds100Str = station.ds100 ? `[${station.ds100}]` : '';
+                
+                li.innerHTML = `
+                    <div class="autocomplete-item-title">${station.name} ${ds100Str}</div>
+                    <div class="autocomplete-item-details">${station.nameKurz} ${station.ibnr} Kat.: ${station.kategorie}</div>
+                `;
+                
+                li.addEventListener('click', () => {
+                    selectStation(station);
+                });
+                
+                autocompleteList.appendChild(li);
+            });
+            
+            autocompleteList.classList.add('active');
+        });
+
+        searchInput.addEventListener('keydown', (e) => {
+            const items = autocompleteList.querySelectorAll('.autocomplete-item');
+            if (!items.length) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                selectedIndex = (selectedIndex + 1) % items.length;
+                updateSelection(items);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                selectedIndex = (selectedIndex - 1 + items.length) % items.length;
+                updateSelection(items);
+            } else if (e.key === 'Enter' && selectedIndex >= 0) {
+                e.preventDefault();
+                items[selectedIndex].click();
+            } else if (e.key === 'Escape') {
+                autocompleteList.classList.remove('active');
             }
         });
-        renderJourneyList();
-        trainDisplay.updateAll();
+
+        function updateSelection(items) {
+            items.forEach((item, index) => {
+                if (index === selectedIndex) {
+                    item.classList.add('selected');
+                    item.scrollIntoView({ block: 'nearest' });
+                } else {
+                    item.classList.remove('selected');
+                }
+            });
+        }
+
+        function selectStation(station) {
+            const ds100Str = station.ds100 ? `[${station.ds100}] ` : '';
+            searchInput.value = `${station.name} ${ds100Str}${station.ibnr}`;
+            autocompleteList.classList.remove('active');
+
+            journeyStore.stationContext.stationName = station.name;
+            journeyStore.stationContext.stationId = station.ibnr;
+            
+            journeyStore.journeys.forEach(j => {
+                if (j.stops.length > 0) {
+                    j.syncFromCurrentStop(station.ibnr);
+                }
+            });
+            renderJourneyList();
+            trainDisplay.updateAll();
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!searchInput.contains(e.target) && !autocompleteList.contains(e.target)) {
+                autocompleteList.classList.remove('active');
+            }
+        });
+    }
+
+    document.getElementById('btn_api_station_search')?.addEventListener('click', () => {
+        alert("API-Suche wird in einem späteren Schritt implementiert.");
     });
 
     document.getElementById('platform_length')?.addEventListener('input', (e) => {
