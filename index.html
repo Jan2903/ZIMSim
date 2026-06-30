@@ -70,37 +70,24 @@
                             </div>
                             <button id="btn_api_station_search" class="btn-secondary" style="padding: 8px 12px; margin: 0;">API Suche</button>
                         </div>
-                        <details class="mot-details" id="track_details">
-                            <summary class="mot-summary" id="track_summary">Gleise: Alle</summary>
-                            <div class="mot-content">
-                                <div class="mot-presets" style="display: flex; gap: 5px; margin-bottom: 10px;">
-                                    <button class="btn-secondary btn-sm" id="btn_invert_tracks">Auswahl invertieren</button>
-                                    <input type="text" id="manual_track_input" class="short-input" placeholder="Gl." style="width: 50px; margin: 0;">
-                                    <button class="btn-secondary btn-sm" id="btn_add_manual_track">+</button>
-                                </div>
-                                <div class="checkbox-group mot-checkboxes" id="track_checkbox_container">
-                                    <!-- Dynamisch generiert -->
-                                </div>
-                            </div>
-                        </details>
 
-                        <label style="margin-top: 10px;">Datum/Uhrzeit: <input type="datetime-local" step="1" id="custom_time_input"></label>
+                        <label style="margin-top: 5px;">Datum/Uhrzeit: <input type="datetime-local" step="1" id="custom_time_input"></label>
                         <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 5px; margin-top: 5px;">
                             <button id="set_current_time_btn" class="btn-secondary btn-sm" style="flex: 1;">Systemzeit setzen</button>
                         </div>
-                        <div class="checkbox-group">
+                        <div class="checkbox-group" style="margin-bottom: 15px;">
                             <label class="checkbox-label"><input type="checkbox" id="auto_update_time_checkbox" checked> Zeit automatisch simulieren</label>
                         </div>
                         
-                        <details class="mot-details" id="mot_details">
+                        <details class="mot-details" id="mot_details" style="margin-bottom: 10px;">
                             <summary class="mot-summary" id="mot_summary">Verkehrsmittel: Alle Verkehrsmittel</summary>
                             <div class="mot-content">
                                 <div class="mot-presets">
-                                    <button class="btn-secondary btn-sm mot-preset-btn" data-preset="FV">FV</button>
-                                    <button class="btn-secondary btn-sm mot-preset-btn" data-preset="NV">NV</button>
-                                    <button class="btn-secondary btn-sm mot-preset-btn" data-preset="SPNV">SPNV</button>
-                                    <button class="btn-secondary btn-sm mot-preset-btn" data-preset="ÖPNV">ÖPNV</button>
                                     <button class="btn-secondary btn-sm mot-preset-btn" data-preset="SPV">SPV</button>
+                                    <button class="btn-secondary btn-sm mot-preset-btn" data-preset="SPFV">FV</button>
+                                    <button class="btn-secondary btn-sm mot-preset-btn" data-preset="SPNV">NV</button>
+                                    <button class="btn-secondary btn-sm mot-preset-btn" data-preset="ÖSPV">ÖSPV</button>
+                                    <button class="btn-secondary btn-sm mot-preset-btn" data-preset="ÖPNV">ÖPNV</button>                                    
                                     <button class="btn-secondary btn-sm mot-preset-btn" data-preset="ALL">Alle</button>
                                 </div>
                                 <div class="checkbox-group mot-checkboxes">
@@ -114,6 +101,20 @@
                                     <label class="checkbox-label"><input type="checkbox" class="mot_dep" value="UBAHN" checked> U-Bahn</label>
                                     <label class="checkbox-label"><input type="checkbox" class="mot_dep" value="TRAM" checked> Straßenbahn</label>
                                     <label class="checkbox-label"><input type="checkbox" class="mot_dep" value="ANRUFPFLICHTIG" checked> Anrufpflichtig</label>
+                                </div>
+                            </div>
+                        </details>
+
+                        <details class="mot-details" id="track_details">
+                            <summary class="mot-summary" id="track_summary">Gleise: Alle</summary>
+                            <div class="mot-content">
+                                <div class="mot-presets" style="display: flex; gap: 5px; margin-bottom: 10px;">
+                                    <button class="btn-secondary btn-sm" id="btn_invert_tracks">Auswahl invertieren</button>
+                                    <input type="text" id="manual_track_input" class="short-input" placeholder="Gl." style="width: 50px; margin: 0;">
+                                    <button class="btn-secondary btn-sm" id="btn_add_manual_track">+</button>
+                                </div>
+                                <div class="checkbox-group mot-checkboxes" id="track_checkbox_container">
+                                    <!-- Dynamisch generiert -->
                                 </div>
                             </div>
                         </details>

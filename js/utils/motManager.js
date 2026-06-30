@@ -16,20 +16,20 @@ export const MOT_NAMES = {
 export const MOT_ALL_KEYS = Object.keys(MOT_NAMES);
 
 export const MOT_PRESETS = {
-    'FV': ['ICE', 'EC_IC', 'IR'],
-    'NV': ['REGIONAL', 'SBAHN'],
-    'SPNV': ['REGIONAL', 'SBAHN', 'UBAHN', 'TRAM'],
+    'SPV': ['ICE', 'EC_IC', 'IR', 'REGIONAL', 'SBAHN'],
+    'SPFV': ['ICE', 'EC_IC', 'IR'],
+    'SPNV': ['REGIONAL', 'SBAHN'],
+    'ÖSPV': ['BUS', 'SCHIFF', 'UBAHN', 'TRAM', 'ANRUFPFLICHTIG'],
     'ÖPNV': ['REGIONAL', 'SBAHN', 'BUS', 'SCHIFF', 'UBAHN', 'TRAM', 'ANRUFPFLICHTIG'],
-    'SPV': ['ICE', 'EC_IC', 'IR', 'REGIONAL', 'SBAHN', 'UBAHN', 'TRAM'],
     'ALL': MOT_ALL_KEYS
 };
 
 export const MOT_PRESET_NAMES = {
-    'FV': 'Nur Fernverkehr (FV)',
-    'NV': 'Nur Nahverkehr (NV)',
-    'SPNV': 'Schienenpersonennahverkehr (SPNV)',
-    'ÖPNV': 'Öffentl. Personennahverkehr (ÖPNV)',
     'SPV': 'Schienenpersonenverkehr (SPV)',
+    'SPFV': 'Nur Fernverkehr (FV)',
+    'SPNV': 'Nur Nahverkehr (NV)',
+    'ÖSPV': 'Straßenpersonennahverkehr (ÖSPV)',
+    'ÖPNV': 'Öffentl. Personennahverkehr (ÖPNV)',
     'ALL': 'Alle Verkehrsmittel'
 };
 
