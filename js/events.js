@@ -16,6 +16,8 @@ const debouncedUpdateAll = debounce(() => trainDisplay.updateAll(), 300);
 let expandedJourneyId = null;
 // IDs der aktuell aufgeklappten FormationGroups (Format: "journeyId_groupIndex")
 const expandedGroups = new Set();
+// Manuell hinzugefügte Gleise (werden nicht durch Store-Änderungen gelöscht)
+const manualTracks = new Set();
 
 // ==========================================
 // Journey-Liste rendern
@@ -59,12 +61,32 @@ export function renderJourneyList() {
         const delayInfo = journey.expectedTime && journey.expectedTime !== journey.scheduledTime
             ? `<span class="delay-indicator">${journey.expectedTime}</span>` : '';
 
-        // Check if journey is filtered out by MOT
+        // Check if journey is filtered out by MOT or Track
+        let isHidden = false;
         const mot = getMotForCategory(journey.produktGattung || journey.category);
-        const motHiddenClass = (mot && !journeyStore.activeMots.includes(mot)) ? 'mot-hidden' : '';
+        if (mot && !journeyStore.activeMots.includes(mot)) {
+            isHidden = true;
+        }
+        
+        if (journeyStore.activeTracks.length > 0) {
+            const hasPlatform = journey.platform && journeyStore.activeTracks.includes(journey.platform.toString());
+            const hasEzGleis = journey.ezGleis && journeyStore.activeTracks.includes(journey.ezGleis.toString());
+            const hasNoTrackCondition = (!journey.platform && !journey.ezGleis && journeyStore.activeTracks.includes('Ohne Gleis'));
+            
+            if (!hasPlatform && !hasEzGleis && !hasNoTrackCondition) {
+                isHidden = true;
+            }
+        }
+        
+        const hiddenClass = isHidden ? 'mot-hidden' : '';
+
+        let platformText = journey.platform ? 'Gl. ' + journey.platform : '';
+        if (journey.ezGleis && journey.ezGleis !== journey.platform) {
+            platformText += ` <span style="color: #ff6b6b; font-weight: bold;">(${journey.ezGleis})</span>`;
+        }
 
         html += `
-            <div class="journey-row ${cancelledClass} ${motHiddenClass}" data-journey-id="${journey.id}" draggable="true">
+            <div class="journey-row ${cancelledClass} ${hiddenClass}" data-journey-id="${journey.id}" draggable="true">
                 <div class="journey-col-reorder">
                     <span class="journey-drag-handle" title="Drag & Drop">⠿</span>
                     <div class="reorder-buttons">
@@ -85,7 +107,7 @@ export function renderJourneyList() {
                         <span class="journey-destination">${journey.destination || '—'}</span>
                         <span class="journey-time">${journey.scheduledTime || '—'}</span>
                         ${delayInfo}
-                        <span class="journey-platform">${journey.platform ? 'Gl. ' + journey.platform : ''}</span>
+                        <span class="journey-platform">${platformText}</span>
                         <button class="btn-icon expand-toggle" data-journey-id="${journey.id}">${isExpanded ? '▾' : '▸'}</button>
                     </div>
                     ${isExpanded ? renderJourneyDetails(journey) : ''}
@@ -97,6 +119,74 @@ export function renderJourneyList() {
     });
 
     container.innerHTML = html;
+
+    // Track Filter nach Rendern der Journeys aktualisieren
+    renderTrackFilter();
+}
+
+/**
+ * Generiert und rendert die dynamische Gleis-Auswahl im "Bahnhof"-Tab.
+ */
+export function renderTrackFilter() {
+    const container = document.getElementById('track_checkbox_container');
+    const summary = document.getElementById('track_summary');
+    if (!container || !summary) return;
+
+    // Alle Gleise aus Store holen
+    const storeTracks = journeyStore.getAllTracks();
+    
+    // Mit manuellen Gleisen mergen und sortieren
+    const allTracksSet = new Set([...storeTracks, ...manualTracks]);
+    let allTracks = Array.from(allTracksSet).sort((a, b) => {
+        if (a === 'Ohne Gleis') return 1;
+        if (b === 'Ohne Gleis') return -1;
+        return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+    });
+
+    // Checkboxen generieren
+    let html = '';
+    allTracks.forEach(track => {
+        // Default-mäßig alle angehakt, außer wir haben schon manuell deselektiert
+        // journeyStore.activeTracks speichert die AKTIVEN. 
+        // Wenn activeTracks leer ist UND initial geladen wird, sollten wir es evtl. füllen?
+        // Bei MOT ist initial alles gecheckt (im HTML), dann wird activeMots befüllt.
+        // Bei Tracks: Wenn activeTracks leer ist, nehmen wir an alle sind aktiv,
+        // oder wir füllen es einmalig. Besser: Im HTML ist nichts, wir initialisieren hier.
+        const isChecked = journeyStore.activeTracks.length === 0 || journeyStore.activeTracks.includes(track);
+        html += `<label class="checkbox-label"><input type="checkbox" class="track_dep" value="${track}" ${isChecked ? 'checked' : ''}> ${track}</label>`;
+    });
+
+    container.innerHTML = html;
+
+    // Summary updaten
+    if (journeyStore.activeTracks.length === 0 || journeyStore.activeTracks.length === allTracks.length) {
+        summary.innerText = "Gleise: Alle";
+    } else {
+        summary.innerText = "Gleise: " + journeyStore.activeTracks.join(', ');
+    }
+
+    // Events binden für neu generierte Checkboxen
+    const checkboxes = container.querySelectorAll('.track_dep');
+    checkboxes.forEach(cb => {
+        cb.addEventListener('change', () => {
+            const selected = Array.from(checkboxes)
+                .filter(c => c.checked)
+                .map(c => c.value);
+            
+            // Wenn alle oder keines gewählt, dann Liste leeren -> Alle sichtbar
+            if (selected.length === 0 || selected.length === checkboxes.length) {
+                journeyStore.activeTracks = [];
+            } else {
+                journeyStore.activeTracks = selected;
+            }
+            
+            // UI Updaten (rekursiv wird renderTrackFilter in renderJourneyList aufgerufen, 
+            // das ist okay, solange renderTrackFilter nicht den Fokus verliert,
+            // aber Checkbox-Click verliert keinen Text-Fokus)
+            renderJourneyList();
+            trainDisplay.updateAll();
+        });
+    });
 }
 
 /**
@@ -127,7 +217,8 @@ function renderJourneyDetails(journey) {
                     <div class="detail-row">
                         <label>Abfahrt/Ankunft: <input type="text" class="jfield short-input" data-field="scheduledTime" value="${journey.scheduledTime}"></label>
                         <label>Echtzeit: <input type="text" class="jfield short-input" data-field="expectedTime" value="${journey.expectedTime}"></label>
-                        <label>Gleis: <input type="text" class="jfield short-input" data-field="platform" value="${journey.platform}"></label>
+                        <label>Gleis (Plan): <input type="text" class="jfield short-input" data-field="platform" value="${journey.platform}"></label>
+                        <label>Echtzeit-Gleis: <input type="text" class="jfield short-input" data-field="ezGleis" value="${journey.ezGleis}"></label>
                     </div>
                     <div class="detail-row">
                         <label>Via 1: <input type="text" class="jfield via-field" data-field="via0" value="${journey.vias[0] || ''}"></label>
@@ -155,7 +246,6 @@ function renderJourneyDetails(journey) {
                         <label class="checkbox-label"><input type="checkbox" class="jcheck" data-field="infoscreen" ${journey.infoscreen ? 'checked' : ''}> Infoscreen</label>
                     </div>
                     <div class="detail-row">
-                        <label>Gleiswechsel: <input type="text" class="jfield short-input" data-field="gleiswechsel" value="${journey.gleiswechsel}"></label>
                         <label>Verkehrt ab: <input type="text" class="jfield short-input" data-field="verkehrtAb" value="${journey.verkehrtAb}"></label>
                     </div>
                 </div>
@@ -902,6 +992,58 @@ export function initEvents() {
 
     document.getElementById('btn_api_station_search')?.addEventListener('click', () => {
         alert("API-Suche wird in einem späteren Schritt implementiert.");
+    });
+
+    // --- Gleis (Track) Filter Events ---
+    document.getElementById('btn_invert_tracks')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        const checkboxes = document.querySelectorAll('.track_dep');
+        if (checkboxes.length === 0) return;
+        
+        let allUnchecked = true;
+        checkboxes.forEach(cb => {
+            cb.checked = !cb.checked;
+            if (cb.checked) allUnchecked = false;
+        });
+        
+        const selected = Array.from(checkboxes).filter(c => c.checked).map(c => c.value);
+        if (allUnchecked || selected.length === checkboxes.length) {
+            journeyStore.activeTracks = [];
+        } else {
+            journeyStore.activeTracks = selected;
+        }
+        
+        // UI aktualisieren (Summary und Listen)
+        const summary = document.getElementById('track_summary');
+        if (summary) {
+            if (journeyStore.activeTracks.length === 0 || journeyStore.activeTracks.length === checkboxes.length) {
+                summary.innerText = "Gleise: Alle";
+            } else {
+                summary.innerText = "Gleise: " + journeyStore.activeTracks.join(', ');
+            }
+        }
+        
+        renderJourneyList();
+        trainDisplay.updateAll();
+    });
+
+    document.getElementById('btn_add_manual_track')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        const input = document.getElementById('manual_track_input');
+        if (!input) return;
+        const val = input.value.trim();
+        if (val) {
+            manualTracks.add(val);
+            input.value = '';
+            renderTrackFilter();
+        }
+    });
+
+    document.getElementById('manual_track_input')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            document.getElementById('btn_add_manual_track')?.click();
+        }
     });
 
     // --- Verkehrsmittel (MOT) Filter ---

@@ -40,7 +40,7 @@ export class Journey {
         this.formation = data.formation ? new Formation(data.formation) : new Formation();
 
         // === Störungen / Flags ===
-        this.gleiswechsel = data.gleiswechsel || '0';
+        this.ezGleis = data.ezGleis || '';
         this.verkehrtAb = data.verkehrtAb || '0';
         this.infoscreen = data.infoscreen || false;
         this.ausfall = data.ausfall || false;
@@ -94,7 +94,7 @@ export class Journey {
      */
     get isDisrupted() {
         return this.ausfall
-            || (this.gleiswechsel !== '0' && this.gleiswechsel !== 0)
+            || (this.ezGleis !== '' && this.ezGleis !== this.platform)
             || (this.verkehrtAb !== '0' && this.verkehrtAb !== 0)
             || this.infoscreen;
     }
@@ -158,6 +158,7 @@ export class Journey {
 
         // Gleis
         this.platform = stop.platform || '';
+        this.ezGleis = stop.ezGleis || '';
 
         // Ziel / Herkunft
         if (this.ankunft) {
@@ -209,6 +210,7 @@ export class Journey {
             scheduledTime: Stop.formatTime(entry.zeit),
             expectedTime: Stop.formatTime(entry.ezZeit),
             platform: entry.gleis || '',
+            ezGleis: entry.ezGleis || '',
             messages: (entry.meldungen || []).map(m => ({
                 priority: m.prioritaet,
                 text: m.text
@@ -246,6 +248,7 @@ export class Journey {
                 departure: halt.abfahrt || null,
                 arrival: halt.ankunft || null,
                 platform: halt.gleis || '',
+                ezGleis: halt.ezGleis || '',
                 cancelled: halt.priorisierteMeldungen?.some(m => m.type === 'HALT_AUSFALL') || false,
                 category: halt.kategorie || '',
                 number: halt.nummer || '',

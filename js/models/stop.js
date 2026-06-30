@@ -21,6 +21,7 @@ export class Stop {
         } : null;
 
         this.platform = data.platform || data.gleis || '';
+        this.ezGleis = data.ezGleis || '';
 
         // Halt-Status
         this.cancelled = data.cancelled || false;   // Halt entfällt

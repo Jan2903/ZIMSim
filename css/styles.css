@@ -687,9 +687,11 @@ input:checked + .slider:before { transform: translateX(20px); }
     color: #fff;
 }
 
+.scroll-container {
     position: absolute;
     background-color: transparent;
     pointer-events: none;
+    overflow: hidden; /* Wichtig, damit der Lauftext innerhalb der Box bleibt */
 }
 .scroll-text {
     display: inline-block;
