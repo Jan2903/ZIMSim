@@ -10,6 +10,7 @@ import {
     drawFullscreenWagonNumbers, drawCompactWagonNumbers,
     mapCoachType, getSafeCenter
 } from './coachRenderer.js';
+import { calculateCoachPositions } from '../utils/formationUtils.js';
 
 // Debug-Schalter: Meter-Markierungen am Bahnsteig anzeigen
 export let DEBUG_METERS = false;
@@ -142,57 +143,12 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
     let pixelPerMeter = meterAreaPixels / platformLengthMeters;
     let meterOrigin = threshold + arrowBuffer; // Pixel-Position von Meter 0
 
-    // Vererbung von leeren Zielen/Zugnummern für den Kupplungs-Check
-    const groupProperties = new Map();
-    let lastValidDest = '';
-    let lastValidNum = '';
-    
-    allFormationGroups.forEach(group => {
-        const dest = group.destination || lastValidDest;
-        const num = group.trainNumber || lastValidNum;
-        
-        groupProperties.set(group, { destination: dest, trainNumber: num });
-        
-        if (group.destination) lastValidDest = group.destination;
-        if (group.trainNumber) lastValidNum = group.trainNumber;
-    });
-
-    const uniqueTrainNumbers = new Set();
-    groupProperties.forEach(props => {
-        if (props.trainNumber) uniqueTrainNumbers.add(props.trainNumber);
-    });
-    const isMultipleTrains = uniqueTrainNumbers.size > 1;
-
-    // 1. Zuerst ALLE Wagen (inklusive Loks) in eine flache Liste bringen,
-    // um die physischen Meter-Positionen korrekt aufzusummieren.
-    let allCoaches = [];
-    allFormationGroups.forEach(group => {
-        const props = groupProperties.get(group);
-        group.coaches.forEach(coach => {
-            allCoaches.push({
-                coach, 
-                group,
-                inheritedDestination: props.destination,
-                inheritedTrainNumber: props.trainNumber
-            });
-        });
-    });
+    const calcResult = calculateCoachPositions(journeys);
+    let allCoaches = calcResult.allCoaches;
+    const isMultipleTrains = calcResult.isMultipleTrains;
+    const groupProperties = calcResult.groupProperties;
 
     if (allCoaches.length === 0) return null;
-
-    // 2. Start- und End-Meter für jeden Wagen sicherstellen (als absolute Koordinaten)
-    let currentMeter = startMeter;
-    allCoaches.forEach(item => {
-        if (item.coach.platformPosition && typeof item.coach.platformPosition.start === 'number') {
-            item.startM = item.coach.platformPosition.start;
-            item.endM = item.coach.platformPosition.end;
-            currentMeter = item.endM; // Synchronisieren für evtl. folgende Wagen ohne Daten
-        } else {
-            item.startM = currentMeter;
-            item.endM = currentMeter + item.coach.length;
-            currentMeter = item.endM;
-        }
-    });
 
     // 3. Loks aus dem Neben-Display herausfiltern
     if (!fullScreen) {

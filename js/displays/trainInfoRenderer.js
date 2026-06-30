@@ -2,6 +2,7 @@
 import { COLORS, FONTS, INFO } from './constants.js';
 import { drawText, drawWrappedText, drawInfoTopText, drawTextInRectangle } from './textUtils.js';
 import { drawPictograms } from './pictogramRenderer.js';
+import { calculateCoachPositions, getSectorsForMeterRange } from '../utils/formationUtils.js';
 
 function areJourneysMerged(journeys) {
     if (!journeys || journeys.length <= 1) return true;
@@ -16,23 +17,54 @@ function areJourneysMerged(journeys) {
     return true;
 }
 
-function getPlatformSectors(journey) {
-    if (journey.sectors) return journey.sectors;
-    if (!journey || !journey.formation || !journey.formation.groups) return "";
+function getPlatformSectors(targetJourney, allJourneys, platform) {
+    if (targetJourney.sectors) return targetJourney.sectors;
+    if (!targetJourney || !targetJourney.formation || !targetJourney.formation.groups) return "";
+    
     const sectors = new Set();
-    for (const group of journey.formation.groups) {
+    let hasStaticSectorInfo = false;
+    for (const group of targetJourney.formation.groups) {
         for (const coach of group.coaches) {
             const pos = coach.platformPosition;
             if (pos) {
-                if (pos.sector) sectors.add(pos.sector);
-                else if (pos.name && pos.name.length === 1) sectors.add(pos.name);
+                if (pos.sector) {
+                    sectors.add(pos.sector);
+                    hasStaticSectorInfo = true;
+                } else if (pos.name && pos.name.length === 1) {
+                    sectors.add(pos.name);
+                    hasStaticSectorInfo = true;
+                }
             }
         }
     }
-    const sectorArr = Array.from(sectors).sort();
-    if (sectorArr.length === 0) return "";
-    if (sectorArr.length === 1) return sectorArr[0];
-    return `${sectorArr[0]}-${sectorArr[sectorArr.length - 1]}`;
+    
+    if (hasStaticSectorInfo) {
+        const sectorArr = Array.from(sectors).sort();
+        if (sectorArr.length === 0) return "";
+        if (sectorArr.length === 1) return sectorArr[0];
+        return `${sectorArr[0]}-${sectorArr[sectorArr.length - 1]}`;
+    }
+
+    if (allJourneys && platform) {
+        const { allCoaches } = calculateCoachPositions(allJourneys);
+        const targetGroups = new Set(targetJourney.formation.groups);
+        
+        let minMeter = Infinity;
+        let maxMeter = -Infinity;
+        
+        for (const item of allCoaches) {
+            if (targetGroups.has(item.group)) {
+                if (item.startM < minMeter) minMeter = item.startM;
+                if (item.endM > maxMeter) maxMeter = item.endM;
+            }
+        }
+        
+        if (minMeter !== Infinity && maxMeter !== -Infinity) {
+            return getSectorsForMeterRange(minMeter, maxMeter, platform);
+        }
+    }
+
+    return "";
 }
 
 /**
@@ -270,7 +302,7 @@ export function drawTrainInfo(ctx, journeys, width, renderCtx) {
                 drawTextInRectangle(ctx, journey.effectiveDisplayName, 890, yPos, FONTS.regular(75), 'right', 75, 10,
                     renderCtx, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true);
                 
-                const sectors = getPlatformSectors(journey);
+                const sectors = getPlatformSectors(journey, journeys, renderCtx.platform);
                 if (sectors) {
                     drawText(ctx, sectors, 890, yPos + 60, FONTS.regular(45), COLORS.WHITE, 'right');
                 }

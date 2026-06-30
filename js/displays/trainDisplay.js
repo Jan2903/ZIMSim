@@ -205,6 +205,7 @@ export class TrainDisplay {
             zugID,
             canvas,
             cssScale,
+            platform: this.journeyStore.platform,
         };
     }
 
