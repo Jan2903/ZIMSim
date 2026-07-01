@@ -112,7 +112,7 @@ export function drawDisruptionOverlay(ctx, journey, renderCtx) {
 
     // Zusätzliche Informationen je nach Störungstyp
     if (gleiswechsel !== "0") {
-        const viaFull = vias.filter(v => v !== "").join(' ');
+        const viaFull = vias.filter(v => v !== "").join(' - ');
         drawWrappedText(ctx, viaFull, 50, 520, 880, 100, FONTS.regular(70), COLORS.NAVY, 'left');
     } else if (verkehrtAb !== "0") {
         const verkehrtAbMessage = 'Verkehrt heute ab / Departing today from ' + verkehrtAb;
@@ -226,7 +226,7 @@ export function drawTrainInfo(ctx, journeys, width, renderCtx) {
             let yPos = 420;
             drawText(ctx, primary.destination, 100, yPos, FONTS.regular(180), COLORS.WHITE, 'left');
             const viaText = (primary.vias || []).join(' - ');
-            drawText(ctx, viaText, 112, yPos + 100, FONTS.regular(70), COLORS.WHITE, 'left');
+            drawWrappedText(ctx, viaText, 112, yPos + 150,  1800,80,FONTS.regular(70), COLORS.WHITE, 'left');
         } else {
             const zoneWidth = width / 2; // Split screen for true wing trains
             const maxTrains = Math.min(journeys.length, 2);
@@ -286,7 +286,7 @@ export function drawTrainInfo(ctx, journeys, width, renderCtx) {
             let yPos = 360;
             drawText(ctx, primary.destination, 50, yPos, FONTS.regular(120), COLORS.WHITE, 'left');
             yPos += 160;
-            const viaText = (primary.vias || []).join(' ');
+            const viaText = (primary.vias || []).join(' - ');
             drawWrappedText(ctx, viaText, 50, yPos, 880, 80, FONTS.regular(70), COLORS.WHITE, 'left');
         } else {
             let yPos = 360;

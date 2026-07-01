@@ -29,7 +29,6 @@ export class Journey {
         this.expectedTime = data.expectedTime || '';
         this.platform = data.platform || '';
         this.sectors = data.sectors || '';
-        this.vias = data.vias || [];
         this.scrollText = data.scrollText || '';
 
         // === Formation / Wagenreihung ===
@@ -64,6 +63,23 @@ export class Journey {
         // === Halteliste (optional, für Details-Ansicht & API-Import) ===
         this.stops = (data.stops || []).map(s => s instanceof Stop ? s : new Stop(s));
         this._currentStopIndex = data._currentStopIndex !== undefined ? data._currentStopIndex : -1;
+
+        // Migration: Falls alte _vias existieren, aber keine Stops, generiere Dummy-Stops
+        if (this.stops.length === 0 && data._vias && data._vias.length > 0) {
+            this.stops = data._vias.filter(v => v).map((v, i) => new Stop({
+                name: typeof v === 'string' ? v : v.name || '',
+                nameKurz: typeof v === 'string' ? v : v.nameKurz || v.name || '',
+                showAsVia: true,
+                routeIndex: i
+            }));
+        } else if (this.stops.length === 0 && data.vias && data.vias.length > 0) {
+            this.stops = data.vias.filter(v => v).map((v, i) => new Stop({
+                name: typeof v === 'string' ? v : v.name || '',
+                nameKurz: typeof v === 'string' ? v : v.nameKurz || v.name || '',
+                showAsVia: true,
+                routeIndex: i
+            }));
+        }
 
         // === Erweiterte Metadaten ===
         this.zugattribute = data.zugattribute || [];   // Zug-Attribute aus DB API
@@ -112,6 +128,13 @@ export class Journey {
     /** Hat die Fahrt eine nicht-leere Formation? */
     get hasFormation() {
         return this.formation && !this.formation.isEmpty;
+    }
+
+    /** Dynamisch berechnete Vias anhand der Halteliste */
+    get vias() {
+        return this.stops
+            .filter(s => s.showAsVia && !s.cancelled && s.boardingType !== 'ein')
+            .map(s => s.nameKurz || s.name);
     }
 
     /** Der aktuelle Halt (basierend auf _currentStopIndex) */
@@ -167,14 +190,11 @@ export class Journey {
             this.destination = this.stops[this.stops.length - 1]?.name || '';
         }
 
-        // Vias (Halte zwischen aktuellem Halt und Endstation, max 3)
-        const endIdx = this.stops.length - 1;
-        if (idx < endIdx && !this.ankunft) {
-            this.vias = this.stops
-                .slice(idx + 1, endIdx)
-                .filter(s => !s.cancelled)
-                .map(s => s.name)
-                .slice(0, 3);
+        // Vias werden jetzt dynamisch über die Stops-Liste gesteuert
+        // Wenn noch keine Vias markiert sind, können wir autoGenerateVias aufrufen
+        const hasVias = this.stops.some(s => s.showAsVia);
+        if (!hasVias && !this.ankunft) {
+            this.autoGenerateVias(4);
         }
 
         // Halt-basierte Zugnummer übernehmen
@@ -189,6 +209,35 @@ export class Journey {
     }
 
     /**
+     * Setzt die "showAsVia" Flags der Halte automatisch basierend auf der Priorität
+     * (Kategorie aus stations.csv), beschränkt auf maxCount.
+     */
+    autoGenerateVias(maxCount = 4) {
+        if (!this.stops || this.stops.length === 0) return;
+
+        // Zurücksetzen
+        this.stops.forEach(s => s.showAsVia = false);
+
+        // Bestimme den relevanten Bereich der Halte:
+        // Nach dem aktuellen Halt bis (exklusiv) zur Endstation.
+        const startIndex = this._currentStopIndex >= 0 ? this._currentStopIndex + 1 : 0;
+        const endIndex = this.stops.length - 1; // Zielbahnhof ist nicht via
+        
+        if (startIndex >= endIndex) return; // Keine Zwischenhalte
+
+        let candidateStops = this.stops.slice(startIndex, endIndex).filter(s => !s.cancelled && s.boardingType !== 'ein');
+
+        // Sortieren nach Kategorie (1 ist am wichtigsten, 99 am wenigsten)
+        candidateStops.sort((a, b) => a.stationCategory - b.stationCategory);
+
+        // Top N auswählen
+        const selected = candidateStops.slice(0, maxCount);
+
+        // Flag setzen
+        selected.forEach(s => s.showAsVia = true);
+    }
+
+    /**
      * Erstellt eine Journey aus einem DB-API Abfahrtstafel-Eintrag.
      * @param {object} entry - Ein Eintrag aus dem entries[]-Array
      * @returns {Journey}
@@ -200,7 +249,7 @@ export class Journey {
         const nameParts = name.split(' ');
         const num = nameParts.length > 1 ? nameParts[nameParts.length - 1] : '';
 
-        return new Journey({
+        const journey = new Journey({
             journeyId: entry.journeyId || '',
             category: cat,
             produktGattung: vm.produktGattung || '',
@@ -211,12 +260,18 @@ export class Journey {
             expectedTime: Stop.formatTime(entry.ezZeit),
             platform: entry.gleis || '',
             ezGleis: entry.ezGleis || '',
+            vias: entry.vias || entry.zuglauf || entry.route || entry.ueber || [],
             messages: (entry.meldungen || []).map(m => ({
                 priority: m.prioritaet,
                 text: m.text
             })),
             scrollText: (entry.meldungen || []).map(m => m.text).join(' +++ ')
         });
+
+        // Wenn durch Migration Dummy-Stops aus den Vias erzeugt wurden, reichern wir sie an
+        journey.stops.forEach(s => s.enrichWithStationData());
+
+        return journey;
     }
 
     /**
@@ -253,9 +308,16 @@ export class Journey {
                 category: halt.kategorie || '',
                 number: halt.nummer || '',
                 routeIndex: halt.routeIdx,
-                messages: halt.priorisierteMeldungen || []
+                messages: halt.priorisierteMeldungen || [],
+                risNotizen: halt.risNotizen || []
             }))
         });
+
+        // Stationen anreichern
+        journey.stops.forEach(s => s.enrichWithStationData());
+
+        // Auto-Generate Vias für den importierten Zuglauf
+        journey.autoGenerateVias(4);
 
         // Auto-sync wenn Station-ID bekannt
         if (stationId) {

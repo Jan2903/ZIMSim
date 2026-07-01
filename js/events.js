@@ -2,6 +2,7 @@
 // Komplett neue UI-Logik für die dynamische Journey-Liste
 import { journeyStore, trainDisplay } from './main.js';
 import { Journey } from './models/journey.js';
+import { Stop } from './models/stop.js';
 import { Formation, FormationGroup } from './models/formation.js';
 import { Coach } from './models/coach.js';
 import { config, timeConfig, setSimulatedTime, getSimulatedTime } from './utils/config.js';
@@ -220,11 +221,6 @@ function renderJourneyDetails(journey) {
                         <label>Gleis (Plan): <input type="text" class="jfield short-input" data-field="platform" value="${journey.platform}"></label>
                         <label>Echtzeit-Gleis: <input type="text" class="jfield short-input" data-field="ezGleis" value="${journey.ezGleis}"></label>
                     </div>
-                    <div class="detail-row">
-                        <label>Via 1: <input type="text" class="jfield via-field" data-field="via0" value="${journey.vias[0] || ''}"></label>
-                        <label>Via 2: <input type="text" class="jfield via-field" data-field="via1" value="${journey.vias[1] || ''}"></label>
-                        <label>Via 3: <input type="text" class="jfield via-field" data-field="via2" value="${journey.vias[2] || ''}"></label>
-                    </div>
                 </div>
                 <div class="detail-section">
                     <h4>Anzeige</h4>
@@ -270,7 +266,20 @@ function renderJourneyDetails(journey) {
                 <button class="btn-secondary couple-btn" data-journey-id="${journey.id}">${journey.couplingGroupId ? '🔗 Entkoppeln' : '🔗 Koppeln'}</button>
                 <button class="btn-danger delete-journey-btn" data-journey-id="${journey.id}">🗑️ Löschen</button>
             </div>
-            ${journey.stops.length > 0 ? renderStopsList(journey) : ''}
+            
+            <div class="detail-section" style="margin-top: 15px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h4>Zuglauf (Halte)</h4>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn-secondary stops_toggle_all_btn" data-journey-id="${journey.id}" title="Alle (außer Ausfall/Nur Einstieg) als Via an/abwählen">👁️ Alle umschalten</button>
+                        <button class="btn-secondary stops_auto_gen_btn" data-journey-id="${journey.id}">⚡ Auto-Vias</button>
+                        <button class="btn-secondary stops_add_btn" data-journey-id="${journey.id}">+ Halt hinzufügen</button>
+                    </div>
+                </div>
+                <div class="inline-stops-editor" data-journey-id="${journey.id}">
+                    ${renderStopsEditor(journey)}
+                </div>
+            </div>
         </div>
     `;
 }
@@ -290,28 +299,105 @@ function renderInlineFormation(journey) {
 }
 
 /**
- * Rendert die Halteliste einer Journey (wenn Stops vorhanden).
+ * Rendert den editierbaren Stop-Editor (Zuglauf).
  */
-function renderStopsList(journey) {
-    let rows = journey.stops.map((stop, i) => {
-        const isCurrent = i === journey._currentStopIndex;
-        const cancelledClass = stop.cancelled ? 'stop-cancelled' : '';
-        const currentClass = isCurrent ? 'stop-current' : '';
-        const dep = stop.departureTime || '';
-        const arr = stop.arrivalTime || '';
-        return `<tr class="${cancelledClass} ${currentClass}">
-            <td>${stop.name}</td><td>${arr}</td><td>${dep}</td><td>${stop.platform}</td>
-            ${stop.cancelled ? '<td>⛔</td>' : '<td></td>'}
-        </tr>`;
-    }).join('');
+function renderStopsEditor(journey) {
+    if (journey.stops.length === 0) return '<div class="stops-empty" style="color: #ccc;">Keine Halte vorhanden.</div>';
+
+    let html = '';
+    journey.stops.forEach((stop, i) => {
+        html += renderStopRow(stop, i, journey.id, i === journey._currentStopIndex);
+    });
 
     return `
-        <div class="stops-section">
-            <h4>Halte (${journey.stops.length})</h4>
-            <table class="stops-table"><thead><tr><th>Halt</th><th>An</th><th>Ab</th><th>Gl</th><th></th></tr></thead>
-            <tbody>${rows}</tbody></table>
+        <div class="stops-editor-list" style="border: 1px solid #444; border-radius: 5px; background: rgba(0,0,0,0.2); padding: 5px;">
+            ${html}
         </div>
     `;
+}
+
+function renderStopRow(stop, index, journeyId, isCurrent) {
+    const arr = stop.arrivalTime || '';
+    const dep = stop.departureTime || '';
+    const cancelledStyle = stop.cancelled ? 'opacity: 0.5; text-decoration: line-through;' : '';
+    const currentStyle = isCurrent ? 'border-left: 3px solid #ff6b6b;' : '';
+    const viaIcon = stop.showAsVia ? '👁️' : '○';
+    const viaTitle = stop.showAsVia ? 'Als Via markiert' : 'Nicht als Via markiert';
+
+    return `
+        <div class="stop-editor-row" data-index="${index}" style="display: flex; gap: 5px; align-items: center; margin-bottom: 5px; padding: 5px; background: #222; border-radius: 3px; ${cancelledStyle} ${currentStyle}">
+            <span class="stop-drag-handle" title="Drag & Drop" style="cursor: move;">⠿</span>
+            <button class="btn-icon move-stop-up" title="Nach oben">⬆️</button>
+            <button class="btn-icon move-stop-down" title="Nach unten">⬇️</button>
+            <button class="btn-icon toggle-stop-via" title="${viaTitle}">${viaIcon}</button>
+            
+            <div class="autocomplete-wrapper" style="flex: 2; position: relative; display: flex; flex-direction: column;">
+                <input type="text" class="s-prop short-input station-name-input" data-prop="name" value="${stop.name}" placeholder="Name" title="Bahnhofsname" autocomplete="off" style="width: 100%;">
+                <ul class="stop-autocomplete-list autocomplete-list"></ul>
+            </div>
+            
+            <input type="text" class="s-prop short-input" data-prop="nameKurz" value="${stop.nameKurz}" placeholder="Kurz" title="Kurzname (Via)" style="flex: 1;">
+            <input type="text" class="s-prop short-input" data-prop="arrival" value="${arr}" placeholder="An" title="Ankunft" style="width: 50px;">
+            <input type="text" class="s-prop short-input" data-prop="departure" value="${dep}" placeholder="Ab" title="Abfahrt" style="width: 50px;">
+            <input type="text" class="s-prop short-input" data-prop="platform" value="${stop.platform}" placeholder="Gl." title="Gleis" style="width: 40px;">
+            <input type="number" class="s-prop short-input" data-prop="stationCategory" value="${stop.stationCategory !== 99 ? stop.stationCategory : ''}" placeholder="Kat" title="Bahnhofskategorie (Priorität)" style="width: 40px;">
+            
+            <select class="s-prop short-input" data-prop="boardingType" title="Ein-/Ausstieg">
+                <option value="null" ${stop.boardingType === null ? 'selected' : ''}>—</option>
+                <option value="ein" ${stop.boardingType === 'ein' ? 'selected' : ''}>Nur Ein</option>
+                <option value="aus" ${stop.boardingType === 'aus' ? 'selected' : ''}>Nur Aus</option>
+            </select>
+            
+            <label title="Ausfall"><input type="checkbox" class="s-prop" data-prop="cancelled" ${stop.cancelled ? 'checked' : ''}> ⛔</label>
+            <button class="btn-icon remove-stop-btn" title="Halt entfernen">✕</button>
+        </div>
+    `;
+}
+
+function saveStopsEditor(journeyId, immediate = true) {
+    const journey = journeyStore.getJourney(journeyId);
+    if (!journey) return;
+
+    const details = document.querySelector(`.journey-details[data-journey-id="${journeyId}"]`);
+    if (!details) return;
+
+    const stopRows = details.querySelectorAll('.stop-editor-row');
+    const newStops = [];
+
+    stopRows.forEach((row, idx) => {
+        const dataIndex = row.dataset.index;
+        const oldStop = journey.stops[dataIndex];
+        const name = row.querySelector('[data-prop="name"]')?.value || '';
+        const nameKurz = row.querySelector('[data-prop="nameKurz"]')?.value || '';
+        const arrival = row.querySelector('[data-prop="arrival"]')?.value || '';
+        const departure = row.querySelector('[data-prop="departure"]')?.value || '';
+        const platform = row.querySelector('[data-prop="platform"]')?.value || '';
+        let boardingType = row.querySelector('[data-prop="boardingType"]')?.value;
+        boardingType = boardingType === 'null' ? null : boardingType;
+        const cancelled = row.querySelector('[data-prop="cancelled"]')?.checked || false;
+        
+        let stationCategory = parseInt(row.querySelector('[data-prop="stationCategory"]')?.value);
+        if (isNaN(stationCategory)) stationCategory = 99;
+
+        const stopData = {
+            name, nameKurz, platform, cancelled, boardingType,
+            arrival: arrival ? { scheduled: arrival } : null,
+            departure: departure ? { scheduled: departure } : null,
+            extId: oldStop ? oldStop.extId : '',
+            showAsVia: oldStop ? oldStop.showAsVia : false,
+            stationCategory: stationCategory
+        };
+        newStops.push(new Stop(stopData));
+    });
+
+    journey.stops = newStops;
+    // Current Index beibehalten oder resetten
+    if (journey._currentStopIndex >= newStops.length) {
+        journey._currentStopIndex = newStops.length - 1;
+    }
+    
+    if (immediate) trainDisplay.updateAll();
+    else debouncedUpdateAll();
 }
 
 // ==========================================
@@ -584,10 +670,88 @@ export function initEvents() {
             }
         }
 
-        // --- Inline Formation Editor Actions ---
+        // --- Inline Editors (Formation & Stops) Actions ---
         const details = e.target.closest('.journey-details');
         if (details) {
             const jId = details.dataset.journeyId;
+
+            // --- Stops Editor ---
+            if (e.target.closest('.stops_add_btn')) {
+                const journey = journeyStore.getJourney(jId);
+                if (journey) {
+                    journey.stops.push(new Stop({ name: "Neuer Halt" }));
+                    renderJourneyList();
+                }
+                return;
+            }
+
+            if (e.target.closest('.stops_auto_gen_btn')) {
+                const journey = journeyStore.getJourney(jId);
+                if (journey) {
+                    journey.autoGenerateVias(4);
+                    renderJourneyList();
+                    trainDisplay.updateAll();
+                }
+                return;
+            }
+
+            if (e.target.closest('.stops_toggle_all_btn')) {
+                const journey = journeyStore.getJourney(jId);
+                if (journey) {
+                    const anyVia = journey.stops.some(s => s.showAsVia);
+                    journey.stops.forEach(s => {
+                        if (!s.cancelled && s.boardingType !== 'ein') {
+                            s.showAsVia = !anyVia;
+                        } else {
+                            s.showAsVia = false;
+                        }
+                    });
+                    renderJourneyList();
+                    trainDisplay.updateAll();
+                }
+                return;
+            }
+
+            if (e.target.closest('.toggle-stop-via')) {
+                const row = e.target.closest('.stop-editor-row');
+                const journey = journeyStore.getJourney(jId);
+                if (row && journey) {
+                    const idx = row.dataset.index;
+                    journey.stops[idx].showAsVia = !journey.stops[idx].showAsVia;
+                    renderJourneyList();
+                    trainDisplay.updateAll();
+                }
+                return;
+            }
+
+            if (e.target.closest('.remove-stop-btn')) {
+                e.target.closest('.stop-editor-row')?.remove();
+                saveStopsEditor(jId);
+                renderJourneyList();
+                return;
+            }
+
+            if (e.target.closest('.move-stop-up')) {
+                const row = e.target.closest('.stop-editor-row');
+                if (row.previousElementSibling) {
+                    row.parentNode.insertBefore(row, row.previousElementSibling);
+                    saveStopsEditor(jId);
+                    renderJourneyList();
+                }
+                return;
+            }
+
+            if (e.target.closest('.move-stop-down')) {
+                const row = e.target.closest('.stop-editor-row');
+                if (row.nextElementSibling) {
+                    row.parentNode.insertBefore(row.nextElementSibling, row);
+                    saveStopsEditor(jId);
+                    renderJourneyList();
+                }
+                return;
+            }
+
+            // --- Formation Editor ---
             
             // Neue Gruppe hinzufügen
             if (e.target.closest('.formation_add_group_btn')) {
@@ -748,6 +912,27 @@ export function initEvents() {
             }
         }
 
+        // Autocomplete Auswahl für Stops
+        if (e.target.tagName === 'LI' && e.target.closest('.stop-autocomplete-list')) {
+            const li = e.target;
+            const row = li.closest('.stop-editor-row');
+            if (row && target) {
+                const nameInput = row.querySelector('[data-prop="name"]');
+                const kurzInput = row.querySelector('[data-prop="nameKurz"]');
+                
+                nameInput.value = li.dataset.name;
+                kurzInput.value = li.dataset.kurz;
+                
+                const catInput = row.querySelector('[data-prop="stationCategory"]');
+                if (catInput) catInput.value = li.dataset.kategorie !== '99' ? li.dataset.kategorie : '';
+                
+                // Schließen und speichern
+                li.closest('.stop-autocomplete-list').style.display = 'none';
+                saveStopsEditor(target.dataset.journeyId, true);
+            }
+            return;
+        }
+
         // Koppeln/Entkoppeln
         if (target.classList.contains('couple-btn')) {
             const journey = journeyStore.getJourney(journeyId);
@@ -779,11 +964,7 @@ export function initEvents() {
         // Text/Number-Felder in Journey-Details
         if (e.target.classList.contains('jfield')) {
             const field = e.target.dataset.field;
-            if (field.startsWith('via')) {
-                const idx = parseInt(field.replace('via', ''));
-                while (journey.vias.length <= idx) journey.vias.push('');
-                journey.vias[idx] = e.target.value;
-            } else if (field === 'startMeter') {
+            if (field === 'startMeter') {
                 journey[field] = parseFloat(e.target.value) || 0;
             } else if (field === 'scaleFactor') {
                 journey[field] = parseFloat(e.target.value) || 1.0;
@@ -794,6 +975,23 @@ export function initEvents() {
                 journey[field] = e.target.value;
             }
             debouncedUpdateAll();
+        }
+
+        // Auto-Save für Stops-Eingaben
+        if (e.target.classList.contains('s-prop')) {
+            saveStopsEditor(journeyId, false);
+
+            if (e.target.classList.contains('station-name-input')) {
+                const query = e.target.value;
+                const ul = e.target.nextElementSibling;
+                if (query.length >= 2) {
+                    const results = StationService.searchStations(query, 10);
+                    ul.innerHTML = results.map(r => `<li data-name="${r.name}" data-kurz="${r.nameKurz}" data-ibnr="${r.ibnr}" data-kategorie="${r.kategorie}">${r.name} (${r.kategorie})</li>`).join('');
+                    ul.style.display = results.length > 0 ? 'block' : 'none';
+                } else {
+                    ul.style.display = 'none';
+                }
+            }
         }
 
         // Auto-Save für Formation-Eingaben
