@@ -1,4 +1,5 @@
 // js/models/stop.js
+import { StationService } from '../utils/stationService.js';
 
 /**
  * Repräsentiert einen einzelnen Halt einer Fahrt.
@@ -34,12 +35,38 @@ export class Stop {
 
         this.routeIndex = data.routeIndex ?? data.routeIdx ?? -1;
 
+        // Vias & Displays
+        this.showAsVia = data.showAsVia || false;
+        this.nameKurz = data.nameKurz || '';
+        this.stationCategory = data.stationCategory || 99;
+        this.boardingType = data.boardingType || null; // null, 'ein', 'aus'
+
+        if (data.risNotizen) {
+            if (data.risNotizen.some(r => r.key === 'text.realtime.stop.exit.disabled')) {
+                this.boardingType = 'ein';
+            } else if (data.risNotizen.some(r => r.key === 'text.realtime.stop.entry.disabled')) {
+                this.boardingType = 'aus';
+            }
+        }
+
         // Meldungen
         this.messages = (data.messages || data.priorisierteMeldungen || []).map(m => ({
             priority: m.priority || m.prioritaet || 'NIEDRIG',
             text: m.text || '',
             type: m.type || ''
         }));
+    }
+
+    /**
+     * Reichert den Halt mit Daten aus der stations.csv an, falls vorhanden.
+     */
+    enrichWithStationData() {
+        if (!StationService.isLoaded) return;
+        const station = StationService.getStationByIdOrName(this.extId, this.name);
+        if (station) {
+            this.nameKurz = station.nameKurz || this.nameKurz;
+            this.stationCategory = station.kategorie || this.stationCategory;
+        }
     }
 
     /** Hat dieser Halt eine Abfahrt? */

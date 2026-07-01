@@ -75,4 +75,32 @@ export class StationService {
 
         return results.slice(0, limit);
     }
+
+    /**
+     * Normalisiert einen String für den flexiblen Vergleich (entfernt Leerzeichen und wandelt in Kleinbuchstaben um).
+     */
+    static normalizeName(name) {
+        if (!name) return '';
+        return name.toLowerCase().replace(/\s+/g, '');
+    }
+
+    /**
+     * Sucht nach einer Station anhand von extId (IBNR) oder exaktem Namen (ignoriert Leerzeichen).
+     * @param {string} extId 
+     * @param {string} name 
+     * @returns {object|null}
+     */
+    static getStationByIdOrName(extId, name) {
+        if (!this.stations || this.stations.length === 0) return null;
+        
+        let found = null;
+        if (extId) {
+            found = this.stations.find(s => s.ibnr === extId);
+        }
+        if (!found && name) {
+            const normName = this.normalizeName(name);
+            found = this.stations.find(s => this.normalizeName(s.name) === normName || this.normalizeName(s.nameKurz) === normName);
+        }
+        return found;
+    }
 }
