@@ -5,7 +5,7 @@ import { LAYOUTS } from './layouts.js';
 import { COLORS } from './constants.js';
 import { ScrollManager } from './scrollManager.js';
 import { drawFormation } from './formationRenderer.js';
-import { drawTrainInfo } from './trainInfoRenderer.js';
+import { drawTrainInfo, shouldRenderFormation, drawFormationReplacement } from './trainInfoRenderer.js';
 import { drawListeRow } from './listeRenderer.js';
 import { drawVitrine32Wagenstand } from './vitrineRenderer.js';
 
@@ -328,12 +328,18 @@ export class TrainDisplay {
                             }
                             ctx.save();
                             ctx.translate(0, 820);
-                            drawFormation(ctx, journeys, this.journeyStore.platform, {
-                                fullScreen,
-                                activeFeature: this.activeFeature,
-                                featureAlpha: this.featureAlpha,
-                                drawLayer: layer
-                            });
+                            if (shouldRenderFormation(journeys)) {
+                                drawFormation(ctx, journeys, this.journeyStore.platform, {
+                                    fullScreen,
+                                    activeFeature: this.activeFeature,
+                                    featureAlpha: this.featureAlpha,
+                                    drawLayer: layer
+                                });
+                            } else {
+                                if (layer === 'all' || layer === 'static') {
+                                    drawFormationReplacement(ctx, journeys, width, renderCtx);
+                                }
+                            }
                             ctx.restore();
                         } else if (screen.type === 'liste') {
                             if (layer === 'all' || layer === 'static') {

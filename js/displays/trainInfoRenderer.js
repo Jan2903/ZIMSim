@@ -80,7 +80,7 @@ export function drawDisruptionOverlay(ctx, journey, renderCtx) {
     const vias = journey.vias || [];
     const trainNr = journey.effectiveDisplayName || "";
 
-    const { gleiswechsel = "0", ausfall = false, verkehrtAb = "0" } = journey;
+    const { ausfall = false, verkehrtAb = "0" } = journey;
 
     ctx.textBaseline = 'middle';
 
@@ -88,13 +88,13 @@ export function drawDisruptionOverlay(ctx, journey, renderCtx) {
         drawInfoTopText(ctx, COLORS.DARK_RED, COLORS.WHITE, 'Fährt fällt aus / ', 'Cancelled', 50, 430);
     } else if (verkehrtAb !== "0") {
         drawInfoTopText(ctx, COLORS.DARK_RED, COLORS.WHITE, 'Halt entfällt hier / ', 'Stop cancelled', 50, 490);
-    } else if (gleiswechsel !== "0") {
+    } else if (journey.hasTrackChange) {
         drawInfoTopText(ctx, COLORS.ORANGE, COLORS.WHITE, 'Gleisänderung / ', 'Track change', 50, 450);
     }
 
     // Weißer Hintergrund für den Info-Bereich
     ctx.fillStyle = COLORS.WHITE;
-    ctx.fillRect(3, 100, INFO.SIDE_SCREEN_WIDTH, 700);
+    ctx.fillRect(3, 100, INFO.SIDE_SCREEN_WIDTH, 720);
 
     // Abfahrtszeit
     drawText(ctx, abfahrt, 50, 200, FONTS.regular(120), COLORS.NAVY, 'left');
@@ -111,9 +111,10 @@ export function drawDisruptionOverlay(ctx, journey, renderCtx) {
     drawText(ctx, ziel, 50, 360, FONTS.regular(120), COLORS.NAVY, 'left');
 
     // Zusätzliche Informationen je nach Störungstyp
-    if (gleiswechsel !== "0") {
+    if (journey.hasTrackChange) {
         const viaFull = vias.filter(v => v !== "").join(' - ');
         drawWrappedText(ctx, viaFull, 50, 520, 880, 100, FONTS.regular(70), COLORS.NAVY, 'left');
+        
     } else if (verkehrtAb !== "0") {
         const verkehrtAbMessage = 'Verkehrt heute ab / Departing today from ' + verkehrtAb;
         drawWrappedText(ctx, verkehrtAbMessage, 50, 520, 880, 100, FONTS.regular(70), COLORS.NAVY, 'left');
@@ -139,7 +140,6 @@ export function drawTrainInfo(ctx, journeys, width, renderCtx) {
 
     const {
         scrollText = "",
-        gleiswechsel = "0",
         ausfall = false,
         verkehrtAb = "0",
         ankunft = false,
@@ -159,7 +159,8 @@ export function drawTrainInfo(ctx, journeys, width, renderCtx) {
     // Lauftext bestimmen
     let infoToScroll = scrollText;
     if (ankunft) infoToScroll = "Ankunft / Arrival";
-    if (infoscreen || gleiswechsel !== "0" || ausfall || verkehrtAb !== "0") infoToScroll = "";
+    const hasAnyTrackChange = journeys.some(j => j.hasTrackChange);
+    if (infoscreen || hasAnyTrackChange || ausfall || verkehrtAb !== "0") infoToScroll = "";
 
     // Weißer Hintergrund für Lauftext
     ctx.fillStyle = COLORS.WHITE;
@@ -177,7 +178,7 @@ export function drawTrainInfo(ctx, journeys, width, renderCtx) {
     );
 
     // --- Störungsanzeige für Nebenmonitore ---
-    if (!fullScreen && (infoscreen || gleiswechsel !== "0" || ausfall || verkehrtAb !== "0")) {
+    if (!fullScreen && (infoscreen || hasAnyTrackChange || ausfall || verkehrtAb !== "0")) {
         if (infoscreen) {
             ctx.fillStyle = COLORS.WHITE;
             ctx.fillRect(0, 0, INFO.SIDE_SCREEN_WIDTH, 800);
@@ -275,12 +276,12 @@ export function drawTrainInfo(ctx, journeys, width, renderCtx) {
 
         if (ankunft) {
             const fromDestination = primary.destination || "";
-            drawText(ctx, 'von / from ' + fromDestination, 50, 360, FONTS.regular(67), COLORS.WHITE, 'left');
+            drawText(ctx, 'von / from ' + fromDestination, 50, 670, FONTS.regular(75), COLORS.WHITE, 'left');
             scrollManager.createOrUpdate(canvas, zugID, 'ankunft', "Bitte nicht einsteigen",
-                `${(screen.x + 50) * cssScale}px`, `${(screen.y + 420) * cssScale}px`,
+                `${(screen.x + 50) * cssScale}px`, `${(screen.y + 280) * cssScale}px`,
                 `${(screen.w - 50) * cssScale}px`, `${120 * cssScale}px`, COLORS.WHITE, `${Math.round(120 * cssScale)}px "Open Sans Condensed"`);
             scrollManager.createOrUpdate(canvas, zugID, 'arrival', "Please do not board",
-                `${(screen.x + 50) * cssScale}px`, `${(screen.y + 560) * cssScale}px`,
+                `${(screen.x + 50) * cssScale}px`, `${(screen.y + 430) * cssScale}px`,
                 `${(screen.w - 50) * cssScale}px`, `${120 * cssScale}px`, COLORS.WHITE, `italic ${Math.round(120 * cssScale)}px "Open Sans Condensed"`);
         } else if (isMerged) {
             let yPos = 360;
@@ -321,5 +322,49 @@ export function drawTrainInfo(ctx, journeys, width, renderCtx) {
             ctx.lineTo(bracketX + 15, bracketStartY + bracketHeight);
             ctx.stroke();
         }
+    }
+}
+
+export function shouldRenderFormation(journeys) {
+    if (!journeys || journeys.length === 0) return false;
+    const primary = journeys[0];
+
+    // Keine Formation bei Störungs-Overlays
+    if (primary.hasTrackChange) return false;
+    if (primary.infoscreen || primary.ausfall || primary.verkehrtAb !== "0") return false;
+    
+    // Keine Formation bei Ankünften
+    if (primary.ankunft) return false;
+    
+    // Keine Formation, wenn keine Wagengruppen existieren
+    const allFormationGroups = journeys.flatMap(j => j.formation ? j.formation.groups : []);
+    if (allFormationGroups.length === 0 || allFormationGroups.every(g => g.coaches.length === 0)) return false;
+
+    return true;
+}
+
+export function drawFormationReplacement(ctx, journeys, width, renderCtx) {
+    const primary = journeys[0];
+    const { fullScreen } = renderCtx;
+
+    // Trennlinie am linken Rand (nur Nebenmonitore) - für den unteren Teil
+    if (!fullScreen) {
+        ctx.strokeStyle = COLORS.WHITE;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(0, 0); ctx.lineTo(0, 280);
+        ctx.stroke();
+    }
+
+    if (primary.hasTrackChange) {
+        ctx.fillStyle = COLORS.ORANGE;
+        ctx.fillRect(3, 0, width - 3, 280);
+        ctx.fillStyle = COLORS.WHITE;
+        drawText(ctx, 'Neues Gleis', 50, 50, FONTS.regular(67), COLORS.WHITE, 'left');
+        drawText(ctx, 'New Track', 50, 125, FONTS.italic(67), COLORS.WHITE, 'left');
+        drawText(ctx, primary.ezGleis, width - 40, 80, FONTS.regular(128), COLORS.WHITE, 'right');
+    } else if (primary.infoscreen || primary.ausfall || primary.verkehrtAb !== "0") {
+        ctx.fillStyle = COLORS.WHITE;
+        ctx.fillRect(3, 0, width - 3, 280);
     }
 }
