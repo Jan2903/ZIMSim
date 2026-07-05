@@ -83,11 +83,6 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
         direction = 1,
         startMeter = 0,
         skalieren = false,
-        gleiswechsel = "0",
-        ausfall = false,
-        verkehrtAb = "0",
-        ankunft = false,
-        infoscreen = false,
     } = primary;
 
     // FormationGroups aus allen Journeys zusammenführen (für Flügelzüge)
@@ -102,35 +97,8 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
         ctx.stroke();
     }
 
-    // --- Sonder-Overlays, die die Wagenreihung ersetzen ---
-
-    if (gleiswechsel !== "0") {
-        if (drawLayer === 'all' || drawLayer === 'static') {
-            ctx.fillStyle = COLORS.ORANGE;
-            ctx.fillRect(3, 0, 960, 280);
-            ctx.fillStyle = COLORS.WHITE;
-            drawText(ctx, 'Neues Gleis', 50, 50, FONTS.regular(67), COLORS.WHITE, 'left');
-            drawText(ctx, 'New Track', 50, 125, FONTS.italic(67), COLORS.WHITE, 'left');
-            drawText(ctx, gleiswechsel, 920, 80, FONTS.regular(128), COLORS.WHITE, 'right');
-        }
-        return null;
-    } else if (infoscreen || ausfall || (verkehrtAb !== "0")) {
-        if (drawLayer === 'all' || drawLayer === 'static') {
-            ctx.fillStyle = COLORS.WHITE;
-            ctx.fillRect(3, 0, 960, 280);
-        }
-        return null;
-    } else if (ankunft) {
-        if (fullScreen && (drawLayer === 'all' || drawLayer === 'static')) {
-            ctx.textBaseline = 'top';
-            const firstGroup = allFormationGroups[0] || {};
-            drawText(ctx, 'von / from ' + (firstGroup.destination || ''), 105, 20, FONTS.regular(67), COLORS.WHITE, 'left');
-        }
-        return null;
-    }
-
     // --- Normale Wagenreihung ---
-
+    
     if (allFormationGroups.length === 0 || allFormationGroups.every(g => g.coaches.length === 0)) return null;
 
     const threshold = customStartX;

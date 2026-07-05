@@ -129,13 +129,18 @@ export class Journey {
         return this.ausfall;
     }
 
+    /** Gibt es einen Gleiswechsel? */
+    get hasTrackChange() {
+        return this.ezGleis !== '' && this.ezGleis !== this.platform;
+    }
+
     /**
      * Hat die Fahrt eine Störung, die eine Sonderanzeige erfordert?
      * (Ausfall, Gleiswechsel, VerkehrtAb oder Infoscreen)
      */
     get isDisrupted() {
         return this.ausfall
-            || (this.ezGleis !== '' && this.ezGleis !== this.platform)
+            || this.hasTrackChange
             || (this.verkehrtAb !== '0' && this.verkehrtAb !== 0)
             || this.infoscreen;
     }
