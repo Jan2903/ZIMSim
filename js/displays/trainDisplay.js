@@ -5,7 +5,7 @@ import { LAYOUTS } from './layouts.js';
 import { COLORS } from './constants.js';
 import { ScrollManager } from './scrollManager.js';
 import { drawFormation } from './formationRenderer.js';
-import { drawTrainInfo, shouldRenderFormation, drawFormationReplacement } from './trainInfoRenderer.js';
+import { drawTrainInfo, shouldRenderFormation } from './trainInfoRenderer.js';
 import { drawListeRow } from './listeRenderer.js';
 import { drawVitrine32Wagenstand } from './vitrineRenderer.js';
 
@@ -311,7 +311,7 @@ export class TrainDisplay {
                         if (layer === 'all' || layer === 'static') {
                             this.drawOnScreen(screen, () => {}, canvas);
                         }
-                        if (layer === 'all') this.scrollManager.clearForZug(zugID);
+                        if (layer === 'all' || layer === 'static') this.scrollManager.clearForZug(zugID);
                         return;
                     }
 
@@ -324,23 +324,19 @@ export class TrainDisplay {
                     this.drawOnScreen(screen, (ctx, width, height) => {
                         if (screen.type === 'haupt' || screen.type === 'neben' || screen.type === 'neben_rotierend') {
                             if (layer === 'all' || layer === 'static') {
-                                drawTrainInfo(ctx, journeys, width, renderCtx);
+                                drawTrainInfo(ctx, journeys, width, height, renderCtx);
                             }
-                            ctx.save();
-                            ctx.translate(0, 820);
                             if (shouldRenderFormation(journeys)) {
+                                ctx.save();
+                                ctx.translate(0, 820);
                                 drawFormation(ctx, journeys, this.journeyStore.platform, {
                                     fullScreen,
                                     activeFeature: this.activeFeature,
                                     featureAlpha: this.featureAlpha,
                                     drawLayer: layer
                                 });
-                            } else {
-                                if (layer === 'all' || layer === 'static') {
-                                    drawFormationReplacement(ctx, journeys, width, renderCtx);
-                                }
+                                ctx.restore();
                             }
-                            ctx.restore();
                         } else if (screen.type === 'liste') {
                             if (layer === 'all' || layer === 'static') {
                                 drawListeRow(ctx, journeys[0], width, height);
