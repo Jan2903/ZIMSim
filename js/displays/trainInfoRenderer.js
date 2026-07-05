@@ -66,62 +66,6 @@ function getPlatformSectors(targetJourney, allJourneys, platform) {
 }
 
 /**
- * Zeichnet die Störungs-Overlays (Ausfall, Gleiswechsel, VerkehrtAb) für Nebenmonitore.
- * Liest direkt die camelCase-Properties vom Journey-Model.
- *
- * @param {CanvasRenderingContext2D} ctx
- * @param {import('../models/journey.js').Journey} journey - Die Fahrt-Daten.
- * @param {import('./textUtils.js').RenderContext} renderCtx - Render-Kontext.
- */
-export function drawDisruptionOverlay(ctx, journey, renderCtx) {
-    const abfahrt = journey.scheduledTime || "";
-    const abfahrtA = journey.expectedTime || "";
-    const ziel = journey.destination || "";
-    const vias = journey.vias || [];
-    const trainNr = journey.effectiveDisplayName || "";
-
-    const { ausfall = false, verkehrtAb = "0" } = journey;
-
-    ctx.textBaseline = 'middle';
-
-    if (ausfall) {
-        drawInfoTopText(ctx, COLORS.DARK_RED, COLORS.WHITE, 'Fährt fällt aus / ', 'Cancelled', 50, 430);
-    } else if (verkehrtAb !== "0") {
-        drawInfoTopText(ctx, COLORS.DARK_RED, COLORS.WHITE, 'Halt entfällt hier / ', 'Stop cancelled', 50, 490);
-    } else if (journey.hasTrackChange) {
-        drawInfoTopText(ctx, COLORS.ORANGE, COLORS.WHITE, 'Gleisänderung / ', 'Track change', 50, 450);
-    }
-
-    // Weißer Hintergrund für den Info-Bereich
-    ctx.fillStyle = COLORS.WHITE;
-    ctx.fillRect(3, 100, INFO.SIDE_SCREEN_WIDTH, 720);
-
-    // Abfahrtszeit
-    drawText(ctx, abfahrt, 50, 200, FONTS.regular(120), COLORS.NAVY, 'left');
-
-    // Abweichende Zeit (in Rechteck)
-    drawTextInRectangle(ctx, abfahrtA, 330, 195, FONTS.regular(90), 'left', 90, 10,
-        renderCtx, 0, COLORS.NAVY, COLORS.WHITE);
-
-    // Zugnummer (in Rechteck, rechtsbündig)
-    drawTextInRectangle(ctx, trainNr, 890, 200, FONTS.regular(75), 'right', 75, 10,
-        renderCtx, 0, COLORS.DIM_GREY, COLORS.WHITE, true, true);
-
-    // Ziel
-    drawText(ctx, ziel, 50, 360, FONTS.regular(120), COLORS.NAVY, 'left');
-
-    // Zusätzliche Informationen je nach Störungstyp
-    if (journey.hasTrackChange) {
-        const viaFull = vias.filter(v => v !== "").join(' - ');
-        drawWrappedText(ctx, viaFull, 50, 520, 880, 100, FONTS.regular(70), COLORS.NAVY, 'left');
-        
-    } else if (verkehrtAb !== "0") {
-        const verkehrtAbMessage = 'Verkehrt heute ab / Departing today from ' + verkehrtAb;
-        drawWrappedText(ctx, verkehrtAbMessage, 50, 520, 880, 100, FONTS.regular(70), COLORS.NAVY, 'left');
-    }
-}
-
-/**
  * Zeichnet den kompletten Info-Bereich eines Monitors:
  * Piktogramme, Lauftext, Abfahrtszeit, Ziel, Via-Halte, Störungen.
  *
@@ -131,9 +75,10 @@ export function drawDisruptionOverlay(ctx, journey, renderCtx) {
  * @param {CanvasRenderingContext2D} ctx
  * @param {import('../models/journey.js').Journey[]} journeys - Array von Fahrt-Daten (1+ bei Flügelzügen).
  * @param {number} width - Die verfügbare Breite des Screens.
+ * @param {number} height - Die verfügbare Höhe des Screens.
  * @param {import('./textUtils.js').RenderContext} renderCtx - Render-Kontext.
  */
-export function drawTrainInfo(ctx, journeys, width, renderCtx) {
+export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
     const { fullScreen, screen, scrollManager, zugID, canvas, cssScale = 1 } = renderCtx;
 
     const primary = journeys[0];
@@ -150,6 +95,19 @@ export function drawTrainInfo(ctx, journeys, width, renderCtx) {
     const abfahrtA = primary.expectedTime || "";
     const nr = journeys.map(j => j.effectiveDisplayName).filter(Boolean).join(' / ') || "";
 
+    const hasAnyTrackChange = journeys.some(j => j.hasTrackChange);
+    
+    // Streng exklusiv für Nebenmonitore (!fullScreen)
+    const isDisrupted = !fullScreen && (ausfall || verkehrtAb !== "0" || hasAnyTrackChange);
+
+    // Infoscreen Sonderfall
+    if (!fullScreen && infoscreen) {
+        ctx.fillStyle = COLORS.WHITE;
+        ctx.fillRect(3, 0, width - 3, height);
+        drawWrappedText(ctx, scrollText, 50, 120, 900, 80, FONTS.regular(70), COLORS.NAVY, 'left');
+        return;
+    }
+
     // Piktogramme zeichnen (gibt X-Position nach letztem Icon zurück)
     let x = drawPictograms(ctx, scrollText, nr, fullScreen, ankunft);
 
@@ -159,12 +117,17 @@ export function drawTrainInfo(ctx, journeys, width, renderCtx) {
     // Lauftext bestimmen
     let infoToScroll = scrollText;
     if (ankunft) infoToScroll = "Ankunft / Arrival";
-    const hasAnyTrackChange = journeys.some(j => j.hasTrackChange);
     if (infoscreen || hasAnyTrackChange || ausfall || verkehrtAb !== "0") infoToScroll = "";
 
-    // Weißer Hintergrund für Lauftext
-    ctx.fillStyle = COLORS.WHITE;
-    if (infoToScroll !== "") ctx.fillRect(x, 0, width - x, INFO.HEADER_HEIGHT);
+    // 1. Hintergrund füllen
+    if (isDisrupted) {
+        ctx.fillStyle = COLORS.WHITE;
+        ctx.fillRect(3, 0, width - 3, height); // ab x=3 wegen Trennlinie
+    } else {
+        // Weißer Hintergrund für Lauftext
+        ctx.fillStyle = COLORS.WHITE;
+        if (infoToScroll !== "") ctx.fillRect(x, 0, width - x, INFO.HEADER_HEIGHT);
+    }
 
     // Scrollenden Info-Text erstellen/aktualisieren
     scrollManager.createOrUpdate(
@@ -177,16 +140,15 @@ export function drawTrainInfo(ctx, journeys, width, renderCtx) {
         `${Math.round(67 * cssScale)}px "Open Sans Condensed"`
     );
 
-    // --- Störungsanzeige für Nebenmonitore ---
-    if (!fullScreen && (infoscreen || hasAnyTrackChange || ausfall || verkehrtAb !== "0")) {
-        if (infoscreen) {
-            ctx.fillStyle = COLORS.WHITE;
-            ctx.fillRect(0, 0, INFO.SIDE_SCREEN_WIDTH, 800);
-            drawWrappedText(ctx, scrollText, 50, 120, 900, 80, FONTS.regular(70), COLORS.NAVY, 'left');
-        } else {
-            drawDisruptionOverlay(ctx, primary, renderCtx);
+    // 2. Top-Banner zeichnen
+    if (isDisrupted) {
+        if (ausfall) {
+            drawInfoTopText(ctx, COLORS.DARK_RED, COLORS.WHITE, 'Fährt fällt aus / ', 'Cancelled', 50, 430);
+        } else if (verkehrtAb !== "0") {
+            drawInfoTopText(ctx, COLORS.DARK_RED, COLORS.WHITE, 'Halt entfällt hier / ', 'Stop cancelled', 50, 490);
+        } else if (hasAnyTrackChange) {
+            drawInfoTopText(ctx, COLORS.ORANGE, COLORS.WHITE, 'Gleisänderung / ', 'Track change', 50, 450);
         }
-        return;
     }
 
     // --- Trennlinie am linken Rand (nur Nebenmonitore) ---
@@ -194,7 +156,7 @@ export function drawTrainInfo(ctx, journeys, width, renderCtx) {
         ctx.strokeStyle = COLORS.WHITE;
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(0, 0); ctx.lineTo(0, 820);
+        ctx.moveTo(0, 0); ctx.lineTo(0, height);
         ctx.stroke();
     }
 
@@ -263,32 +225,54 @@ export function drawTrainInfo(ctx, journeys, width, renderCtx) {
 
     // === NEBENMONITOR (compact) ===
     } else {
-        drawText(ctx, abfahrt, 50, 200, FONTS.regular(120), COLORS.WHITE, 'left');
+        const textColor = isDisrupted ? COLORS.NAVY : COLORS.WHITE;
+        const rectBgColor = isDisrupted ? COLORS.NAVY : COLORS.WHITE;
+        const rectTextColor = isDisrupted ? COLORS.WHITE : COLORS.NAVY;
+
+        drawText(ctx, abfahrt, 50, 200, FONTS.regular(120), textColor, 'left');
         if (abfahrtA && abfahrtA !== abfahrt) {
             drawTextInRectangle(ctx, abfahrtA, 330, 195, FONTS.regular(90), 'left', 90, 10,
-                renderCtx, 0, COLORS.WHITE, COLORS.NAVY);
+                renderCtx, 0, rectBgColor, rectTextColor);
         }
         
         if (isMerged) {
             drawTextInRectangle(ctx, nr, 890, 200, FONTS.regular(75), 'right', 75, 10,
-                renderCtx, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true);
+                renderCtx, 0, COLORS.DIM_GREY, COLORS.WHITE, isDisrupted, true);
         }
 
         if (ankunft) {
             const fromDestination = primary.destination || "";
-            drawText(ctx, 'von / from ' + fromDestination, 50, 670, FONTS.regular(75), COLORS.WHITE, 'left');
-            scrollManager.createOrUpdate(canvas, zugID, 'ankunft', "Bitte nicht einsteigen",
-                `${(screen.x + 50) * cssScale}px`, `${(screen.y + 280) * cssScale}px`,
-                `${(screen.w - 50) * cssScale}px`, `${120 * cssScale}px`, COLORS.WHITE, `${Math.round(120 * cssScale)}px "Open Sans Condensed"`);
-            scrollManager.createOrUpdate(canvas, zugID, 'arrival', "Please do not board",
-                `${(screen.x + 50) * cssScale}px`, `${(screen.y + 430) * cssScale}px`,
-                `${(screen.w - 50) * cssScale}px`, `${120 * cssScale}px`, COLORS.WHITE, `italic ${Math.round(120 * cssScale)}px "Open Sans Condensed"`);
+            if (isDisrupted) {
+                // Bei Störung: Ein kombinierter Scrolltext weiter oben
+                drawText(ctx, 'von / from ' + fromDestination, 50, 520, FONTS.regular(75), textColor, 'left');
+                scrollManager.createOrUpdate(canvas, zugID, 'ankunft', "Bitte nicht einsteigen Please do not board",
+                    `${(screen.x + 50) * cssScale}px`, `${(screen.y + 300) * cssScale}px`,
+                    `${(screen.w - 50) * cssScale}px`, `${128 * cssScale}px`, textColor, `${Math.round(128 * cssScale)}px "Open Sans Condensed"`);
+                // Den separaten arrival Scrolltext löschen
+                scrollManager.createOrUpdate(canvas, zugID, 'arrival', "", "", "", "", "", "", "");
+            } else {
+                // Normales Layout
+                drawText(ctx, 'von / from ' + fromDestination, 50, 670, FONTS.regular(75), textColor, 'left');
+                scrollManager.createOrUpdate(canvas, zugID, 'ankunft', "Bitte nicht einsteigen",
+                    `${(screen.x + 50) * cssScale}px`, `${(screen.y + 280) * cssScale}px`,
+                    `${(screen.w - 50) * cssScale}px`, `${120 * cssScale}px`, textColor, `${Math.round(120 * cssScale)}px "Open Sans Condensed"`);
+                scrollManager.createOrUpdate(canvas, zugID, 'arrival', "Please do not board",
+                    `${(screen.x + 50) * cssScale}px`, `${(screen.y + 430) * cssScale}px`,
+                    `${(screen.w - 50) * cssScale}px`, `${120 * cssScale}px`, textColor, `italic ${Math.round(120 * cssScale)}px "Open Sans Condensed"`);
+            }
         } else if (isMerged) {
             let yPos = 360;
-            drawText(ctx, primary.destination, 50, yPos, FONTS.regular(128), COLORS.WHITE, 'left');
+            drawText(ctx, primary.destination, 50, yPos, FONTS.regular(128), textColor, 'left');
             yPos += 160;
-            const viaText = (primary.vias || []).join(' - ');
-            drawWrappedText(ctx, viaText, 50, yPos, 880, 100, FONTS.regular(75), COLORS.WHITE, 'left');
+            
+            if (!ausfall) {
+                let viaText = (primary.vias || []).join(' - ');
+                if (verkehrtAb !== "0") {
+                    viaText = 'Verkehrt heute ab / Departing today from ' + verkehrtAb;
+                }
+                const viaFont = FONTS.regular(isDisrupted ? 70 : 75);
+                drawWrappedText(ctx, viaText, 50, yPos, 880, 100, viaFont, textColor, 'left');
+            }
         } else {
             let yPos = 360;
             const destFont = FONTS.regular(90);
@@ -297,13 +281,13 @@ export function drawTrainInfo(ctx, journeys, width, renderCtx) {
             let lastYPos = yPos;
 
             for (const journey of journeys) {
-                drawText(ctx, journey.destination, 50, yPos, destFont, COLORS.WHITE, 'left');
+                drawText(ctx, journey.destination, 50, yPos, destFont, textColor, 'left');
                 drawTextInRectangle(ctx, journey.effectiveDisplayName, 890, yPos, FONTS.regular(75), 'right', 75, 10,
-                    renderCtx, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true);
+                    renderCtx, 0, COLORS.DIM_GREY, COLORS.WHITE, isDisrupted, true);
                 
                 const sectors = getPlatformSectors(journey, journeys, renderCtx.platform);
                 if (sectors) {
-                    drawText(ctx, sectors, 890, yPos + 100, FONTS.regular(64), COLORS.WHITE, 'right');
+                    drawText(ctx, sectors, 890, yPos + 100, FONTS.regular(64), textColor, 'right');
                 }
                 
                 lastYPos = yPos;
@@ -313,7 +297,7 @@ export function drawTrainInfo(ctx, journeys, width, renderCtx) {
             const bracketEndY = lastYPos;
             const bracketHeight = bracketEndY - bracketStartY;
             
-            ctx.strokeStyle = COLORS.WHITE;
+            ctx.strokeStyle = textColor;
             ctx.lineWidth = 4;
             ctx.beginPath();
             ctx.moveTo(bracketX + 15, bracketStartY);
@@ -321,6 +305,19 @@ export function drawTrainInfo(ctx, journeys, width, renderCtx) {
             ctx.lineTo(bracketX, bracketStartY + bracketHeight);
             ctx.lineTo(bracketX + 15, bracketStartY + bracketHeight);
             ctx.stroke();
+        }
+
+        // 4. Den "Bottom-Banner" am unteren Rand (Neues Gleis)
+        if (isDisrupted && hasAnyTrackChange) {
+            ctx.save();
+            ctx.translate(0, 820);
+            ctx.fillStyle = COLORS.ORANGE;
+            ctx.fillRect(3, 0, width - 3, height - 820);
+            ctx.fillStyle = COLORS.WHITE;
+            drawText(ctx, 'Neues Gleis', 50, 50, FONTS.regular(67), COLORS.WHITE, 'left');
+            drawText(ctx, 'New track', 50-5, 125, FONTS.italic(67), COLORS.WHITE, 'left');
+            drawText(ctx, primary.ezGleis, width - 40, 80, FONTS.regular(128), COLORS.WHITE, 'right');
+            ctx.restore();
         }
     }
 }
@@ -343,28 +340,3 @@ export function shouldRenderFormation(journeys) {
     return true;
 }
 
-export function drawFormationReplacement(ctx, journeys, width, renderCtx) {
-    const primary = journeys[0];
-    const { fullScreen } = renderCtx;
-
-    // Trennlinie am linken Rand (nur Nebenmonitore) - für den unteren Teil
-    if (!fullScreen) {
-        ctx.strokeStyle = COLORS.WHITE;
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.moveTo(0, 0); ctx.lineTo(0, 280);
-        ctx.stroke();
-    }
-
-    if (primary.hasTrackChange) {
-        ctx.fillStyle = COLORS.ORANGE;
-        ctx.fillRect(3, 0, width - 3, 280);
-        ctx.fillStyle = COLORS.WHITE;
-        drawText(ctx, 'Neues Gleis', 50, 50, FONTS.regular(67), COLORS.WHITE, 'left');
-        drawText(ctx, 'New Track', 50, 125, FONTS.italic(67), COLORS.WHITE, 'left');
-        drawText(ctx, primary.ezGleis, width - 40, 80, FONTS.regular(128), COLORS.WHITE, 'right');
-    } else if (primary.infoscreen || primary.ausfall || primary.verkehrtAb !== "0") {
-        ctx.fillStyle = COLORS.WHITE;
-        ctx.fillRect(3, 0, width - 3, 280);
-    }
-}
