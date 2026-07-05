@@ -193,7 +193,7 @@ export function drawTrainInfo(ctx, journeys, width, renderCtx) {
         ctx.strokeStyle = COLORS.WHITE;
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(0, 0); ctx.lineTo(0, 800);
+        ctx.moveTo(0, 0); ctx.lineTo(0, 820);
         ctx.stroke();
     }
 
@@ -215,25 +215,25 @@ export function drawTrainInfo(ctx, journeys, width, renderCtx) {
             drawText(ctx, "Please do not board", 105, 670, FONTS.italic(180), COLORS.WHITE, 'left');
             drawText(ctx, 'von / from ' + fromDestination, 112, 850, FONTS.regular(70), COLORS.WHITE, 'left');
         } else if (isMerged) {
-            drawText(ctx, abfahrt, 100, 220, FONTS.regular(180), COLORS.WHITE, 'left');
+            drawText(ctx, abfahrt, 100, 220, FONTS.regular(200), COLORS.WHITE, 'left');
             if (abfahrtA && abfahrtA !== abfahrt) {
-                drawTextInRectangle(ctx, abfahrtA, 520, 215, FONTS.regular(120), 'left', 120, 20,
+                drawTextInRectangle(ctx, abfahrtA, 550, 215, FONTS.regular(120), 'left', 120, 20,
                     renderCtx, 0, COLORS.WHITE, COLORS.NAVY);
             }
             drawTextInRectangle(ctx, nr, 1855, 220, FONTS.regular(100), 'right', 100, 15,
                 renderCtx, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true);
 
-            let yPos = 420;
-            drawText(ctx, primary.destination, 100, yPos, FONTS.regular(180), COLORS.WHITE, 'left');
+            let yPos = 470;
+            drawText(ctx, primary.destination, 100, yPos, FONTS.regular(200), COLORS.WHITE, 'left');
             const viaText = (primary.vias || []).join(' - ');
-            drawWrappedText(ctx, viaText, 112, yPos + 150,  1800,80,FONTS.regular(70), COLORS.WHITE, 'left');
+            drawWrappedText(ctx, viaText, 112, yPos + 200,  1800,100,FONTS.regular(75), COLORS.WHITE, 'left');
         } else {
             const zoneWidth = width / 2; // Split screen for true wing trains
             const maxTrains = Math.min(journeys.length, 2);
 
             for (let i = 0; i < maxTrains; i++) {
                 const journey = journeys[i];
-                const xOffset = i * zoneWidth;
+                const xOffset = i * zoneWidth + 30;
                 
                 const jAbfahrt = journey.scheduledTime || "";
                 const jAbfahrtA = journey.expectedTime || "";
@@ -253,10 +253,10 @@ export function drawTrainInfo(ctx, journeys, width, renderCtx) {
                     renderCtx, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true);
 
                 let yPos = 360;
-                drawText(ctx, journey.destination, xOffset + 50, yPos, FONTS.regular(120), COLORS.WHITE, 'left');
+                drawText(ctx, journey.destination, xOffset + 50, yPos, FONTS.regular(128), COLORS.WHITE, 'left');
                 yPos += 160;
                 const viaText = (journey.vias || []).join(' - ');
-                drawWrappedText(ctx, viaText, xOffset + 50, yPos, zoneWidth - 100, 80, FONTS.regular(70), COLORS.WHITE, 'left');
+                drawWrappedText(ctx, viaText, xOffset + 50, yPos, zoneWidth - 100, 100, FONTS.regular(75), COLORS.WHITE, 'left');
             }
         }
 
@@ -284,10 +284,10 @@ export function drawTrainInfo(ctx, journeys, width, renderCtx) {
                 `${(screen.w - 50) * cssScale}px`, `${120 * cssScale}px`, COLORS.WHITE, `italic ${Math.round(120 * cssScale)}px "Open Sans Condensed"`);
         } else if (isMerged) {
             let yPos = 360;
-            drawText(ctx, primary.destination, 50, yPos, FONTS.regular(120), COLORS.WHITE, 'left');
+            drawText(ctx, primary.destination, 50, yPos, FONTS.regular(128), COLORS.WHITE, 'left');
             yPos += 160;
             const viaText = (primary.vias || []).join(' - ');
-            drawWrappedText(ctx, viaText, 50, yPos, 880, 80, FONTS.regular(70), COLORS.WHITE, 'left');
+            drawWrappedText(ctx, viaText, 50, yPos, 880, 100, FONTS.regular(75), COLORS.WHITE, 'left');
         } else {
             let yPos = 360;
             const destFont = FONTS.regular(90);

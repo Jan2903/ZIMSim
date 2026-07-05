@@ -327,7 +327,7 @@ export class TrainDisplay {
                                 drawTrainInfo(ctx, journeys, width, renderCtx);
                             }
                             ctx.save();
-                            ctx.translate(0, 800);
+                            ctx.translate(0, 820);
                             drawFormation(ctx, journeys, this.journeyStore.platform, {
                                 fullScreen,
                                 activeFeature: this.activeFeature,

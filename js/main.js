@@ -6,6 +6,7 @@ import { TrainDisplay } from './displays/trainDisplay.js';
 import { initEvents } from './events.js';
 import { preloadImages } from './utils/utils.js';
 import { StationService } from './utils/stationService.js';
+import { RisTextService } from './utils/risTextService.js';
 
 export const journeyStore = new JourneyStore();
 export const trainDisplay = new TrainDisplay(journeyStore);
@@ -128,6 +129,7 @@ function createDemoData() {
 document.addEventListener('DOMContentLoaded', () => {
     createDemoData();
     StationService.loadStations(); // Asynchrones Laden im Hintergrund starten
+    RisTextService.load(); // Lade RIS-Texte
     initEvents();
     preloadImages().then(() => {
         document.fonts.ready.then(() => {
