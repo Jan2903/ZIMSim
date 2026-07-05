@@ -2,6 +2,7 @@
 import { Stop } from './stop.js';
 import { Formation } from './formation.js';
 import { formatTrainNumber } from '../utils/trainNumberFormatter.js';
+import { RisTextService } from '../utils/risTextService.js';
 
 /**
  * Repräsentiert eine einzelne Fahrt (Abfahrt oder Ankunft).
@@ -29,7 +30,23 @@ export class Journey {
         this.expectedTime = data.expectedTime || '';
         this.platform = data.platform || '';
         this.sectors = data.sectors || '';
-        this.scrollText = data.scrollText || '';
+        
+        // === Infotexte / Lauftext ===
+        this.infoTexts = [];
+        if (data.infoTexts && Array.isArray(data.infoTexts)) {
+            this.infoTexts = data.infoTexts;
+        } else if (data.scrollText) {
+            // Migration von alten Speicherständen
+            this.infoTexts.push({
+                id: crypto.randomUUID(),
+                text: data.scrollText,
+                visible: true,
+                type: 'custom'
+            });
+        }
+        
+        // === Verspätungsgrund ===
+        this.delayReason = data.delayReason || '';
 
         // === Formation / Wagenreihung ===
         this.direction = data.direction !== undefined ? data.direction : 1; // 0=Links, 1=Rechts
@@ -88,6 +105,14 @@ export class Journey {
     // ==========================================
     // Berechnete Properties
     // ==========================================
+
+    /** Dynamisch zusammengesetzter Lauftext aus sichtbaren Info-Bausteinen */
+    get scrollText() {
+        return this.infoTexts
+            .filter(t => t.visible)
+            .map(t => t.text)
+            .join(' +++ ');
+    }
 
     /** Auto-generierter Display-Name basierend auf Kategorie/Linie/Nummer */
     get displayName() {
@@ -249,6 +274,24 @@ export class Journey {
         const nameParts = name.split(' ');
         const num = nameParts.length > 1 ? nameParts[nameParts.length - 1] : '';
 
+        const rawMeldungen = entry.meldungen || [];
+        const infoTexts = [];
+        let delayReason = '';
+        const rPresets = RisTextService.getPresetsByType('R');
+
+        rawMeldungen.forEach(m => {
+            if (rPresets.some(p => p.text === m.text)) {
+                if (!delayReason) delayReason = m.text;
+            } else {
+                infoTexts.push({
+                    id: crypto.randomUUID(),
+                    text: m.text.replace(/^Information:\s*/i, '').trim(),
+                    visible: true,
+                    type: 'Q'
+                });
+            }
+        });
+
         const journey = new Journey({
             journeyId: entry.journeyId || '',
             category: cat,
@@ -261,11 +304,12 @@ export class Journey {
             platform: entry.gleis || '',
             ezGleis: entry.ezGleis || '',
             vias: entry.vias || entry.zuglauf || entry.route || entry.ueber || [],
-            messages: (entry.meldungen || []).map(m => ({
+            messages: rawMeldungen.map(m => ({
                 priority: m.prioritaet,
                 text: m.text
             })),
-            scrollText: (entry.meldungen || []).map(m => m.text).join(' +++ ')
+            infoTexts: infoTexts,
+            delayReason: delayReason
         });
 
         // Wenn durch Migration Dummy-Stops aus den Vias erzeugt wurden, reichern wir sie an
@@ -287,16 +331,44 @@ export class Journey {
         const cat = match ? match[1] : '';
         const num = match ? match[2] : '';
 
+        const rawMeldungen = data.priorisierteMeldungen || [];
+        const infoTexts = [];
+        let delayReason = '';
+        const rPresets = RisTextService.getPresetsByType('R');
+
+        rawMeldungen.forEach(m => {
+            if (rPresets.some(p => p.text === m.text)) {
+                if (!delayReason) delayReason = m.text;
+            } else {
+                infoTexts.push({
+                    id: crypto.randomUUID(),
+                    text: m.text.replace(/^Information:\s*/i, '').trim(),
+                    visible: true,
+                    type: 'Q'
+                });
+            }
+        });
+
+        const vm = data.verkehrmittel || {};
         const journey = new Journey({
             category: cat,
             number: num,
+            line: vm.linienNummer || '',
+            produktGattung: vm.produktGattung || '',
+            journeyId: data.journeyId || '',
+            destination: data.ziel || '',
+            scheduledTime: '', // Wird durch syncFromCurrentStop berechnet
+            expectedTime: '',  // Wird durch syncFromCurrentStop berechnet
+            platform: '',      // Wird durch syncFromCurrentStop berechnet
+            ezGleis: '',       // Wird durch syncFromCurrentStop berechnet
             ausfall: data.cancelled || false,
             zugattribute: data.zugattribute || [],
-            messages: (data.priorisierteMeldungen || []).map(m => ({
+            messages: rawMeldungen.map(m => ({
                 priority: m.prioritaet,
                 text: m.text
             })),
-            scrollText: (data.priorisierteMeldungen || []).map(m => m.text).join(' +++ '),
+            infoTexts: infoTexts,
+            delayReason: delayReason,
             stops: (data.halte || []).map(halt => new Stop({
                 name: halt.name,
                 extId: halt.extId,

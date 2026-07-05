@@ -9,6 +9,7 @@ import { config, timeConfig, setSimulatedTime, getSimulatedTime } from './utils/
 import { toggleDebugMeters } from './displays/formationRenderer.js';
 import { debounce } from './utils/utils.js';
 import { StationService } from './utils/stationService.js';
+import { RisTextService } from './utils/risTextService.js';
 import { MOT_PRESETS, MOT_ALL_KEYS, getSmartHeaderString, getMotForCategory } from './utils/motManager.js';
 
 const debouncedUpdateAll = debounce(() => trainDisplay.updateAll(), 300);
@@ -225,7 +226,15 @@ function renderJourneyDetails(journey) {
                 <div class="detail-section">
                     <h4>Anzeige</h4>
                     <div class="detail-row">
-                        <label>Lauftext: <input type="text" class="jfield" data-field="scrollText" value="${journey.scrollText}"></label>
+                        <div style="width: 100%;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <span style="font-size: 0.9em; color: var(--text-muted);">Lauftext / Info-Bausteine:</span>
+                                <button class="btn-secondary btn-sm info_add_custom_btn" data-journey-id="${journey.id}">+ Manuell</button>
+                            </div>
+                            <div class="inline-infotext-editor" data-journey-id="${journey.id}">
+                                ${renderInfoTextsEditor(journey)}
+                            </div>
+                        </div>
                     </div>
                     <div class="detail-row">
                         <label class="radio-group">Richtung:
@@ -243,6 +252,11 @@ function renderJourneyDetails(journey) {
                     </div>
                     <div class="detail-row">
                         <label>Verkehrt ab: <input type="text" class="jfield short-input" data-field="verkehrtAb" value="${journey.verkehrtAb}"></label>
+                        <label style="margin-left: 10px;">Verspätungsgrund: 
+                            <select class="jfield" data-field="delayReason" style="max-width: 250px;">
+                                ${renderDelayReasonOptions(journey.delayReason)}
+                            </select>
+                        </label>
                     </div>
                 </div>
             </div>
@@ -298,6 +312,98 @@ function renderInlineFormation(journey) {
     return html;
 }
 
+// ==========================================
+// Info-Texte und Verspätungsgrund Editoren
+// ==========================================
+
+function renderInfoTextsEditor(journey) {
+    let html = '<div class="info-editor-list" style="border: 1px solid var(--border); border-radius: 5px; background: transparent; padding: 5px; margin-bottom: 5px;">';
+    
+    if (!journey.infoTexts || journey.infoTexts.length === 0) {
+        html += '<div class="info-empty" style="color: #ccc; margin-bottom: 5px;">Keine Lauftexte vorhanden.</div>';
+    } else {
+        journey.infoTexts.forEach((info, i) => {
+            html += renderInfoTextRow(info, i, journey.id);
+        });
+    }
+    
+    // Preset-Auswahl (Type Q) hinzufügen
+    const qPresets = RisTextService.getPresetsByType('Q');
+    let presetOptions = '<option value="">-- Preset aus RIS_Texte.csv wählen --</option>';
+    qPresets.forEach(p => {
+        presetOptions += `<option value="${p.text}">${p.code}: ${p.text}</option>`;
+    });
+
+    html += `
+        <div style="display: flex; gap: 5px; margin-top: 10px;">
+            <select class="jfield info-preset-select" style="flex: 1;">
+                ${presetOptions}
+            </select>
+            <button class="btn-secondary btn-sm info_add_preset_btn" data-journey-id="${journey.id}">Hinzufügen</button>
+        </div>
+    </div>`;
+    
+    return html;
+}
+
+function renderInfoTextRow(info, index, journeyId) {
+    const visibleIcon = info.visible ? '👁️' : '○';
+    const visibleTitle = info.visible ? 'Sichtbar im Lauftext' : 'Versteckt';
+    
+    return `
+        <div class="info-editor-row" data-index="${index}" style="display: flex; gap: 5px; align-items: center; margin-bottom: 5px; padding: 5px; background: var(--bg-input); border-radius: 5px; border: 1px solid var(--border);">
+            <button class="btn-icon move-info-up" title="Nach oben">⬆️</button>
+            <button class="btn-icon move-info-down" title="Nach unten">⬇️</button>
+            <button class="btn-icon toggle-info-visible" title="${visibleTitle}">${visibleIcon}</button>
+            <input type="text" class="jfield info-text-input" value="${info.text}" style="flex: 1; margin: 0;" placeholder="Text">
+            <button class="btn-icon remove-info-btn" title="Entfernen">✕</button>
+        </div>
+    `;
+}
+
+function renderDelayReasonOptions(selectedReason) {
+    const rPresets = RisTextService.getPresetsByType('R');
+    let html = '<option value="">-- Kein Verspätungsgrund --</option>';
+    rPresets.forEach(p => {
+        const selected = (p.text === selectedReason) ? 'selected' : '';
+        html += `<option value="${p.text}" ${selected}>${p.code}: ${p.text}</option>`;
+    });
+    // Falls manueller Grund drinsteht, der nicht in den Presets ist
+    if (selectedReason && !rPresets.some(p => p.text === selectedReason)) {
+        html += `<option value="${selectedReason}" selected>${selectedReason}</option>`;
+    }
+    return html;
+}
+
+function saveInfoTextsEditor(journeyId, immediate = true) {
+    const journey = journeyStore.getJourney(journeyId);
+    if (!journey) return;
+
+    const details = document.querySelector(`.journey-details[data-journey-id="${journeyId}"]`);
+    if (!details) return;
+
+    const infoRows = details.querySelectorAll('.info-editor-row');
+    const newInfos = [];
+
+    infoRows.forEach((row) => {
+        const dataIndex = row.dataset.index;
+        const oldInfo = journey.infoTexts[dataIndex] || {};
+        const text = row.querySelector('.info-text-input')?.value || '';
+        
+        newInfos.push({
+            id: oldInfo.id || crypto.randomUUID(),
+            text: text,
+            visible: oldInfo.visible !== undefined ? oldInfo.visible : true,
+            type: oldInfo.type || 'custom'
+        });
+    });
+
+    journey.infoTexts = newInfos;
+    
+    if (immediate) trainDisplay.updateAll();
+    else debouncedUpdateAll();
+}
+
 /**
  * Rendert den editierbaren Stop-Editor (Zuglauf).
  */
@@ -310,7 +416,7 @@ function renderStopsEditor(journey) {
     });
 
     return `
-        <div class="stops-editor-list" style="border: 1px solid #444; border-radius: 5px; background: rgba(0,0,0,0.2); padding: 5px;">
+        <div class="stops-editor-list" style="border: 1px solid var(--border); border-radius: 5px; background: transparent; padding: 5px;">
             ${html}
         </div>
     `;
@@ -325,7 +431,7 @@ function renderStopRow(stop, index, journeyId, isCurrent) {
     const viaTitle = stop.showAsVia ? 'Als Via markiert' : 'Nicht als Via markiert';
 
     return `
-        <div class="stop-editor-row" data-index="${index}" style="display: flex; gap: 5px; align-items: center; margin-bottom: 5px; padding: 5px; background: #222; border-radius: 3px; ${cancelledStyle} ${currentStyle}">
+        <div class="stop-editor-row" data-index="${index}" style="display: flex; gap: 5px; align-items: center; margin-bottom: 5px; padding: 5px; background: var(--bg-input); border-radius: 5px; border: 1px solid var(--border); ${cancelledStyle} ${currentStyle}">
             <span class="stop-drag-handle" title="Drag & Drop" style="cursor: move;">⠿</span>
             <button class="btn-icon move-stop-up" title="Nach oben">⬆️</button>
             <button class="btn-icon move-stop-down" title="Nach unten">⬇️</button>
@@ -675,6 +781,67 @@ export function initEvents() {
         if (details) {
             const jId = details.dataset.journeyId;
 
+            // --- InfoTexts Editor ---
+            if (e.target.closest('.info_add_custom_btn')) {
+                const journey = journeyStore.getJourney(jId);
+                if (journey) {
+                    journey.infoTexts.push({ id: crypto.randomUUID(), text: 'Neuer Lauftext', visible: true, type: 'custom' });
+                    renderJourneyList();
+                    trainDisplay.updateAll();
+                }
+                return;
+            }
+
+            if (e.target.closest('.info_add_preset_btn')) {
+                const journey = journeyStore.getJourney(jId);
+                const selectEl = details.querySelector('.info-preset-select');
+                if (journey && selectEl && selectEl.value) {
+                    journey.infoTexts.push({ id: crypto.randomUUID(), text: selectEl.value, visible: true, type: 'Q' });
+                    renderJourneyList();
+                    trainDisplay.updateAll();
+                }
+                return;
+            }
+
+            if (e.target.closest('.toggle-info-visible')) {
+                const row = e.target.closest('.info-editor-row');
+                const journey = journeyStore.getJourney(jId);
+                if (row && journey) {
+                    const idx = row.dataset.index;
+                    journey.infoTexts[idx].visible = !journey.infoTexts[idx].visible;
+                    renderJourneyList();
+                    trainDisplay.updateAll();
+                }
+                return;
+            }
+
+            if (e.target.closest('.remove-info-btn')) {
+                e.target.closest('.info-editor-row')?.remove();
+                saveInfoTextsEditor(jId);
+                renderJourneyList();
+                return;
+            }
+
+            if (e.target.closest('.move-info-up')) {
+                const row = e.target.closest('.info-editor-row');
+                if (row.previousElementSibling && row.previousElementSibling.classList.contains('info-editor-row')) {
+                    row.parentNode.insertBefore(row, row.previousElementSibling);
+                    saveInfoTextsEditor(jId);
+                    renderJourneyList();
+                }
+                return;
+            }
+
+            if (e.target.closest('.move-info-down')) {
+                const row = e.target.closest('.info-editor-row');
+                if (row.nextElementSibling && row.nextElementSibling.classList.contains('info-editor-row')) {
+                    row.parentNode.insertBefore(row.nextElementSibling, row);
+                    saveInfoTextsEditor(jId);
+                    renderJourneyList();
+                }
+                return;
+            }
+
             // --- Stops Editor ---
             if (e.target.closest('.stops_add_btn')) {
                 const journey = journeyStore.getJourney(jId);
@@ -962,19 +1129,26 @@ export function initEvents() {
         if (!journey) return;
 
         // Text/Number-Felder in Journey-Details
-        if (e.target.classList.contains('jfield')) {
+        if (e.target.classList.contains('jfield') && !e.target.classList.contains('info-text-input')) {
             const field = e.target.dataset.field;
-            if (field === 'startMeter') {
-                journey[field] = parseFloat(e.target.value) || 0;
-            } else if (field === 'scaleFactor') {
-                journey[field] = parseFloat(e.target.value) || 1.0;
-                journey.skalieren = false;
-                const skCheckbox = details.querySelector('.jcheck[data-field="skalieren"]');
-                if (skCheckbox) skCheckbox.checked = false;
-            } else {
-                journey[field] = e.target.value;
+            if (field) {
+                if (field === 'startMeter') {
+                    journey[field] = parseFloat(e.target.value) || 0;
+                } else if (field === 'scaleFactor') {
+                    journey[field] = parseFloat(e.target.value) || 1.0;
+                    journey.skalieren = false;
+                    const skCheckbox = details.querySelector('.jcheck[data-field="skalieren"]');
+                    if (skCheckbox) skCheckbox.checked = false;
+                } else {
+                    journey[field] = e.target.value;
+                }
+                debouncedUpdateAll();
             }
-            debouncedUpdateAll();
+        }
+
+        // Auto-Save für Info-Texte
+        if (e.target.classList.contains('info-text-input')) {
+            saveInfoTextsEditor(journeyId, false);
         }
 
         // Auto-Save für Stops-Eingaben
@@ -1012,6 +1186,15 @@ export function initEvents() {
             journey[e.target.dataset.field] = e.target.checked;
             trainDisplay.updateAll();
             renderJourneyList(); // Badges aktualisieren
+        }
+
+        // Selects mit .jfield (z.B. delayReason)
+        if (e.target.tagName === 'SELECT' && e.target.classList.contains('jfield')) {
+            const field = e.target.dataset.field;
+            if (field) {
+                journey[field] = e.target.value;
+                trainDisplay.updateAll();
+            }
         }
 
         // Auto-Save für Checkboxen der Formation (z.B. Offen, Amenities)
