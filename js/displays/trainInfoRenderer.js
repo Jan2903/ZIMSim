@@ -80,6 +80,8 @@ function getPlatformSectors(targetJourney, allJourneys, platform) {
  */
 export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
     const { fullScreen, screen, scrollManager, zugID, canvas, cssScale = 1 } = renderCtx;
+    const pAlpha = renderCtx.pageAlpha !== undefined ? renderCtx.pageAlpha : 1.0;
+    ctx.globalAlpha = pAlpha;
 
     const primary = journeys[0];
 
@@ -104,7 +106,16 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
     if (!fullScreen && infoscreen) {
         ctx.fillStyle = COLORS.WHITE;
         ctx.fillRect(3, 0, width - 3, height);
-        drawWrappedText(ctx, scrollText, 50, 120, 900, 80, FONTS.regular(70), COLORS.NAVY, 'left');
+        
+        let textToDraw = scrollText;
+        if (renderCtx.activeInfoText) {
+            textToDraw = renderCtx.activeInfoText.text;
+        }
+        drawWrappedText(ctx, textToDraw, 50, 120, 900, 80, FONTS.regular(70), COLORS.NAVY, 'left');
+        
+        if (renderCtx.totalPages && renderCtx.totalPages > 1) {
+            drawPaginationDots(ctx, renderCtx, width, height, COLORS.NAVY);
+        }
         return;
     }
 
@@ -137,7 +148,8 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
         `${(screen.w - x - 5) * cssScale}px`,
         `${100 * cssScale}px`,
         COLORS.NAVY,
-        `${Math.round(67 * cssScale)}px "Open Sans Condensed"`
+        `${Math.round(67 * cssScale)}px "Open Sans Condensed"`,
+        pAlpha
     );
 
     // 2. Top-Banner zeichnen
@@ -247,25 +259,33 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
                 drawText(ctx, 'von / from ' + fromDestination, 50, 520, FONTS.regular(75), textColor, 'left');
                 scrollManager.createOrUpdate(canvas, zugID, 'ankunft', "Bitte nicht einsteigen Please do not board",
                     `${(screen.x + 50) * cssScale}px`, `${(screen.y + 300) * cssScale}px`,
-                    `${(screen.w - 50) * cssScale}px`, `${128 * cssScale}px`, textColor, `${Math.round(128 * cssScale)}px "Open Sans Condensed"`);
+                    `${(screen.w - 50) * cssScale}px`, `${128 * cssScale}px`, textColor, `${Math.round(128 * cssScale)}px "Open Sans Condensed"`, pAlpha);
                 // Den separaten arrival Scrolltext löschen
-                scrollManager.createOrUpdate(canvas, zugID, 'arrival', "", "", "", "", "", "", "");
+                scrollManager.createOrUpdate(canvas, zugID, 'arrival', "", "", "", "", "", "", "", pAlpha);
             } else {
                 // Normales Layout
                 drawText(ctx, 'von / from ' + fromDestination, 50, 670, FONTS.regular(75), textColor, 'left');
                 scrollManager.createOrUpdate(canvas, zugID, 'ankunft', "Bitte nicht einsteigen",
                     `${(screen.x + 50) * cssScale}px`, `${(screen.y + 280) * cssScale}px`,
-                    `${(screen.w - 50) * cssScale}px`, `${120 * cssScale}px`, textColor, `${Math.round(120 * cssScale)}px "Open Sans Condensed"`);
+                    `${(screen.w - 50) * cssScale}px`, `${120 * cssScale}px`, textColor, `${Math.round(120 * cssScale)}px "Open Sans Condensed"`, pAlpha);
                 scrollManager.createOrUpdate(canvas, zugID, 'arrival', "Please do not board",
                     `${(screen.x + 50) * cssScale}px`, `${(screen.y + 430) * cssScale}px`,
-                    `${(screen.w - 50) * cssScale}px`, `${120 * cssScale}px`, textColor, `italic ${Math.round(120 * cssScale)}px "Open Sans Condensed"`);
+                    `${(screen.w - 50) * cssScale}px`, `${120 * cssScale}px`, textColor, `italic ${Math.round(120 * cssScale)}px "Open Sans Condensed"`, pAlpha);
             }
         } else if (isMerged) {
             let yPos = 360;
             drawText(ctx, primary.destination, 50, yPos, FONTS.regular(128), textColor, 'left');
             yPos += 160;
             
-            if (!ausfall) {
+            let infoToDraw = null;
+            if (renderCtx.activeInfoText) {
+                infoToDraw = renderCtx.activeInfoText.text;
+            }
+
+            if (infoToDraw) {
+                const viaFont = FONTS.regular(isDisrupted ? 70 : 75);
+                drawWrappedText(ctx, infoToDraw, 50, yPos, 880, 100, viaFont, textColor, 'left');
+            } else if (!ausfall) {
                 let viaText = (primary.vias || []).join(' - ');
                 if (verkehrtAb !== "0") {
                     viaText = 'Verkehrt heute ab / Departing today from ' + verkehrtAb;
@@ -318,6 +338,42 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
             drawText(ctx, 'New track', 50-5, 125, FONTS.italic(67), COLORS.WHITE, 'left');
             drawText(ctx, primary.ezGleis, width - 40, 80, FONTS.regular(128), COLORS.WHITE, 'right');
             ctx.restore();
+        }
+
+        if (renderCtx.totalPages && renderCtx.totalPages > 1) {
+            drawPaginationDots(ctx, renderCtx, width, height, textColor);
+        }
+    }
+}
+
+/**
+ * Zeichnet die Paginierungs-Punkte für den rotierenden Nebenmonitor.
+ * @param {CanvasRenderingContext2D} ctx 
+ * @param {object} renderCtx 
+ * @param {number} width 
+ * @param {number} height 
+ * @param {string} dotColor 
+ */
+function drawPaginationDots(ctx, renderCtx, width, height, dotColor) {
+    const dotRadius = 8;
+    const dotSpacing = 60; // Abstand zwischen den Dots verdoppelt
+    const totalWidth = (renderCtx.totalPages - 1) * dotSpacing;
+    const startX = width / 2 - totalWidth / 2;
+    const dotY = height - 40;
+
+    for (let i = 0; i < renderCtx.totalPages; i++) {
+        ctx.beginPath();
+        ctx.arc(startX + i * dotSpacing, dotY, dotRadius, 0, Math.PI * 2);
+        
+        ctx.strokeStyle = dotColor;
+        ctx.lineWidth = 2;
+        
+        if (i === renderCtx.activePageIndex) {
+            ctx.fillStyle = dotColor;
+            ctx.fill();
+            ctx.stroke(); // Stroke hinzufügen, damit die Außenmaße identisch zum leeren Kreis sind
+        } else {
+            ctx.stroke();
         }
     }
 }

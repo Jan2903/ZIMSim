@@ -329,7 +329,7 @@ function renderInfoTextsEditor(journey) {
     
     // Preset-Auswahl (Type Q) hinzufügen
     const qPresets = RisTextService.getPresetsByType('Q');
-    let presetOptions = '<option value="">-- Preset aus RIS_Texte.csv wählen --</option>';
+    let presetOptions = '<option value="">-- Preset wählen --</option>';
     qPresets.forEach(p => {
         presetOptions += `<option value="${p.text}">${p.code}: ${p.text}</option>`;
     });
@@ -785,7 +785,7 @@ export function initEvents() {
             if (e.target.closest('.info_add_custom_btn')) {
                 const journey = journeyStore.getJourney(jId);
                 if (journey) {
-                    journey.infoTexts.push({ id: crypto.randomUUID(), text: 'Neuer Lauftext', visible: true, type: 'custom' });
+                    journey.infoTexts.push({ id: crypto.randomUUID(), text: '', visible: true, type: 'custom' });
                     renderJourneyList();
                     trainDisplay.updateAll();
                 }
