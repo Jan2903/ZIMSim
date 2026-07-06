@@ -36,7 +36,7 @@ export class ScrollManager {
      * @param {string} color - Textfarbe.
      * @param {string} font - CSS font-Wert.
      */
-    createOrUpdate(canvas, zugID, scrollingID, text, left, top, width, height, color, font) {
+    createOrUpdate(canvas, zugID, scrollingID, text, left, top, width, height, color, font, opacity = 1.0) {
         // Stelle sicher, dass das Objekt für diesen Zug existiert
         if (!this.scrollDivs[zugID]) {
             this.scrollDivs[zugID] = {};
@@ -64,6 +64,11 @@ export class ScrollManager {
             existingDiv.dataset.text === text &&
             existingDiv.dataset.color === color &&
             existingDiv.dataset.font === font) {
+            
+            if (existingDiv.dataset.opacity !== String(opacity)) {
+                existingDiv.style.opacity = opacity;
+                existingDiv.dataset.opacity = opacity;
+            }
             return;
         }
 
@@ -77,6 +82,7 @@ export class ScrollManager {
         scrollDiv.style.width = width;
         scrollDiv.style.height = height;
         scrollDiv.style.zIndex = '15'; // Wichtig: Zwischen Canvas(10) und Hardware-Bezel(20)
+        scrollDiv.style.opacity = opacity;
 
         // Properties hinterlegen, um Repaints auf das Nötigste zu beschränken
         scrollDiv.dataset.left = left;
@@ -86,6 +92,7 @@ export class ScrollManager {
         scrollDiv.dataset.text = text;
         scrollDiv.dataset.color = color;
         scrollDiv.dataset.font = font;
+        scrollDiv.dataset.opacity = opacity;
 
         canvas.parentElement.appendChild(scrollDiv);
 

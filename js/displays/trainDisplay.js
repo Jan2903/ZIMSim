@@ -22,6 +22,9 @@ export class TrainDisplay {
         this.featureAlpha = 1.0;
         this.vitrineProgress = 0.0;
         this.activeFeatureIndex = 0;
+        this.rotatingPages = [];
+        this.activePageIndex = 0;
+        this.pageAlpha = 1.0;
         this._startAnimationLoop();
     }
 
@@ -122,9 +125,11 @@ export class TrainDisplay {
         if (this._animId) return;
         const loop = () => {
             const isVitrine = this.currentLayout === LAYOUTS.zimvitrine32wagenstand;
+            const now = Date.now();
+            let needsRender = false;
             
+            // 1. Formation Feature Rotation (only if rotating or vitrine)
             if (isVitrine || this.rotating) {
-                const now = Date.now();
                 const cycle = now % 12000;
                 
                 let newFeatureStr;
@@ -140,11 +145,38 @@ export class TrainDisplay {
                 
                 this.vitrineProgress = cycle / 12000;
                 this.activeFeatureIndex = featureIndex;
-                
-                // Keep activeFeature if we are rotating globally or vitrine
                 this.activeFeature = newFeatureStr;
                 this.featureAlpha = alpha;
+                needsRender = true;
+            } else {
+                if (this.featureAlpha !== 1.0) {
+                    this.featureAlpha = 1.0;
+                    needsRender = true;
+                }
+            }
+
+            // 2. Journey/InfoText Rotation (Always runs if we have multiple pages)
+            const pagesCount = this.rotatingPages ? this.rotatingPages.length : 0;
+            if (pagesCount > 1) {
+                const journeyCycleDuration = 4800;
+                const totalJourneyCycle = pagesCount * journeyCycleDuration;
+                const jCycle = now % totalJourneyCycle;
+                this.activePageIndex = Math.floor(jCycle / journeyCycleDuration);
                 
+                const tJ = jCycle % journeyCycleDuration;
+                if (tJ < 800) this.pageAlpha = tJ / 800;
+                else if (tJ > 4000) this.pageAlpha = 1.0 - ((tJ - 4000) / 800);
+                else this.pageAlpha = 1.0;
+                needsRender = true;
+            } else {
+                if (this.pageAlpha !== 1.0 || this.activePageIndex !== 0) {
+                    this.activePageIndex = 0;
+                    this.pageAlpha = 1.0;
+                    needsRender = true;
+                }
+            }
+            
+            if (needsRender) {
                 if (config.performance_mode) {
                     if (now - (this.lastRenderTime || 0) < 33) {
                         this._animId = requestAnimationFrame(loop);
@@ -155,11 +187,6 @@ export class TrainDisplay {
                 
                 if (!this._isRendering) {
                     this._renderFrames();
-                }
-            } else {
-                if (this.featureAlpha !== 1.0) {
-                    this.featureAlpha = 1.0;
-                    if (!this._isRendering) this._renderFrames();
                 }
             }
             this._animId = requestAnimationFrame(loop);
@@ -317,23 +344,38 @@ export class TrainDisplay {
 
                     const fullScreen = screen.type === 'haupt';
                     const renderCtx = this._createRenderContext(mainCanvas, screen, zugID, fullScreen, cssScale);
+                    
+                    if (screen.type === 'neben_rotierend') {
+                        renderCtx.pageAlpha = this.pageAlpha;
+                        renderCtx.totalPages = this.rotatingPages ? this.rotatingPages.length : 0;
+                        renderCtx.activePageIndex = this.activePageIndex;
+                        if (this.rotatingPages && this.rotatingPages[this.activePageIndex]) {
+                            renderCtx.activeInfoText = this.rotatingPages[this.activePageIndex].infoText;
+                        }
+                    } else {
+                        renderCtx.pageAlpha = 1.0;
+                    }
 
-                    if (layer === 'all' || layer === 'static') this.scrollManager.beginRender();
+                    const isDynamicRotierend = (layer === 'dynamic' && screen.type === 'neben_rotierend');
+                    if (layer === 'all' || layer === 'static' || isDynamicRotierend) this.scrollManager.beginRender();
 
-                    const clearBg = (layer === 'all' || layer === 'static');
+                    const clearBg = (layer === 'all' || layer === 'static' || isDynamicRotierend);
                     this.drawOnScreen(screen, (ctx, width, height) => {
                         if (screen.type === 'haupt' || screen.type === 'neben' || screen.type === 'neben_rotierend') {
-                            if (layer === 'all' || layer === 'static') {
+                            if (layer === 'all' || layer === 'static' || isDynamicRotierend) {
                                 drawTrainInfo(ctx, journeys, width, height, renderCtx);
                             }
                             if (shouldRenderFormation(journeys)) {
                                 ctx.save();
                                 ctx.translate(0, 820);
+                                if (isDynamicRotierend) {
+                                    ctx.globalAlpha = this.pageAlpha;
+                                }
                                 drawFormation(ctx, journeys, this.journeyStore.platform, {
                                     fullScreen,
                                     activeFeature: this.activeFeature,
                                     featureAlpha: this.featureAlpha,
-                                    drawLayer: layer
+                                    drawLayer: isDynamicRotierend ? 'all' : layer
                                 });
                                 ctx.restore();
                             }
@@ -353,7 +395,7 @@ export class TrainDisplay {
                         }
                     }, canvas, clearBg);
 
-                    if (layer === 'all' || layer === 'static') this.scrollManager.cleanupUnused(zugID);
+                    if (layer === 'all' || layer === 'static' || isDynamicRotierend) this.scrollManager.cleanupUnused(zugID);
                 } catch (screenErr) {
                     console.error(`Error rendering screen ${screen.id}:`, screenErr);
                 }
@@ -426,20 +468,66 @@ export class TrainDisplay {
             });
         }
 
-        // Nebenmonitor 2 (rotierend): Gestörte Journeys haben Vorrang
+        // Nebenmonitor 2 (rotierend): Gestörte Journeys + normale ab Index 2
         if (rotierend) {
-            let rotatingJourneys = [];
-            if (disrupted.length > 0) {
-                // Gestörte Journeys anzeigen (TODO: Rotation bei mehreren)
-                rotatingJourneys = disrupted[0];
-            } else if (normal.length > 2) {
-                // Keine Störungen: 3. normale Gruppe
-                rotatingJourneys = normal[2];
+            const groupsToRotate = [...disrupted, ...normal.slice(2)];
+            this.rotatingPages = [];
+            
+            for (const group of groupsToRotate) {
+                const primary = group[0];
+                const visibleTexts = primary.infoTexts ? primary.infoTexts.filter(t => t.visible) : [];
+                const isDisrupted = primary.isDisrupted;
+
+                // Basis-Seite wird NUR bei "Verkehrt ab" (und nicht Ausfall/Infoscreen) vorangestellt.
+                // Bei Gleiswechsel etc. wollen wir keine Rotation zwischen Basis-Route und dem Infotext.
+                let hasBaseText = !primary.ausfall && !primary.infoscreen && primary.verkehrtAb !== '0';
+                let infoTextPages = visibleTexts.length;
+                let rotateInfos = false;
+
+                if (isDisrupted && infoTextPages > 0) {
+                    rotateInfos = true;
+                } else if (!isDisrupted && primary.infoscreen && infoTextPages > 0) {
+                    rotateInfos = true;
+                }
+
+                if (rotateInfos) {
+                    if (hasBaseText) {
+                        // Seite 1: Basis-Text (Verkehrt ab oder reguläre vias)
+                        this.rotatingPages.push({
+                            journeys: group,
+                            infoText: null
+                        });
+                    }
+                    // Seite 2 bis N: Die dynamischen Infotexte
+                    for (let i = 0; i < infoTextPages; i++) {
+                        this.rotatingPages.push({
+                            journeys: group,
+                            infoText: visibleTexts[i]
+                        });
+                    }
+                } else {
+                    // Keine Rotation von Infotexten: Fallback auf ersten Text (oder null)
+                    this.rotatingPages.push({
+                        journeys: group,
+                        infoText: visibleTexts[0] || null
+                    });
+                }
             }
+
+            let currentJourneys = [];
+            if (this.rotatingPages.length > 0) {
+                if (this.activePageIndex >= this.rotatingPages.length) {
+                    this.activePageIndex = 0;
+                }
+                currentJourneys = this.rotatingPages[this.activePageIndex].journeys;
+            }
+
             assignments.set(rotierend.id, {
-                journeys: rotatingJourneys,
+                journeys: currentJourneys,
                 zugID: 3,
             });
+        } else {
+            this.rotatingPages = [];
         }
     }
 
