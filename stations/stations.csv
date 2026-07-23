@@ -42,7 +42,7 @@ INBR,Name,Name kurz,DS100,Kategorie
 8000475,Albstadt-Lautlingen,Albstadt-Lautlingen,TALT,6
 8000477,Aldekerk,Aldekerk,KALK,6
 8000482,Aletshausen,Aletshausen,MALH,7
-8011155,Berlin Alexanderplatz,Berlin Alexanderplatz,BALE,3
+8011155,Berlin Alexanderplatz,Bln Alexanderpl.,BALE,3
 8000483,Alfeld (Leine),Alfeld(Leine),HALF,4
 8000488,Algermissen,Algermissen,HALG,6
 8000489,Aligse,Aligse,HALI,6
@@ -101,7 +101,7 @@ INBR,Name,Name kurz,DS100,Kategorie
 8000562,Alttann,Alttann,TATN,7
 8000007,Alzey,Alzey,FALZ,3
 8000566,Amberg,Amberg,NAM,5
-8000569,Münster-Amelsbüren,Münster-Amelsbüren,EAML,6
+8000569,Münster-Amelsbüren,MS-Amelsbüren,EAML,6
 8000576,Ampfing,Ampfing,MAPF,5
 8011038,Amsdorf,Amsdorf,LAMS,6
 8000577,Amstetten (Württ),Amstetten (Württ),TAM,5
@@ -122,7 +122,7 @@ INBR,Name,Name kurz,DS100,Kategorie
 8000588,Anwanden,Anwanden,NAWN,6
 8000589,Anzefahr,Anzefahr,FAZ,6
 8011051,Apolda,Apolda,UAP,4
-8000595,Nottuln-Appelhülsen,Nottuln-Appelhülsen,EAPH,4
+8000595,Nottuln-Appelhülsen,Not.-Appelhülsen,EAPH,4
 8000596,Appenweier,Appenweier,RAP,4
 8000597,Ardey,Ardey,EARE,7
 8011053,Arensdorf (b Köthen),Arensdorf (b Köthen),LAF,6
@@ -143,7 +143,7 @@ INBR,Name,Name kurz,DS100,Kategorie
 8000619,Aschaffenburg Süd,Aschaffenburg Süd,NASU,6
 8000621,Aschau (Chiemgau),Aschau (Chiemgau),MASC,6
 8000011,Ascheberg (Holst),Ascheberg (Holst),AAG,5
-8000623,Ascheberg (Westf),Ascheberg (Westf),EASB,6
+8000623,Ascheberg (Westf),Ascheberg,EASB,6
 8000624,Aschendorf,Aschendorf,HASD,6
 8010009,Aschersleben,Aschersleben,LAL,4
 8000627,Ashausen,Ashausen,AASN,6
@@ -320,7 +320,7 @@ INBR,Name,Name kurz,DS100,Kategorie
 8011111,Barleben,Barleben,LBAR,6
 8011112,Barleber See,Barleber See,LBAS,6
 8000805,Barmbek,Barmbek,ABAG,4
-8000807,Barnstorf (Han),Barnstorf (Han),HBNF,5
+8000807,Barnstorf (Han),Barnstorf(Han),HBNF,5
 8000808,Barnten,Barnten,HBNT,6
 8000810,Barrien,Barrien,HBAR,6
 8000812,Barsinghausen,Barsinghausen,HBGH,5
@@ -393,7 +393,7 @@ INBR,Name,Name kurz,DS100,Kategorie
 8011154,Berkenbrück,Berkenbrück,BBKR,6
 8089002,Berlin Anhalter Bahnhof,Berlin Anhalter Bahnhof,BAHU,3
 8089013,Berlin Frankfurter Allee,Berlin Frankfurter Allee,BFA,4
-8011306,Berlin Friedrichstraße,Berlin Friedrichstraße,BFRI,2
+8011306,Berlin Friedrichstraße,Bln Friedrichstraße,BFRI,2
 8011102,Berlin Gesundbrunnen,Bln Gesundbr.,BGB,1
 8089011,Berlin Greifswalder Straße,Berlin Greifswalder Straße,BGFB,4
 8010255,Berlin Ostbahnhof,Berlin Ostbf.,BHF,1
@@ -579,7 +579,7 @@ INBR,Name,Name kurz,DS100,Kategorie
 8001080,Bondorf (b Herrenberg),Bondorf (b Herrenberg),TBD,5
 8001061,Bönen,Bönen,EBEO,5
 8000044,Bonn Hbf,Bonn Hbf,KB,2
-8001082,Bonn-Bad Godesberg,Bonn-Bad Godesberg,KBBG,3
+8001082,Bonn-Bad Godesberg,BN-Bad Godesberg,KBBG,3
 8001083,Bonn-Beuel,BN-Beuel,KBB,4
 8001084,Bonn-Duisdorf,Bonn-Duisdorf,KBD,6
 8001085,Bonn-Mehlem,Bonn-Mehlem,KBM,4
@@ -590,7 +590,7 @@ INBR,Name,Name kurz,DS100,Kategorie
 8001092,Bordesholm,Bordesholm,ABRD,5
 8001093,Borgeln,Borgeln,EBOR,6
 8001095,Borgholzhausen,Borgholzhausen,EBHS,7
-8001096,Steinfurt-Borghorst,Steinfurt-Borghorst,EBGO,6
+8001096,Steinfurt-Borghorst,ST-Borghorst,EBGO,6
 8080200,Borgsdorf,Borgsdorf,BBOR,5
 8001097,Bork (Westf),Bork (Westf),EBOK,6
 8001098,Borken (Hess),Borken (Hess),FBOK,5
@@ -620,7 +620,7 @@ INBR,Name,Name kurz,DS100,Kategorie
 8001121,Brakel (Kr Höxter),Brakel,HBKH,6
 8001122,Bramsche,Bramsche,HBRM,5
 8001123,Bramstedt (b Syke),Bramstedt (b Syke),HBRA,6
-8011250,Brand Tropical Islands,Brand Tropical Islands,BBRA,6
+8011250,Brand Tropical Islands,Brand,BBRA,6
 8010060,Brandenburg Hbf,Brandenburg,LB,3
 8011252,Brandenburg-Altstadt,Brandenburg-Altstadt,LBA,7
 8001129,Brannenburg,Brannenburg,MBB,4
@@ -743,7 +743,7 @@ INBR,Name,Name kurz,DS100,Kategorie
 8001293,Burgsinn,Burgsinn,NBN,6
 8011297,Burgstädt,Burgstädt,DBU,6
 8001296,Burgstall (Murr),Burgstall (Murr),TBU,6
-8000062,Steinfurt-Burgsteinfurt,Steinfurt-Burgsteinfurt,EBFT,6
+8000062,Steinfurt-Burgsteinfurt,ST-Burgsteinfurt,EBFT,6
 8001297,Burgthann,Burgthann,NBUT,5
 8001298,Regensburg-Burgweinting,Regensburg-Burgweinting,NBWH,6
 8011298,Burkhardswalde-Maxen,Burkhardswalde-Maxen,DBWD,7
@@ -759,14 +759,14 @@ INBR,Name,Name kurz,DS100,Kategorie
 8001315,Buxtehude,Buxtehude,ABX,3
 8001316,Cadenberge,Cadenberge,ACD,6
 8001317,Cadolzburg,Cadolzburg,NCA,6
-8010069,Calau (Niederlausitz),Calau (Niederlausitz),BC,5
+8010069,Calau (Niederlausitz),Calau,BC,5
 8010070,Calbe (Saale) Ost,Calbe (Saale) Ost,LCBO,5
 8010071,Calbe (Saale) West,Calbe (Saale) West,LCBW,7
 8001318,Calberlah,Calberlah,HCAL,6
 8000063,Calw,Calw,TCW,6
 8013474,Camburg (Saale),Camburg (Saale),UCB,6
 8011307,Cammin (Meckl),Cammin (Meckl),WCA,6
-8001323,Capelle (Westf),Capelle (Westf),ECP,6
+8001323,Capelle (Westf),Capelle,ECP,6
 8011308,Caputh-Geltow,Caputh-Geltow,BCAP,7
 8011311,Casekow,Casekow,WCW,7
 8001327,Castrop-Rauxel Hbf,Castrop-Rauxel Hbf,ECA,3
@@ -948,13 +948,13 @@ INBR,Name,Name kurz,DS100,Kategorie
 8001527,Dortmund-Barop,Dortmund-Barop,EDBA,5
 8001528,Dortmund-Bövinghausen,Dortmund-Bövinghausen,EDBH,6
 8001529,Dortmund-Brackel,Dortmund-Brackel,EDBK,5
-8001530,Dortmund-Derne,Dortmund-Derne,EDD,6
+8001530,Dortmund-Derne,DO-Derne,EDD,6
 8000081,Dortmund-Dorstfeld,Dortmund-Dorstfeld,EDDP,3
 8004230,Dortmund-Dorstfeld Süd,Dortmund-Dorstfeld Süd,EDDS,4
 8000961,Dortmund-Hörde,Dortmund-Hörde,EDH,4
 8001505,Dortmund-Huckarde,Dortmund-Huckarde,EDOH,6
 8001532,Dortmund-Huckarde Nord,Dortmund-Huckarde Nord,EDHU,7
-8001533,Dortmund-Kirchderne,Dortmund-Kirchderne,EDKD,6
+8001533,Dortmund-Kirchderne,DO-Kirchderne,EDKD,6
 8001534,Dortmund-Kirchhörde,Dortmund-Kirchhörde,EDKH,6
 8004269,Dortmund-Kley,Dortmund-Kley,EDK,4
 8001535,Dortmund-Körne,Dortmund-Körne,EDKO,6
@@ -1523,7 +1523,7 @@ INBR,Name,Name kurz,DS100,Kategorie
 8011611,Gelbensande,Gelbensande,WGE,6
 8002222,Geldern,Geldern,KGE,5
 8000117,Gelnhausen,Gelnhausen,FGEL,4
-8000118,Gelsenkirchen Hbf,Gelsenkirchen Hbf,EG,2
+8000118,Gelsenkirchen Hbf,Gelsenkirchen,EG,2
 8002223,Gelsenkirchen Zoo,Gelsenkirchen Zoo,EGZO,6
 8002224,Gelsenkirchen-Buer Nord,Gelsenkirchen-Buer Nord,EGBN,6
 8002225,Gelsenkirchen-Buer Süd,Gelsenkirchen-Buer Süd,EGBS,7
@@ -1679,7 +1679,7 @@ INBR,Name,Name kurz,DS100,Kategorie
 8011712,Gröditz (b Riesa),Gröditz (b Riesa),DGT,6
 8002380,Grombach,Grombach,RGM,6
 8002382,Bad Vilbel-Gronau,Bad Vilbel-Gronau,FGRN,6
-8000382,Gronau (Westf),Gronau (Westf),EGRN,5
+8000382,Gronau (Westf),Gronau,EGRN,5
 8002378,Bad Grönenbach,Bad Grönenbach,MGNB,6
 8002383,Gronsdorf,Gronsdorf,MGDF,4
 8011714,Groß Ammensleben,Groß Ammensleben,LGRL,6
@@ -1839,10 +1839,10 @@ INBR,Name,Name kurz,DS100,Kategorie
 8002550,Holstenstraße,Holstenstraße,AHST,4
 8070146,Sternschanze,Sternschanze,ASST,3
 8002553,Hamburg-Altona,Hamburg-Altona,AA,1
-8002554,Hamburg-Bergedorf,Hamburg-Bergedorf,ABG,3
+8002554,Hamburg-Bergedorf,HH-Bergedorf,ABG,3
 8000147,Hamburg-Harburg,Hamburg-Harburg,AHAR,2
 8002557,Hamburg-Neugraben,Hamburg-Neugraben,ANR,3
-8002558,Hamburg-Rahlstedt,Hamburg-Rahlstedt,ARAL,4
+8002558,Hamburg-Rahlstedt,HH-Rahlstedt,ARAL,4
 8002560,Hamburg-Wandsbek,Hamburg-Wandsbek,AWN,4
 8002561,Wilhelmsburg,Wilhelmsburg,AWFS,4
 8002499,Hämelerwald,Hämelerwald,HHAE,5
@@ -1884,11 +1884,11 @@ INBR,Name,Name kurz,DS100,Kategorie
 8002610,Harthaus,Harthaus,MHHS,5
 8011825,Hartmannmühle,Hartmannmühle,DHMU,7
 8002612,Hartmannshof,Hartmannshof,NHS,5
-8002615,Hasbergen (Kr Osnabrück),Hasbergen (Kr Osnabrück),HHSB,6
+8002615,Hasbergen,Hasbergen,HHSB,6
 8002621,Haslach,Haslach,RHS,5
 8002623,Haspelmoor,Haspelmoor,MHMR,6
 8002625,Hassel (Saar),Hassel (Saar),SHSS,6
-8002628,Hasselbrook,Hasselbrook,AHSB,3
+8002628,Hamburg Hasselbrook,HH-Hasselbrook,AHSB,3
 8002630,Haßfurt,Haßfurt,NHT,4
 8002632,Haßloch (Pfalz),Haßloch (Pfalz),RHLO,4
 8002633,Haßmersheim,Haßmersheim,RHAS,7
@@ -2259,7 +2259,7 @@ INBR,Name,Name kurz,DS100,Kategorie
 8003154,Kalchreuth,Kalchreuth,NKAL,6
 8000190,Kaldenkirchen,Kaldenkirchen,KKAK,5
 8003158,Kall,Kall,KKAL,5
-8003160,Hürth-Kalscheuren,Hürth-Kalscheuren,KKAS,4
+8003160,Hürth-Kalscheuren,Hürth-Kalscheur.,KKAS,4
 8003165,Langenhagen-Kaltenweide,Lgh-Kaltenweide,HKAW,5
 8003166,Kalthof (Kr Iserlohn),Kalthof (Kr Iserlohn),EKAL,6
 8003168,Kamen,Kamen,EKAM,4
@@ -2411,10 +2411,10 @@ INBR,Name,Name kurz,DS100,Kategorie
 8089104,Berlin Köllnische Heide,Berlin Köllnische Heide,BKHD,5
 8003360,Köln-Geldernstr./Parkgürtel,Köln-Geldernstr./Parkgürtel,KKP,4
 8000207,Köln Hbf,Köln Hbf,KK,1
-8003361,Köln Süd,Köln Süd,KKS,4
+8003361,Köln Süd,K Süd,KKS,4
 8003320,Köln Trimbornstr,Köln Trimbornstr,KKTR,4
 8003362,Köln Volkhovener Weg,Köln Volkhovener Weg,KKV,5
-8003363,Köln West,Köln West,KKW,4
+8003363,Köln West,K West,KKW,4
 8003364,Köln-Buchforst,Köln-Buchforst,KKBH,5
 8003365,Köln-Chorweiler,Köln-Chorweiler,KKC,4
 8003366,Köln-Chorweiler Nord,Köln-Chorweiler Nord,KKCN,4
@@ -2431,7 +2431,7 @@ INBR,Name,Name kurz,DS100,Kategorie
 8003373,Köln-Worringen,Köln-Worringen,KKWO,5
 8001816,Eppstein-Bremthal,Eppstein-Bremthal,FEPB,5
 8003374,Köndringen,Köndringen,RKOE,6
-8010193,Königs Wusterhausen,Königs Wusterhausen,BKW,3
+8010193,Königs Wusterhausen,Königs Wusterh.,BKW,3
 8012066,Königsborn,Königsborn,LKB,6
 8003378,Königsbronn,Königsbronn,TKS,6
 8012067,Königsbrück,Königsbrück,DKB,7
@@ -2447,7 +2447,7 @@ INBR,Name,Name kurz,DS100,Kategorie
 8003401,Konstanz-Petershausen,Konstanz-Petershausen,RKOP,5
 8003416,Konstanz-Wollmatingen,Konstanz-Wollmatingen,RKOW,5
 8003402,Konz,Konz,SKZ,5
-8005712,Steinfurt-Grottenkamp,Steinfurt-Grottenkamp,EGRK,6
+8005712,Steinfurt-Grottenkamp,ST-Grottenkamp,EGRK,6
 8003407,Kordel,Kordel,SKDL,6
 8003408,Kork,Kork,RKOR,6
 8003388,Körle,Körle,FKRL,5
@@ -2651,7 +2651,7 @@ INBR,Name,Name kurz,DS100,Kategorie
 8003638,Lendringsen,Lendringsen,ELSN,6
 8012203,Lengenfeld (Vogtl),Lengenfeld (Vogtl),DLFD,6
 8003639,Lengenwang,Lengenwang,MLWG,6
-8003640,Lengerich (Westf),Lengerich (Westf),ELEN,5
+8003640,Lengerich (Westf),Lengerich,ELEN,5
 8003641,Otzberg-Lengfeld,Otzberg-Lengfeld,FLE,6
 8003643,Lenggries,Lenggries,MLG,6
 8003649,Lensahn,Lensahn,ALS,7
@@ -2708,7 +2708,7 @@ INBR,Name,Name kurz,DS100,Kategorie
 8003698,Altenstadt-Lindheim,Altenstadt-Lindheim,FLIN,6
 8003699,Lindhorst (Schaumb-Lippe),Lindhorst,HLH,6
 8003700,Lindwedel,Lindwedel,HLWL,6
-8003701,Lingen (Ems),Lingen (Ems),HLIG,4
+8003701,Lingen (Ems),Lingen(Ems),HLIG,4
 8003702,Lingenfeld,Lingenfeld,RLF,6
 8003705,Linsburg,Linsburg,HLBU,6
 8003708,Linz (Rhein),Linz(Rhein),KLI,4
@@ -2753,15 +2753,15 @@ INBR,Name,Name kurz,DS100,Kategorie
 8003733,Löwental,Löwental,TLOE,6
 8003760,Loxstedt,Loxstedt,HLOX,6
 8003772,Lübbecke (Westf),Lübbecke,HLBB,6
-8010217,Lübben (Spreewald),Lübben (Spreewald),BLB,4
-8010220,Lübbenau (Spreewald),Lübbenau (Spreewald),BLN,4
+8010217,Lübben (Spreewald),Lübben,BLB,4
+8010220,Lübbenau (Spreewald),Lübbenau,BLN,4
 8003773,Lübberstedt,Lübberstedt,HLBR,6
 8000237,Lübeck Hbf,Lübeck Hbf,AL,2
 8003781,Lübeck Flughafen,Lübeck Flughafen,ALB,6
 8003776,Lübeck-Kücknitz,Lübeck-Kücknitz,ALKN,6
 8003777,Lübeck-Travemünde Hafen,Lübeck-Travemünde Hafen,ALTH,6
-8006704,Lübeck-Travemünde Skandinavienkai,Lübeck-Travemünde Skandinavienkai,ALTK,6
-8003778,Lübeck-Travemünde Strand,HL-Travemünde Strand,ALTS,6
+8006704,Lübeck-Travemünde Skandinavienkai,Lüb-Trav Skankai,ALTK,6
+8003778,Lübeck-Travemünde Strand <> Travemünde Strand,Travemünde,ALTS,6
 8012262,Lüblow (Meckl),Lüblow (Meckl),WLOW,6
 8012257,Lubolz,Lubolz,BLU,6
 8012263,Lübs (b Magdeburg),Lübs (b Magdeburg),LLBS,6
@@ -2796,7 +2796,7 @@ INBR,Name,Name kurz,DS100,Kategorie
 8003799,Lunestedt,Lunestedt,HLUN,6
 8012269,Lüssow (Meckl),Lüssow (Meckl),WLW,6
 8012279,Lutherstadt Eisleben,Lutherstadt Eisleben,LEL,5
-8010222,Lutherstadt Wittenberg Hbf,Lutherstadt Wittenberg Hbf,LW,3
+8010222,Lutherstadt Wittenberg Hbf,Lu. Wittenberg,LW,3
 8012280,Lutherstadt Wittenberg Altstadt,Lutherstadt Wittenberg Altstadt,LWET,6
 8012282,Lutherstadt Wittenberg-Piesteritz,Lutherstadt Wittenberg-Piesteritz,LWP,6
 8012271,Rostock Lütten Klein,Rostock Lütten Klein,WLKL,5
@@ -3046,7 +3046,7 @@ INBR,Name,Name kurz,DS100,Kategorie
 8012407,Mulda (Sachs),Mulda (Sachs),DMUL,6
 8012408,Muldenhütten,Muldenhütten,DMH,6
 8012409,Muldenstein,Muldenstein,LMD,6
-8000259,Mülheim (Ruhr) Hbf,Mülheim (Ruhr) Hbf,EMLR,3
+8000259,Mülheim (Ruhr) Hbf,Mülheim Hbf,EMLR,3
 8004122,Mülheim (Ruhr) West,Mülheim (Ruhr) West,EMRW,5
 8000687,Mülheim (Ruhr)-Styrum,Mülheim (Ruhr)-Styrum,EMRY,3
 8004124,Müllheim im Markgräflerland,Müllheim im Markgräflerland,RML,4
@@ -3302,7 +3302,7 @@ INBR,Name,Name kurz,DS100,Kategorie
 8004424,Niederzeuzheim,Niederzeuzheim,FNIZ,6
 8004425,Niefern,Niefern,TNF,5
 8012506,Niemberg,Niemberg,LNM,6
-8004426,Münster-Häger,Münster-Häger,ENBE,6
+8004426,Münster-Häger,MS-Häger,ENBE,6
 8012507,Nienburg (Saale),Nienburg(Saale),LNB,7
 8000279,Nienburg (Weser),Nienburg(Weser),HNBG,3
 8010254,Nienhagen (b Halberstadt),Nienhagen (b Halberstadt),LNHG,7
@@ -3538,7 +3538,7 @@ INBR,Name,Name kurz,DS100,Kategorie
 8004749,Pankofen,Pankofen,NPK,6
 8089081,Berlin-Pankow-Heinersdorf,Berlin-Pankow-Heinersdorf,BPHD,5
 8004750,Pansdorf,Pansdorf,APF,6
-8004751,Papenburg (Ems),Papenburg (Ems),HPAP,4
+8004751,Papenburg (Ems),Papenburg(Ems),HPAP,4
 8012603,Papendorf,Papendorf,WPF,6
 8011113,Berlin Südkreuz,Bln Südkreuz,BPAF,1
 8012604,Papiermühle (Stadtr),Papiermühle (Stadtr),UPM,6
@@ -3753,7 +3753,7 @@ INBR,Name,Name kurz,DS100,Kategorie
 8004970,Rechterfeld,Rechterfeld,HRFD,7
 8004971,Reckendorf,Reckendorf,NRDF,7
 8004972,Reckenfeld,Reckenfeld,ERFE,5
-8000307,Recklinghausen Hbf,Recklinghausen Hbf,ERE,3
+8000307,Recklinghausen Hbf,Recklingh. Hbf,ERE,3
 8000887,Recklinghausen Süd,Recklinghausen Süd,ERES,5
 8004975,Reckweilerhof,Reckweilerhof,SRWH,7
 8012729,Reddelich,Reddelich,WRDL,7
@@ -4148,7 +4148,7 @@ INBR,Name,Name kurz,DS100,Kategorie
 8012954,Schwerin-Warnitz,Schwerin-Warnitz,WSWZ,7
 8012953,Schwerin-Lankow,Schwerin-Lankow,WSL,7
 8012960,Schwerin-Margaretenhof,Schwerin-Margaretenhof,WSMH,7
-8000037,Schwerte (Ruhr),Schwerte (Ruhr),ESRT,4
+8000037,Schwerte (Ruhr),Schwerte,ESRT,4
 8005494,Schwetzingen,Schwetzingen,RSZ,4
 8012957,Caputh-Schwielowsee,Caputh-Schwielowsee,BSIS,6
 8005495,Schwindegg,Schwindegg,MSDG,5
@@ -4263,7 +4263,7 @@ INBR,Name,Name kurz,DS100,Kategorie
 8005630,Spiegelau,Spiegelau,NSPU,7
 8013017,Sponholz,Sponholz,WSP,6
 8013018,Spornitz,Spornitz,WSPO,7
-8005635,Münster-Sprakel,Münster-Sprakel,ESPR,5
+8005635,Münster-Sprakel,MS-Sprakel,ESPR,5
 8010330,Spremberg,Spremberg,BSP,6
 8005636,Dreieich-Sprendlingen,Dreieich-Sprendlingen,FSPO,6
 8005637,Sprendlingen (Rheinhess),Sprendlingen (Rheinhess),FSPR,6
@@ -4686,7 +4686,7 @@ INBR,Name,Name kurz,DS100,Kategorie
 8006197,Hamburg-Tonndorf,Hamburg-Tonndorf,AOW,4
 8006198,Wandsbeker Chaussee,Wandsbeker Chaussee,AWCH,4
 8006200,Wangen (Allgäu),Wangen (Allgäu),TWW,5
-8000192,Herne-Wanne-Eickel Hbf,Herne-Wanne-Eickel Hbf,EWAN,3
+8000192,Herne-Wanne-Eickel Hbf,Wanne-Eickel Hbf,EWAN,3
 8006203,Wannweil,Wannweil,TWAN,5
 8013230,Wansleben am See,Wansleben am See,LWAN,6
 8000196,Warburg (Westf),Warburg (Westf),HWAR,4
@@ -4786,7 +4786,7 @@ INBR,Name,Name kurz,DS100,Kategorie
 8006342,Werl,Werl,EWER,4
 8006346,Wernau (Neckar),Wernau (Neckar),TWER,4
 8006347,Wernberg,Wernberg,NWRB,5
-8006348,Werne a d Lippe,Werne a d Lippe,EWRN,5
+8006348,Werne a d Lippe,Werne,EWRN,5
 8013285,Werneuchen,Werneuchen,BWER,6
 8006349,Wernfeld,Wernfeld,NWFD,6
 8010374,Wernigerode Hbf,Wernigerode Hbf,LWD,5
@@ -5121,7 +5121,7 @@ INBR,Name,Name kurz,DS100,Kategorie
 8001489,Dörverden,Dörverden,HDVD,6
 8006290,Weinsberg West,Weinsberg West,TWRW,6
 8079140,Köln-Blumenberg,Köln-Blumenberg,KKBL,5
-8004173,Münster Zentrum Nord,Münster Zentrum Nord,ENHF,5
+8004173,Münster Zentrum Nord,MS Zentrum Nord,ENHF,5
 8004335,Neuss Allerheiligen,Neuss Allerheiligen,KNAL,6
 8004777,Petershagen-Lahde,Petershgn-Lahde,HLAD,6
 8002998,Horb-Heiligenfeld,Horb-Heiligenfeld,THBH,7
@@ -5160,7 +5160,7 @@ INBR,Name,Name kurz,DS100,Kategorie
 8079069,Oldentrup,Oldentrup,EOLT,7
 8003297,Kierspe,Kierspe,EKIE,6
 8002535,Halver-Oberbrügge,Halver-Oberbrügge,EOBG,6
-8003934,Münster-Mecklenbeck,Münster-Mecklenbeck,EMEK,6
+8003934,Münster-Mecklenbeck,MS-Mecklenbeck,EMEK,6
 8012478,Leipzig Messe,Leipzig Messe,LNW,3
 8006666,Zirndorf Kneippallee,Zirndorf Kneippallee,NZIK,6
 8007860,Schweighofen,Schweighofen,RSHF,7
@@ -5316,7 +5316,7 @@ INBR,Name,Name kurz,DS100,Kategorie
 8077434,Neckarbischofsheim Nord,Neckarbischofsheim Nord,RNHF,7
 8007444,Helmstadt (Baden),Helmstadt (Baden),RHM,7
 8007445,Aglasterhausen,Aglasterhausen,RAG,7
-8000480,Ahrensburg-Gartenholz,Ahrensburg-Gartenholz,AAHG,5
+8000480,Ahrensburg-Gartenholz,Ahrensb.-Gartenh,AAHG,5
 8006536,Wörth Mozartstraße,Wörth Mozartstraße,RWRD,6
 8011201,Flughafen BER,Flughafen BER,BFBB,2
 8004797,Petersaurach Nord,Petersaurach Nord,NPEN,6
@@ -5347,8 +5347,8 @@ INBR,Name,Name kurz,DS100,Kategorie
 8011064,Blumberg-Rehhahn,Blumberg-Rehhahn,BAHH,7
 8002239,Germersheim Mitte/Rhein,Germersheim Mitte/Rhein,RGEH,5
 8002085,Freilassing-Hofham,Freilass.-Hofham,MFLH,6
-8004190,Münster-Roxel,Münster-Roxel,EMSR,7
-8001343,Coesfeld Schulzentrum,Coesfeld Schulzentrum,ECFS,6
+8004190,Münster-Roxel,MS-Roxel,EMSR,7
+8001343,Coesfeld Schulzentrum,COE Schulzentrum,ECFS,6
 8006207,Warendorf-Einen-Müssingen,Einen-Müssingen,EWEM,6
 8005057,Rheinbach Römerkanal,Rheinbach Römerkanal,KRBL,6
 8001182,Brilon Stadt,Brilon Stadt,EBRS,7
@@ -5385,7 +5385,7 @@ INBR,Name,Name kurz,DS100,Kategorie
 8012304,Markkleeberg Nord,Markkleeberg Nord,LMAN,5
 8017050,Chemnitz Küchwald,Chemnitz Küchwald,DKW,6
 8005904,Trier Hafenstraße,Trier Hafenstraße,SEG H,4
-8003786,Lübeck-Dänischburg IKEA,Lübeck-Dänischburg IKEA,ALD,6
+8003786,Lübeck-Dänischburg IKEA,HL-Dänischburg,ALD,6
 8002564,Hamm-Westtünnen,Hamm-Westtünnen,EHMW,6
 8004752,Trier-Pallien,Trier-Pallien,STRP,5
 8005426,Schopfheim-Schlattholz,Schopfheim-Schlattholz,RSCS,6

@@ -475,11 +475,17 @@ export class TrainDisplay {
             
             for (const group of groupsToRotate) {
                 const primary = group[0];
-                const visibleTexts = primary.infoTexts ? primary.infoTexts.filter(t => t.visible) : [];
+                let visibleTexts = primary.infoTexts ? primary.infoTexts.filter(t => t.visible) : [];
+                
+                // Bei Gleiswechsel sollen laut Nutzer-Anforderung KEINE Infotexte rotieren/angezeigt werden,
+                // sondern dauerhaft die Vias (wie auf Display 2).
+                if (primary.hasTrackChange) {
+                    visibleTexts = [];
+                }
+
                 const isDisrupted = primary.isDisrupted;
 
                 // Basis-Seite wird NUR bei "Verkehrt ab" (und nicht Ausfall/Infoscreen) vorangestellt.
-                // Bei Gleiswechsel etc. wollen wir keine Rotation zwischen Basis-Route und dem Infotext.
                 let hasBaseText = !primary.ausfall && !primary.infoscreen && primary.verkehrtAb !== '0';
                 let infoTextPages = visibleTexts.length;
                 let rotateInfos = false;
@@ -506,10 +512,10 @@ export class TrainDisplay {
                         });
                     }
                 } else {
-                    // Keine Rotation von Infotexten: Fallback auf ersten Text (oder null)
+                    // Keine Rotation von Infotexten: Fallback auf Standard-Darstellung (Vias)
                     this.rotatingPages.push({
                         journeys: group,
-                        infoText: visibleTexts[0] || null
+                        infoText: null
                     });
                 }
             }
