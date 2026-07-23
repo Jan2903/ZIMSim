@@ -1,7 +1,7 @@
 // js/models/journey.js
 import { Stop } from './stop.js';
 import { Formation } from './formation.js';
-import { formatTrainNumber } from '../utils/trainNumberFormatter.js';
+import { parseTrainName, formatDisplayName } from '../utils/trainNumberFormatter.js';
 import { RisTextService } from '../utils/risTextService.js';
 
 /**
@@ -18,11 +18,9 @@ export class Journey {
         this.journeyId = data.journeyId || '';     // DB API Journey-ID
 
         // === Zug-Identifikation ===
-        this.category = data.category || '';        // "ICE", "IC", "RE", "S", "FLX"
+        this.name = data.name || '';                 // Der formatierte Name des Zuges (z.B. "RE 70 / 95835")
         this.produktGattung = data.produktGattung || ''; // DB API Gattung (z.B. "REGIONAL")
-        this.line = data.line || '';                 // Liniennummer ("20", "1", "S1")
-        this.number = data.number || '';             // Zugnummer ("71", "7922")
-        this.displayNameOverride = data.displayNameOverride || ''; // Manuell überschrieben
+        this.displayNameOverride = data.displayNameOverride || ''; // Manuell überschrieben oder durch NRW-Modus berechnet
 
         // === Display-Daten (primär — werden von Renderern gelesen) ===
         this.destination = data.destination || '';
@@ -114,14 +112,9 @@ export class Journey {
             .join(' +++ ');
     }
 
-    /** Auto-generierter Display-Name basierend auf Kategorie/Linie/Nummer */
-    get displayName() {
-        return formatTrainNumber(this.category, this.line, this.number);
-    }
-
     /** Effektiver Display-Name: Override oder auto-generiert */
     get effectiveDisplayName() {
-        return this.displayNameOverride || this.displayName;
+        return this.displayNameOverride || this.name;
     }
 
     /** Ist die Fahrt komplett ausgefallen? */
@@ -228,9 +221,7 @@ export class Journey {
         }
 
         // Halt-basierte Zugnummer übernehmen
-        if (stop.category) this.category = stop.category;
-        if (stop.number) this.number = stop.number;
-        if (stop.line) this.line = stop.line;
+        if (stop.name) this.name = stop.name;
 
         // Halt-Ausfall
         if (stop.cancelled) this.ausfall = true;
@@ -274,10 +265,7 @@ export class Journey {
      */
     static fromDepartureEntry(entry) {
         const vm = entry.verkehrmittel || {};
-        const cat = vm.kurzText || '';
-        const name = vm.name || '';
-        const nameParts = name.split(' ');
-        const num = nameParts.length > 1 ? nameParts[nameParts.length - 1] : '';
+        const parsedName = parseTrainName(vm.name, vm.linienNummer, vm.langText);
 
         const rawMeldungen = entry.meldungen || [];
         const infoTexts = [];
@@ -299,10 +287,8 @@ export class Journey {
 
         const journey = new Journey({
             journeyId: entry.journeyId || '',
-            category: cat,
+            name: parsedName,
             produktGattung: vm.produktGattung || '',
-            line: vm.linienNummer || '',
-            number: num,
             destination: entry.terminus || '',
             scheduledTime: Stop.formatTime(entry.zeit),
             expectedTime: Stop.formatTime(entry.ezZeit),
@@ -330,11 +316,8 @@ export class Journey {
      * @returns {Journey}
      */
     static fromJourneyData(data, stationId) {
-        const zugName = data.zugName || '';
-        // Kategorie und Nummer aus zugName extrahieren (z.B. "S21" → "S", "21")
-        const match = zugName.match(/^([A-Za-z]+)\s*(\d*)$/);
-        const cat = match ? match[1] : '';
-        const num = match ? match[2] : '';
+        const vm = data.verkehrmittel || {};
+        const parsedName = parseTrainName(vm.name, vm.linienNummer, vm.langText);
 
         const rawMeldungen = data.priorisierteMeldungen || [];
         const infoTexts = [];
@@ -354,11 +337,8 @@ export class Journey {
             }
         });
 
-        const vm = data.verkehrmittel || {};
         const journey = new Journey({
-            category: cat,
-            number: num,
-            line: vm.linienNummer || '',
+            name: parsedName,
             produktGattung: vm.produktGattung || '',
             journeyId: data.journeyId || '',
             destination: data.ziel || '',

@@ -2,6 +2,7 @@
 // Komplett neue UI-Logik für die dynamische Journey-Liste
 import { journeyStore, trainDisplay } from './main.js';
 import { Journey } from './models/journey.js';
+import { formatDisplayName } from './utils/trainNumberFormatter.js';
 import { Stop } from './models/stop.js';
 import { Formation, FormationGroup } from './models/formation.js';
 import { Coach } from './models/coach.js';
@@ -65,7 +66,7 @@ export function renderJourneyList() {
 
         // Check if journey is filtered out by MOT or Track
         let isHidden = false;
-        const mot = getMotForCategory(journey.produktGattung || journey.category);
+        const mot = getMotForCategory(journey.produktGattung || journey.name);
         if (mot && !journeyStore.activeMots.includes(mot)) {
             isHidden = true;
         }
@@ -206,12 +207,8 @@ function renderJourneyDetails(journey) {
                 <div class="detail-section">
                     <h4>Stammdaten</h4>
                     <div class="detail-row">
-                        <label>Kategorie: <input type="text" class="jfield short-input" data-field="category" value="${journey.category}"></label>
-                        <label>Linie: <input type="text" class="jfield short-input" data-field="line" value="${journey.line}"></label>
-                        <label>Nummer: <input type="text" class="jfield short-input" data-field="number" value="${journey.number}"></label>
-                    </div>
-                    <div class="detail-row">
-                        <label>Anzeigename (Override): <input type="text" class="jfield" data-field="displayNameOverride" value="${journey.displayNameOverride}" placeholder="${journey.displayName || 'auto'}"></label>
+                        <label>Name: <input type="text" class="jfield" data-field="name" value="${journey.name || ''}" style="width: 150px;" placeholder="z.B. RE 70 / 95835"></label>
+                        <label style="margin-left: 15px;">Anzeigename (Override): <input type="text" class="jfield" data-field="displayNameOverride" value="${journey.displayNameOverride}" placeholder="${journey.name || 'auto'}"></label>
                     </div>
                     <div class="detail-row">
                         <label>Ziel: <input type="text" class="jfield" data-field="destination" value="${journey.destination}"></label>
@@ -301,7 +298,7 @@ function renderJourneyDetails(journey) {
 function renderInlineFormation(journey) {
     if (journey.formation.groups.length === 0) {
         journey.formation.groups.push(new FormationGroup({
-            transport: { category: journey.category, destination: { name: journey.destination }, number: journey.number }
+            transport: { category: '', destination: { name: journey.destination }, number: journey.name }
         }));
     }
     
@@ -518,7 +515,7 @@ function showFormationEditor(journeyId) {
 
     if (journey.formation.groups.length === 0) {
         journey.formation.groups.push(new FormationGroup({
-            transport: { category: journey.category, destination: { name: journey.destination }, number: journey.number }
+            transport: { category: '', destination: { name: journey.destination }, number: journey.name }
         }));
     }
 
@@ -1141,6 +1138,14 @@ export function initEvents() {
                     if (skCheckbox) skCheckbox.checked = false;
                 } else {
                     journey[field] = e.target.value;
+                    // Wenn der Name bearbeitet wird, auch den Override aktualisieren
+                    if (field === 'name') {
+                        journey.displayNameOverride = formatDisplayName(journey.name, journeyStore.nrwMode);
+                        // Optional: Das UI-Feld für displayNameOverride direkt mit aktualisieren, 
+                        // falls es offen ist
+                        const overrideInput = details.querySelector('.jfield[data-field="displayNameOverride"]');
+                        if (overrideInput) overrideInput.value = journey.displayNameOverride;
+                    }
                 }
                 debouncedUpdateAll();
             }
@@ -1486,6 +1491,10 @@ export function initEvents() {
     // --- NRW-Modus ---
     document.getElementById('nrw_mode_checkbox')?.addEventListener('change', (e) => {
         journeyStore.nrwMode = e.target.checked;
+        // Alle Overrides neu berechnen
+        journeyStore.journeys.forEach(journey => {
+            journey.displayNameOverride = formatDisplayName(journey.name, journeyStore.nrwMode);
+        });
         renderJourneyList();
         trainDisplay.updateAll();
     });
@@ -1611,8 +1620,14 @@ export function initEvents() {
 
             if (type === 'departure_list') {
                 journeyStore.importFromDepartureList(data);
+                journeyStore.journeys.forEach(journey => {
+                    journey.displayNameOverride = formatDisplayName(journey.name, journeyStore.nrwMode);
+                });
             } else if (type === 'journey') {
                 journeyStore.importFromJourney(data);
+                journeyStore.journeys.forEach(journey => {
+                    journey.displayNameOverride = formatDisplayName(journey.name, journeyStore.nrwMode);
+                });
             } else if (type === 'formation') {
                 // Formation einer bestehenden Journey zuweisen
                 const visible = journeyStore.getVisibleJourneys();
