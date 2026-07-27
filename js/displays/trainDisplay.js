@@ -233,6 +233,7 @@ export class TrainDisplay {
             canvas,
             cssScale,
             platform: this.journeyStore.platform,
+            journeyStore: this.journeyStore,
         };
     }
 
@@ -475,7 +476,17 @@ export class TrainDisplay {
             
             for (const group of groupsToRotate) {
                 const primary = group[0];
-                let visibleTexts = primary.infoTexts ? primary.infoTexts.filter(t => t.visible) : [];
+                let visibleTexts = primary.infoTexts ? [...primary.infoTexts.filter(t => t.visible)] : [];
+                
+                if (!primary.ankunft && primary.linkedArrivalJourneyId) {
+                    const arrival = this.journeyStore.getJourney(primary.linkedArrivalJourneyId);
+                    if (arrival) {
+                        const contextText = primary.generateArrivalContextText(arrival);
+                        if (contextText) {
+                            visibleTexts.unshift({ text: contextText, visible: true, type: 'dynamic' });
+                        }
+                    }
+                }
                 
                 // Bei Gleiswechsel sollen laut Nutzer-Anforderung KEINE Infotexte rotieren/angezeigt werden,
                 // sondern dauerhaft die Vias (wie auf Display 2).

@@ -68,6 +68,9 @@ export class Journey {
         // === Coupling (Flügelzüge) ===
         this.couplingGroupId = data.couplingGroupId || null;
 
+        // === Linked Arrival Journey (Ankunft/Weiter als) ===
+        this.linkedArrivalJourneyId = data.linkedArrivalJourneyId || null;
+
         // === Meldungen ===
         this.messages = (data.messages || []).map(m => ({
             priority: m.priority || m.prioritaet || 'NIEDRIG',
@@ -106,10 +109,80 @@ export class Journey {
 
     /** Dynamisch zusammengesetzter Lauftext aus sichtbaren Info-Bausteinen */
     get scrollText() {
-        return this.infoTexts
+        const customTexts = this.infoTexts
             .filter(t => t.visible)
             .map(t => t.text)
             .join(' +++ ');
+
+        // Wenn dieser Getter aufgerufen wird, kümmert sich typischerweise der Renderer
+        // um den Präfix. Falls er hier in `Journey` direkt generiert werden soll, 
+        // benötigen wir Zugriff auf die verknüpfte Journey aus dem Store.
+        // Da Journey den Store nicht kennt, fügt der Renderer den Präfix oft selbst ein,
+        // oder wir übergeben die verknüpfte Journey in den getter, was in JS nicht geht.
+        // Daher behalten wir hier den reinen infoTexts String und 
+        // bieten eine Helfer-Methode an, um den Prefix zu generieren.
+        
+        return customTexts;
+    }
+
+    /**
+     * Generiert den Text "Ankunft [Zeit] (heute ca. [Zeit]) als [Linie] von [Start]".
+     * @param {Journey} arrivalJourney - Die verknüpfte Ankunfts-Fahrt
+     * @returns {string} Der generierte Präfix
+     */
+    generateArrivalContextText(arrivalJourney) {
+        if (!arrivalJourney) return '';
+
+        // Bei echten Durchfahrten (gleiche HAFAS journeyId) generieren wir keinen "Kommt aus..." Text
+        if (this.journeyId && arrivalJourney.journeyId && this.journeyId === arrivalJourney.journeyId) {
+            return '';
+        }
+
+        let text = `Ankunft ${arrivalJourney.scheduledTime}`;
+
+        // Verspätung berechnen & runden
+        if (arrivalJourney.expectedTime && arrivalJourney.expectedTime !== arrivalJourney.scheduledTime) {
+            const planTimeStr = arrivalJourney.scheduledTime;
+            const expectedTimeStr = arrivalJourney.expectedTime;
+            
+            // Konvertiere HH:MM zu Minuten
+            const [pHe, pMe] = planTimeStr.split(':').map(Number);
+            const [eHe, eMe] = expectedTimeStr.split(':').map(Number);
+            if (!isNaN(pHe) && !isNaN(eHe)) {
+                let planMin = pHe * 60 + pMe;
+                let expMin = eHe * 60 + eMe;
+                // Tageswechsel-Handling
+                if (expMin < planMin && planMin > 23 * 60) expMin += 24 * 60;
+                
+                let delay = expMin - planMin;
+                if (delay >= 5) {
+                    const roundedDelay = Math.floor(delay / 5) * 5;
+                    // Berechne die gerundete erwartete Zeit
+                    let newExpMin = planMin + roundedDelay;
+                    let rH = Math.floor(newExpMin / 60) % 24;
+                    let rM = newExpMin % 60;
+                    const roundedExpectedTime = `${String(rH).padStart(2, '0')}:${String(rM).padStart(2, '0')}`;
+                    text += ` (heute ca. ${roundedExpectedTime})`;
+                }
+            }
+        }
+
+        // Liniennummer vergleichen
+        // Wir nehmen den displayName (z.B. "RB 72"), trennen nach "/" (wg. Zugnummer) und trimmen.
+        const getLine = (j) => j.effectiveDisplayName.split('/')[0].trim();
+        const arrivalLine = getLine(arrivalJourney);
+        const myLine = getLine(this);
+
+        if (arrivalLine && arrivalLine !== myLine) {
+            text += ` als ${arrivalLine}`;
+        }
+
+        // Herkunft (destination bei Ankunft ist "von")
+        if (arrivalJourney.destination) {
+            text += ` von ${arrivalJourney.destination}`;
+        }
+
+        return text + ' +++ ';
     }
 
     /** Effektiver Display-Name: Override oder auto-generiert */
