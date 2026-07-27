@@ -369,6 +369,7 @@ export function initSettings() {
             if (!hint) return;
             const hints = {
                 'departure_list': 'Füge das JSON einer DB-Abfahrtstafel ein (entries[]-Array).',
+                'arrival_list': 'Füge das JSON einer DB-Ankunftstafel ein (entries[]-Array).',
                 'journey': 'Füge das JSON eines DB-Zuglaufs ein (halte[]-Array).',
                 'formation': 'Füge das JSON einer DB-Wagenreihung ein (groups[]-Array). Wähle anschließend die Fahrt, der sie zugewiesen werden soll.'
             };
@@ -386,6 +387,11 @@ export function initSettings() {
 
             if (type === 'departure_list') {
                 journeyStore.importFromDepartureList(data);
+                journeyStore.journeys.forEach(journey => {
+                    journey.displayNameOverride = formatDisplayName(journey.name, journeyStore.nrwMode);
+                });
+            } else if (type === 'arrival_list') {
+                journeyStore.importFromArrivalList(data);
                 journeyStore.journeys.forEach(journey => {
                     journey.displayNameOverride = formatDisplayName(journey.name, journeyStore.nrwMode);
                 });

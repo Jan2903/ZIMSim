@@ -185,6 +185,16 @@ export class JourneyStore {
                     return false;
                 }
             }
+
+            // Ankünfte, die mit einer Abfahrt verknüpft sind, sollen nicht separat auf dem Monitor erscheinen
+            if (j.ankunft) {
+                const isLinkedToDeparture = this.journeys.some(
+                    dep => !dep.ankunft && dep.linkedArrivalJourneyId === j.id
+                );
+                if (isLinkedToDeparture) {
+                    return false;
+                }
+            }
             
             return true;
         });
@@ -314,6 +324,110 @@ export class JourneyStore {
     }
 
     // ==========================================
+    // Ankunft & Abfahrt Verknüpfung (Fahrzeugtausch / Wende)
+    // ==========================================
+
+    /**
+     * Holt die verknüpfte Ankunfts-Journey einer Abfahrt, 
+     * oder die verknüpfte Abfahrts-Journey einer Ankunft.
+     * @param {string} id - Die ID der Journey
+     * @returns {Journey|null} Die verknüpfte Journey oder null
+     */
+    getLinkedJourney(id) {
+        const journey = this.getJourney(id);
+        if (!journey) return null;
+
+        if (journey.ankunft) {
+            // Finde die Abfahrt, die auf diese Ankunft zeigt
+            return this.journeys.find(j => j.linkedArrivalJourneyId === id) || null;
+        } else {
+            // Finde die Ankunft, auf die diese Abfahrt zeigt
+            if (!journey.linkedArrivalJourneyId) return null;
+            return this.getJourney(journey.linkedArrivalJourneyId) || null;
+        }
+    }
+
+    /**
+     * Verknüpft eine Ankunft mit einer Abfahrt.
+     * @param {string|null} arrivalId 
+     * @param {string} departureId 
+     */
+    linkJourneys(arrivalId, departureId) {
+        const departure = this.getJourney(departureId);
+        if (departure) {
+            departure.linkedArrivalJourneyId = arrivalId;
+        }
+    }
+
+    /**
+     * Erkennt automatisch Wenden / Fahrzeugtausche am selben Gleis
+     * und verknüpft sie. Wird nach dem Import aufgerufen.
+     */
+    autoLinkJourneys() {
+        // Trenne in Ankünfte und Abfahrten
+        const arrivals = this.journeys.filter(j => j.ankunft);
+        const departures = this.journeys.filter(j => !j.ankunft);
+
+        // Für jede Abfahrt ohne Verknüpfung...
+        for (const dep of departures) {
+            if (dep.linkedArrivalJourneyId) continue; // Bereits verknüpft
+
+            // 1. Suche nach exakter journeyId (Durchfahrt)
+            if (dep.journeyId) {
+                const exactMatch = arrivals.find(a => a.journeyId === dep.journeyId);
+                if (exactMatch) {
+                    dep.linkedArrivalJourneyId = exactMatch.id;
+                    continue; // Erledigt für diese Abfahrt
+                }
+            }
+
+            // 2. Mögliche Ankünfte: Gleiches Gleis, Zeit vor Abfahrt (max 60 Min)
+            const depTime = this._timeToMinutes(dep.scheduledTime);
+            if (depTime === null) continue;
+
+            let bestMatch = null;
+            let minDiff = 61; // Max 60 Minuten
+
+            for (const arr of arrivals) {
+                // Gleis Check (Platform oder ezGleis)
+                const depGleis = dep.ezGleis || dep.platform;
+                const arrGleis = arr.ezGleis || arr.platform;
+
+                if (!depGleis || !arrGleis || depGleis !== arrGleis) continue;
+
+                // Ist die Ankunft bereits verknüpft?
+                const isLinked = departures.some(d => d.linkedArrivalJourneyId === arr.id);
+                if (isLinked) continue;
+
+                const arrTime = this._timeToMinutes(arr.scheduledTime);
+                if (arrTime === null) continue;
+
+                let diff = depTime - arrTime;
+                if (diff < 0) diff += 24 * 60; // Tageswechsel
+
+                if (diff >= 0 && diff <= 60) {
+                    if (diff < minDiff) {
+                        minDiff = diff;
+                        bestMatch = arr;
+                    }
+                }
+            }
+
+            if (bestMatch) {
+                dep.linkedArrivalJourneyId = bestMatch.id;
+            }
+        }
+    }
+
+    /** Helper: HH:MM zu Minuten seit Mitternacht */
+    _timeToMinutes(timeStr) {
+        if (!timeStr) return null;
+        const [h, m] = timeStr.split(':').map(Number);
+        if (isNaN(h) || isNaN(m)) return null;
+        return h * 60 + m;
+    }
+
+    // ==========================================
     // Import
     // ==========================================
 
@@ -323,29 +437,115 @@ export class JourneyStore {
      * @returns {Journey[]} Die erstellten Journeys
      */
     importFromDepartureList(data) {
+        return this._importList(data, false);
+    }
+
+    /**
+     * Importiert Journeys aus einem DB-API Ankunftstafel-JSON.
+     * @param {object} data - { entries: [...] }
+     * @returns {Journey[]} Die erstellten Journeys
+     */
+    importFromArrivalList(data) {
+        return this._importList(data, true);
+    }
+
+    _importList(data, isArrival) {
         const entries = data.entries || [];
         const created = [];
 
         for (const entry of entries) {
             const journey = Journey.fromDepartureEntry(entry);
+            journey.ankunft = isArrival;
+
+            // Duplikate vermeiden: Selbe HAFAS journeyId + selbe Ankunft/Abfahrt-Rolle
+            if (journey.journeyId) {
+                const isDuplicate = this.journeys.some(j => 
+                    j.journeyId === journey.journeyId && j.ankunft === isArrival
+                );
+                if (isDuplicate) continue;
+            }
+
             this.journeys.push(journey);
             created.push(journey);
         }
 
         // Auto-Coupling erkennen: Gleiche Zeit + Gleiches Gleis = Flügelzug
         this._detectCouplings(created);
+        
+        // Auto-Link für mögliche Wenden & Durchfahrten
+        this.autoLinkJourneys();
 
         return created;
     }
 
     /**
      * Importiert eine Journey aus einem DB-API Journey/Zuglauf-JSON.
+     * Erkennt automatisch unterschiedliche Ankunfts/Abfahrtsgleise (Fahrzeugtausch) 
+     * und spaltet die Journey dann auf.
      * @param {object} data - Das Zuglauf-Objekt
-     * @returns {Journey} Die erstellte Journey
+     * @returns {Journey|Journey[]} Die erstellte(n) Journey(s)
      */
     importFromJourney(data) {
+        // Initial als eine Journey parsen, um zu prüfen
         const journey = Journey.fromJourneyData(data, this.stationContext.stationId);
+        
+        let splitNeeded = false;
+        let aPlan, aEz, dPlan, dEz;
+
+        const idx = journey._currentStopIndex;
+        if (idx >= 0 && data.halte && data.halte[idx]) {
+            const haltData = data.halte[idx];
+            if (haltData.ankunft && haltData.abfahrt) {
+                aPlan = haltData.ankunft.gleis || '';
+                aEz = haltData.ankunft.ezGleis || '';
+                dPlan = haltData.abfahrt.gleis || '';
+                dEz = haltData.abfahrt.ezGleis || '';
+                
+                const arrGleis = aEz || aPlan;
+                const depGleis = dEz || dPlan;
+                
+                if (arrGleis && depGleis && arrGleis !== depGleis) {
+                    splitNeeded = true;
+                }
+            }
+        }
+
+        if (splitNeeded) {
+            // Wir splitten die Journey!
+            const arrJourney = Journey.fromJourneyData(data, this.stationContext.stationId);
+            const depJourney = Journey.fromJourneyData(data, this.stationContext.stationId);
+            
+            // 1. Reine Ankunft
+            arrJourney.id = crypto.randomUUID();
+            arrJourney.ankunft = true;
+            arrJourney.platform = aPlan;
+            arrJourney.ezGleis = aEz;
+            arrJourney.stops = arrJourney.stops.slice(0, idx + 1);
+            if (arrJourney.stops.length > 0) {
+                arrJourney.stops[arrJourney.stops.length - 1].departure = null;
+                arrJourney.destination = arrJourney.stops[0]?.name || '';
+            }
+
+            // 2. Reine Abfahrt
+            depJourney.id = crypto.randomUUID();
+            depJourney.ankunft = false;
+            depJourney.platform = dPlan;
+            depJourney.ezGleis = dEz;
+            depJourney.stops = depJourney.stops.slice(idx);
+            depJourney._currentStopIndex = 0;
+            if (depJourney.stops.length > 0) {
+                depJourney.stops[0].arrival = null;
+                depJourney.destination = depJourney.stops[depJourney.stops.length - 1]?.name || '';
+            }
+
+            this.journeys.push(arrJourney);
+            this.journeys.push(depJourney);
+            this.autoLinkJourneys();
+            return [arrJourney, depJourney];
+        }
+
         this.journeys.push(journey);
+        this.autoLinkJourneys();
         return journey;
     }
 

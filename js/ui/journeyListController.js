@@ -117,5 +117,24 @@ export function initJourneyList() {
             trainDisplay.updateAll();
             return;
         }
+
+        // Click on Link Badge (Ankunft/Wende)
+        const badge = e.target.closest('.badge-link');
+        if (badge) {
+            e.stopPropagation(); // prevent expanding the current row
+            const linkedId = badge.dataset.linkedId;
+            if (linkedId) {
+                uiState.expandedJourneyId = linkedId;
+                renderJourneyList();
+                
+                setTimeout(() => {
+                    const row = document.querySelector(`.journey-row[data-journey-id="${linkedId}"]`);
+                    if (row) {
+                        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 50);
+            }
+            return;
+        }
     });
 }

@@ -60,6 +60,19 @@ export function renderJourneyList() {
             platformText += ` <span style="color: #ff6b6b; font-weight: bold;">(${journey.ezGleis})</span>`;
         }
 
+        let linkBadge = '';
+        if (journey.linkedArrivalJourneyId) {
+            const linkedArr = journeyStore.getJourney(journey.linkedArrivalJourneyId);
+            if (linkedArr) {
+                linkBadge = `<span class="badge badge-link" data-linked-id="${linkedArr.id}" title="Kommt von Ankunft (anklicken zum Öffnen)" style="cursor: pointer; background: #4dabf7; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.85em; margin-right: 8px;">🔗 Kommt aus ${linkedArr.effectiveDisplayName} (${linkedArr.scheduledTime})</span>`;
+            }
+        } else if (journey.ankunft) {
+            const linkedDep = journeyStore.journeys.find(j => j.linkedArrivalJourneyId === journey.id);
+            if (linkedDep) {
+                linkBadge = `<span class="badge badge-link" data-linked-id="${linkedDep.id}" title="Wird zu Abfahrt (anklicken zum Öffnen)" style="cursor: pointer; background: #4dabf7; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.85em; margin-right: 8px;">🔗 Wird zu ${linkedDep.effectiveDisplayName} (${linkedDep.scheduledTime})</span>`;
+            }
+        }
+
         html += `
             <div class="journey-row ${cancelledClass} ${hiddenClass}" data-journey-id="${journey.id}" draggable="true">
                 <div class="journey-col-reorder">
@@ -83,6 +96,7 @@ export function renderJourneyList() {
                         <span class="journey-time">${journey.scheduledTime || '—'}</span>
                         ${delayInfo}
                         <span class="journey-platform">${platformText}</span>
+                        ${linkBadge}
                         <button class="btn-icon expand-toggle" data-journey-id="${journey.id}">${isExpanded ? '▾' : '▸'}</button>
                     </div>
                     ${isExpanded ? renderJourneyDetails(journey) : ''}
@@ -164,6 +178,18 @@ function renderJourneyDetails(journey) {
                         <label>Gleis (Plan): <input type="text" class="jfield short-input" data-field="platform" value="${journey.platform}"></label>
                         <label>Echtzeit-Gleis: <input type="text" class="jfield short-input" data-field="ezGleis" value="${journey.ezGleis}"></label>
                     </div>
+                    ${!journey.ankunft ? `
+                    <div class="detail-row">
+                        <label>Verknüpfte Ankunft (Fahrzeugtausch/Wende): 
+                            <select class="jfield" data-field="linkedArrivalJourneyId" style="max-width: 300px;">
+                                <option value="">-- Keine Verknüpfung --</option>
+                                ${journeyStore.journeys.filter(j => j.ankunft).map(a => 
+                                    `<option value="${a.id}" ${journey.linkedArrivalJourneyId === a.id ? 'selected' : ''}>${a.effectiveDisplayName} (${a.scheduledTime}) - Gl. ${a.ezGleis || a.platform}</option>`
+                                ).join('')}
+                            </select>
+                        </label>
+                    </div>
+                    ` : ''}
                 </div>
                 <div class="detail-section">
                     <h4>Anzeige</h4>

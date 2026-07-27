@@ -85,13 +85,27 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
 
     const primary = journeys[0];
 
-    const {
+    let {
         scrollText = "",
         ausfall = false,
         verkehrtAb = "0",
         ankunft = false,
         infoscreen = false,
     } = primary;
+
+    if (!ankunft && primary.linkedArrivalJourneyId && renderCtx.journeyStore) {
+        const arrivalJourney = renderCtx.journeyStore.getJourney(primary.linkedArrivalJourneyId);
+        if (arrivalJourney) {
+            const contextText = primary.generateArrivalContextText(arrivalJourney);
+            if (contextText) {
+                if (scrollText) {
+                    scrollText = contextText + " +++ " + scrollText;
+                } else {
+                    scrollText = contextText;
+                }
+            }
+        }
+    }
 
     const abfahrt = primary.scheduledTime || "";
     const abfahrtA = primary.expectedTime || "";

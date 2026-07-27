@@ -530,8 +530,11 @@ export function initEditor() {
         if (e.target.tagName === 'SELECT' && e.target.classList.contains('jfield')) {
             const field = e.target.dataset.field;
             if (field) {
-                journey[field] = e.target.value;
+                journey[field] = e.target.value || null;
                 trainDisplay.updateAll();
+                if (field === 'linkedArrivalJourneyId' || field === 'delayReason') {
+                    renderJourneyList();
+                }
             }
         }
 
