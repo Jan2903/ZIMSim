@@ -20,6 +20,7 @@ export class Journey {
         // === Zug-Identifikation ===
         this.name = data.name || '';                 // Der formatierte Name des Zuges (z.B. "RE 70 / 95835")
         this.produktGattung = data.produktGattung || ''; // DB API Gattung (z.B. "REGIONAL")
+        this.operator = data.operator || '';             // EVU / Operator (z.B. "ERB", "WFB", "DB")
         this.displayNameOverride = data.displayNameOverride || ''; // Manuell überschrieben oder durch NRW-Modus berechnet
 
         // === Display-Daten (primär — werden von Renderern gelesen) ===
@@ -362,6 +363,7 @@ export class Journey {
             journeyId: entry.journeyId || '',
             name: parsedName,
             produktGattung: vm.produktGattung || '',
+            operator: vm.kurzText || '',
             destination: entry.terminus || '',
             scheduledTime: Stop.formatTime(entry.zeit),
             expectedTime: Stop.formatTime(entry.ezZeit),
@@ -413,6 +415,7 @@ export class Journey {
         const journey = new Journey({
             name: parsedName,
             produktGattung: vm.produktGattung || '',
+            operator: vm.kurzText || '',
             journeyId: data.journeyId || '',
             destination: data.ziel || '',
             scheduledTime: '', // Wird durch syncFromCurrentStop berechnet

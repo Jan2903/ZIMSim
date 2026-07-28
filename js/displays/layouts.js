@@ -3,6 +3,7 @@ export const LAYOUTS = {
         width: 4800, 
         height: 2676,
         backgroundUrl: 'images/layouts/standard_bg.jpg', // Optionales Hintergrundbild
+        boardType: 'default',
         screens: [
             { id: 'hauptmonitor', type: 'haupt', x: 450, y: 680, w: 1920, h: 1080, trainIndex: 0 },
             { id: 'nebenmonitor_1', type: 'neben', x: 470 + 1920 + 30, y: 680, w: 960, h: 1080, trainIndex: 1 },
@@ -13,6 +14,7 @@ export const LAYOUTS = {
         width: 2120, // 1920 + 200px Rand
         height: 1280, // 1080 + 200px Rand
         backgroundUrl: 'images/layouts/voranzeiger_bg.png', // Optionales Hintergrundbild
+        boardType: 'default',
         screens: [
             // 6 Listen-Zeilen untereinander, jeweils 180px hoch
             { id: 'row1', type: 'liste', x: 100, y: 100, w: 1920, h: 180, trainIndex: 0 },
@@ -27,6 +29,7 @@ export const LAYOUTS = {
         width: 2120, // 1920 + 200px Rand
         height: 1280, // 1080 + 200px Rand
         backgroundUrl: 'images/layouts/voranzeiger_bg.png', // We can reuse the voranzeiger_bg if it has a generic border
+        boardType: 'default',
         screens: [
             { id: 'vitrine_main', type: 'vitrine32', x: 100, y: 100, w: 1920, h: 1080, trainIndex: 0 }
         ]
