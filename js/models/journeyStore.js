@@ -3,6 +3,7 @@ import { Journey } from './journey.js';
 import { Formation } from './formation.js';
 import { Platform } from './platform.js';
 import { getMotForCategory, MOT_ALL_KEYS } from '../utils/motManager.js';
+import { parseTrack, sectionsOverlap } from '../utils/trackUtils.js';
 
 /**
  * Zentrale Datenverwaltung — ersetzt das alte TrainData.
@@ -161,9 +162,10 @@ export class JourneyStore {
 
     /**
      * Gibt alle sichtbaren Journeys zurück (visible === true und passendes Verkehrsmittel).
+     * @param {object} options - Filter-Optionen (z.B. { boardType: 'default' })
      * @returns {Journey[]}
      */
-    getVisibleJourneys() {
+    getVisibleJourneys(options = { boardType: 'default' }) {
         return this.journeys.filter(j => {
             if (!j.visible) return false;
             
@@ -186,13 +188,25 @@ export class JourneyStore {
                 }
             }
 
-            // Ankünfte, die mit einer Abfahrt verknüpft sind, sollen nicht separat auf dem Monitor erscheinen
-            if (j.ankunft) {
-                const isLinkedToDeparture = this.journeys.some(
-                    dep => !dep.ankunft && dep.linkedArrivalJourneyId === j.id
-                );
-                if (isLinkedToDeparture) {
-                    return false;
+            // Layout-spezifische Filterung (Ankunft vs. Abfahrt)
+            const boardType = options.boardType;
+
+            if (boardType === 'departuresOnly') {
+                if (j.ankunft) return false;
+            } else if (boardType === 'arrivalsOnly') {
+                if (!j.ankunft) return false;
+            } else if (boardType === 'mixed') {
+                // Zeigt alles an (kein Filter nötig)
+            } else {
+                // 'default': Zeige Abfahrten + ungebundene Ankünfte. 
+                // Ankünfte, die mit einer Abfahrt verknüpft sind, sollen nicht separat auf dem Monitor erscheinen.
+                if (j.ankunft) {
+                    const isLinkedToDeparture = this.journeys.some(
+                        dep => !dep.ankunft && dep.linkedArrivalJourneyId === j.id
+                    );
+                    if (isLinkedToDeparture) {
+                        return false;
+                    }
                 }
             }
             
@@ -205,9 +219,10 @@ export class JourneyStore {
      * Bei gekoppelten Journeys werden alle Journeys der Coupling-Gruppe zurückgegeben.
      *
      * @param {number} slot - 1=Hauptmonitor, 2=Neben1, 3=Neben2
+     * @param {object} options - Filter-Optionen
      * @returns {Journey[]} Array von Journeys (1 oder mehrere bei Coupling)
      */
-    getJourneysForSlot(slot) {
+    getJourneysForSlot(slot, options = { boardType: 'default' }) {
         // 1. Zuerst: Manuell zugewiesene Journeys für diesen Slot
         const manuallyAssigned = this.journeys.find(
             j => j.visible && j.displaySlot === slot
@@ -219,7 +234,7 @@ export class JourneyStore {
 
         // 2. Fallback: Auto-Zuweisung
         // Gekoppelte Journeys werden als eine Einheit gezählt
-        const visible = this.getVisibleJourneys();
+        const visible = this.getVisibleJourneys(options);
         const usedSlots = new Set(
             visible.filter(j => j.displaySlot !== null).map(j => j.displaySlot)
         );
@@ -266,13 +281,14 @@ export class JourneyStore {
     /**
      * Gibt die Journeys zurück, die für den rotierenden Monitor verfügbar sind.
      * Das sind sichtbare Journeys, die nicht auf Slot 1 oder 2 liegen.
+     * @param {object} options - Filter-Optionen
      * @returns {Journey[]}
      */
-    getRotatingJourneys() {
-        const slot1 = this.getJourneysForSlot(1).map(j => j.id);
-        const slot2 = this.getJourneysForSlot(2).map(j => j.id);
+    getRotatingJourneys(options = { boardType: 'default' }) {
+        const slot1 = this.getJourneysForSlot(1, options).map(j => j.id);
+        const slot2 = this.getJourneysForSlot(2, options).map(j => j.id);
         const fixed = new Set([...slot1, ...slot2]);
-        return this.getVisibleJourneys().filter(j => !fixed.has(j.id));
+        return this.getVisibleJourneys(options).filter(j => !fixed.has(j.id));
     }
 
     // ==========================================
@@ -360,61 +376,120 @@ export class JourneyStore {
     }
 
     /**
-     * Erkennt automatisch Wenden / Fahrzeugtausche am selben Gleis
-     * und verknüpft sie. Wird nach dem Import aufgerufen.
+     * Berechnet die Differenz in Minuten von A bis B (berücksichtigt Tageswechsel).
+     * @private
+     */
+    _diffMinutes(timeA, timeB) {
+        const minA = this._timeToMinutes(timeA);
+        const minB = this._timeToMinutes(timeB);
+        if (minA === null || minB === null) return 0;
+        let diff = minB - minA;
+        if (diff < 0) diff += 24 * 60;
+        return diff;
+    }
+
+    /**
+     * Verknüpft automatisch Ankünfte mit Abfahrten (Wenden / Fahrzeugtausch / Durchfahrten).
+     * Basiert auf einem physikalischen Zeitstrahl (Gleisbelegungsplan), um Dritt-Belegungen
+     * und Echtzeit-Szenarien fehlerfrei zu erkennen.
      */
     autoLinkJourneys() {
-        // Trenne in Ankünfte und Abfahrten
+        // Phase 1: Reset aller heuristischen Verknüpfungen
+        this.journeys.forEach(j => {
+            if (!j.ankunft && j.linkedArrivalJourneyId) {
+                const arr = this.getJourney(j.linkedArrivalJourneyId);
+                // Wenn es keine exakte Durchfahrt ist (journeyId identisch), Link entfernen
+                if (!arr || !j.journeyId || !arr.journeyId || j.journeyId !== arr.journeyId) {
+                    j.linkedArrivalJourneyId = null;
+                }
+            }
+        });
+
         const arrivals = this.journeys.filter(j => j.ankunft);
         const departures = this.journeys.filter(j => !j.ankunft);
-
-        // Für jede Abfahrt ohne Verknüpfung...
+        
+        // Echte Durchfahrten (gleiche journeyId) sicherstellen (falls neue Imports dazu kamen)
         for (const dep of departures) {
-            if (dep.linkedArrivalJourneyId) continue; // Bereits verknüpft
-
-            // 1. Suche nach exakter journeyId (Durchfahrt)
+            if (dep.linkedArrivalJourneyId) continue;
             if (dep.journeyId) {
                 const exactMatch = arrivals.find(a => a.journeyId === dep.journeyId);
                 if (exactMatch) {
                     dep.linkedArrivalJourneyId = exactMatch.id;
-                    continue; // Erledigt für diese Abfahrt
+                }
+            }
+        }
+
+        const MAX_TURNAROUND = 180;
+
+        // Phase 2 & 3: Chronologischer Scan in die Zukunft für jede Ankunft
+        for (const A of arrivals) {
+            // Bereits durch API oder Durchfahrt fix verknüpft? (Wird sie von einer Abfahrt referenziert?)
+            const isAlreadyLinked = departures.some(d => d.linkedArrivalJourneyId === A.id);
+            if (isAlreadyLinked) continue;
+
+            const trackStrA = A.ezGleis || A.platform;
+            const baseA = parseTrack(trackStrA);
+            if (!baseA.base) continue;
+
+            // Finde alle Events auf demselben Basis-Gleis in den nächsten MAX_TURNAROUND Minuten
+            const futureEvents = [];
+            for (const T of this.journeys) {
+                if (T.id === A.id) continue;
+                
+                const trackStrT = T.ezGleis || T.platform;
+
+                // Überschneiden sich die Gleise? Wenn nicht, stören sie sich physisch nicht
+                if (!sectionsOverlap(trackStrA, trackStrT)) continue;
+
+                const diff = this._diffMinutes(
+                    A.expectedTime || A.scheduledTime || '00:00', 
+                    T.expectedTime || T.scheduledTime || '00:00'
+                );
+                
+                if (diff >= 0 && diff <= MAX_TURNAROUND) {
+                    futureEvents.push({ journey: T, diff: diff });
                 }
             }
 
-            // 2. Mögliche Ankünfte: Gleiches Gleis, Zeit vor Abfahrt (max 60 Min)
-            const depTime = this._timeToMinutes(dep.scheduledTime);
-            if (depTime === null) continue;
+            // Sortiere chronologisch ausgehend von A
+            futureEvents.sort((a, b) => a.diff - b.diff);
 
-            let bestMatch = null;
-            let minDiff = 61; // Max 60 Minuten
+            // Scanne die Zukunft
+            let linkedAny = false;
+            let currentDiff = -1;
 
-            for (const arr of arrivals) {
-                // Gleis Check (Platform oder ezGleis)
-                const depGleis = dep.ezGleis || dep.platform;
-                const arrGleis = arr.ezGleis || arr.platform;
+            for (const event of futureEvents) {
+                const T = event.journey;
+                
+                // Wenn wir bereits Verknüpfungen gemacht haben (z.B. bei diff=63), 
+                // und das nächste Event hat eine größere Diff (z.B. diff=65), 
+                // dann war's das (wir lassen die Flügelzüge auf gleicher Minute zu).
+                if (linkedAny && event.diff > currentDiff) {
+                    break;
+                }
 
-                if (!depGleis || !arrGleis || depGleis !== arrGleis) continue;
-
-                // Ist die Ankunft bereits verknüpft?
-                const isLinked = departures.some(d => d.linkedArrivalJourneyId === arr.id);
-                if (isLinked) continue;
-
-                const arrTime = this._timeToMinutes(arr.scheduledTime);
-                if (arrTime === null) continue;
-
-                let diff = depTime - arrTime;
-                if (diff < 0) diff += 24 * 60; // Tageswechsel
-
-                if (diff >= 0 && diff <= 60) {
-                    if (diff < minDiff) {
-                        minDiff = diff;
-                        bestMatch = arr;
+                // Ist T eine passende, unverknüpfte Abfahrt?
+                if (!T.ankunft && !T.linkedArrivalJourneyId) {
+                    const operatorMatch = (!A.operator || !T.operator || A.operator === T.operator);
+                    
+                    const arrPlan = A.scheduledTime || '00:00';
+                    const depPlan = T.scheduledTime || '00:00';
+                    const diffPlan = this._diffMinutes(arrPlan, depPlan);
+                    
+                    // Wir akzeptieren die Wende, wenn Operator passt und die Plan-Wende <= 180 Min ist
+                    if (operatorMatch && diffPlan <= MAX_TURNAROUND) {
+                        // Treffer! Verknüpfen.
+                        T.linkedArrivalJourneyId = A.id;
+                        linkedAny = true;
+                        currentDiff = event.diff;
+                        continue;
                     }
                 }
-            }
 
-            if (bestMatch) {
-                dep.linkedArrivalJourneyId = bestMatch.id;
+                // Wenn T keine passende Abfahrt ist, blockiert es das Gleis!
+                // Z.B. ein Fremdzug, eine neue Ankunft, oder eine nicht-passende Abfahrt.
+                // Da sich die Abschnitte überschneiden, muss A das Gleis physisch geräumt haben.
+                break;
             }
         }
     }

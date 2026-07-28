@@ -260,11 +260,13 @@ export class TrainDisplay {
                    : screen.type === 'neben' ? 2
                    : 3;
 
+        const options = { boardType: this.currentLayout.boardType || 'default' };
+
         let journeys;
         if (screen.type === 'neben_rotierend') {
-            journeys = this.journeyStore.getJourneysForSlot(3);
+            journeys = this.journeyStore.getJourneysForSlot(3, options);
         } else {
-            journeys = this.journeyStore.getJourneysForSlot(slot);
+            journeys = this.journeyStore.getJourneysForSlot(slot, options);
         }
 
         this.update(journeys, screen, slot);
@@ -579,6 +581,7 @@ export class TrainDisplay {
      * Generische Zuweisung für unbekannte Layouts: Slot-basiert via JourneyStore.
      */
     _assignGeneric(assignments) {
+        const options = { boardType: this.currentLayout.boardType || 'default' };
         for (const screen of this.currentLayout.screens) {
             let slot;
             if (screen.type === 'haupt') slot = 1;
@@ -587,7 +590,7 @@ export class TrainDisplay {
             else slot = (screen.trainIndex || 0) + 1;
 
             assignments.set(screen.id, {
-                journeys: this.journeyStore.getJourneysForSlot(slot),
+                journeys: this.journeyStore.getJourneysForSlot(slot, options),
                 zugID: slot,
             });
         }
@@ -600,7 +603,8 @@ export class TrainDisplay {
      * @returns {Journey[][]} Array von Journey-Gruppen
      */
     _getVisibleJourneyGroups() {
-        const visible = this.journeyStore.getVisibleJourneys();
+        const options = { boardType: this.currentLayout.boardType || 'default' };
+        const visible = this.journeyStore.getVisibleJourneys(options);
         const groups = [];
         const seenCouplings = new Set();
 
