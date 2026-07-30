@@ -3,6 +3,7 @@ import { COLORS, FONTS, INFO } from './constants.js';
 import { drawText, drawWrappedText, drawInfoTopText, drawTextInRectangle } from './textUtils.js';
 import { drawPictograms } from './pictogramRenderer.js';
 import { calculateCoachPositions, getSectorsForCoaches } from '../utils/formationUtils.js';
+import { formatDisplayName } from '../utils/trainNumberFormatter.js';
 
 function areJourneysMerged(journeys) {
     if (!journeys || journeys.length <= 1) return true;
@@ -141,6 +142,46 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
 
     // Lauftext bestimmen
     let infoToScroll = scrollText;
+    
+    const isMerged = areJourneysMerged(journeys);
+
+    if (!ankunft && !infoscreen && !hasAnyTrackChange && !ausfall && verkehrtAb === "0") {
+        let strengtheningText = "";
+        const primaryDest = (primary.destination || "").trim();
+        const primaryDestLang = primary.destinationLang || primary.destination;
+        
+        // Schwächung innerhalb einer Journey (Wagenreihung hat abweichende Gruppen-Ziele)
+        if (journeys.length === 1 && primary.formation && primary.formation.groups && primary.formation.groups.length > 1) {
+            const { allCoaches } = calculateCoachPositions(journeys);
+            
+            for (let i = 0; i < primary.formation.groups.length; i++) {
+                const group = primary.formation.groups[i];
+                const groupDest = (group.destination || "").trim();
+                
+                if (groupDest && groupDest !== primaryDest && groupDest !== primaryDestLang) {
+                    const nrwName = formatDisplayName(group.trainNumber || primary.name, true);
+                    const targetCoaches = allCoaches.filter(item => item.group === group);
+                    const sectors = getSectorsForCoaches(targetCoaches, renderCtx.platform);
+                    
+                    if (sectors) {
+                        const sectorParts = sectors.split('-');
+                        const firstSection = sectorParts[0];
+                        const lastSection = sectorParts.length > 1 ? sectorParts[1] : null;
+                        const deSectionText = lastSection ? `in den Abschnitten ${firstSection} bis ${lastSection}` : `im Abschnitt ${firstSection}`;
+                        const enSectionText = lastSection ? `in sections ${firstSection} to ${lastSection}` : `in section ${firstSection}`;
+                        strengtheningText += `Zugteil ${nrwName} ${deSectionText} endet in ${groupDest} +++ Train segment ${nrwName} ${enSectionText} ends in ${groupDest} +++ `;
+                    } else {
+                        strengtheningText += `Zugteil ${nrwName} endet in ${groupDest} +++ Train segment ${nrwName} ends in ${groupDest} +++ `;
+                    }
+                }
+            }
+        }
+        
+        if (strengtheningText) {
+            infoToScroll = strengtheningText + infoToScroll;
+        }
+    }
+
     if (ankunft) infoToScroll = "Ankunft / Arrival";
     if (infoscreen || hasAnyTrackChange || ausfall || verkehrtAb !== "0") infoToScroll = "";
 
@@ -186,8 +227,6 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
         ctx.stroke();
     }
 
-    const isMerged = areJourneysMerged(journeys);
-
     // === HAUPTMONITOR (fullScreen) ===
     if (fullScreen) {
         if (ankunft) {
@@ -199,7 +238,7 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
             drawTextInRectangle(ctx, nr, 1855, 220, FONTS.regular(100), 'right', 100, 15,
                 renderCtx, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true);
 
-            const fromDestination = primary.destination || "";
+            const fromDestination = primary.destinationLang || primary.destination || "";
             drawText(ctx, "Bitte nicht einsteigen", 110, 450, FONTS.regular(180), COLORS.WHITE, 'left');
             drawText(ctx, "Please do not board", 105, 670, FONTS.italic(180), COLORS.WHITE, 'left');
             drawText(ctx, 'von / from ' + fromDestination, 112, 850, FONTS.regular(70), COLORS.WHITE, 'left');
@@ -213,7 +252,7 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
                 renderCtx, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true);
 
             let yPos = 470;
-            drawText(ctx, primary.destination, 100, yPos, FONTS.regular(200), COLORS.WHITE, 'left');
+            drawText(ctx, primary.destinationLang || primary.destination, 100, yPos, FONTS.regular(200), COLORS.WHITE, 'left');
             const viaText = (primary.vias || []).join(' - ');
             drawWrappedText(ctx, viaText, 112, yPos + 200,  1800,100,FONTS.regular(75), COLORS.WHITE, 'left');
         } else {
@@ -242,7 +281,7 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
                     renderCtx, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true);
 
                 let yPos = 360;
-                drawText(ctx, journey.destination, xOffset + 50, yPos, FONTS.regular(128), COLORS.WHITE, 'left');
+                drawText(ctx, journey.destinationLang || journey.destination, xOffset + 50, yPos, FONTS.regular(128), COLORS.WHITE, 'left');
                 yPos += 160;
                 const viaText = (journey.vias || []).join(' - ');
                 drawWrappedText(ctx, viaText, xOffset + 50, yPos, zoneWidth - 100, 100, FONTS.regular(75), COLORS.WHITE, 'left');
@@ -267,7 +306,7 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
         }
 
         if (ankunft) {
-            const fromDestination = primary.destination || "";
+            const fromDestination = primary.destinationKurz || primary.destination || "";
             if (isDisrupted) {
                 // Bei Störung: Ein kombinierter Scrolltext weiter oben
                 drawText(ctx, 'von / from ' + fromDestination, 50, 520, FONTS.regular(75), textColor, 'left');
@@ -288,7 +327,15 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
             }
         } else if (isMerged) {
             let yPos = 360;
-            drawText(ctx, primary.destination, 50, yPos, FONTS.regular(128), textColor, 'left');
+            
+            ctx.font = FONTS.regular(128);
+            let destText = primary.destinationLang || primary.destination;
+            const availableWidth = width - 100; // 50px margin each side
+            if (ctx.measureText(destText).width > availableWidth) {
+                destText = primary.destinationKurz || primary.destination;
+            }
+            
+            drawText(ctx, destText, 50, yPos, FONTS.regular(128), textColor, 'left');
             yPos += 160;
             
             let infoToDraw = null;
@@ -315,7 +362,14 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
             let lastYPos = yPos;
 
             for (const journey of journeys) {
-                drawText(ctx, journey.destination, 50, yPos, destFont, textColor, 'left');
+                let destText = journey.destinationLang || journey.destination;
+                ctx.font = destFont;
+                const availableWidth = 800; // Leaving room for the train name on the right
+                if (ctx.measureText(destText).width > availableWidth) {
+                    destText = journey.destinationKurz || journey.destination;
+                }
+                
+                drawText(ctx, destText, 50, yPos, destFont, textColor, 'left');
                 drawTextInRectangle(ctx, journey.effectiveDisplayName, 890, yPos, FONTS.regular(75), 'right', 75, 10,
                     renderCtx, 0, COLORS.DIM_GREY, COLORS.WHITE, isDisrupted, true);
                 

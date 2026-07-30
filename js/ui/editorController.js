@@ -482,6 +482,9 @@ export function initEditor() {
                         journey.displayNameOverride = formatDisplayName(journey.name, journeyStore.nrwMode);
                         const overrideInput = details.querySelector('.jfield[data-field="displayNameOverride"]');
                         if (overrideInput) overrideInput.value = journey.displayNameOverride;
+                    } else if (field === 'destination') {
+                        journey.destinationLang = e.target.value;
+                        journey.destinationKurz = e.target.value;
                     }
                 }
                 debouncedUpdateAll();
