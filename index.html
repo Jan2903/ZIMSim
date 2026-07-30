@@ -19,7 +19,7 @@
     <div class="display-container">
         <div id="display-container" style="position: relative; width: 100%; height: 100%; background-color: var(--db-dark); overflow: hidden;">
             <div id="hardware-bezel" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 20; pointer-events: none;"></div>
-            <canvas id="zimCanvas" width="4800" height="2676" style="position: absolute; top: 0; left: 0; z-index: 10;"></canvas>
+            <canvas id="zimCanvas" width="4428" height="1600" style="position: absolute; top: 0; left: 0; z-index: 10;"></canvas>
         </div>
     </div>
 
@@ -122,6 +122,10 @@
 
                     <h3 style="margin-top: 25px;">Bahnsteig</h3>
                     <div class="form-row column-layout">
+                        <label style="margin-bottom: 5px; display: block;">Konfiguration wählen:</label>
+                        <select id="global_platform_select" style="width: 100%; padding: 5px; margin-bottom: 10px;">
+                            <option value="default">Standard (Generisch)</option>
+                        </select>
                         <label>Länge (m): <input type="number" id="platform_length" class="short-input" value="420"></label>
                         <label>Standort (m): <input type="number" id="platform_location" class="short-input" value="150"></label>
                     </div>

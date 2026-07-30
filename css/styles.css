@@ -59,8 +59,8 @@ canvas {
     position: absolute;
     top: 0;
     left: 0;
-    width: 4800px;
-    height: 2676px;
+    width: 4428px;
+    height: 1600px;
     box-sizing: border-box;
     transform-origin: top left;
 }
@@ -71,7 +71,7 @@ canvas {
     gap: 0;
     position: relative;
     background-color: var(--db-navy);
-    width: 4800px;
+    width: 4428px;
     height: 1080px;
     transform-origin: top center;
 }
@@ -90,7 +90,7 @@ canvas {
 
 /* --- DASHBOARD CONTROL PANEL STYLING --- */
 .settings-container {
-    max-width: 2676px;
+    max-width: 1600px;
     margin: 40px auto;
     padding: 0 20px;
     box-sizing: border-box;
@@ -393,7 +393,7 @@ button:active { transform: translateY(1px); }
     border: 1px solid var(--border);
     box-shadow: 0 10px 25px rgba(0,0,0,0.5);
     width: 90%;
-    max-width: 2676px;
+    max-width: 1600px;
     display: flex;
     flex-direction: column;
     max-height: 90vh;

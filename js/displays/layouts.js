@@ -1,13 +1,13 @@
 export const LAYOUTS = {
     standard: {
-        width: 4800, 
-        height: 2676,
+        width: 4428, 
+        height: 1600,
         backgroundUrl: 'images/layouts/standard_bg.jpg', // Optionales Hintergrundbild
         boardType: 'default',
         screens: [
-            { id: 'hauptmonitor', type: 'haupt', x: 450, y: 680, w: 1920, h: 1080, trainIndex: 0 },
-            { id: 'nebenmonitor_1', type: 'neben', x: 470 + 1920 + 30, y: 680, w: 960, h: 1080, trainIndex: 1 },
-            { id: 'nebenmonitor_2', type: 'neben_rotierend', x: 470 + 1920 + 30 + 960, y: 680, w: 960, h: 1080 }
+            { id: 'hauptmonitor', type: 'haupt', x: 270, y: 292, w: 1920, h: 1080, trainIndex: 0 },
+            { id: 'nebenmonitor_1', type: 'neben', x: 270 + 1920 + 50, y: 292, w: 960, h: 1080, trainIndex: 1 },
+            { id: 'nebenmonitor_2', type: 'neben_rotierend', x: 270 + 1920 + 50 + 960, y: 292, w: 960, h: 1080 }
         ]
     },
     voranzeiger: {
