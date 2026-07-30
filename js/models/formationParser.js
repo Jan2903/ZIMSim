@@ -7,95 +7,146 @@ export class FormationParser {
      * @returns {object} Normalisiertes Objekt für den Formation-Konstruktor
      */
     static parse(rawData) {
-        let isAppFormat = !!rawData.fahrzeuggruppen;
+        const isAppFormat = !!rawData.fahrzeuggruppen;
         
-        let groups = [];
+        const parseResult = isAppFormat 
+            ? this._parseAppFormat(rawData)
+            : this._parseWebFormat(rawData);
+
+        // Geometrie & Spiegelung
+        const { needsMirroring, platform } = this._applyMirroring(parseResult.groups, parseResult.platform);
+        
+        // XOR UI Direction
+        const uiDirectionRight = this._calculateUIDirection(parseResult.physicalDirectionRight, needsMirroring);
+
+        return {
+            groups: parseResult.groups,
+            platform: platform,
+            uiDirection: uiDirectionRight ? 1 : 0
+        };
+    }
+
+    /**
+     * Parst die Daten im DB Navigator App Format.
+     */
+    static _parseAppFormat(rawData) {
+        let groups = rawData.fahrzeuggruppen.map(g => this._mapAppGroup(g));
         let platform = null;
-        let physicalDirectionRight = true; // Default
 
-        if (isAppFormat) {
-            // --- DB Navigator App Format ---
-            groups = rawData.fahrzeuggruppen.map(g => {
-                return {
-                    name: g.bezeichnung || '',
-                    transport: {
-                        category: g.fahrtreferenz?.gattung || '',
-                        destination: { name: g.fahrtreferenz?.ziel?.bezeichnung || '' },
-                        number: g.fahrtreferenz?.fahrtnummer || 0,
-                        type: g.fahrtreferenz?.typ || 'UNKNOWN',
-                        line: g.fahrtreferenz?.linie || ''
-                    },
-                    vehicles: (g.fahrzeuge || []).map(v => {
-                        // TODO: Kurze Ordnungsnummer extrahieren (falls aus zukünftigen API-Daten bekannt)
-                        let coachNumber = ''; 
-                        
-                        return {
-                            type: v.fahrzeugtyp ? {
-                                category: v.fahrzeugtyp.fahrzeugkategorie,
-                                constructionType: v.fahrzeugtyp.baureihe,
-                                hasEconomyClass: v.fahrzeugtyp.zweiteKlasse,
-                                hasFirstClass: v.fahrzeugtyp.ersteKlasse
-                            } : {},
-                            amenities: (v.ausstattungsmerkmale || []).map(a => ({ type: a.art, status: a.status })),
-                            status: v.status,
-                            orientation: v.orientierung,
-                            coachNumber: coachNumber,
-                            vehicleID: '', // App liefert oft keine UIC
-                            platformPosition: v.positionAmGleis ? {
-                                start: v.positionAmGleis.start?.position || 0,
-                                end: v.positionAmGleis.ende?.position || 0,
-                                sector: v.positionAmGleis.sektor || ''
-                            } : null
-                        };
-                    })
-                };
-            });
-
-            if (rawData.gleis) {
-                platform = {
-                    start: rawData.gleis.start?.position || 0,
-                    end: rawData.gleis.ende?.position || 0,
-                    name: rawData.gleis.bezeichnung || '',
-                    sectors: (rawData.gleis.sektoren || []).map(s => ({
-                        name: s.bezeichnung,
-                        start: s.start?.position || 0,
-                        end: s.ende?.position || 0,
-                        cubePosition: s.gleisabschnittswuerfelPosition !== undefined ? s.gleisabschnittswuerfelPosition : null
-                    }))
-                };
-            }
-
-            if (rawData.fahrtrichtung) {
-                physicalDirectionRight = (rawData.fahrtrichtung === 'RECHTS');
-            } else {
-                physicalDirectionRight = this.calculateDirection(groups);
-            }
-
-        } else {
-            // --- bahn.de Web Format ---
-            // rawData ist entweder direkt das groups array oder { groups: [], platform: {} }
-            const root = Array.isArray(rawData) ? { groups: rawData } : rawData;
-            
-            groups = (root.groups || []).map(g => {
-                return {
-                    ...g,
-                    vehicles: (g.vehicles || g.coaches || []).map(v => {
-                        // TODO: Kurze Ordnungsnummer extrahieren (falls im vehicle-Objekt vorhanden)
-                        // Bisherige Felder 1:1 übernehmen
-                        return v;
-                    })
-                };
-            });
-            
-            platform = root.platform || null;
-            physicalDirectionRight = this.calculateDirection(groups);
+        if (rawData.gleis) {
+            platform = {
+                start: rawData.gleis.start?.position || 0,
+                end: rawData.gleis.ende?.position || 0,
+                name: rawData.gleis.bezeichnung || '',
+                sectors: (rawData.gleis.sektoren || []).map(s => ({
+                    name: s.bezeichnung,
+                    start: s.start?.position || 0,
+                    end: s.ende?.position || 0,
+                    cubePosition: s.gleisabschnittswuerfelPosition !== undefined ? s.gleisabschnittswuerfelPosition : null
+                }))
+            };
         }
 
-        // --- Geometrie & Spiegelung ---
+        let physicalDirectionRight = true;
+        if (rawData.fahrtrichtung) {
+            physicalDirectionRight = (rawData.fahrtrichtung === 'RECHTS');
+        } else {
+            physicalDirectionRight = this._calculateDirection(groups);
+        }
+
+        return { groups, platform, physicalDirectionRight };
+    }
+
+    /**
+     * Mappt eine Fahrzeuggruppe (App Format)
+     */
+    static _mapAppGroup(g) {
+        return {
+            name: g.bezeichnung || '',
+            transport: {
+                category: g.fahrtreferenz?.gattung || '',
+                destination: { name: g.fahrtreferenz?.ziel?.bezeichnung || '' },
+                number: g.fahrtreferenz?.fahrtnummer || 0,
+                type: g.fahrtreferenz?.typ || 'UNKNOWN',
+                line: g.fahrtreferenz?.linie || ''
+            },
+            vehicles: (g.fahrzeuge || []).map(v => this._mapAppVehicle(v))
+        };
+    }
+
+    /**
+     * Mappt ein einzelnes Fahrzeug (App Format)
+     */
+    static _mapAppVehicle(v) {
+        // Ordnungsnummer extrahieren (als Number, Fallback null)
+        let wagonIdentificationNumber = v.ordnungsnummer != null ? Number(v.ordnungsnummer) : null;
+        
+        return {
+            type: v.fahrzeugtyp ? {
+                category: v.fahrzeugtyp.fahrzeugkategorie,
+                constructionType: v.fahrzeugtyp.baureihe,
+                hasEconomyClass: v.fahrzeugtyp.zweiteKlasse,
+                hasFirstClass: v.fahrzeugtyp.ersteKlasse
+            } : {},
+            amenities: (v.ausstattungsmerkmale || []).map(a => ({ type: a.art, status: a.status })),
+            status: v.status,
+            orientation: v.orientierung,
+            wagonIdentificationNumber: wagonIdentificationNumber,
+            vehicleID: '', // App liefert oft keine UIC
+            platformPosition: v.positionAmGleis ? {
+                start: v.positionAmGleis.start?.position || 0,
+                end: v.positionAmGleis.ende?.position || 0,
+                sector: v.positionAmGleis.sektor || ''
+            } : null
+        };
+    }
+
+    /**
+     * Parst die Daten im bahn.de Web Format.
+     */
+    static _parseWebFormat(rawData) {
+        const root = Array.isArray(rawData) ? { groups: rawData } : rawData;
+        
+        let groups = (root.groups || []).map(g => this._mapWebGroup(g));
+        
+        let platform = root.platform || null;
+        let physicalDirectionRight = this._calculateDirection(groups);
+
+        return { groups, platform, physicalDirectionRight };
+    }
+
+    /**
+     * Mappt eine Fahrzeuggruppe (Web Format)
+     */
+    static _mapWebGroup(g) {
+        return {
+            ...g,
+            vehicles: (g.vehicles || g.coaches || []).map(v => this._mapWebVehicle(v))
+        };
+    }
+
+    /**
+     * Mappt ein einzelnes Fahrzeug (Web Format)
+     */
+    static _mapWebVehicle(v) {
+        // wagonIdentificationNumber sicherstellen (als Number)
+        let wagonIdentificationNumber = v.wagonIdentificationNumber != null ? Number(v.wagonIdentificationNumber) : null;
+        return { ...v, wagonIdentificationNumber };
+    }
+
+    /**
+     * Prüft, ob der linkeste Sektor nicht 'A' ist und spiegelt in diesem Fall
+     * alle Geometriedaten der Wagen und des Bahnsteigs.
+     */
+    static _applyMirroring(groups, platform) {
         let needsMirroring = false;
+
         if (platform && platform.sectors && platform.sectors.length > 0) {
             // Sektor mit dem kleinsten Start-Wert finden
             const leftMostSector = platform.sectors.reduce((min, s) => s.start < min.start ? s : min, platform.sectors[0]);
+            
+            // Konvention: Wenn der linkeste Sektor nicht 'A' ist, wird das Array visuell von rechts nach links gelesen 
+            // (z.B. F E D C B A). In unserer Darstellung spiegeln wir dies, sodass A immer rechts ist (bzw umgekehrt).
             if (leftMostSector.name !== 'A') {
                 needsMirroring = true;
             }
@@ -128,16 +179,16 @@ export class FormationParser {
             });
         }
 
-        // --- XOR UI Direction ---
+        return { needsMirroring, platform };
+    }
+
+    /**
+     * Errechnet die finale UI Fahrtrichtung basierend auf physischer Richtung und Spiegelung (XOR).
+     */
+    static _calculateUIDirection(physicalDirectionRight, needsMirroring) {
         // Wenn Fahrt physisch nach rechts fährt (true) und NICHT gespiegelt wurde (false) -> UI Pfeil Rechts (true)
         // Wenn Fahrt nach rechts (true) und gespiegelt (true) -> UI Pfeil Links (false)
-        const uiDirectionRight = physicalDirectionRight !== needsMirroring;
-
-        return {
-            groups: groups,
-            platform: platform,
-            uiDirection: uiDirectionRight ? 1 : 0
-        };
+        return physicalDirectionRight !== needsMirroring;
     }
 
     /**
@@ -145,7 +196,7 @@ export class FormationParser {
      * @param {Array} groups 
      * @returns {boolean} true = RECHTS, false = LINKS
      */
-    static calculateDirection(groups) {
+    static _calculateDirection(groups) {
         if (!groups || groups.length === 0) return true;
         const firstGroup = groups[0];
         if (!firstGroup || !firstGroup.vehicles || firstGroup.vehicles.length < 2) return true;

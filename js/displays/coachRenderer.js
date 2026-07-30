@@ -309,8 +309,8 @@ export function drawFullscreenWagonNumbers(ctx, scaledCoaches, y) {
         const items = [];
         for (const coach of part) {
             if (!coach.open) continue;
-            if (coach.coachNumber && coach.coachNumber !== 0 && coach.coachNumber !== '0') {
-                const text = coach.coachNumber.toString();
+            if (coach.wagonIdentificationNumber != null && coach.wagonIdentificationNumber !== 0) {
+                const text = coach.wagonIdentificationNumber.toString();
                 ctx.font = FONTS.regular(40);
                 items.push({
                     x: coach.start + coach.length / 2,
@@ -459,8 +459,8 @@ export function drawCompactWagonNumbers(ctx, scaledCoaches, y) {
             const lastCoach = group[group.length - 1];
             const center = (firstCoach.start + lastCoach.start + lastCoach.length) / 2;
             
-            const firstNumber = firstCoach.coachNumber;
-            const lastNumber = lastCoach.coachNumber;
+            const firstNumber = firstCoach.wagonIdentificationNumber;
+            const lastNumber = lastCoach.wagonIdentificationNumber;
             const numberText = firstNumber === lastNumber ? firstNumber.toString() : `${firstNumber} - ${lastNumber}`;
             
             ctx.font = FONTS.regular(40);
@@ -478,7 +478,7 @@ export function drawCompactWagonNumbers(ctx, scaledCoaches, y) {
         };
 
         for (const coach of part) {
-            if (coach.open !== false && coach.coachNumber && coach.coachNumber !== '0' && coach.coachNumber !== '') {
+            if (coach.open !== false && coach.wagonIdentificationNumber != null && coach.wagonIdentificationNumber !== 0) {
                 currentGroup.push(coach);
             } else {
                 processGroup(currentGroup);
