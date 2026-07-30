@@ -159,11 +159,6 @@ export function saveInlineFormation(journeyId, immediate = true) {
     }
 }
 
-export function toggleOrientation(orientation) {
-    if (orientation === 'FORWARDS') return 'BACKWARDS';
-    if (orientation === 'BACKWARDS') return 'FORWARDS';
-    return orientation;
-}
 
 export function initEditor() {
     const journeyList = document.getElementById('journey_list');
@@ -331,9 +326,6 @@ export function initEditor() {
                 journey.formation.groups.forEach(group => {
                     if (group.coaches) {
                         group.coaches.reverse();
-                        group.coaches.forEach(c => {
-                            c.orientation = toggleOrientation(c.orientation);
-                        });
                     }
                 });
                 renderJourneyList();
@@ -351,9 +343,6 @@ export function initEditor() {
                 const group = journey.formation.groups[gIndex];
                 if (group.coaches) {
                     group.coaches.reverse();
-                    group.coaches.forEach(c => {
-                        c.orientation = toggleOrientation(c.orientation);
-                    });
                 }
                 renderJourneyList();
                 trainDisplay.updateAll();

@@ -45,9 +45,8 @@ export class Formation {
     constructor(data = {}) {
         this.groups = (data.groups || []).map(g => new FormationGroup(g));
 
-        // Bahnsteig-Daten aus der DB API
-        this.platform = data.platform || null;
-        // { start: 0, end: 210, name: "2" }
+        // Nur Referenz auf den Bahnsteig speichern, um Datenredundanz im JSON-Export zu vermeiden
+        this.platformReference = data.platformReference || null;
     }
 
     /** Gesamtzahl der Wagen über alle Gruppen */

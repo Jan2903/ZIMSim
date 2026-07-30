@@ -16,8 +16,24 @@ export class FormationParser {
         // Geometrie & Spiegelung
         const { needsMirroring, platform } = this._applyMirroring(parseResult.groups, parseResult.platform);
         
+        // Sektoren alphabetisch sortieren und zu sections mappen
+        if (platform && platform.sectors) {
+            platform.sectors.sort((a, b) => a.name.localeCompare(b.name));
+            
+            platform.sections = platform.sectors.map(s => ({
+                name: s.name,
+                startMeter: s.start,
+                endMeter: s.end,
+                cubePosition: s.cubePosition
+            }));
+            platform.length = platform.end - platform.start;
+            delete platform.sectors;
+        }
+
         // XOR UI Direction
         const uiDirectionRight = this._calculateUIDirection(parseResult.physicalDirectionRight, needsMirroring);
+
+        this._ensureLeftToRightOrder(parseResult.groups);
 
         return {
             groups: parseResult.groups,
@@ -90,7 +106,7 @@ export class FormationParser {
             } : {},
             amenities: (v.ausstattungsmerkmale || []).map(a => ({ type: a.art, status: a.status })),
             status: v.status,
-            orientation: v.orientierung,
+
             wagonIdentificationNumber: wagonIdentificationNumber,
             vehicleID: '', // App liefert oft keine UIC
             platformPosition: v.positionAmGleis ? {
@@ -189,6 +205,41 @@ export class FormationParser {
         // Wenn Fahrt physisch nach rechts fährt (true) und NICHT gespiegelt wurde (false) -> UI Pfeil Rechts (true)
         // Wenn Fahrt nach rechts (true) und gespiegelt (true) -> UI Pfeil Links (false)
         return physicalDirectionRight !== needsMirroring;
+    }
+
+    /**
+     * Stellt sicher, dass das Array von Wagen (und Gruppen) strikt von links nach rechts geordnet ist.
+     * Dies ist notwendig für den Renderer, der sich blind auf eine aufsteigende Array-Reihenfolge verlässt.
+     */
+    static _ensureLeftToRightOrder(groups) {
+        if (!groups) return;
+
+        groups.forEach(g => {
+            if (!g.vehicles || g.vehicles.length < 2) return;
+            
+            // Finde den ersten und letzten Wagen, die eine platformPosition haben
+            const firstWithPos = g.vehicles.find(v => v.platformPosition);
+            const lastWithPos = g.vehicles.slice().reverse().find(v => v.platformPosition);
+            
+            if (firstWithPos && lastWithPos && firstWithPos !== lastWithPos) {
+                if (firstWithPos.platformPosition.start > lastWithPos.platformPosition.start) {
+                    // Array ist absteigend sortiert (von rechts nach links). Wir drehen es um!
+                    g.vehicles.reverse();
+                }
+            }
+        });
+        
+        // Jetzt Gruppen-Reihenfolge prüfen
+        if (groups.length > 1) {
+            const firstGroupPos = groups[0].vehicles.find(v => v.platformPosition);
+            const lastGroupPos = groups[groups.length - 1].vehicles.find(v => v.platformPosition);
+            
+            if (firstGroupPos && lastGroupPos) {
+                if (firstGroupPos.platformPosition.start > lastGroupPos.platformPosition.start) {
+                    groups.reverse();
+                }
+            }
+        }
     }
 
     /**

@@ -279,10 +279,13 @@ export function drawFullscreenAmenityIcons(ctx, scaledCoaches, y) {
         for (const coach of part) {
             if (!coach.open) continue;
             let imgKey, scale;
-            if (coach.amenities.includes('f')) { imgKey = 'wagenreihung_fahrrad'; scale = 0.28; }
-            else if (coach.amenities.includes('r')) { imgKey = 'wagenreihung_rollstuhl'; scale = 0.24; }
-            else if (coach.amenities.includes('m')) { imgKey = 'wagenreihung_mehrzweck'; scale = 0.28; }
-            else if (coach.amenities.includes('g')) { imgKey = 'wagenreihung_gastronomie'; scale = 0.32; }
+            if (coach.amenities.includes('BOARD_RESTAURANT') || coach.amenities.includes('DINING')) { imgKey = 'wagenreihung_gastronomie'; scale = 0.32; }
+            else if (coach.amenities.includes('BISTRO')) { imgKey = 'wagenreihung_bistro'; scale = 0.32; }
+            else if (coach.amenities.includes('SLEEPER')) { imgKey = 'wagenreihung_schlafwagen'; scale = 0.28; }
+            else if (coach.amenities.includes('COUCHETTE')) { imgKey = 'wagenreihung_liegewagen'; scale = 0.28; }
+            else if (coach.amenities.includes('BIKE_SPACE')) { imgKey = 'wagenreihung_fahrrad'; scale = 0.28; }
+            else if (coach.amenities.includes('WHEELCHAIR_SPACE') || coach.amenities.includes('TOILET_WHEELCHAIR')) { imgKey = 'wagenreihung_rollstuhl'; scale = 0.24; }
+            else if (coach.amenities.includes('ZONE_MULTI_PURPOSE')) { imgKey = 'wagenreihung_mehrzweck'; scale = 0.28; }
             
             const img = imgKey ? images[imgKey] : null;
             if (img && img.isLoaded && !img.isBroken) {
@@ -407,10 +410,13 @@ export function drawCompactAmenityIcons(ctx, scaledCoaches, y) {
             const amenities = firstCoach.amenities;
             
             let imgKey, scale;
-            if (amenities.includes('f')) { imgKey = 'wagenreihung_fahrrad'; scale = 0.28; }
-            else if (amenities.includes('r')) { imgKey = 'wagenreihung_rollstuhl'; scale = 0.24; }
-            else if (amenities.includes('m')) { imgKey = 'wagenreihung_mehrzweck'; scale = 0.28; }
-            else if (amenities.includes('g')) { imgKey = 'wagenreihung_gastronomie'; scale = 0.32; }
+            if (amenities.includes('BOARD_RESTAURANT') || amenities.includes('DINING')) { imgKey = 'wagenreihung_gastronomie'; scale = 0.32; }
+            else if (amenities.includes('BISTRO')) { imgKey = 'wagenreihung_bistro'; scale = 0.32; }
+            else if (amenities.includes('SLEEPER')) { imgKey = 'wagenreihung_schlafwagen'; scale = 0.28; }
+            else if (amenities.includes('COUCHETTE')) { imgKey = 'wagenreihung_liegewagen'; scale = 0.28; }
+            else if (amenities.includes('BIKE_SPACE')) { imgKey = 'wagenreihung_fahrrad'; scale = 0.28; }
+            else if (amenities.includes('WHEELCHAIR_SPACE') || amenities.includes('TOILET_WHEELCHAIR')) { imgKey = 'wagenreihung_rollstuhl'; scale = 0.24; }
+            else if (amenities.includes('ZONE_MULTI_PURPOSE')) { imgKey = 'wagenreihung_mehrzweck'; scale = 0.28; }
             
             const img = imgKey ? images[imgKey] : null;
             if (img && img.isLoaded && !img.isBroken) {

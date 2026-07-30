@@ -20,6 +20,9 @@ export class JourneyStore {
             platform: new Platform()
         };
 
+        // Speichert importierte Bahnsteigkonfigurationen (Key: Gleisbezeichnung)
+        this.platforms = {};
+
         // Dynamische Journey-Liste (keine feste Anzahl)
         this.journeys = [];
 
@@ -639,6 +642,22 @@ export class JourneyStore {
         if (parsedData.uiDirection !== undefined) {
             journey.direction = parsedData.uiDirection;
         }
+
+        // Bahnsteigdaten speichern/aktualisieren, falls vorhanden
+        if (parsedData.platform && parsedData.platform.name) {
+            const platformName = parsedData.platform.name;
+            const newPlatform = new Platform(parsedData.platform);
+            
+            // Entweder es gibt den Bahnsteig noch nicht, oder der neue hat Sektoren (und der alte vllt nicht)
+            if (!this.platforms[platformName] || (newPlatform.sections && newPlatform.sections.length > 0)) {
+                this.platforms[platformName] = newPlatform;
+                
+                // Falls es der erste importierte Bahnsteig ist oder wir den aktuellen Bahnsteig aktualisieren, direkt anwenden
+                if (Object.keys(this.platforms).length === 1 || this.stationContext.platform.name === platformName) {
+                    this.stationContext.platform = newPlatform;
+                }
+            }
+        }
     }
 
     /**
@@ -707,11 +726,12 @@ export class JourneyStore {
             stationContext: {
                 stationName: this.stationContext.stationName,
                 stationId: this.stationContext.stationId,
-                platform: this.stationContext.platform
+                activePlatformName: this.stationContext.platform.name || 'default'
             },
             journeys: this.journeys,
             nrwMode: this.nrwMode,
-            activeTracks: this.activeTracks
+            activeTracks: this.activeTracks,
+            platforms: this.platforms
         };
     }
 
@@ -720,16 +740,29 @@ export class JourneyStore {
      * @param {object} data
      */
     importAll(data) {
+        this.nrwMode = data.nrwMode || false;
+        this.activeTracks = data.activeTracks || [];
+
+        if (data.platforms) {
+            this.platforms = {};
+            for (const [key, platData] of Object.entries(data.platforms)) {
+                this.platforms[key] = new Platform(platData);
+            }
+        } else {
+            this.platforms = {};
+        }
+
         if (data.stationContext) {
             this.stationContext.stationName = data.stationContext.stationName || '';
             this.stationContext.stationId = data.stationContext.stationId || '';
-            if (data.stationContext.platform) {
-                this.stationContext.platform = new Platform(data.stationContext.platform);
+            
+            const activeName = data.stationContext.activePlatformName;
+            if (activeName && this.platforms[activeName]) {
+                this.stationContext.platform = this.platforms[activeName];
+            } else {
+                this.stationContext.platform = new Platform();
             }
         }
-
-        this.nrwMode = data.nrwMode || false;
-        this.activeTracks = data.activeTracks || [];
 
         this.journeys = (data.journeys || []).map(j => new Journey(j));
     }
