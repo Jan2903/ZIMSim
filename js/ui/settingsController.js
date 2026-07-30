@@ -228,15 +228,58 @@ export function initSettings() {
     }
 
     // --- Platform ---
-    document.getElementById('platform_length')?.addEventListener('input', (e) => {
+    const platformSelect = document.getElementById('global_platform_select');
+    const lengthInput = document.getElementById('platform_length');
+    const locationInput = document.getElementById('platform_location');
+
+    function updatePlatformDropdown() {
+        if (!platformSelect) return;
+        platformSelect.innerHTML = '<option value="default">Standard (Generisch)</option>';
+        
+        for (const [key, plat] of Object.entries(journeyStore.platforms)) {
+            const option = document.createElement('option');
+            option.value = key;
+            option.textContent = `Gleis ${key} (${plat.sections?.length || 0} Sektoren)`;
+            platformSelect.appendChild(option);
+        }
+
+        const activeName = journeyStore.stationContext.platform.name;
+        if (activeName && journeyStore.platforms[activeName]) {
+            platformSelect.value = activeName;
+        } else {
+            platformSelect.value = 'default';
+        }
+        updatePlatformInputs();
+    }
+
+    function updatePlatformInputs() {
+        if (lengthInput) lengthInput.value = journeyStore.stationContext.platform.length;
+        if (locationInput) locationInput.value = journeyStore.stationContext.platform.currentLocation;
+    }
+
+    platformSelect?.addEventListener('change', (e) => {
+        const val = e.target.value;
+        if (val === 'default') {
+            journeyStore.stationContext.platform = new (journeyStore.stationContext.platform.constructor)(); // Reset to default Platform
+        } else if (journeyStore.platforms[val]) {
+            journeyStore.stationContext.platform = journeyStore.platforms[val];
+        }
+        updatePlatformInputs();
+        trainDisplay.updateAll();
+    });
+
+    lengthInput?.addEventListener('input', (e) => {
         journeyStore.stationContext.platform.length = parseInt(e.target.value) || 420;
         trainDisplay.updateAll();
     });
 
-    document.getElementById('platform_location')?.addEventListener('input', (e) => {
+    locationInput?.addEventListener('input', (e) => {
         journeyStore.stationContext.platform.currentLocation = parseInt(e.target.value) || 0;
         trainDisplay.updateAll();
     });
+
+    // Initial update
+    updatePlatformDropdown();
 
     // --- NRW Mode ---
     document.getElementById('nrw_mode_checkbox')?.addEventListener('change', (e) => {
@@ -347,6 +390,7 @@ export function initSettings() {
             try {
                 const data = JSON.parse(ev.target.result);
                 journeyStore.importAll(data);
+                updatePlatformDropdown();
                 renderJourneyList();
                 trainDisplay.updateAll();
             } catch (err) {
@@ -433,6 +477,7 @@ export function initSettings() {
                     return;
                 }
                 journeyStore.importFormation(journeyId, data);
+                updatePlatformDropdown();
             }
 
             renderJourneyList();

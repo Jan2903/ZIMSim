@@ -1,5 +1,6 @@
 export class Platform {
     constructor(data = {}) {
+        this.name = data.name || '';
         this.length = data.length || 400;
         this.currentLocation = data.currentLocation !== undefined ? data.currentLocation : 100;
         this.sections = data.sections || [

@@ -5,13 +5,13 @@ export class Coach {
         this.type = (typeof data.type === 'string') ? data.type : (Coach.mapType(data) || 'middle_car');
         this.coachClass = data.coachClass !== undefined ? data.coachClass : Coach.mapClass(data);
         this.wagonIdentificationNumber = data.wagonIdentificationNumber !== undefined ? data.wagonIdentificationNumber : null;
-        this.amenities = data.amenities ? Coach.normalizeAmenities(data.amenities) : [];
+        this.amenities = Coach.normalizeAmenities(data.amenities || data.ausstattungsmerkmale || [], data);
         this.open = data.open !== undefined ? data.open : (data.status !== 'CLOSED');
 
         // === Neue Felder (DB-API-Kompatibilität) ===
         this.vehicleId = data.vehicleId || data.vehicleID || '';
         this.constructionType = data.constructionType || data.type?.constructionType || '';
-        this.orientation = data.orientation || 'FORWARDS';
+
         this.platformPosition = data.platformPosition || null;
 
         // Length: Aus platformPosition berechnen oder direkt setzen
@@ -47,6 +47,8 @@ export class Coach {
         if (cat.includes('PASSENGERCARRIAGE')) return 'middle_car';
         if (cat.includes('DININGCAR')) return 'middle_car';
         if (cat.includes('DOUBLEDECK')) return 'middle_car';
+        if (cat.includes('SLEEPER')) return 'middle_car';
+        if (cat.includes('COUCHETTE')) return 'middle_car';
 
         // 2. Heuristik für fehlerhafte/unvollständige API-Daten (z.B. "UNDEFINED")
         if (cat === 'UNDEFINED' || cat === '') {
@@ -69,26 +71,30 @@ export class Coach {
     }
 
     /**
-     * Normalisiert Amenities aus verschiedenen Formaten.
-     * DB-API: [{ type: "BIKE_SPACE", amount: 4, status: "AVAILABLE" }]
-     * Intern: ['f', 'r', 'g', 'm']
+     * Normalisiert Amenities aus verschiedenen Formaten und injiziert SLEEPER/COUCHETTE
      */
-    static normalizeAmenities(amenities) {
-        if (!Array.isArray(amenities)) return [];
-        if (amenities.length > 0 && typeof amenities[0] === 'string') return amenities;
-
-        const result = [];
-        const mapping = {
-            'BIKE_SPACE': 'f',
-            'WHEELCHAIR_SPACE': 'r',
-            'ZONE_MULTI_PURPOSE': 'm',
-        };
-        for (const a of amenities) {
-            if (a.type && mapping[a.type] && a.status !== 'NOT_AVAILABLE') {
-                const mapped = mapping[a.type];
-                if (!result.includes(mapped)) result.push(mapped);
+    static normalizeAmenities(amenities, data = {}) {
+        let result = [];
+        
+        if (Array.isArray(amenities)) {
+            if (amenities.length > 0 && typeof amenities[0] === 'string') {
+                result = [...amenities];
+            } else {
+                for (const a of amenities) {
+                    if (a.status !== 'NOT_AVAILABLE' && a.status !== 'UNAVAILABLE') {
+                        const key = a.art || a.type;
+                        if (key && !result.includes(key)) result.push(key);
+                    }
+                }
             }
         }
+
+        // Neue Features (SLEEPER / COUCHETTE / DININGCAR) aus Fahrzeugkategorie ableiten
+        const cat = data.fahrzeugtyp?.fahrzeugkategorie || data.type?.category || '';
+        if (cat.includes('SLEEPER') && !result.includes('SLEEPER')) result.push('SLEEPER');
+        if (cat.includes('COUCHETTE') && !result.includes('COUCHETTE')) result.push('COUCHETTE');
+        if (cat.includes('DININGCAR') && !result.includes('DINING')) result.push('DINING');
+
         return result;
     }
 }

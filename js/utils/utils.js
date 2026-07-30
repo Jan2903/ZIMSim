@@ -3,7 +3,7 @@ import { config } from './config.js';
 import { journeyStore, trainDisplay } from '../main.js';
 
 export const images = {};
-export const pictogramNames = ['wagen_fehlen', 'wagenreihung_fahrrad', 'wagenreihung_gastronomie', 'wagenreihung_mehrzweck', 'wagenreihung_rollstuhl'];
+export const pictogramNames = ['wagen_fehlen', 'wagenreihung_fahrrad', 'wagenreihung_gastronomie', 'wagenreihung_bistro', 'wagenreihung_mehrzweck', 'wagenreihung_rollstuhl', 'wagenreihung_schlafwagen', 'wagenreihung_liegewagen'];
 
 export function preloadImages() {
     const promises = pictogramNames.map(name => {
