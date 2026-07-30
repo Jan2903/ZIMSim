@@ -2,6 +2,7 @@
 import { Journey } from './journey.js';
 import { Formation } from './formation.js';
 import { Platform } from './platform.js';
+import { FormationParser } from './formationParser.js';
 import { getMotForCategory, MOT_ALL_KEYS } from '../utils/motManager.js';
 import { parseTrack, sectionsOverlap } from '../utils/trackUtils.js';
 
@@ -405,8 +406,8 @@ export class JourneyStore {
             }
         });
 
-        const arrivals = this.journeys.filter(j => j.ankunft);
-        const departures = this.journeys.filter(j => !j.ankunft);
+        const arrivals = this.journeys.filter(j => j.ankunft && !j.ausfall);
+        const departures = this.journeys.filter(j => !j.ankunft && !j.ausfall);
         
         // Echte Durchfahrten (gleiche journeyId) sicherstellen (falls neue Imports dazu kamen)
         for (const dep of departures) {
@@ -434,7 +435,7 @@ export class JourneyStore {
             // Finde alle Events auf demselben Basis-Gleis in den nächsten MAX_TURNAROUND Minuten
             const futureEvents = [];
             for (const T of this.journeys) {
-                if (T.id === A.id) continue;
+                if (T.id === A.id || T.ausfall) continue;
                 
                 const trackStrT = T.ezGleis || T.platform;
 
@@ -529,7 +530,7 @@ export class JourneyStore {
         const created = [];
 
         for (const entry of entries) {
-            const journey = Journey.fromDepartureEntry(entry);
+            const journey = Journey.fromDepartureEntry(entry, isArrival);
             journey.ankunft = isArrival;
 
             // Duplikate vermeiden: Selbe HAFAS journeyId + selbe Ankunft/Abfahrt-Rolle
@@ -632,7 +633,12 @@ export class JourneyStore {
     importFormation(journeyId, data) {
         const journey = this.getJourney(journeyId);
         if (!journey) return;
-        journey.formation = new Formation(data);
+        
+        const parsedData = FormationParser.parse(data);
+        journey.formation = new Formation(parsedData);
+        if (parsedData.uiDirection !== undefined) {
+            journey.direction = parsedData.uiDirection;
+        }
     }
 
     /**

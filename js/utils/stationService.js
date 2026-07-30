@@ -34,9 +34,16 @@ export class StationService {
             const cols = line.split(',');
             // Erwartetes Format: INBR, Name, Name kurz, DS100, Kategorie
             if (cols.length >= 5) {
+                const nameField = cols[1].trim();
+                // Unterstütze "<>" Syntax für API-Name <> Anzeige-Langname
+                const names = nameField.split('<>').map(n => n.trim());
+                const primaryName = names.length > 1 ? names[1] : names[0]; // Rechte Seite als Anzeige-Name (oder Original wenn kein <>)
+                const aliases = names;
+
                 this.stations.push({
                     ibnr: cols[0].trim(),
-                    name: cols[1].trim(),
+                    name: primaryName,
+                    aliases: aliases,
                     nameKurz: cols[2].trim(),
                     ds100: cols[3].trim(),
                     kategorie: parseInt(cols[4].trim()) || 99 // Standard Kategorie falls fehlerhaft
@@ -60,8 +67,9 @@ export class StationService {
         const results = [];
         for (const station of this.stations) {
             
-            // Suche in Name, Name kurz, DS100 und IBNR
-            if (station.name.toLowerCase().includes(lowerQuery) ||
+            // Suche in Name, Aliasen, Name kurz, DS100 und IBNR
+            const matchesAlias = station.aliases.some(alias => alias.toLowerCase().includes(lowerQuery));
+            if (matchesAlias ||
                 station.nameKurz.toLowerCase().includes(lowerQuery) ||
                 station.ds100.toLowerCase().includes(lowerQuery) ||
                 station.ibnr.includes(lowerQuery)) {
@@ -99,7 +107,10 @@ export class StationService {
         }
         if (!found && name) {
             const normName = this.normalizeName(name);
-            found = this.stations.find(s => this.normalizeName(s.name) === normName || this.normalizeName(s.nameKurz) === normName);
+            found = this.stations.find(s => {
+                const matchesAlias = s.aliases.some(alias => this.normalizeName(alias) === normName);
+                return matchesAlias || this.normalizeName(s.nameKurz) === normName;
+            });
         }
         return found;
     }

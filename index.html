@@ -157,6 +157,9 @@
                     <label class="radio-card"><input type="radio" name="import_type" value="journey"> Zuglauf</label>
                     <label class="radio-card"><input type="radio" name="import_type" value="formation"> Formation</label>
                 </div>
+                <div id="db_import_journey_select_container" class="hidden" style="margin-bottom: 10px;">
+                    <label>Ziel-Fahrt auswählen: <select id="db_import_journey_select" style="width: 100%; padding: 5px;"></select></label>
+                </div>
                 <textarea id="db_import_textarea" rows="12" placeholder='JSON hier einfügen...'></textarea>
                 <div class="import-info">
                     <p id="import_type_hint">Füge das JSON einer DB-Abfahrtstafel ein (entries[]-Array).</p>

@@ -26,22 +26,30 @@ export function parseTrainName(name, linienNummer, langText) {
     const isLinieOnlyNumbers = /^\d+$/.test(linienNummer);
     const isLinieOnlyLetters = /^[A-Za-z]+$/.test(linienNummer);
     
-    // Extrahieren der reinen Zahlen aus langText
-    const numbersFromLangText = langText.replace(/\D/g, '');
+    // NEUE LOGIK FÜR DIE ZUGNUMMER:
+    let trainNumber = '';
+    if (/^\d+$/.test(name)) {
+        trainNumber = name;
+    } else {
+        const match = langText.match(/\((\d+)\)/);
+        if (match) {
+            trainNumber = match[1];
+        }
+    }
 
     if (!linienNummer || isLinieOnlyNumbers) {
         return name; // Originäres Datenfeld "name" nutzen
     }
 
     if (isLinieOnlyLetters) {
-        return `${linienNummer} ${numbersFromLangText}`.trim();
+        return trainNumber ? `${linienNummer} ${trainNumber}`.trim() : linienNummer;
     }
 
-    // linienNummer besteht aus Buchstaben und Zahlen (z.B. "RE14a")
+    // linienNummer besteht aus Buchstaben und Zahlen (z.B. "RE14a" -> "RE 14a")
     const spacedLinie = linienNummer.replace(/([A-Za-z])(\d)/, '$1 $2');
     
-    if (numbersFromLangText) {
-        return `${spacedLinie} / ${numbersFromLangText}`;
+    if (trainNumber) {
+        return `${spacedLinie} / ${trainNumber}`;
     }
     return spacedLinie;
 }

@@ -209,7 +209,7 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
                 const currentProps = groupProperties.get(group);
                 const prevProps = groupProperties.get(prevItem.group);
 
-                if (prevProps.destination !== currentProps.destination || prevProps.trainNumber !== currentProps.trainNumber) {
+                if (prevProps.trainNumber !== currentProps.trainNumber) {
                     leftGap = groupGap;
                 } else {
                     leftGap = groupGap / 3;
@@ -225,7 +225,7 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
                 const currentProps = groupProperties.get(group);
                 const nextProps = groupProperties.get(nextItem.group);
 
-                if (currentProps.destination !== nextProps.destination || currentProps.trainNumber !== nextProps.trainNumber) {
+                if (currentProps.trainNumber !== nextProps.trainNumber) {
                     rightGap = groupGap;
                 } else {
                     rightGap = groupGap / 3;

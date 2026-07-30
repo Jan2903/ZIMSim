@@ -358,22 +358,48 @@ export function initSettings() {
         e.target.value = '';
     });
 
-    // --- DB Import Modal ---
+    const populateJourneySelect = () => {
+        const select = document.getElementById('db_import_journey_select');
+        const container = document.getElementById('db_import_journey_select_container');
+        if (!select || !container) return;
+
+        select.innerHTML = '';
+        journeyStore.journeys.forEach(j => {
+            const option = document.createElement('option');
+            option.value = j.id;
+            option.textContent = j.effectiveDisplayName || j.name || 'Unbenannte Fahrt';
+            select.appendChild(option);
+        });
+    };
+
     document.getElementById('import_db_btn')?.addEventListener('click', () => {
         document.getElementById('db_import_modal')?.classList.remove('hidden');
+        if (document.querySelector('input[name="import_type"]:checked')?.value === 'formation') {
+            populateJourneySelect();
+            document.getElementById('db_import_journey_select_container')?.classList.remove('hidden');
+        }
     });
 
     document.querySelectorAll('input[name="import_type"]').forEach(radio => {
         radio.addEventListener('change', () => {
             const hint = document.getElementById('import_type_hint');
-            if (!hint) return;
-            const hints = {
-                'departure_list': 'Füge das JSON einer DB-Abfahrtstafel ein (entries[]-Array).',
-                'arrival_list': 'Füge das JSON einer DB-Ankunftstafel ein (entries[]-Array).',
-                'journey': 'Füge das JSON eines DB-Zuglaufs ein (halte[]-Array).',
-                'formation': 'Füge das JSON einer DB-Wagenreihung ein (groups[]-Array). Wähle anschließend die Fahrt, der sie zugewiesen werden soll.'
-            };
-            hint.textContent = hints[radio.value] || '';
+            if (hint) {
+                const hints = {
+                    'departure_list': 'Füge das JSON einer DB-Abfahrtstafel ein (entries[]-Array).',
+                    'arrival_list': 'Füge das JSON einer DB-Ankunftstafel ein (entries[]-Array).',
+                    'journey': 'Füge das JSON eines DB-Zuglaufs ein (halte[]-Array).',
+                    'formation': 'Füge das JSON einer DB-Wagenreihung ein. Wähle anschließend die Fahrt, der sie zugewiesen werden soll.'
+                };
+                hint.textContent = hints[radio.value] || '';
+            }
+            
+            const container = document.getElementById('db_import_journey_select_container');
+            if (radio.value === 'formation') {
+                populateJourneySelect();
+                container?.classList.remove('hidden');
+            } else {
+                container?.classList.add('hidden');
+            }
         });
     });
 
@@ -401,14 +427,12 @@ export function initSettings() {
                     journey.displayNameOverride = formatDisplayName(journey.name, journeyStore.nrwMode);
                 });
             } else if (type === 'formation') {
-                const visible = journeyStore.getVisibleJourneys();
-                if (visible.length > 0) {
-                    const groupsArray = Array.isArray(data) ? data : (data.groups || []);
-                    visible[0].formation.groups = groupsArray.map(g => new FormationGroup(g));
-                } else {
+                const journeyId = document.getElementById('db_import_journey_select')?.value;
+                if (!journeyId) {
                     alert('Erstelle zuerst eine Fahrt, der die Formation zugewiesen werden soll.');
                     return;
                 }
+                journeyStore.importFormation(journeyId, data);
             }
 
             renderJourneyList();

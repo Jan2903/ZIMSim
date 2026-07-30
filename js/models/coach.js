@@ -2,7 +2,7 @@
 export class Coach {
     constructor(data = {}) {
         // === Bestehende Felder ===
-        this.type = data.type || Coach.mapType(data) || 'middle_car';
+        this.type = (typeof data.type === 'string') ? data.type : (Coach.mapType(data) || 'middle_car');
         this.coachClass = data.coachClass !== undefined ? data.coachClass : Coach.mapClass(data);
         this.coachNumber = data.coachNumber || '';
         this.amenities = data.amenities ? Coach.normalizeAmenities(data.amenities) : [];
@@ -15,10 +15,12 @@ export class Coach {
         this.platformPosition = data.platformPosition || null;
 
         // Length: Aus platformPosition berechnen oder direkt setzen
-        if (this.platformPosition) {
+        if (data.length !== undefined) {
+            this.length = data.length;
+        } else if (this.platformPosition) {
             this.length = Math.round((this.platformPosition.end - this.platformPosition.start) * 100) / 100;
         } else {
-            this.length = data.length || 25;
+            this.length = 25;
         }
     }
 
@@ -29,9 +31,25 @@ export class Coach {
     /** Mappt DB-API vehicle.type.category auf internen Typ */
     static mapType(data) {
         const cat = data.type?.category || '';
+        const baureihe = data.type?.constructionType || '';
+
+        // 1. Reguläre Kategorie-Matches
         if (cat.includes('LOCOMOTIVE')) return 'locomotive';
+        if (cat.includes('POWERCAR')) return 'control_car';
         if (cat.includes('CONTROLCAR')) return 'control_car';
         if (cat.includes('PASSENGERCARRIAGE')) return 'middle_car';
+        if (cat.includes('DININGCAR')) return 'middle_car';
+        if (cat.includes('DOUBLEDECK')) return 'middle_car';
+
+        // 2. Heuristik für fehlerhafte/unvollständige API-Daten (z.B. "UNDEFINED")
+        if (cat === 'UNDEFINED' || cat === '') {
+            // 'f' steht im deutschen Baureihenschema für Führerstand (Steuerwagen)
+            // 'DABdp' ist der Twindexx-Triebwagen (BR 445/446), der in der App-API oft als UNDEFINED auftaucht
+            if (baureihe.toLowerCase().includes('f') || baureihe === 'DABdp') {
+                return 'control_car';
+            }
+        }
+
         return null;
     }
 

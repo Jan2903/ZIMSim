@@ -3,6 +3,7 @@ import { Stop } from './stop.js';
 import { Formation } from './formation.js';
 import { parseTrainName, formatDisplayName } from '../utils/trainNumberFormatter.js';
 import { RisTextService } from '../utils/risTextService.js';
+import { StationService } from '../utils/stationService.js';
 
 /**
  * Repräsentiert eine einzelne Fahrt (Abfahrt oder Ankunft).
@@ -23,8 +24,12 @@ export class Journey {
         this.operator = data.operator || '';             // EVU / Operator (z.B. "ERB", "WFB", "DB")
         this.displayNameOverride = data.displayNameOverride || ''; // Manuell überschrieben oder durch NRW-Modus berechnet
 
-        // === Display-Daten (primär — werden von Renderern gelesen) ===
+        // === Ziel ===
         this.destination = data.destination || '';
+        this.destinationLang = data.destinationLang || this.destination;
+        this.destinationKurz = data.destinationKurz || this.destination;
+
+        // === Zeiten ===
         this.scheduledTime = data.scheduledTime || '';
         this.expectedTime = data.expectedTime || '';
         this.platform = data.platform || '';
@@ -179,7 +184,9 @@ export class Journey {
         }
 
         // Herkunft (destination bei Ankunft ist "von")
-        if (arrivalJourney.destination) {
+        if (arrivalJourney.destinationKurz) {
+            text += ` von ${arrivalJourney.destinationKurz}`;
+        } else if (arrivalJourney.destination) {
             text += ` von ${arrivalJourney.destination}`;
         }
 
@@ -335,18 +342,25 @@ export class Journey {
     /**
      * Erstellt eine Journey aus einem DB-API Abfahrtstafel-Eintrag.
      * @param {object} entry - Ein Eintrag aus dem entries[]-Array
+     * @param {boolean} isArrival - true, wenn der Eintrag von einer Ankunftstafel stammt
      * @returns {Journey}
      */
-    static fromDepartureEntry(entry) {
+    static fromDepartureEntry(entry, isArrival = false) {
         const vm = entry.verkehrmittel || {};
         const parsedName = parseTrainName(vm.name, vm.linienNummer, vm.langText);
 
         const rawMeldungen = entry.meldungen || [];
         const infoTexts = [];
         let delayReason = '';
+        let ausfall = false;
         const rPresets = RisTextService.getPresetsByType('R');
 
         rawMeldungen.forEach(m => {
+            if (m.type === 'HALT_AUSFALL' || m.text === 'Halt entfällt') {
+                ausfall = true;
+                return; // Nicht als Lauftext oder Delay-Reason übernehmen
+            }
+
             if (rPresets.some(p => p.text === m.text)) {
                 if (!delayReason) delayReason = m.text;
             } else {
@@ -359,17 +373,43 @@ export class Journey {
             }
         });
 
+        let viasArray = entry.vias || entry.zuglauf || entry.route || entry.ueber || [];
+        const fallbackDestination = viasArray.length > 0 ? viasArray[viasArray.length - 1] : '';
+        const finalDest = entry.terminus || fallbackDestination;
+
+        let destLang = finalDest;
+        let destKurz = finalDest;
+
+        if (StationService.isLoaded) {
+            const destStation = StationService.getStationByIdOrName(null, finalDest);
+            if (destStation) {
+                destLang = destStation.name;
+                destKurz = destStation.nameKurz;
+            }
+        }
+
+        // WICHTIG: Die Fallback-Destination wird VOR dem Abschneiden aus dem Array ausgelesen (Zeile 367),
+        // sodass sie durch diesen Eingriff nicht kaputt gehen kann!
+        // Ansatz A: Bei Abfahrten steht der aktuelle Bahnhof als erstes Element und das Ziel als letztes Element in den Vias.
+        // Beide müssen für die Via-Anzeige entfernt werden, um Redundanzen zu vermeiden.
+        if (!isArrival && viasArray.length > 0) {
+            viasArray = viasArray.slice(1, -1);
+        }
+
         const journey = new Journey({
             journeyId: entry.journeyId || '',
             name: parsedName,
             produktGattung: vm.produktGattung || '',
             operator: vm.kurzText || '',
-            destination: entry.terminus || '',
+            destination: finalDest,
+            destinationLang: destLang,
+            destinationKurz: destKurz,
             scheduledTime: Stop.formatTime(entry.zeit),
             expectedTime: Stop.formatTime(entry.ezZeit),
             platform: entry.gleis || '',
             ezGleis: entry.ezGleis || '',
-            vias: entry.vias || entry.zuglauf || entry.route || entry.ueber || [],
+            ausfall: ausfall,
+            vias: viasArray,
             messages: rawMeldungen.map(m => ({
                 priority: m.prioritaet,
                 text: m.text
