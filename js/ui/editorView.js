@@ -77,7 +77,7 @@ export function renderCoachRow(coach, index, gIndex = 0) {
                 <option value="2" ${coach.coachClass === 2 ? 'selected' : ''}>2.</option>
                 <option value="null" ${coach.coachClass === null ? 'selected' : ''}>—</option>
             </select>
-            <input type="text" class="f-prop" data-prop="coachNumber" value="${coach.coachNumber}" style="width:50px" placeholder="Nr" title="Wagennummer">
+            <input type="text" class="f-prop" data-prop="wagonIdentificationNumber" value="${coach.wagonIdentificationNumber || ''}" style="width:50px" placeholder="Nr" title="Wagennummer">
             <div class="amenity-checks">${amenityChecks}</div>
             <label title="Offen"><input type="checkbox" class="f-prop" data-prop="open" ${coach.open ? 'checked' : ''}> ✓</label>
             <button class="btn-icon remove-coach-btn" title="Wagen entfernen">✕</button>

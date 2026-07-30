@@ -4,7 +4,7 @@ export class Coach {
         // === Bestehende Felder ===
         this.type = (typeof data.type === 'string') ? data.type : (Coach.mapType(data) || 'middle_car');
         this.coachClass = data.coachClass !== undefined ? data.coachClass : Coach.mapClass(data);
-        this.coachNumber = data.coachNumber || '';
+        this.wagonIdentificationNumber = data.wagonIdentificationNumber !== undefined ? data.wagonIdentificationNumber : null;
         this.amenities = data.amenities ? Coach.normalizeAmenities(data.amenities) : [];
         this.open = data.open !== undefined ? data.open : (data.status !== 'CLOSED');
 
@@ -24,9 +24,16 @@ export class Coach {
         }
     }
 
-    isFirstClass() { return this.coachClass === 1; }
-    isLocomotive() { return this.type === 'locomotive'; }
-    hasAmenity(amenity) { return this.amenities.includes(amenity); }
+    isFirstClass() { 
+        return this.coachClass === 1;
+    }
+
+    isLocomotive() {
+        return this.type === 'locomotive';
+    }
+    hasAmenity(amenity) {
+        return this.amenities.includes(amenity);
+    }
 
     /** Mappt DB-API vehicle.type.category auf internen Typ */
     static mapType(data) {
@@ -44,7 +51,7 @@ export class Coach {
         // 2. Heuristik für fehlerhafte/unvollständige API-Daten (z.B. "UNDEFINED")
         if (cat === 'UNDEFINED' || cat === '') {
             // 'f' steht im deutschen Baureihenschema für Führerstand (Steuerwagen)
-            // 'DABdp' ist der Twindexx-Triebwagen (BR 445/446), der in der App-API oft als UNDEFINED auftaucht
+            // 'DABdp' ist der Twindexx-Triebwagen (BR 445/446) bzw. KISS (in der App-API teilweise UNDEFINED)
             if (baureihe.toLowerCase().includes('f') || baureihe === 'DABdp') {
                 return 'control_car';
             }
@@ -84,4 +91,4 @@ export class Coach {
         }
         return result;
     }
-}
+}

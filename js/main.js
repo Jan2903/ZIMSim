@@ -35,13 +35,13 @@ function createDemoData() {
                     number: 543
                 },
                 coaches: [
-                    { type: 'control_car', length: 25, coachClass: 1, coachNumber: '37', amenities: [], open: true },
-                    { type: 'middle_car',  length: 25, coachClass: 1, coachNumber: '36', amenities: [], open: true },
-                    { type: 'middle_car',  length: 25, coachClass: 2, coachNumber: '35', amenities: [], open: true },
-                    { type: 'middle_car',  length: 25, coachClass: 2, coachNumber: '34', amenities: ['g'], open: true },
-                    { type: 'middle_car',  length: 25, coachClass: 2, coachNumber: '33', amenities: [], open: true },
-                    { type: 'middle_car',  length: 25, coachClass: 2, coachNumber: '32', amenities: [], open: true },
-                    { type: 'control_car', length: 25, coachClass: 2, coachNumber: '31', amenities: ['f'], open: true }
+                    { type: 'control_car', length: 25, coachClass: 1, wagonIdentificationNumber: 37, amenities: [], open: true },
+                    { type: 'middle_car',  length: 25, coachClass: 1, wagonIdentificationNumber: 36, amenities: [], open: true },
+                    { type: 'middle_car',  length: 25, coachClass: 2, wagonIdentificationNumber: 35, amenities: [], open: true },
+                    { type: 'middle_car',  length: 25, coachClass: 2, wagonIdentificationNumber: 34, amenities: ['g'], open: true },
+                    { type: 'middle_car',  length: 25, coachClass: 2, wagonIdentificationNumber: 33, amenities: [], open: true },
+                    { type: 'middle_car',  length: 25, coachClass: 2, wagonIdentificationNumber: 32, amenities: [], open: true },
+                    { type: 'control_car', length: 25, coachClass: 2, wagonIdentificationNumber: 31, amenities: ['f'], open: true }
                 ]
             }]
         }
@@ -66,13 +66,13 @@ function createDemoData() {
                     number: 553
                 },
                 coaches: [
-                    { type: 'control_car', length: 25, coachClass: 1, coachNumber: '27', amenities: [], open: true },
-                    { type: 'middle_car',  length: 25, coachClass: 1, coachNumber: '26', amenities: [], open: true },
-                    { type: 'middle_car',  length: 25, coachClass: 2, coachNumber: '25', amenities: [], open: true },
-                    { type: 'middle_car',  length: 25, coachClass: 2, coachNumber: '24', amenities: [], open: true },
-                    { type: 'middle_car',  length: 25, coachClass: 2, coachNumber: '23', amenities: ['g'], open: true },
-                    { type: 'middle_car',  length: 25, coachClass: 2, coachNumber: '22', amenities: [], open: true },
-                    { type: 'control_car', length: 25, coachClass: 2, coachNumber: '21', amenities: ['f'], open: true }
+                    { type: 'control_car', length: 25, coachClass: 1, wagonIdentificationNumber: 27, amenities: [], open: true },
+                    { type: 'middle_car',  length: 25, coachClass: 1, wagonIdentificationNumber: 26, amenities: [], open: true },
+                    { type: 'middle_car',  length: 25, coachClass: 2, wagonIdentificationNumber: 25, amenities: [], open: true },
+                    { type: 'middle_car',  length: 25, coachClass: 2, wagonIdentificationNumber: 24, amenities: [], open: true },
+                    { type: 'middle_car',  length: 25, coachClass: 2, wagonIdentificationNumber: 23, amenities: ['g'], open: true },
+                    { type: 'middle_car',  length: 25, coachClass: 2, wagonIdentificationNumber: 22, amenities: [], open: true },
+                    { type: 'control_car', length: 25, coachClass: 2, wagonIdentificationNumber: 21, amenities: ['f'], open: true }
                 ]
             }]
         }
@@ -101,24 +101,24 @@ function createDemoData() {
                     number: 2310
                 },
                 coaches: [
-                    { type: 'locomotive', length: 19.975, coachClass: null, coachNumber: '', amenities: [], open: true },
-                    { type: 'middle_car', length: 18.317, coachClass: 2, coachNumber: '1', amenities: ['f'], open: true },
-                    { type: 'middle_car', length: 13.3, coachClass: 2, coachNumber: '2', amenities: [], open: true },
-                    { type: 'middle_car', length: 13.3, coachClass: 2, coachNumber: '3', amenities: [], open: true },
-                    { type: 'middle_car', length: 13.3, coachClass: 2, coachNumber: '4', amenities: [], open: true },
-                    { type: 'middle_car', length: 13.3, coachClass: 2, coachNumber: '5', amenities: [], open: true },
-                    { type: 'middle_car', length: 13.3, coachClass: 2, coachNumber: '6', amenities: [], open: true },
-                    { type: 'middle_car', length: 13.3, coachClass: 2, coachNumber: '7', amenities: [], open: true },
-                    { type: 'middle_car', length: 13.3, coachClass: 2, coachNumber: '8', amenities: [], open: true },
-                    { type: 'middle_car', length: 13.3, coachClass: 2, coachNumber: '9', amenities: ['r'], open: true },
-                    { type: 'middle_car', length: 13.3, coachClass: 2, coachNumber: '10', amenities: [], open: true },
-                    { type: 'middle_car', length: 13.3, coachClass: 2, coachNumber: '11', amenities: [], open: true },
-                    { type: 'middle_car', length: 13.3, coachClass: 2, coachNumber: '12', amenities: [], open: true },
-                    { type: 'middle_car', length: 13.3, coachClass: 2, coachNumber: '13', amenities: ['r'], open: true },
-                    { type: 'middle_car', length: 13.3, coachClass: null, coachNumber: '14', amenities: ['g'], open: true },
-                    { type: 'middle_car', length: 13.3, coachClass: 1, coachNumber: '15', amenities: ['r'], open: true },
-                    { type: 'middle_car', length: 13.3, coachClass: 1, coachNumber: '16', amenities: [], open: true },
-                    { type: 'control_car', length: 18.33, coachClass: 1, coachNumber: '17', amenities: [], open: true }
+                    { type: 'locomotive', length: 19.975, coachClass: null, wagonIdentificationNumber: null, amenities: [], open: true },
+                    { type: 'middle_car', length: 18.317, coachClass: 2, wagonIdentificationNumber: 1, amenities: ['f'], open: true },
+                    { type: 'middle_car', length: 13.3, coachClass: 2, wagonIdentificationNumber: 2, amenities: [], open: true },
+                    { type: 'middle_car', length: 13.3, coachClass: 2, wagonIdentificationNumber: 3, amenities: [], open: true },
+                    { type: 'middle_car', length: 13.3, coachClass: 2, wagonIdentificationNumber: 4, amenities: [], open: true },
+                    { type: 'middle_car', length: 13.3, coachClass: 2, wagonIdentificationNumber: 5, amenities: [], open: true },
+                    { type: 'middle_car', length: 13.3, coachClass: 2, wagonIdentificationNumber: 6, amenities: [], open: true },
+                    { type: 'middle_car', length: 13.3, coachClass: 2, wagonIdentificationNumber: 7, amenities: [], open: true },
+                    { type: 'middle_car', length: 13.3, coachClass: 2, wagonIdentificationNumber: 8, amenities: [], open: true },
+                    { type: 'middle_car', length: 13.3, coachClass: 2, wagonIdentificationNumber: 9, amenities: ['r'], open: true },
+                    { type: 'middle_car', length: 13.3, coachClass: 2, wagonIdentificationNumber: 10, amenities: [], open: true },
+                    { type: 'middle_car', length: 13.3, coachClass: 2, wagonIdentificationNumber: 11, amenities: [], open: true },
+                    { type: 'middle_car', length: 13.3, coachClass: 2, wagonIdentificationNumber: 12, amenities: [], open: true },
+                    { type: 'middle_car', length: 13.3, coachClass: 2, wagonIdentificationNumber: 13, amenities: ['r'], open: true },
+                    { type: 'middle_car', length: 13.3, coachClass: null, wagonIdentificationNumber: 14, amenities: ['g'], open: true },
+                    { type: 'middle_car', length: 13.3, coachClass: 1, wagonIdentificationNumber: 15, amenities: ['r'], open: true },
+                    { type: 'middle_car', length: 13.3, coachClass: 1, wagonIdentificationNumber: 16, amenities: [], open: true },
+                    { type: 'control_car', length: 18.33, coachClass: 1, wagonIdentificationNumber: 17, amenities: [], open: true }
                 ]
             }]
         }

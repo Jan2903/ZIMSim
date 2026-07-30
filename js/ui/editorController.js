@@ -113,7 +113,7 @@ export function saveInlineFormation(journeyId, immediate = true) {
             const length = parseFloat(row.querySelector('[data-prop="length"]')?.value) || 25;
             let coachClass = row.querySelector('[data-prop="coachClass"]')?.value;
             coachClass = coachClass === 'null' ? null : parseInt(coachClass);
-            const coachNumber = row.querySelector('[data-prop="coachNumber"]')?.value || '';
+            const wagonIdentificationNumber = row.querySelector('[data-prop="wagonIdentificationNumber"]')?.value || '';
             const open = row.querySelector('[data-prop="open"]')?.checked || false;
 
             const amenities = [];
@@ -122,7 +122,7 @@ export function saveInlineFormation(journeyId, immediate = true) {
             });
 
             groupData.coaches.push(new Coach({
-                type, length, coachClass, coachNumber, open, amenities
+                type, length, coachClass, wagonIdentificationNumber, open, amenities
             }));
         });
 
