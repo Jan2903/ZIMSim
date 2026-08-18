@@ -272,20 +272,27 @@ export function drawFullscreenClassLabels(ctx, scaledCoaches, y) {
     }
 }
 
+function getAmenityIconProps(amenities) {
+    if (!amenities) return { imgKey: null, scale: 1 };
+    
+    if (amenities.includes('BOARD_RESTAURANT') || amenities.includes('DINING')) return { imgKey: 'wagenreihung_gastronomie', scale: 0.32 };
+    if (amenities.includes('BISTRO')) return { imgKey: 'wagenreihung_bistro', scale: 0.32 };
+    if (amenities.includes('SLEEPER')) return { imgKey: 'wagenreihung_schlafwagen', scale: 0.08 };
+    if (amenities.includes('COUCHETTE')) return { imgKey: 'wagenreihung_liegewagen', scale: 0.08 };
+    if ((amenities.includes('BIKE_SPACE') || amenities.includes('ZONE_MULTI_PURPOSE')) && amenities.includes('WHEELCHAIR_SPACE')) return { imgKey: 'wagenreihung_mehrzweck', scale: 0.28 };
+    if (amenities.includes('BIKE_SPACE')) return { imgKey: 'wagenreihung_fahrrad', scale: 0.06 };
+    if (amenities.includes('WHEELCHAIR_SPACE') || amenities.includes('TOILET_WHEELCHAIR')) return { imgKey: 'wagenreihung_rollstuhl', scale: 0.24 };
+    
+    return { imgKey: null, scale: 1 };
+}
+
 export function drawFullscreenAmenityIcons(ctx, scaledCoaches, y) {
     const parts = getTrainParts(scaledCoaches);
     for (const part of parts) {
         const items = [];
         for (const coach of part) {
             if (!coach.open) continue;
-            let imgKey, scale;
-            if (coach.amenities.includes('BOARD_RESTAURANT') || coach.amenities.includes('DINING')) { imgKey = 'wagenreihung_gastronomie'; scale = 0.32; }
-            else if (coach.amenities.includes('BISTRO')) { imgKey = 'wagenreihung_bistro'; scale = 0.32; }
-            else if (coach.amenities.includes('SLEEPER')) { imgKey = 'wagenreihung_schlafwagen'; scale = 0.28; }
-            else if (coach.amenities.includes('COUCHETTE')) { imgKey = 'wagenreihung_liegewagen'; scale = 0.28; }
-            else if (coach.amenities.includes('BIKE_SPACE')) { imgKey = 'wagenreihung_fahrrad'; scale = 0.28; }
-            else if (coach.amenities.includes('WHEELCHAIR_SPACE') || coach.amenities.includes('TOILET_WHEELCHAIR')) { imgKey = 'wagenreihung_rollstuhl'; scale = 0.24; }
-            else if (coach.amenities.includes('ZONE_MULTI_PURPOSE')) { imgKey = 'wagenreihung_mehrzweck'; scale = 0.28; }
+            const { imgKey, scale } = getAmenityIconProps(coach.amenities);
             
             const img = imgKey ? images[imgKey] : null;
             if (img && img.isLoaded && !img.isBroken) {
@@ -409,14 +416,7 @@ export function drawCompactAmenityIcons(ctx, scaledCoaches, y) {
             const center = (firstCoach.start + lastCoach.start + lastCoach.length) / 2;
             const amenities = firstCoach.amenities;
             
-            let imgKey, scale;
-            if (amenities.includes('BOARD_RESTAURANT') || amenities.includes('DINING')) { imgKey = 'wagenreihung_gastronomie'; scale = 0.32; }
-            else if (amenities.includes('BISTRO')) { imgKey = 'wagenreihung_bistro'; scale = 0.32; }
-            else if (amenities.includes('SLEEPER')) { imgKey = 'wagenreihung_schlafwagen'; scale = 0.28; }
-            else if (amenities.includes('COUCHETTE')) { imgKey = 'wagenreihung_liegewagen'; scale = 0.28; }
-            else if (amenities.includes('BIKE_SPACE')) { imgKey = 'wagenreihung_fahrrad'; scale = 0.28; }
-            else if (amenities.includes('WHEELCHAIR_SPACE') || amenities.includes('TOILET_WHEELCHAIR')) { imgKey = 'wagenreihung_rollstuhl'; scale = 0.24; }
-            else if (amenities.includes('ZONE_MULTI_PURPOSE')) { imgKey = 'wagenreihung_mehrzweck'; scale = 0.28; }
+            const { imgKey, scale } = getAmenityIconProps(amenities);
             
             const img = imgKey ? images[imgKey] : null;
             if (img && img.isLoaded && !img.isBroken) {

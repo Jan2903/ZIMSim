@@ -9,16 +9,26 @@ export function preloadImages() {
     const promises = pictogramNames.map(name => {
         return new Promise((resolve) => {
             images[name] = new Image();
-            images[name].src = `images/icons/${name}.png`;
+            let triedSvg = false;
+            
             images[name].onload = () => {
                 images[name].isLoaded = true;
                 resolve();
             };
+            
             images[name].onerror = () => {
-                console.warn(`Failed to load image: images/icons/${name}.png`);
-                images[name].isBroken = true;
-                resolve(); // Resolve even on error so Promise.all doesn't reject
+                if (!triedSvg) {
+                    triedSvg = true;
+                    images[name].src = `images/icons/${name}.png`;
+                } else {
+                    console.warn(`Failed to load image: images/icons/${name} (.svg and .png)`);
+                    images[name].isBroken = true;
+                    resolve();
+                }
             };
+
+            // Start loading with SVG
+            images[name].src = `images/icons/${name}.svg`;
         });
     });
     return Promise.all(promises);
@@ -64,4 +74,4 @@ export function debounce(func, wait) {
             func.apply(context, args);
         }, wait);
     };
-}
+}

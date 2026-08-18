@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600" width="1000px" height="600px">
+  
+  <g fill="#ffffff" stroke="none">
+    
+    <!-- Das Kopfkissen -->
+    <!-- Startet oben links, geht gerade nach rechts, macht eine perfekte Kurve nach unten rechts und schließt ab -->
+    <path d="M 100 150 H 220 C 300 150, 350 200, 350 300 H 100 Z" />
+    
+    <!-- Das Bett (Matratze und Beine) -->
+    <!-- Zeichnet das Bett in einer einzigen, durchgehenden Linie -->
+    <path d="M 100 330 H 900 V 500 H 820 V 410 H 180 V 500 H 100 Z" />
+    
+  </g>
+</svg>
