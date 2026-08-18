@@ -40,7 +40,7 @@ export class TrainDisplay {
         this.currentScreen = screen;
         const canvas = targetCanvas || document.getElementById('zimCanvas');
         if (!canvas) return;
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
         if (!screen) return;
 
         ctx.save();
@@ -297,7 +297,7 @@ export class TrainDisplay {
                 this.offscreenCanvas.height = this.currentLayout.height;
             }
 
-            this.ctx = this.offscreenCanvas.getContext('2d');
+            this.ctx = this.offscreenCanvas.getContext('2d', { willReadFrequently: true });
             this.drawFullBackground();
 
             this._renderDynamicScreens('static', this.offscreenCanvas);
@@ -315,7 +315,7 @@ export class TrainDisplay {
         const canvas = document.getElementById('zimCanvas');
         if (!canvas) return;
         
-        const mainCtx = canvas.getContext('2d');
+        const mainCtx = canvas.getContext('2d', { willReadFrequently: true });
         mainCtx.clearRect(0, 0, canvas.width, canvas.height);
         mainCtx.drawImage(this.offscreenCanvas, 0, 0);
 
