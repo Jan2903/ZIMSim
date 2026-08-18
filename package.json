@@ -1,0 +1,35 @@
+{
+  "name": "zimsim",
+  "version": "1.0.0",
+  "description": "Simulation of a Deutsche Bahn (DB) train display (ZugInfoMonitor / ZIM)",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "tauri": "tauri"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Jan2903/ZIMSim.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/Jan2903/ZIMSim/issues"
+  },
+  "homepage": "https://github.com/Jan2903/ZIMSim#readme",
+  "devDependencies": {
+    "@tauri-apps/api": "^2.11.1",
+    "@tauri-apps/cli": "^2.11.4",
+    "vite": "^8.2.1"
+  },
+  "dependencies": {
+    "@tauri-apps/plugin-http": "^2.5.9"
+  }
+}
