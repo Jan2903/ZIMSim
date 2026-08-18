@@ -18,8 +18,8 @@ export default defineConfig({
     },
   },
   build: {
-    // Tauri supports es2021
-    target: process.env.TAURI_PLATFORM == 'windows' ? 'chrome105' : 'safari13',
+    // Modern target to avoid esbuild transpilation errors with destructuring
+    target: 'esnext',
     // don't minify for debug builds
     minify: !process.env.TAURI_DEBUG ? 'esbuild' : false,
     // produce sourcemaps for debug builds
