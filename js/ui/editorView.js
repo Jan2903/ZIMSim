@@ -55,8 +55,8 @@ export function renderFormationGroup(group, gIndex, journeyId) {
 }
 
 export function renderCoachRow(coach, index, gIndex = 0) {
-    const amenityTypes = ['f', 'r', 'g', 'm'];
-    const amenityLabels = { f: '🚲', r: '♿', g: '🍽️', m: '📦' };
+    const amenityTypes = ['BIKE_SPACE', 'WHEELCHAIR_SPACE', 'BOARD_RESTAURANT', 'ZONE_MULTI_PURPOSE'];
+    const amenityLabels = { 'BIKE_SPACE': '🚲', 'WHEELCHAIR_SPACE': '♿', 'BOARD_RESTAURANT': '🍽️', 'ZONE_MULTI_PURPOSE': '📦' };
     const amenityChecks = amenityTypes.map(a =>
         `<label title="${a}"><input type="checkbox" class="f-prop amenity-check" data-amenity="${a}" ${coach.hasAmenity(a) ? 'checked' : ''}> ${amenityLabels[a]}</label>`
     ).join('');
