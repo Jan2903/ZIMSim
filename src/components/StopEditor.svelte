@@ -31,13 +31,6 @@
         triggerUpdate();
     }
 
-    // Assign IDs for dndzone since Stop might not have an `id` field initially
-    // We do it reactively or just inject it
-    $effect(() => {
-        journey.stops.forEach(s => {
-            if (!s.id) s.id = crypto.randomUUID();
-        });
-    });
 </script>
 
 {#if !journey.stops || journey.stops.length === 0}
