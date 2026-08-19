@@ -6,8 +6,10 @@
 
     let { journey } = $props();
     
-    let selectedPreset = $state('');
     let qPresets = $state([]);
+    let inputText = $state('');
+    let showDropdown = $state(false);
+    let inputRef = $state();
 
     // We only load presets on mount or when module evaluates
     $effect(() => {
@@ -15,6 +17,15 @@
     });
 
     const flipDurationMs = 200;
+
+    let filteredPresets = $derived.by(() => {
+        const query = inputText.toLowerCase();
+        if (!query) return qPresets;
+        return qPresets.filter(p => 
+            p.text.toLowerCase().includes(query) || 
+            (p.code && p.code.toLowerCase().includes(query))
+        );
+    });
 
     function handleDndConsider(e) {
         journey.infoTexts = e.detail.items;
@@ -29,26 +40,22 @@
         trainDisplay.updateAll();
     }
 
-    function addManual() {
+    function addText() {
+        if (!inputText.trim()) return;
         journey.infoTexts.push({
             id: crypto.randomUUID(),
-            text: '',
+            text: inputText.trim(),
             visible: true,
             type: 'custom'
         });
+        inputText = '';
+        showDropdown = false;
         triggerUpdate();
     }
 
-    function addPreset() {
-        if (!selectedPreset) return;
-        journey.infoTexts.push({
-            id: crypto.randomUUID(),
-            text: selectedPreset,
-            visible: true,
-            type: 'Q'
-        });
-        selectedPreset = '';
-        triggerUpdate();
+    function selectPreset(presetText) {
+        inputText = presetText;
+        addText();
     }
 
     function removeText(info) {
@@ -64,7 +71,6 @@
 
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
     <span style="font-size: 0.9em; color: var(--text-muted);">Lauftext / Info-Bausteine:</span>
-    <button class="btn-secondary btn-sm" onclick={addManual}>+ Manuell</button>
 </div>
 
 <div class="info-editor-list" style="border: 1px solid var(--border); border-radius: 5px; background: transparent; padding: 5px; margin-bottom: 5px;">
@@ -87,13 +93,39 @@
         </div>
     {/if}
 
-    <div style="display: flex; gap: 5px; margin-top: 10px;">
-        <select class="jfield" style="flex: 1;" bind:value={selectedPreset}>
-            <option value="">-- Preset wählen --</option>
-            {#each qPresets as p}
-                <option value={p.text}>{p.code}: {p.text}</option>
-            {/each}
-        </select>
-        <button class="btn-secondary btn-sm" onclick={addPreset}>Hinzufügen</button>
+    <div style="display: flex; gap: 5px; margin-top: 10px; position: relative;">
+        <div style="position: relative; flex: 1; display: flex;">
+            <input type="text" class="jfield" style="flex: 1; margin: 0; padding-right: 30px;"
+                   placeholder="Lauftext eingeben oder Preset (ID/Text) suchen..."
+                   bind:this={inputRef}
+                   bind:value={inputText}
+                   onfocus={() => showDropdown = true}
+                   onblur={() => setTimeout(() => showDropdown = false, 200)}
+                   onkeydown={(e) => { if(e.key === 'Enter') { e.preventDefault(); addText(); } }}>
+            <button class="btn-icon" style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%); cursor: pointer; background: none; border: none; font-size: 12px; color: var(--text-muted);" 
+                    onmousedown={(e) => { 
+                        e.preventDefault(); 
+                        if (showDropdown) { showDropdown = false; } 
+                        else { showDropdown = true; inputRef?.focus(); }
+                    }} tabindex="-1">
+                ▼
+            </button>
+        </div>
+        <button class="btn-secondary btn-sm" onclick={addText}>Hinzufügen</button>
+        
+        {#if showDropdown}
+            <ul class="autocomplete-list active" style="position: absolute; top: 100%; left: 0; right: 80px; z-index: 1000; max-height: 200px; overflow-y: auto; background: var(--bg-panel); border: 1px solid var(--border-color); list-style: none; padding: 0; margin: 0; border-radius: 4px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+                {#if filteredPresets.length === 0}
+                    <li class="autocomplete-item" style="padding: 8px; color: #888;">Keine Presets gefunden. Drücke Enter für manuellen Text.</li>
+                {:else}
+                    {#each filteredPresets as p}
+                        <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+                        <li class="autocomplete-item" style="padding: 8px; cursor: pointer; border-bottom: 1px solid var(--border-color);" onmousedown={(e) => { e.preventDefault(); selectPreset(p.text); }}>
+                            <strong style="color: var(--text-primary);">{p.code}</strong>: {p.text}
+                        </li>
+                    {/each}
+                {/if}
+            </ul>
+        {/if}
     </div>
 </div>

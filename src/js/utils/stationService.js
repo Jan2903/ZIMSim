@@ -1,3 +1,5 @@
+import { journeyStore } from '../main.js';
+
 export class StationService {
     static stations = [];
     static isLoaded = false;
@@ -63,16 +65,20 @@ export class StationService {
         
         const lowerQuery = query.toLowerCase();
         
+        // Kombiniere statische und custom Stationen
+        const allStations = [...this.stations, ...journeyStore.customStations];
+        
         // Filtere die Stationen
         const results = [];
-        for (const station of this.stations) {
+        for (const station of allStations) {
             
             // Suche in Name, Aliasen, Name kurz, DS100 und IBNR
-            const matchesAlias = station.aliases.some(alias => alias.toLowerCase().includes(lowerQuery));
+            const matchesAlias = (station.aliases || []).some(alias => alias.toLowerCase().includes(lowerQuery));
             if (matchesAlias ||
-                station.nameKurz.toLowerCase().includes(lowerQuery) ||
-                station.ds100.toLowerCase().includes(lowerQuery) ||
-                station.ibnr.includes(lowerQuery)) {
+                (station.nameKurz && station.nameKurz.toLowerCase().includes(lowerQuery)) ||
+                (station.ds100 && station.ds100.toLowerCase().includes(lowerQuery)) ||
+                (station.ibnr && station.ibnr.includes(lowerQuery)) ||
+                (station.name && station.name.toLowerCase().includes(lowerQuery))) {
                 
                 results.push(station);
             }
@@ -99,17 +105,18 @@ export class StationService {
      * @returns {object|null}
      */
     static getStationByIdOrName(extId, name) {
-        if (!this.stations || this.stations.length === 0) return null;
+        const allStations = [...this.stations, ...journeyStore.customStations];
+        if (!allStations || allStations.length === 0) return null;
         
         let found = null;
         if (extId) {
-            found = this.stations.find(s => s.ibnr === extId);
+            found = allStations.find(s => s.ibnr === extId);
         }
         if (!found && name) {
             const normName = this.normalizeName(name);
-            found = this.stations.find(s => {
-                const matchesAlias = s.aliases.some(alias => this.normalizeName(alias) === normName);
-                return matchesAlias || this.normalizeName(s.nameKurz) === normName;
+            found = allStations.find(s => {
+                const matchesAlias = (s.aliases || []).some(alias => this.normalizeName(alias) === normName);
+                return matchesAlias || this.normalizeName(s.nameKurz) === normName || this.normalizeName(s.name) === normName;
             });
         }
         return found;

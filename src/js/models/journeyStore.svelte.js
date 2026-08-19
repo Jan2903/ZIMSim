@@ -34,7 +34,27 @@ export class JourneyStore {
     // Gleis Filter
     activeTracks = $state([]);
 
+    // Eigene vom User angelegte Stationen
+    customStations = $state([]);
+
     constructor() {}
+
+    /**
+     * Fügt eine neue benutzerdefinierte Station hinzu.
+     */
+    addCustomStation(name) {
+        const id = 'custom-' + crypto.randomUUID().split('-')[0];
+        const newStation = {
+            ibnr: id,
+            name: name,
+            aliases: [],
+            nameKurz: name.substring(0, 15),
+            ds100: 'X' + name.substring(0, 3).toUpperCase(),
+            kategorie: 7
+        };
+        this.customStations.push(newStation);
+        return newStation;
+    }
 
     // ==========================================
     // Journey CRUD
@@ -731,7 +751,8 @@ export class JourneyStore {
             journeys: this.journeys,
             nrwMode: this.nrwMode,
             activeTracks: this.activeTracks,
-            platforms: this.platforms
+            platforms: this.platforms,
+            customStations: this.customStations
         };
     }
 
@@ -742,6 +763,7 @@ export class JourneyStore {
     importAll(data) {
         this.nrwMode = data.nrwMode || false;
         this.activeTracks = data.activeTracks || [];
+        this.customStations = data.customStations || [];
 
         if (data.platforms) {
             this.platforms = {};

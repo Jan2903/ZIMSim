@@ -3,8 +3,62 @@
     import { uiState } from '../js/models/uiState.svelte.js';
     import InfoTextEditor from './InfoTextEditor.svelte';
     import StopEditor from './StopEditor.svelte';
+    import StationPicker from './StationPicker.svelte';
+    import { portalDropdown } from '../js/utils/portal.js';
 
     let { journey } = $props();
+    
+    // Autocomplete State
+    let linkSearchText = $state('');
+    let showLinkDropdown = $state(false);
+    let linkWrapperRef = $state();
+
+    // Initialen Text setzen
+    $effect(() => {
+        if (journey.linkedArrivalJourneyId) {
+            const linked = journeyStore.getJourney(journey.linkedArrivalJourneyId);
+            if (linked) {
+                linkSearchText = `${linked.effectiveDisplayName} (${linked.scheduledTime})`;
+            } else {
+                linkSearchText = journey.linkedArrivalJourneyId;
+            }
+        } else {
+            linkSearchText = '';
+        }
+    });
+
+    // Filter-Logik für Autocomplete
+    let filteredJourneys = $derived.by(() => {
+        const query = linkSearchText.toLowerCase();
+        let list = journeyStore.journeys.filter(j => j.id !== journey.id);
+        
+        // Wenn ein Query existiert und nicht exakt dem ausgewählten Text entspricht
+        if (query) {
+            const selectedMatch = journey.linkedArrivalJourneyId ? journeyStore.getJourney(journey.linkedArrivalJourneyId) : null;
+            const selectedString = selectedMatch ? `${selectedMatch.effectiveDisplayName} (${selectedMatch.scheduledTime})`.toLowerCase() : '';
+            
+            if (query !== selectedString) {
+                list = list.filter(j => 
+                    (j.effectiveDisplayName && j.effectiveDisplayName.toLowerCase().includes(query)) ||
+                    (j.destination && j.destination.toLowerCase().includes(query)) ||
+                    (j.scheduledTime && j.scheduledTime.includes(query))
+                );
+            }
+        }
+        return list;
+    });
+
+    function setLinkedJourney(targetJourney) {
+        if (!targetJourney) {
+            journey.linkedArrivalJourneyId = null;
+            linkSearchText = '';
+        } else {
+            journey.linkedArrivalJourneyId = targetJourney.id;
+            linkSearchText = `${targetJourney.effectiveDisplayName} (${targetJourney.scheduledTime})`;
+        }
+        showLinkDropdown = false;
+        triggerUpdate();
+    }
 
     function triggerUpdate() {
         trainDisplay.updateAll();
@@ -41,10 +95,16 @@
     }
 
     function addStop() {
-        import('../js/models/stop.js').then(module => {
+        import('../js/models/stop.svelte.js').then(module => {
             journey.stops.push(new module.Stop({ id: crypto.randomUUID(), name: '' }));
             triggerUpdate();
         });
+    }
+
+    function onDestinationSelect(station) {
+        journey.destinationLang = station.name;
+        journey.destinationKurz = station.nameKurz;
+        triggerUpdate();
     }
 </script>
 
@@ -57,26 +117,51 @@
                 <label style="margin-left: 15px;">Anzeigename (Override): <input type="text" class="jfield" bind:value={journey.displayNameOverride} oninput={triggerUpdate} placeholder={journey.name || 'auto'}></label>
             </div>
             <div class="detail-row">
-                <label>Ziel: <input type="text" class="jfield" bind:value={journey.destination} oninput={triggerUpdate}></label>
+                <label>Ziel (Station): 
+                    <div style="display: inline-block; width: 200px;">
+                        <StationPicker bind:value={journey.destination} placeholder="Station suchen..." onSelect={onDestinationSelect} />
+                    </div>
+                </label>
+                <label style="margin-left: 15px;">Anzeige (Override): 
+                    <input type="text" class="jfield" bind:value={journey.destinationOverride} oninput={triggerUpdate} placeholder={journey.destination || 'Auto'}>
+                </label>
             </div>
             <div class="detail-row">
                 <label>Abfahrt/Ankunft: <input type="text" class="jfield short-input" bind:value={journey.scheduledTime} oninput={triggerUpdate}></label>
-                <label>Echtzeit: <input type="text" class="jfield short-input" bind:value={journey.expectedTime} oninput={triggerUpdate}></label>
-                <label>Gleis (Plan): <input type="text" class="jfield short-input" bind:value={journey.platform} oninput={triggerUpdate}></label>
-                <label>Echtzeit-Gleis: <input type="text" class="jfield short-input" bind:value={journey.ezGleis} oninput={triggerUpdate}></label>
+                <label style="margin-left: 15px;">Erwartet: <input type="text" class="jfield short-input" bind:value={journey.expectedTime} oninput={triggerUpdate} placeholder="optional"></label>
+                <label style="margin-left: 15px;">Grund: <input type="text" class="jfield" bind:value={journey.delayReason} oninput={triggerUpdate} style="width: 100px;" placeholder="z.B. 10"></label>
             </div>
-            {#if !journey.ankunft}
             <div class="detail-row">
-                <label>Verknüpfte Ankunft (Fahrzeugtausch/Wende): 
-                    <select class="jfield" bind:value={journey.linkedArrivalJourneyId} onchange={triggerUpdate} style="max-width: 300px;">
-                        <option value={null}>-- Keine Verknüpfung --</option>
-                        {#each journeyStore.journeys.filter(j => j.ankunft) as a}
-                            <option value={a.id}>{a.effectiveDisplayName} ({a.scheduledTime}) - Gl. {a.ezGleis || a.platform}</option>
-                        {/each}
-                    </select>
+                <label>Gleis: <input type="text" class="jfield short-input" bind:value={journey.platform} oninput={triggerUpdate}></label>
+                <label style="margin-left: 15px;">Abschnitte: <input type="text" class="jfield short-input" bind:value={journey.sectors} oninput={triggerUpdate} placeholder="A-C"></label>
+                <label style="margin-left: 15px;">Echtzeit-Gleis: <input type="text" class="jfield short-input" bind:value={journey.ezGleis} oninput={triggerUpdate}></label>
+            </div>
+            <div class="detail-row">
+                <label>Verknüpfte Fahrt (Fahrzeugtausch/Wende):
+                    <div bind:this={linkWrapperRef} style="position: relative; display: inline-block; width: 300px; margin-left: 10px;">
+                        <input type="text" class="jfield" style="width: 100%; margin: 0;"
+                               placeholder="Zug suchen (Name, Ziel, Zeit)..."
+                               bind:value={linkSearchText}
+                               onfocus={() => showLinkDropdown = true}
+                               onblur={() => setTimeout(() => showLinkDropdown = false, 200)}>
+                               
+                        {#if showLinkDropdown}
+                            <ul use:portalDropdown={linkWrapperRef} class="autocomplete-list active" style="max-height: 200px; overflow-y: auto; background-color: var(--bg-panel, #2b2b2b); border: 1px solid var(--border-color, #444); list-style: none; padding: 0; margin: 0; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+                                <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+                                <!-- svelte-ignore a11y_click_events_have_key_events -->
+                                <li class="autocomplete-item" style="padding: 8px; cursor: pointer; border-bottom: 1px solid var(--border-color, #444);" onclick={() => setLinkedJourney(null)}>-- Keine Verknüpfung --</li>
+                                {#each filteredJourneys as a}
+                                    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+                                    <!-- svelte-ignore a11y_click_events_have_key_events -->
+                                    <li class="autocomplete-item" style="padding: 8px; cursor: pointer; border-bottom: 1px solid var(--border-color, #444);" onclick={() => setLinkedJourney(a)}>
+                                        {a.effectiveDisplayName} ({a.scheduledTime}) - Gl. {a.ezGleis || a.platform}
+                                    </li>
+                                {/each}
+                            </ul>
+                        {/if}
+                    </div>
                 </label>
             </div>
-            {/if}
         </div>
         
         <div class="detail-section">

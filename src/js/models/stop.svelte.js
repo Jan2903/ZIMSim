@@ -1,4 +1,4 @@
-// js/models/stop.js
+// js/models/stop.svelte.js
 import { StationService } from '../utils/stationService.js';
 
 /**
@@ -6,6 +6,25 @@ import { StationService } from '../utils/stationService.js';
  * Enthält Zeitdaten, Gleis, Kategorie/Nummer (pro Halt änderbar) und Meldungen.
  */
 export class Stop {
+    id = $state('');
+    name = $state('');
+    extId = $state('');
+    departure = $state(null);
+    arrival = $state(null);
+    platform = $state('');
+    ezGleis = $state('');
+    cancelled = $state(false);
+    additional = $state(false);
+    category = $state('');
+    number = $state('');
+    line = $state('');
+    routeIndex = $state(-1);
+    showAsVia = $state(false);
+    nameKurz = $state('');
+    stationCategory = $state(99);
+    boardingType = $state(null);
+    messages = $state([]);
+
     constructor(data = {}) {
         this.id = data.id || crypto.randomUUID();
         this.name = data.name || '';
@@ -56,6 +75,29 @@ export class Stop {
             text: m.text || '',
             type: m.type || ''
         }));
+    }
+
+    toJSON() {
+        return {
+            id: this.id,
+            name: this.name,
+            extId: this.extId,
+            departure: this.departure,
+            arrival: this.arrival,
+            platform: this.platform,
+            ezGleis: this.ezGleis,
+            cancelled: this.cancelled,
+            additional: this.additional,
+            category: this.category,
+            number: this.number,
+            line: this.line,
+            routeIndex: this.routeIndex,
+            showAsVia: this.showAsVia,
+            nameKurz: this.nameKurz,
+            stationCategory: this.stationCategory,
+            boardingType: this.boardingType,
+            messages: this.messages
+        };
     }
 
     /**

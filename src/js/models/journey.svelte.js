@@ -1,5 +1,5 @@
 // js/models/journey.js
-import { Stop } from './stop.js';
+import { Stop } from './stop.svelte.js';
 import { Formation } from './formation.js';
 import { parseTrainName, formatDisplayName } from '../utils/trainNumberFormatter.js';
 import { RisTextService } from '../utils/risTextService.js';
@@ -20,6 +20,7 @@ export class Journey {
     operator = $state('');
     displayNameOverride = $state('');
     destination = $state('');
+    destinationOverride = $state('');
     destinationLang = $state('');
     destinationKurz = $state('');
     scheduledTime = $state('');
@@ -60,6 +61,7 @@ export class Journey {
 
         // === Ziel ===
         this.destination = data.destination || '';
+        this.destinationOverride = data.destinationOverride || '';
         this.destinationLang = data.destinationLang || this.destination;
         this.destinationKurz = data.destinationKurz || this.destination;
 
@@ -141,6 +143,50 @@ export class Journey {
 
         // === Erweiterte Metadaten ===
         this.zugattribute = data.zugattribute || [];   // Zug-Attribute aus DB API
+    }
+
+    /**
+     * Svelte 5 $state Eigenschaften werden als Getter/Setter implementiert
+     * und von JSON.stringify standardmäßig ignoriert.
+     * Diese toJSON-Methode stellt sicher, dass alle Daten korrekt exportiert werden.
+     */
+    toJSON() {
+        return {
+            id: this.id,
+            journeyId: this.journeyId,
+            name: this.name,
+            produktGattung: this.produktGattung,
+            operator: this.operator,
+            displayNameOverride: this.displayNameOverride,
+            destination: this.destination,
+            destinationOverride: this.destinationOverride,
+            destinationLang: this.destinationLang,
+            destinationKurz: this.destinationKurz,
+            scheduledTime: this.scheduledTime,
+            expectedTime: this.expectedTime,
+            platform: this.platform,
+            sectors: this.sectors,
+            infoTexts: this.infoTexts,
+            delayReason: this.delayReason,
+            direction: this.direction,
+            startMeter: this.startMeter,
+            skalieren: this.skalieren,
+            scaleFactor: this.scaleFactor,
+            formation: this.formation,
+            ezGleis: this.ezGleis,
+            verkehrtAb: this.verkehrtAb,
+            infoscreen: this.infoscreen,
+            ausfall: this.ausfall,
+            ankunft: this.ankunft,
+            visible: this.visible,
+            displaySlot: this.displaySlot,
+            couplingGroupId: this.couplingGroupId,
+            linkedArrivalJourneyId: this.linkedArrivalJourneyId,
+            messages: this.messages,
+            stops: this.stops,
+            _currentStopIndex: this._currentStopIndex,
+            zugattribute: this.zugattribute
+        };
     }
 
     // ==========================================
@@ -230,6 +276,16 @@ export class Journey {
     /** Effektiver Display-Name: Override oder auto-generiert */
     get effectiveDisplayName() {
         return this.displayNameOverride || this.name;
+    }
+
+    /** Effektives Ziel: Override oder auto-generiert */
+    get effectiveDestination() {
+        return this.destinationOverride || this.destinationLang || this.destination;
+    }
+
+    /** Effektives Kurz-Ziel (für Lauftext / Platzmangel): Override oder auto-generiert */
+    get effectiveDestinationKurz() {
+        return this.destinationOverride || this.destinationKurz || this.destination;
     }
 
     /** Ist die Fahrt komplett ausgefallen? */
