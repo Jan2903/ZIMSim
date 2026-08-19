@@ -1,9 +1,9 @@
 // js/main.js
-import { JourneyStore } from './models/journeyStore.js';
+import { JourneyStore } from './models/journeyStore.svelte.js';
 import { Journey } from './models/journey.js';
 import { Formation } from './models/formation.js';
 import { TrainDisplay } from './displays/trainDisplay.js';
-import { initEvents } from './events.js';
+
 import { preloadImages } from './utils/utils.js';
 import { StationService } from './utils/stationService.js';
 import { RisTextService } from './utils/risTextService.js';
@@ -125,15 +125,22 @@ function createDemoData() {
     });
 }
 
+import { mount } from 'svelte';
+import App from '../App.svelte';
+
 // Warten, bis das DOM vollständig geladen ist
 document.addEventListener('DOMContentLoaded', () => {
     createDemoData();
     StationService.loadStations(); // Asynchrones Laden im Hintergrund starten
     RisTextService.load(); // Lade RIS-Texte
-    initEvents();
+    
     preloadImages().then(() => {
         document.fonts.ready.then(() => {
             trainDisplay.updateAll();
         });
+    });
+
+    mount(App, {
+        target: document.getElementById('app')
     });
 });

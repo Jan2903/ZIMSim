@@ -12,29 +12,29 @@ import { parseTrack, sectionsOverlap } from '../utils/trackUtils.js';
  * Display-Zuweisungen und Coupling.
  */
 export class JourneyStore {
-    constructor() {
-        // Station-Kontext
-        this.stationContext = {
-            stationName: '',
-            stationId: '',
-            platform: new Platform()
-        };
+    // Station-Kontext
+    stationContext = $state({
+        stationName: '',
+        stationId: '',
+        platform: new Platform()
+    });
 
-        // Speichert importierte Bahnsteigkonfigurationen (Key: Gleisbezeichnung)
-        this.platforms = {};
+    // Speichert importierte Bahnsteigkonfigurationen (Key: Gleisbezeichnung)
+    platforms = $state({});
 
-        // Dynamische Journey-Liste (keine feste Anzahl)
-        this.journeys = [];
+    // Dynamische Journey-Liste (keine feste Anzahl)
+    journeys = $state([]);
 
-        // NRW-Modus (global)
-        this.nrwMode = false;
+    // NRW-Modus (global)
+    nrwMode = $state(false);
 
-        // Verkehrsmittel Filter
-        this.activeMots = [...MOT_ALL_KEYS];
+    // Verkehrsmittel Filter
+    activeMots = $state([...MOT_ALL_KEYS]);
 
-        // Gleis Filter
-        this.activeTracks = [];
-    }
+    // Gleis Filter
+    activeTracks = $state([]);
+
+    constructor() {}
 
     // ==========================================
     // Journey CRUD
