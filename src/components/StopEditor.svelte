@@ -2,7 +2,8 @@
     import { trainDisplay } from '../js/main.js';
     import { dndzone } from 'svelte-dnd-action';
     import { flip } from 'svelte/animate';
-    import { Stop } from '../js/models/stop.js';
+    import { Stop } from '../js/models/stop.svelte.js';
+    import StationPicker from './StationPicker.svelte';
 
     let { journey } = $props();
 
@@ -31,6 +32,13 @@
         triggerUpdate();
     }
 
+    function onStopStationSelect(stop, station) {
+        stop.name = station.name;
+        stop.nameKurz = station.nameKurz;
+        stop.extId = station.ibnr || station.eva;
+        stop.stationCategory = station.kategorie || 99;
+        triggerUpdate();
+    }
 </script>
 
 {#if !journey.stops || journey.stops.length === 0}
@@ -48,7 +56,14 @@
                         {stop.showAsVia ? '👁️' : '○'}
                     </button>
                     
-                    <input type="text" class="s-prop short-input" bind:value={stop.name} oninput={triggerUpdate} placeholder="Name" title="Bahnhofsname" style="flex: 2;">
+                    <div style="flex: 2; min-width: 150px; position: relative;">
+                        <StationPicker 
+                            bind:value={stop.name} 
+                            placeholder="Name"
+                            cssClass="s-prop short-input" 
+                            onSelect={(station) => onStopStationSelect(stop, station)} 
+                        />
+                    </div>
                     
                     <input type="text" class="s-prop short-input" bind:value={stop.nameKurz} oninput={triggerUpdate} placeholder="Kurz" title="Kurzname (Via)" style="flex: 1;">
                     <input type="text" class="s-prop short-input" bind:value={stop.arrivalTime} oninput={triggerUpdate} placeholder="An" title="Ankunft" style="width: 50px;">

@@ -2,18 +2,52 @@
     import { journeyStore, trainDisplay } from '../js/main.js';
     import { StationService } from '../js/utils/stationService.js';
     import JourneyList from './JourneyList.svelte';
+    import StationPicker from './StationPicker.svelte';
+    import { setSimulatedTime, getSimulatedTime, timeConfig, config } from '../js/utils/config.js';
+    import { MOT_PRESETS, getSmartHeaderString, MOT_ALL_KEYS } from '../js/utils/motManager.js';
     
     let { modalsComp } = $props();
 
     // Derived values for the UI
     let entry_station_search = $state('');
-    let searchResults = $state([]);
-    let isPerformanceMode = $state(false);
-    let autoUpdateTime = $state(true);
+    let isPerformanceMode = $state(config.performance_mode);
+    let autoUpdateTime = $state(timeConfig.isRunning);
     
-    // We bind standard inputs directly
-    // Notice how we use bind:value or onchange
+    // Time logic
+    let customTimeString = $state('');
     
+    // Init customTimeString without triggering timezone issues, keeping it simple
+    function formatForInput(date) {
+        return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 19);
+    }
+    
+    $effect(() => {
+        config.performance_mode = isPerformanceMode;
+        localStorage.setItem('zimsim_performance_mode', isPerformanceMode);
+    });
+
+    $effect(() => {
+        timeConfig.isRunning = autoUpdateTime;
+        
+        let interval;
+        if (autoUpdateTime) {
+            // Update the input field every second when auto update is on
+            interval = setInterval(() => {
+                customTimeString = formatForInput(getSimulatedTime());
+            }, 1000);
+        }
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    });
+    
+    // Fallback: Initial time setup
+    $effect(() => {
+        if (!customTimeString && !autoUpdateTime) {
+            customTimeString = formatForInput(getSimulatedTime());
+        }
+    });
+
     function addManualJourney() {
         journeyStore.addJourney();
     }
@@ -27,25 +61,101 @@
         trainDisplay.onFeatureButtonChange(event.target.value);
     }
     
-    // Search station Logic (simplified from events.js)
-    let searchTimeout;
-    function onStationSearchInput(e) {
-        entry_station_search = e.target.value;
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            if (entry_station_search.length >= 3) {
-                searchResults = StationService.searchStations(entry_station_search);
-            } else {
-                searchResults = [];
-            }
-        }, 300);
-    }
-    
     function selectStation(station) {
         entry_station_search = station.name;
         journeyStore.stationContext.stationName = station.name;
-        journeyStore.stationContext.stationId = station.eva;
-        searchResults = [];
+        // In the CSV, it's ibnr, but getStationByIdOrName returned something.
+        // Wait, the API/old code used `station.eva`. `StationService.searchStations` returns `{ibnr, ...}`.
+        journeyStore.stationContext.stationId = station.ibnr || station.eva;
+    }
+
+    function setCurrentTime() {
+        setSimulatedTime(new Date());
+        customTimeString = formatForInput(getSimulatedTime());
+    }
+
+    function onCustomTimeChange(e) {
+        if (e.target.value) {
+            setSimulatedTime(new Date(e.target.value));
+            customTimeString = e.target.value;
+        }
+    }
+
+    function setMotPreset(preset) {
+        journeyStore.activeMots = [...MOT_PRESETS[preset]];
+        trainDisplay.updateAll();
+    }
+
+    let motSummary = $derived(getSmartHeaderString(journeyStore.activeMots));
+    
+    // Dynamically build track list, including both active (manually added) and those in journeys
+    let allAvailableTracks = $derived.by(() => {
+        const fromJourneys = journeyStore.getAllTracks();
+        const all = new Set([...fromJourneys, ...journeyStore.activeTracks]);
+        return Array.from(all).sort((a, b) => {
+            return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+        });
+    });
+    
+    let trackSummary = $derived(journeyStore.activeTracks.length === 0 ? 'Gleise: Alle' : `Gleise: ${journeyStore.activeTracks.length} ausgewählt`);
+
+    function toggleTrack(track) {
+        if (journeyStore.activeTracks.includes(track)) {
+            journeyStore.activeTracks = journeyStore.activeTracks.filter(t => t !== track);
+        } else {
+            journeyStore.activeTracks = [...journeyStore.activeTracks, track];
+        }
+        trainDisplay.updateAll();
+    }
+
+    function invertTracks() {
+        const newTracks = [];
+        for (const track of allAvailableTracks) {
+            if (!journeyStore.activeTracks.includes(track)) {
+                newTracks.push(track);
+            }
+        }
+        journeyStore.activeTracks = newTracks;
+        trainDisplay.updateAll();
+    }
+
+    let manualTrackInput = $state('');
+    function addManualTrack() {
+        if (manualTrackInput && !journeyStore.activeTracks.includes(manualTrackInput)) {
+            journeyStore.activeTracks = [...journeyStore.activeTracks, manualTrackInput];
+            trainDisplay.updateAll();
+        }
+        manualTrackInput = '';
+    }
+
+    function exportConfig() {
+        const data = journeyStore.exportAll();
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `zimsim_export_${new Date().getTime()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    let fileInput;
+    function handleFileImport(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const data = JSON.parse(event.target.result);
+                journeyStore.importAll(data);
+                trainDisplay.updateAll();
+            } catch (err) {
+                console.error("Import Fehler:", err);
+                alert("Fehler beim Importieren der Datei.");
+            }
+        };
+        reader.readAsText(file);
+        e.target.value = ''; // Reset
     }
 </script>
 
@@ -89,72 +199,58 @@
                 <div class="form-row column-layout">
                     <label for="entry_station_search" style="margin-bottom: 5px; display: block;">Station (Suche):</label>
                     <div style="display: flex; gap: 8px; align-items: flex-start; margin-bottom: 10px;">
-                        <div class="autocomplete-wrapper" style="flex: 1; position: relative;">
-                            <input type="text" id="entry_station_search" placeholder="z.B. Hannover Hbf oder 8000152" autocomplete="off" style="width: 100%; margin: 0;" oninput={onStationSearchInput} value={entry_station_search}>
-                            {#if searchResults.length > 0}
-                                <ul id="station_autocomplete_list" class="autocomplete-list active" role="listbox">
-                                    {#each searchResults as st}
-                                        <li 
-                                            class="autocomplete-item"
-                                            role="option" 
-                                            aria-selected="false"
-                                            tabindex="0" 
-                                            onclick={() => selectStation(st)}
-                                            onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectStation(st); } }}
-                                        >
-                                            {st.name} ({st.eva})
-                                        </li>
-                                    {/each}
-                                </ul>
-                            {/if}
+                        <div style="flex: 1;">
+                            <StationPicker 
+                                bind:value={entry_station_search} 
+                                placeholder="z.B. Hannover Hbf oder 8000152"
+                                onSelect={selectStation}
+                            />
                         </div>
                         <button id="btn_api_station_search" class="btn-secondary" style="padding: 8px 12px; margin: 0;">API Suche</button>
                     </div>
 
-                    <label style="margin-top: 5px;">Datum/Uhrzeit: <input type="datetime-local" step="1" id="custom_time_input"></label>
+                    <label style="margin-top: 5px;">Datum/Uhrzeit: <input type="datetime-local" step="1" id="custom_time_input" value={customTimeString} onchange={onCustomTimeChange}></label>
                     <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 5px; margin-top: 5px;">
-                        <button id="set_current_time_btn" class="btn-secondary btn-sm" style="flex: 1;">Systemzeit setzen</button>
+                        <button id="set_current_time_btn" class="btn-secondary btn-sm" style="flex: 1;" onclick={setCurrentTime}>Systemzeit setzen</button>
                     </div>
                     <div class="checkbox-group" style="margin-bottom: 15px;">
                         <label class="checkbox-label"><input type="checkbox" id="auto_update_time_checkbox" bind:checked={autoUpdateTime}> Zeit automatisch simulieren</label>
                     </div>
                     
                     <details class="mot-details" id="mot_details" style="margin-bottom: 10px;">
-                        <summary class="mot-summary" id="mot_summary">Verkehrsmittel: Alle Verkehrsmittel</summary>
+                        <summary class="mot-summary" id="mot_summary">{motSummary}</summary>
                         <div class="mot-content">
                             <div class="mot-presets">
-                                <button class="btn-secondary btn-sm mot-preset-btn" data-preset="SPV">SPV</button>
-                                <button class="btn-secondary btn-sm mot-preset-btn" data-preset="SPFV">FV</button>
-                                <button class="btn-secondary btn-sm mot-preset-btn" data-preset="SPNV">NV</button>
-                                <button class="btn-secondary btn-sm mot-preset-btn" data-preset="ÖSPV">ÖSPV</button>
-                                <button class="btn-secondary btn-sm mot-preset-btn" data-preset="ÖPNV">ÖPNV</button>                                    
-                                <button class="btn-secondary btn-sm mot-preset-btn" data-preset="ALL">Alle</button>
+                                {#each Object.keys(MOT_PRESETS) as preset}
+                                    <button class="btn-secondary btn-sm mot-preset-btn" onclick={() => setMotPreset(preset)}>{preset}</button>
+                                {/each}
                             </div>
                             <div class="checkbox-group mot-checkboxes">
-                                <label class="checkbox-label"><input type="checkbox" class="mot_dep" value="ICE" checked> ICE</label>
-                                <label class="checkbox-label"><input type="checkbox" class="mot_dep" value="EC_IC" checked> EC/IC</label>
-                                <label class="checkbox-label"><input type="checkbox" class="mot_dep" value="IR" checked> IR</label>
-                                <label class="checkbox-label"><input type="checkbox" class="mot_dep" value="REGIONAL" checked> Regional</label>
-                                <label class="checkbox-label"><input type="checkbox" class="mot_dep" value="SBAHN" checked> S-Bahn</label>
-                                <label class="checkbox-label"><input type="checkbox" class="mot_dep" value="BUS" checked> Bus</label>
-                                <label class="checkbox-label"><input type="checkbox" class="mot_dep" value="SCHIFF" checked> Schiff</label>
-                                <label class="checkbox-label"><input type="checkbox" class="mot_dep" value="UBAHN" checked> U-Bahn</label>
-                                <label class="checkbox-label"><input type="checkbox" class="mot_dep" value="TRAM" checked> Straßenbahn</label>
-                                <label class="checkbox-label"><input type="checkbox" class="mot_dep" value="ANRUFPFLICHTIG" checked> Anrufpflichtig</label>
+                                {#each MOT_ALL_KEYS as motKey}
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" class="mot_dep" value={motKey} bind:group={journeyStore.activeMots} onchange={() => trainDisplay.updateAll()}>
+                                        {motKey}
+                                    </label>
+                                {/each}
                             </div>
                         </div>
                     </details>
 
                     <details class="mot-details" id="track_details">
-                        <summary class="mot-summary" id="track_summary">Gleise: Alle</summary>
+                        <summary class="mot-summary" id="track_summary">{trackSummary}</summary>
                         <div class="mot-content">
                             <div class="mot-presets" style="display: flex; gap: 5px; margin-bottom: 10px;">
-                                <button class="btn-secondary btn-sm" id="btn_invert_tracks">Auswahl invertieren</button>
-                                <input type="text" id="manual_track_input" class="short-input" placeholder="Gl." style="width: 50px; margin: 0;">
-                                <button class="btn-secondary btn-sm" id="btn_add_manual_track">+</button>
+                                <button class="btn-secondary btn-sm" id="btn_invert_tracks" onclick={invertTracks}>Auswahl invertieren</button>
+                                <input type="text" id="manual_track_input" class="short-input" placeholder="Gl." style="width: 50px; margin: 0;" bind:value={manualTrackInput} onkeydown={(e) => { if (e.key === 'Enter') addManualTrack(); }}>
+                                <button class="btn-secondary btn-sm" id="btn_add_manual_track" onclick={addManualTrack}>+</button>
                             </div>
                             <div class="checkbox-group mot-checkboxes" id="track_checkbox_container">
-                                <!-- Dynamisch generiert -->
+                                {#each allAvailableTracks as track}
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" checked={journeyStore.activeTracks.includes(track)} onchange={() => toggleTrack(track)}>
+                                        Gleis {track}
+                                    </label>
+                                {/each}
                             </div>
                         </div>
                     </details>
@@ -163,23 +259,34 @@
                 <h3 style="margin-top: 25px;">Bahnsteig</h3>
                 <div class="form-row column-layout">
                     <label for="global_platform_select" style="margin-bottom: 5px; display: block;">Konfiguration wählen:</label>
-                    <select id="global_platform_select" style="width: 100%; padding: 5px; margin-bottom: 10px;">
+                    <select id="global_platform_select" style="width: 100%; padding: 5px; margin-bottom: 10px;" 
+                            bind:value={journeyStore.stationContext.activePlatformName} 
+                            onchange={() => {
+                                if (journeyStore.stationContext.activePlatformName && journeyStore.platforms[journeyStore.stationContext.activePlatformName]) {
+                                    journeyStore.stationContext.platform = journeyStore.platforms[journeyStore.stationContext.activePlatformName];
+                                }
+                                trainDisplay.updateAll();
+                            }}>
                         <option value="default">Standard (Generisch)</option>
+                        {#each Object.keys(journeyStore.platforms) as pName}
+                            <option value={pName}>{pName}</option>
+                        {/each}
                     </select>
-                    <label>Länge (m): <input type="number" id="platform_length" class="short-input" value="420"></label>
-                    <label>Standort (m): <input type="number" id="platform_location" class="short-input" value="150"></label>
+                    <label>Länge (m): <input type="number" id="platform_length" class="short-input" bind:value={journeyStore.stationContext.platform.length} oninput={() => trainDisplay.updateAll()}></label>
+                    <label>Standort (m): <input type="number" id="platform_location" class="short-input" bind:value={journeyStore.stationContext.platform.location} oninput={() => trainDisplay.updateAll()}></label>
                 </div>
 
                 <h3 style="margin-top: 25px;">Sonstige Einstellungen</h3>
                 <div class="form-row column-layout">
                     <div class="checkbox-group">
-                        <label class="checkbox-label"><input type="checkbox" id="performance_mode_checkbox"> Performance-Modus (30 FPS)</label>
+                        <label class="checkbox-label"><input type="checkbox" id="performance_mode_checkbox" bind:checked={isPerformanceMode}> Performance-Modus (30 FPS)</label>
                     </div>
                 </div>
 
                 <div class="button-group-vertical" style="margin-top: 15px;">
-                    <button id="export_all_btn" class="btn-secondary">📤 Exportieren</button>
-                    <button id="import_all_btn" class="btn-secondary">📥 Importieren</button>
+                    <button id="export_all_btn" class="btn-secondary" onclick={exportConfig}>📤 Exportieren</button>
+                    <button id="import_all_btn" class="btn-secondary" onclick={() => fileInput.click()}>📥 Importieren</button>
+                    <input type="file" bind:this={fileInput} style="display: none;" accept=".json" onchange={handleFileImport}>
                     <button id="import_db_btn" class="btn-secondary" onclick={() => modalsComp?.openDbImport()}>🚄 DB-Daten importieren</button>
                 </div>
                 
