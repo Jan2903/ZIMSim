@@ -64,7 +64,7 @@
         <span class="journey-drag-handle" title="Drag & Drop">⠿</span>
     </div>
     <div class="journey-col-visibility">
-        <button class="btn-icon visibility-toggle" onclick={toggleVisibility} title="Sichtbarkeit umschalten">
+        <button class="btn-icon visibility-toggle" onclick={toggleVisibility} onpointerdown={(e) => e.stopPropagation()} title="Sichtbarkeit umschalten">
             {journey.visible ? '👁' : '○'}
         </button>
     </div>
@@ -72,7 +72,7 @@
         <div class="coupling-line"></div>
     </div>
     <div class="journey-col-main">
-        <div class="journey-summary" onclick={toggleExpand}>
+        <div class="journey-summary" role="button" tabindex="0" onclick={toggleExpand} onpointerdown={(e) => e.stopPropagation()} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(); } }}>
             <span class="journey-name">{journey.displayNameOverride || journey.name || '(kein Name)'}</span>
             {#if journey.ankunft}
                 <span class="badge badge-arrival">ⓐ</span>

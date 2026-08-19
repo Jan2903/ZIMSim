@@ -1,6 +1,6 @@
 // js/main.js
 import { JourneyStore } from './models/journeyStore.svelte.js';
-import { Journey } from './models/journey.js';
+import { Journey } from './models/journey.svelte.js';
 import { Formation } from './models/formation.js';
 import { TrainDisplay } from './displays/trainDisplay.js';
 

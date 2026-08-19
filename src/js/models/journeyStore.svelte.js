@@ -1,5 +1,5 @@
-// js/models/journeyStore.js
-import { Journey } from './journey.js';
+// js/models/journeyStore.svelte.js
+import { Journey } from './journey.svelte.js';
 import { Formation } from './formation.js';
 import { Platform } from './platform.js';
 import { FormationParser } from './formationParser.js';

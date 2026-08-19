@@ -87,14 +87,23 @@
                 
                 <h3 style="margin-top: 25px;">Bahnhof/Station</h3>
                 <div class="form-row column-layout">
-                    <label style="margin-bottom: 5px; display: block;">Station (Suche):</label>
+                    <label for="entry_station_search" style="margin-bottom: 5px; display: block;">Station (Suche):</label>
                     <div style="display: flex; gap: 8px; align-items: flex-start; margin-bottom: 10px;">
                         <div class="autocomplete-wrapper" style="flex: 1; position: relative;">
                             <input type="text" id="entry_station_search" placeholder="z.B. Hannover Hbf oder 8000152" autocomplete="off" style="width: 100%; margin: 0;" oninput={onStationSearchInput} value={entry_station_search}>
                             {#if searchResults.length > 0}
-                                <ul id="station_autocomplete_list" class="autocomplete-list">
+                                <ul id="station_autocomplete_list" class="autocomplete-list active" role="listbox">
                                     {#each searchResults as st}
-                                        <li onclick={() => selectStation(st)}>{st.name} ({st.eva})</li>
+                                        <li 
+                                            class="autocomplete-item"
+                                            role="option" 
+                                            aria-selected="false"
+                                            tabindex="0" 
+                                            onclick={() => selectStation(st)}
+                                            onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectStation(st); } }}
+                                        >
+                                            {st.name} ({st.eva})
+                                        </li>
                                     {/each}
                                 </ul>
                             {/if}
@@ -153,7 +162,7 @@
 
                 <h3 style="margin-top: 25px;">Bahnsteig</h3>
                 <div class="form-row column-layout">
-                    <label style="margin-bottom: 5px; display: block;">Konfiguration wählen:</label>
+                    <label for="global_platform_select" style="margin-bottom: 5px; display: block;">Konfiguration wählen:</label>
                     <select id="global_platform_select" style="width: 100%; padding: 5px; margin-bottom: 10px;">
                         <option value="default">Standard (Generisch)</option>
                     </select>

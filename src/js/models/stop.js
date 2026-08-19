@@ -7,6 +7,7 @@ import { StationService } from '../utils/stationService.js';
  */
 export class Stop {
     constructor(data = {}) {
+        this.id = data.id || crypto.randomUUID();
         this.name = data.name || '';
         this.extId = data.extId || '';          // EVA-Nr / IBNR (z.B. "8000152")
 
