@@ -21,9 +21,9 @@
      use:dndzone={{items: journeyStore.journeys, flipDurationMs}}
      onconsider={handleDndConsider}
      onfinalize={handleDndFinalize}>
-    {#each journeyStore.journeys as journey (journey.id)}
+    {#each journeyStore.journeys as journey, i (journey.id)}
         <div animate:flip={{duration: flipDurationMs}}>
-            <JourneyItem {journey} />
+            <JourneyItem bind:journey={journeyStore.journeys[i]} />
         </div>
     {/each}
 </div>

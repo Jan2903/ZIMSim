@@ -5,13 +5,18 @@
     import StopEditor from './StopEditor.svelte';
     import StationPicker from './StationPicker.svelte';
     import { portalDropdown } from '../js/utils/portal.js';
+    import { RisTextService } from '../js/utils/risTextService.js';
 
-    let { journey } = $props();
+    let { journey = $bindable() } = $props();
     
-    // Autocomplete State
+    // Autocomplete State für Verknüpfung
     let linkSearchText = $state('');
     let showLinkDropdown = $state(false);
     let linkWrapperRef = $state();
+
+    // Autocomplete State für Verspätungsgrund
+    let showReasonDropdown = $state(false);
+    let reasonWrapperRef = $state();
 
     // Initialen Text setzen
     $effect(() => {
@@ -27,7 +32,7 @@
         }
     });
 
-    // Filter-Logik für Autocomplete
+    // Filter-Logik für Autocomplete Verknüpfung
     let filteredJourneys = $derived.by(() => {
         const query = linkSearchText.toLowerCase();
         let list = journeyStore.journeys.filter(j => j.id !== journey.id);
@@ -48,6 +53,17 @@
         return list;
     });
 
+    // Filter-Logik für Autocomplete Verspätungsgrund
+    let delayReasonPresets = $derived.by(() => {
+        const all = RisTextService.getPresetsByType('R');
+        const query = (journey.delayReason || '').toLowerCase();
+        if (!query) return all;
+        return all.filter(p => 
+            p.text.toLowerCase().includes(query) || 
+            p.code.toLowerCase().includes(query)
+        );
+    });
+
     function setLinkedJourney(targetJourney) {
         if (!targetJourney) {
             journey.linkedArrivalJourneyId = null;
@@ -57,6 +73,12 @@
             linkSearchText = `${targetJourney.effectiveDisplayName} (${targetJourney.scheduledTime})`;
         }
         showLinkDropdown = false;
+        triggerUpdate();
+    }
+
+    function setDelayReason(text) {
+        journey.delayReason = text;
+        showReasonDropdown = false;
         triggerUpdate();
     }
 
@@ -110,91 +132,218 @@
 
 <div class="journey-details">
     <div class="details-grid">
+        <!-- LINKE SPALTE: STAMMDATEN -->
         <div class="detail-section">
-            <h4>Stammdaten</h4>
-            <div class="detail-row">
-                <label>Name: <input type="text" class="jfield" bind:value={journey.name} oninput={triggerUpdate} style="width: 150px;" placeholder="z.B. RE 70 / 95835"></label>
-                <label style="margin-left: 15px;">Anzeigename (Override): <input type="text" class="jfield" bind:value={journey.displayNameOverride} oninput={triggerUpdate} placeholder={journey.name || 'auto'}></label>
+            <h4 style="margin-bottom: 15px; border-bottom: 1px solid var(--border-color, #444); padding-bottom: 5px;">Stammdaten</h4>
+            
+            <!-- Name -->
+            <div class="detail-row" style="display: flex; gap: 15px; align-items: flex-start; margin-bottom: 15px;">
+                <div style="display: flex; flex-direction: column; width: 200px;">
+                    <label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Name</label>
+                    <input type="text" class="jfield" bind:value={journey.name} oninput={triggerUpdate} style="width: 100%;" placeholder="z.B. RE 70 / 95835">
+                </div>
+                <div style="display: flex; flex-direction: column; flex-grow: 1;">
+                    <label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Zusatz / Überschreiben</label>
+                    <input type="text" class="jfield" bind:value={journey.displayNameOverride} oninput={triggerUpdate} placeholder={journey.name || 'auto'} style="width: 100%;">
+                </div>
             </div>
-            <div class="detail-row">
-                <label>Ziel (Station): 
-                    <div style="display: inline-block; width: 200px;">
-                        <StationPicker bind:value={journey.destination} placeholder="Station suchen..." onSelect={onDestinationSelect} />
+            
+            <!-- Ziel / Herkunft -->
+            <div class="detail-row" style="display: flex; gap: 15px; align-items: flex-start; margin-bottom: 15px;">
+                <div style="display: flex; flex-direction: column; width: 200px;">
+                    <label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Ziel / Herkunft</label>
+                    <StationPicker bind:value={journey.destination} placeholder="Station suchen..." onSelect={onDestinationSelect} />
+                </div>
+                <div style="display: flex; flex-direction: column; flex-grow: 1;">
+                    <label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Zusatz / Überschreiben</label>
+                    <input type="text" class="jfield" bind:value={journey.destinationOverride} oninput={triggerUpdate} placeholder={journey.destination || 'Auto'} style="width: 100%;">
+                </div>
+            </div>
+            
+            <!-- Zeit & Gleis in einer Box zusammengefasst -->
+            <div class="detail-row" style="display: flex; gap: 20px; align-items: stretch; margin-bottom: 20px; background: rgba(0,0,0,0.1); padding: 12px 15px; border-radius: 6px;">
+                <!-- Zeit Block -->
+                <div style="display: flex; gap: 10px; flex-grow: 1;">
+                    <div style="display: flex; flex-direction: column; flex: 1;">
+                        <label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Zeit (Plan)</label>
+                        <input type="text" class="jfield" bind:value={journey.scheduledTime} oninput={triggerUpdate} placeholder="z.B. 14:30" style="width: 100%; text-align: center;">
                     </div>
-                </label>
-                <label style="margin-left: 15px;">Anzeige (Override): 
-                    <input type="text" class="jfield" bind:value={journey.destinationOverride} oninput={triggerUpdate} placeholder={journey.destination || 'Auto'}>
-                </label>
+                    <div style="display: flex; flex-direction: column; flex: 1;">
+                        <label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Echtzeit</label>
+                        <input type="text" class="jfield" bind:value={journey.expectedTime} oninput={triggerUpdate} placeholder="optional" style="width: 100%; text-align: center; color: var(--error-color, #ff6b6b); font-weight: bold;">
+                    </div>
+                </div>
+                
+                <div style="width: 1px; background: var(--border-color, #444); margin: 5px 0;"></div>
+                
+                <!-- Gleis Block -->
+                <div style="display: flex; gap: 10px; flex-grow: 1;">
+                    <div style="display: flex; flex-direction: column; flex: 1;">
+                        <label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Gleis</label>
+                        <input type="text" class="jfield" bind:value={journey.platform} oninput={triggerUpdate} placeholder="z.B. 4" style="width: 100%; text-align: center;">
+                    </div>
+                    <div style="display: flex; flex-direction: column; flex: 1;">
+                        <label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Echtzeit</label>
+                        <input type="text" class="jfield" bind:value={journey.ezGleis} oninput={triggerUpdate} placeholder="optional" style="width: 100%; text-align: center; color: var(--error-color, #ff6b6b); font-weight: bold;">
+                    </div>
+                </div>
             </div>
-            <div class="detail-row">
-                <label>Abfahrt/Ankunft: <input type="text" class="jfield short-input" bind:value={journey.scheduledTime} oninput={triggerUpdate}></label>
-                <label style="margin-left: 15px;">Erwartet: <input type="text" class="jfield short-input" bind:value={journey.expectedTime} oninput={triggerUpdate} placeholder="optional"></label>
-                <label style="margin-left: 15px;">Grund: <input type="text" class="jfield" bind:value={journey.delayReason} oninput={triggerUpdate} style="width: 100px;" placeholder="z.B. 10"></label>
-            </div>
-            <div class="detail-row">
-                <label>Gleis: <input type="text" class="jfield short-input" bind:value={journey.platform} oninput={triggerUpdate}></label>
-                <label style="margin-left: 15px;">Abschnitte: <input type="text" class="jfield short-input" bind:value={journey.sectors} oninput={triggerUpdate} placeholder="A-C"></label>
-                <label style="margin-left: 15px;">Echtzeit-Gleis: <input type="text" class="jfield short-input" bind:value={journey.ezGleis} oninput={triggerUpdate}></label>
-            </div>
-            <div class="detail-row">
-                <label>Verknüpfte Fahrt (Fahrzeugtausch/Wende):
-                    <div bind:this={linkWrapperRef} style="position: relative; display: inline-block; width: 300px; margin-left: 10px;">
-                        <input type="text" class="jfield" style="width: 100%; margin: 0;"
-                               placeholder="Zug suchen (Name, Ziel, Zeit)..."
-                               bind:value={linkSearchText}
-                               onfocus={() => showLinkDropdown = true}
-                               onblur={() => setTimeout(() => showLinkDropdown = false, 200)}>
-                               
-                        {#if showLinkDropdown}
-                            <ul use:portalDropdown={linkWrapperRef} class="autocomplete-list active" style="max-height: 200px; overflow-y: auto; background-color: var(--bg-panel, #2b2b2b); border: 1px solid var(--border-color, #444); list-style: none; padding: 0; margin: 0; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+            
+            <!-- Verknüpfte Fahrt -->
+            <div class="detail-row" style="display: flex; flex-direction: column; margin-bottom: 15px;">
+                <label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block; text-align: left;">Verknüpfte Fahrt (Fahrzeugtausch/Wende)</label>
+                <div bind:this={linkWrapperRef} style="position: relative; width: 100%;">
+                    <input type="text" class="jfield" style="width: 100%; margin: 0;"
+                           placeholder="Zug suchen (Name, Ziel, Zeit)..."
+                           bind:value={linkSearchText}
+                           onfocus={() => showLinkDropdown = true}
+                           onblur={() => setTimeout(() => showLinkDropdown = false, 200)}>
+                           
+                    {#if showLinkDropdown}
+                        <ul use:portalDropdown={linkWrapperRef} class="autocomplete-list active" style="max-height: 200px; overflow-y: auto; background-color: var(--bg-panel, #2b2b2b); border: 1px solid var(--border-color, #444); list-style: none; padding: 0; margin: 0; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+                            <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+                            <!-- svelte-ignore a11y_click_events_have_key_events -->
+                            <li class="autocomplete-item" style="padding: 8px; cursor: pointer; border-bottom: 1px solid var(--border-color, #444);" onclick={() => setLinkedJourney(null)}>-- Keine Verknüpfung --</li>
+                            {#each filteredJourneys as a}
                                 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
                                 <!-- svelte-ignore a11y_click_events_have_key_events -->
-                                <li class="autocomplete-item" style="padding: 8px; cursor: pointer; border-bottom: 1px solid var(--border-color, #444);" onclick={() => setLinkedJourney(null)}>-- Keine Verknüpfung --</li>
-                                {#each filteredJourneys as a}
-                                    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-                                    <!-- svelte-ignore a11y_click_events_have_key_events -->
-                                    <li class="autocomplete-item" style="padding: 8px; cursor: pointer; border-bottom: 1px solid var(--border-color, #444);" onclick={() => setLinkedJourney(a)}>
-                                        {a.effectiveDisplayName} ({a.scheduledTime}) - Gl. {a.ezGleis || a.platform}
-                                    </li>
-                                {/each}
-                            </ul>
-                        {/if}
-                    </div>
-                </label>
+                                <li class="autocomplete-item" style="padding: 8px; cursor: pointer; border-bottom: 1px solid var(--border-color, #444);" onclick={() => setLinkedJourney(a)}>
+                                    {a.effectiveDisplayName} ({a.scheduledTime}) - Gl. {a.ezGleis || a.platform}
+                                </li>
+                            {/each}
+                        </ul>
+                    {/if}
+                </div>
+            </div>
+            
+            <!-- Verspätungsgrund -->
+            <div class="detail-row" style="display: flex; flex-direction: column; margin-bottom: 15px;">
+                <label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block; text-align: left;">Verspätungsgrund</label>
+                <div bind:this={reasonWrapperRef} style="position: relative; width: 100%;">
+                    <input type="text" class="jfield" style="width: 100%; margin: 0;"
+                           placeholder="Offiziellen RIS-Grund suchen oder eigenen Text eingeben..."
+                           bind:value={journey.delayReason}
+                           oninput={triggerUpdate}
+                           onfocus={() => showReasonDropdown = true}
+                           onblur={() => setTimeout(() => showReasonDropdown = false, 200)}>
+                           
+                    {#if showReasonDropdown && delayReasonPresets.length > 0}
+                        <ul use:portalDropdown={reasonWrapperRef} class="autocomplete-list active" style="max-height: 200px; overflow-y: auto; background-color: var(--bg-panel, #2b2b2b); border: 1px solid var(--border-color, #444); list-style: none; padding: 0; margin: 0; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+                            <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+                            <!-- svelte-ignore a11y_click_events_have_key_events -->
+                            <li class="autocomplete-item" style="padding: 8px; cursor: pointer; border-bottom: 1px solid var(--border-color, #444);" onclick={() => setDelayReason('')}>-- Kein Grund --</li>
+                            {#each delayReasonPresets as preset}
+                                <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+                                <!-- svelte-ignore a11y_click_events_have_key_events -->
+                                <li class="autocomplete-item" style="padding: 8px; cursor: pointer; border-bottom: 1px solid var(--border-color, #444);" onclick={() => setDelayReason(preset.text)}>
+                                    {preset.code} - {preset.text}
+                                </li>
+                            {/each}
+                        </ul>
+                    {/if}
+                </div>
             </div>
         </div>
         
+        <!-- RECHTE SPALTE: ANZEIGE -->
         <div class="detail-section">
-            <h4>Anzeige</h4>
-            <div class="detail-row">
+            <h4 style="margin-bottom: 15px; border-bottom: 1px solid var(--border-color, #444); padding-bottom: 5px;">Anzeige</h4>
+            
+            <!-- Row 1: Status & Modus (Ankunft/Abfahrt, Ausfall, Infoscreen) -->
+            <div class="detail-row" style="display: flex; gap: 20px; align-items: stretch; margin-bottom: 20px; background: rgba(0,0,0,0.1); padding: 12px 15px; border-radius: 6px;">
+                <!-- Ankunft/Abfahrt Toggle -->
+                <!-- svelte-ignore a11y_click_events_have_key_events -->
+                <!-- svelte-ignore a11y_no_static_element_interactions -->
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; width: 80px;" onclick={() => { journey.ankunft = !journey.ankunft; triggerUpdate(); }}>
+                    <div style="font-size: 0.85em; opacity: 0.8; margin-bottom: 8px;">Modus</div>
+                    <div style="width: 44px; height: 22px; background: var(--bg-panel, #1a1a1a); border-radius: 11px; position: relative; border: 2px solid var(--border-color, #555); box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);">
+                        <div style="width: 16px; height: 16px; background: {journey.ankunft ? '#ff6b6b' : '#4dabf7'}; border-radius: 50%; position: absolute; top: 1px; transition: 0.2s; {journey.ankunft ? 'right: 1px;' : 'left: 1px;'} box-shadow: 0 1px 3px rgba(0,0,0,0.4);"></div>
+                    </div>
+                    <div style="font-size: 0.85em; margin-top: 8px; font-weight: bold; color: {journey.ankunft ? '#ff6b6b' : '#4dabf7'};">{journey.ankunft ? 'Ankunft' : 'Abfahrt'}</div>
+                </div>
+                
+                <div style="width: 1px; background: var(--border-color, #444); margin: 5px 0;"></div>
+                
+                <!-- Ausfall & Infoscreen -->
+                <div style="display: flex; flex-direction: column; justify-content: center; gap: 12px; flex-grow: 1;">
+                    <label class="checkbox-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin: 0;">
+                        <input type="checkbox" bind:checked={journey.ausfall} onchange={triggerUpdate} style="width: 18px; height: 18px; cursor: pointer;">
+                        <span style="font-size: 1.05em; {journey.ausfall ? 'color: #ff6b6b; font-weight: bold;' : ''}">Zugausfall (fällt aus)</span>
+                    </label>
+                    
+                    <label class="checkbox-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin: 0;">
+                        <input type="checkbox" bind:checked={journey.infoscreen} onchange={triggerUpdate} style="width: 18px; height: 18px; cursor: pointer;">
+                        <span style="font-size: 1.05em;">Infoscreen (Lauftext pur / Sonderanzeige)</span>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Row 2: InfoTexte -->
+            <div class="detail-row" style="margin-bottom: 20px;">
                 <div style="width: 100%;">
                     <InfoTextEditor {journey} />
                 </div>
             </div>
-            <div class="detail-row">
-                <label class="radio-group">Richtung:
-                    <span><input type="radio" bind:group={journey.direction} value={0} onchange={triggerUpdate}> Links</span>
-                    <span><input type="radio" bind:group={journey.direction} value={1} onchange={triggerUpdate}> Rechts</span>
-                </label>
-                <label>Startmeter: <input type="number" class="jfield short-input" bind:value={journey.startMeter} oninput={triggerUpdate}></label>
+            
+            <!-- Row 3: Verkehrt ab -->
+            <div class="detail-row" style="display: flex; flex-direction: column; margin-bottom: 20px;">
+                <label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block; text-align: left;">Verkehrt ab (Station)</label>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <div style="flex-grow: 1;">
+                        <StationPicker 
+                            value={journey.verkehrtAb === '0' ? '' : journey.verkehrtAb} 
+                            onInput={(val) => { journey.verkehrtAb = val === '' ? '0' : val; triggerUpdate(); }}
+                            onSelect={(st) => { journey.verkehrtAb = st.name; triggerUpdate(); }}
+                            placeholder="Station suchen (falls Zug erst später einsetzt)..." 
+                        />
+                    </div>
+                    {#if journey.verkehrtAb && journey.verkehrtAb !== '0'}
+                        <button class="btn-icon" onclick={() => { journey.verkehrtAb = '0'; triggerUpdate(); }} title="Zurücksetzen (Deaktivieren)" style="width: 32px; height: 32px; border-radius: 4px; background: rgba(255, 107, 107, 0.1); color: #ff6b6b; border: 1px solid rgba(255, 107, 107, 0.3);">✕</button>
+                    {/if}
+                </div>
             </div>
-            <div class="detail-row">
-                <label class="checkbox-label"><input type="checkbox" bind:checked={journey.ankunft} onchange={triggerUpdate}> Ankunft</label>
-                <label class="checkbox-label"><input type="checkbox" bind:checked={journey.skalieren} onchange={triggerUpdate}> Skalieren</label>
-                <label>Faktor: <input type="number" step="0.01" class="jfield short-input" bind:value={journey.scaleFactor} oninput={triggerUpdate}></label>
-                <label class="checkbox-label"><input type="checkbox" bind:checked={journey.ausfall} onchange={triggerUpdate}> Ausfall</label>
-                <label class="checkbox-label"><input type="checkbox" bind:checked={journey.infoscreen} onchange={triggerUpdate}> Infoscreen</label>
-            </div>
-            <div class="detail-row">
-                <label>Verkehrt ab: <input type="text" class="jfield short-input" bind:value={journey.verkehrtAb} oninput={triggerUpdate}></label>
-                <label style="margin-left: 10px;">Verspätungsgrund: 
-                    <input type="text" class="jfield" bind:value={journey.delayReason} oninput={triggerUpdate}>
-                </label>
+
+            <!-- Row 4: Wagenreihung Display Settings -->
+            <div class="detail-row" style="display: flex; gap: 20px; align-items: stretch; background: rgba(0,0,0,0.1); padding: 12px 15px; border-radius: 6px;">
+                <!-- Richtung Toggle -->
+                <!-- svelte-ignore a11y_click_events_have_key_events -->
+                <!-- svelte-ignore a11y_no_static_element_interactions -->
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; width: 80px;" onclick={() => { journey.direction = journey.direction === 1 ? 0 : 1; triggerUpdate(); }}>
+                    <div style="font-size: 0.85em; opacity: 0.8; margin-bottom: 8px;">WR-Richtung</div>
+                    <div style="width: 44px; height: 22px; background: var(--bg-panel, #1a1a1a); border-radius: 11px; position: relative; border: 2px solid var(--border-color, #555); box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);">
+                        <div style="width: 16px; height: 16px; background: #4dabf7; border-radius: 50%; position: absolute; top: 1px; transition: 0.2s; {journey.direction === 1 ? 'right: 1px;' : 'left: 1px;'} box-shadow: 0 1px 3px rgba(0,0,0,0.4);"></div>
+                    </div>
+                    <div style="font-size: 0.85em; margin-top: 8px; font-weight: bold;">{journey.direction === 1 ? 'Rechts' : 'Links'}</div>
+                </div>
+
+                <div style="width: 1px; background: var(--border-color, #444); margin: 5px 0;"></div>
+
+                <!-- Startmeter -->
+                <div style="display: flex; flex-direction: column; justify-content: center; width: 80px;">
+                    <label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block; text-align: center;">Startmeter</label>
+                    <input type="number" class="jfield" bind:value={journey.startMeter} oninput={triggerUpdate} style="width: 100%; text-align: center;" placeholder="z.B. 50">
+                </div>
+
+                <div style="width: 1px; background: var(--border-color, #444); margin: 5px 0;"></div>
+
+                <!-- Skalierung -->
+                <div style="display: flex; flex-direction: column; justify-content: center; flex-grow: 1;">
+                    <label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Skalierung (Zoom)</label>
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
+                            <input type="checkbox" bind:checked={journey.skalieren} onchange={triggerUpdate} style="width: 16px; height: 16px;">
+                            <span>Aktiv</span>
+                        </label>
+                        {#if journey.skalieren}
+                            <input type="number" step="0.01" class="jfield" bind:value={journey.scaleFactor} oninput={triggerUpdate} style="width: 70px; text-align: center;" placeholder="Faktor (1.0)">
+                        {/if}
+                    </div>
+                </div>
             </div>
         </div>
     </div>
     
-    <div class="detail-section" style="margin-top: 15px;">
+    <div class="detail-section" style="margin-top: 25px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
             <h4>Wagenreihung</h4>
             <div style="display: flex; gap: 10px;">
@@ -222,6 +371,6 @@
                 <button class="btn-secondary" onclick={addStop}>+ Halt hinzufügen</button>
             </div>
         </div>
-        <StopEditor {journey} />
+        <StopEditor bind:journey />
     </div>
 </div>
