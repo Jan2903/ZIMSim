@@ -13,6 +13,40 @@ import { StationService } from '../utils/stationService.js';
  * - Flügelzüge (via couplingGroupId)
  */
 export class Journey {
+    id = '';
+    journeyId = '';
+    name = $state('');
+    produktGattung = $state('');
+    operator = $state('');
+    displayNameOverride = $state('');
+    destination = $state('');
+    destinationLang = $state('');
+    destinationKurz = $state('');
+    scheduledTime = $state('');
+    expectedTime = $state('');
+    platform = $state('');
+    sectors = $state('');
+    infoTexts = $state([]);
+    delayReason = $state('');
+    direction = $state(1);
+    startMeter = $state(0);
+    skalieren = $state(false);
+    scaleFactor = $state(1.0);
+    formation = $state(null);
+    ezGleis = $state('');
+    verkehrtAb = $state('0');
+    infoscreen = $state(false);
+    ausfall = $state(false);
+    ankunft = $state(false);
+    visible = $state(true);
+    displaySlot = $state(null);
+    couplingGroupId = $state(null);
+    linkedArrivalJourneyId = $state(null);
+    messages = $state([]);
+    stops = $state([]);
+    _currentStopIndex = $state(-1);
+    zugattribute = $state([]);
+
     constructor(data = {}) {
         // === Identifikation ===
         this.id = data.id || crypto.randomUUID();
