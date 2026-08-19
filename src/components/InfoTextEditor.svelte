@@ -84,7 +84,7 @@
                 <div animate:flip={{duration: flipDurationMs}} class="info-editor-row" style="display: flex; gap: 5px; align-items: center; margin-bottom: 5px; padding: 5px; background: var(--bg-input); border-radius: 5px; border: 1px solid var(--border);">
                     <span class="drag-handle" style="cursor: move;">⠿</span>
                     <button class="btn-icon" title={info.visible ? 'Sichtbar im Lauftext' : 'Versteckt'} onclick={() => toggleVisible(info)}>
-                        {info.visible ? '👁️' : '○'}
+                        {info.visible ? '👁' : '○'}
                     </button>
                     <input type="text" class="jfield info-text-input" bind:value={info.text} oninput={triggerUpdate} style="flex: 1; margin: 0;" placeholder="Text">
                     <button class="btn-icon" title="Entfernen" onclick={() => removeText(info)}>✕</button>

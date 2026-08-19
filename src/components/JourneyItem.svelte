@@ -4,7 +4,7 @@
     import { getMotForCategory } from '../js/utils/motManager.js';
     import JourneyDetails from './JourneyDetails.svelte';
 
-    let { journey } = $props();
+    let { journey = $bindable() } = $props();
 
     let isExpanded = $derived(uiState.expandedJourneyId === journey.id);
 
@@ -109,7 +109,7 @@
         </div>
         
         {#if isExpanded}
-            <JourneyDetails {journey} />
+            <JourneyDetails bind:journey />
         {/if}
     </div>
 </div>

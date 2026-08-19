@@ -3,11 +3,18 @@
     import { journeyStore } from '../js/main.js';
     import { portalDropdown } from '../js/utils/portal.js';
 
-    let { value = $bindable(), onSelect = null, placeholder = "Station suchen...", cssClass = "jfield" } = $props();
+    let { value = $bindable(), onSelect = null, onInput = null, placeholder = "Station suchen...", cssClass = "jfield" } = $props();
 
     let searchText = $state(value || '');
     let showDropdown = $state(false);
-    let searchResults = $state([]);
+    
+    let searchResults = $derived.by(() => {
+        if (searchText.length >= 2 && showDropdown) {
+            return StationService.searchStations(searchText, 20);
+        }
+        return [];
+    });
+
     let inputRef = $state();
     let wrapperRef = $state();
 
@@ -20,11 +27,7 @@
 
     function handleInput() {
         value = searchText; // sync up
-        if (searchText.length >= 2) {
-            searchResults = StationService.searchStations(searchText, 20);
-        } else {
-            searchResults = [];
-        }
+        if (onInput) onInput(searchText);
     }
 
     function selectStation(station) {
@@ -44,9 +47,6 @@
 
     function onFocus() {
         showDropdown = true;
-        if (searchText.length >= 2) {
-            searchResults = StationService.searchStations(searchText, 20);
-        }
     }
 
     function onBlur() {

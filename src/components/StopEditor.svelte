@@ -5,7 +5,7 @@
     import { Stop } from '../js/models/stop.svelte.js';
     import StationPicker from './StationPicker.svelte';
 
-    let { journey } = $props();
+    let { journey = $bindable() } = $props();
 
     const flipDurationMs = 200;
 
@@ -53,7 +53,7 @@
                     <span class="stop-drag-handle" title="Drag & Drop" style="cursor: move;">⠿</span>
                     
                     <button class="btn-icon" title={stop.showAsVia ? 'Als Via markiert' : 'Nicht als Via markiert'} onclick={() => toggleVia(stop)}>
-                        {stop.showAsVia ? '👁️' : '○'}
+                        {stop.showAsVia ? '👁' : '○'}
                     </button>
                     
                     <div style="flex: 2; min-width: 150px; position: relative;">

@@ -6,7 +6,7 @@ import { StationService } from '../utils/stationService.js';
  * Enthält Zeitdaten, Gleis, Kategorie/Nummer (pro Halt änderbar) und Meldungen.
  */
 export class Stop {
-    id = $state('');
+    id = '';
     name = $state('');
     extId = $state('');
     departure = $state(null);
