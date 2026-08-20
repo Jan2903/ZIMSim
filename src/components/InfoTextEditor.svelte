@@ -96,7 +96,7 @@
     <div style="display: flex; gap: 5px; margin-top: 10px; position: relative;">
         <div style="position: relative; flex: 1; display: flex;">
             <input type="text" class="jfield" style="flex: 1; margin: 0; padding-right: 30px;"
-                   placeholder="Lauftext eingeben oder Preset (ID/Text) suchen..."
+                   placeholder="Suchen oder eigenen Text eingeben."
                    bind:this={inputRef}
                    bind:value={inputText}
                    onfocus={() => showDropdown = true}

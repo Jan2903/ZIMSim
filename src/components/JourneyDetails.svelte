@@ -152,7 +152,7 @@
             <div class="detail-row" style="display: flex; gap: 15px; align-items: flex-start; margin-bottom: 15px;">
                 <div style="display: flex; flex-direction: column; width: 200px;">
                     <label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Ziel / Herkunft</label>
-                    <StationPicker bind:value={journey.destination} placeholder="Station suchen..." onSelect={onDestinationSelect} />
+                    <StationPicker bind:value={journey.destination} placeholder="Station suchen" onSelect={onDestinationSelect} />
                 </div>
                 <div style="display: flex; flex-direction: column; flex-grow: 1;">
                     <label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Zusatz / Überschreiben</label>
@@ -179,7 +179,7 @@
                 <!-- Gleis Block -->
                 <div style="display: flex; gap: 10px; flex-grow: 1;">
                     <div style="display: flex; flex-direction: column; flex: 1;">
-                        <label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Gleis</label>
+                        <label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Gleis/Plattform</label>
                         <input type="text" class="jfield" bind:value={journey.platform} oninput={triggerUpdate} placeholder="z.B. 4" style="width: 100%; text-align: center;">
                     </div>
                     <div style="display: flex; flex-direction: column; flex: 1;">
@@ -194,7 +194,7 @@
                 <label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block; text-align: left;">Verknüpfte Fahrt (Fahrzeugtausch/Wende)</label>
                 <div bind:this={linkWrapperRef} style="position: relative; width: 100%;">
                     <input type="text" class="jfield" style="width: 100%; margin: 0;"
-                           placeholder="Zug suchen (Name, Ziel, Zeit)..."
+                           placeholder="Fahrt suchen (Name, Ziel, Zeit)..."
                            bind:value={linkSearchText}
                            onfocus={() => showLinkDropdown = true}
                            onblur={() => setTimeout(() => showLinkDropdown = false, 200)}>
@@ -221,7 +221,7 @@
                 <label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block; text-align: left;">Verspätungsgrund</label>
                 <div bind:this={reasonWrapperRef} style="position: relative; width: 100%;">
                     <input type="text" class="jfield" style="width: 100%; margin: 0;"
-                           placeholder="Offiziellen RIS-Grund suchen oder eigenen Text eingeben..."
+                           placeholder="Suchen oder eigenen Text eingeben"
                            bind:value={journey.delayReason}
                            oninput={triggerUpdate}
                            onfocus={() => showReasonDropdown = true}
@@ -268,12 +268,12 @@
                 <div style="display: flex; flex-direction: column; justify-content: center; gap: 12px; flex-grow: 1;">
                     <label class="checkbox-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin: 0;">
                         <input type="checkbox" bind:checked={journey.ausfall} onchange={triggerUpdate} style="width: 18px; height: 18px; cursor: pointer;">
-                        <span style="font-size: 1.05em; {journey.ausfall ? 'color: #ff6b6b; font-weight: bold;' : ''}">Zugausfall (fällt aus)</span>
+                        <span style="font-size: 1.05em; {journey.ausfall ? 'color: #ff6b6b; font-weight: bold;' : ''}">Zugausfall</span>
                     </label>
                     
                     <label class="checkbox-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin: 0;">
                         <input type="checkbox" bind:checked={journey.infoscreen} onchange={triggerUpdate} style="width: 18px; height: 18px; cursor: pointer;">
-                        <span style="font-size: 1.05em;">Infoscreen (Lauftext pur / Sonderanzeige)</span>
+                        <span style="font-size: 1.05em;">Infoscreen (Lauftext/ Sonderanzeige)</span>
                     </label>
                 </div>
             </div>
@@ -285,16 +285,16 @@
                 </div>
             </div>
             
-            <!-- Row 3: Verkehrt ab -->
+            <!-- Row 3: Verkehrt heute ab -->
             <div class="detail-row" style="display: flex; flex-direction: column; margin-bottom: 20px;">
-                <label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block; text-align: left;">Verkehrt ab (Station)</label>
+                <label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block; text-align: left;">Verkehrt heute ab (Station)</label>
                 <div style="display: flex; gap: 8px; align-items: center;">
                     <div style="flex-grow: 1;">
                         <StationPicker 
                             value={journey.verkehrtAb === '0' ? '' : journey.verkehrtAb} 
                             onInput={(val) => { journey.verkehrtAb = val === '' ? '0' : val; triggerUpdate(); }}
                             onSelect={(st) => { journey.verkehrtAb = st.name; triggerUpdate(); }}
-                            placeholder="Station suchen (falls Zug erst später einsetzt)..." 
+                            placeholder="Station suchen" 
                         />
                     </div>
                     {#if journey.verkehrtAb && journey.verkehrtAb !== '0'}
@@ -309,7 +309,7 @@
                 <!-- svelte-ignore a11y_click_events_have_key_events -->
                 <!-- svelte-ignore a11y_no_static_element_interactions -->
                 <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; width: 80px;" onclick={() => { journey.direction = journey.direction === 1 ? 0 : 1; triggerUpdate(); }}>
-                    <div style="font-size: 0.85em; opacity: 0.8; margin-bottom: 8px;">WR-Richtung</div>
+                    <div style="font-size: 0.85em; opacity: 0.8; margin-bottom: 8px;">Fahrtrichtung</div>
                     <div style="width: 44px; height: 22px; background: var(--bg-panel, #1a1a1a); border-radius: 11px; position: relative; border: 2px solid var(--border-color, #555); box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);">
                         <div style="width: 16px; height: 16px; background: #4dabf7; border-radius: 50%; position: absolute; top: 1px; transition: 0.2s; {journey.direction === 1 ? 'right: 1px;' : 'left: 1px;'} box-shadow: 0 1px 3px rgba(0,0,0,0.4);"></div>
                     </div>
@@ -321,7 +321,7 @@
                 <!-- Startmeter -->
                 <div style="display: flex; flex-direction: column; justify-content: center; width: 80px;">
                     <label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block; text-align: center;">Startmeter</label>
-                    <input type="number" class="jfield" bind:value={journey.startMeter} oninput={triggerUpdate} style="width: 100%; text-align: center;" placeholder="z.B. 50">
+                    <input type="number" class="jfield" bind:value={journey.startMeter} oninput={triggerUpdate} style="width: 100%; min-width: 0; text-align: center;" placeholder="z.B. 50">
                 </div>
 
                 <div style="width: 1px; background: var(--border-color, #444); margin: 5px 0;"></div>
@@ -335,7 +335,7 @@
                             <span>Aktiv</span>
                         </label>
                         {#if journey.skalieren}
-                            <input type="number" step="0.01" class="jfield" bind:value={journey.scaleFactor} oninput={triggerUpdate} style="width: 70px; text-align: center;" placeholder="Faktor (1.0)">
+                            <input type="number" step="0.01" class="jfield" bind:value={journey.scaleFactor} oninput={triggerUpdate} style="width: 70px; min-width: 0; text-align: center;" placeholder="Faktor (1.0)">
                         {/if}
                     </div>
                 </div>

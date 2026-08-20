@@ -3,7 +3,7 @@
     import { journeyStore } from '../js/main.js';
     import { portalDropdown } from '../js/utils/portal.js';
 
-    let { value = $bindable(), onSelect = null, onInput = null, placeholder = "Station suchen...", cssClass = "jfield" } = $props();
+    let { value = $bindable(), onSelect = null, onInput = null, placeholder = "Station suchen", cssClass = "jfield" } = $props();
 
     let searchText = $state(value || '');
     let showDropdown = $state(false);
