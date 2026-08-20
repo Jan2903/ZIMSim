@@ -45,7 +45,7 @@
     <div class="stops-empty" style="color: #ccc;">Keine Halte vorhanden.</div>
 {:else}
     <div class="stops-editor-list" style="border: 1px solid var(--border); border-radius: 5px; background: transparent; padding: 5px;">
-        <div use:dndzone={{items: journey.stops, flipDurationMs}}
+        <div use:dndzone={{items: journey.stops, flipDurationMs, type: 'stop'}}
              onconsider={handleDndConsider}
              onfinalize={handleDndFinalize}>
             {#each journey.stops as stop, i (stop.id)}

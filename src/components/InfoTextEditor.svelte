@@ -77,7 +77,7 @@
     {#if !journey.infoTexts || journey.infoTexts.length === 0}
         <div class="info-empty" style="color: #ccc; margin-bottom: 5px;">Keine Lauftexte vorhanden.</div>
     {:else}
-        <div use:dndzone={{items: journey.infoTexts, flipDurationMs}}
+        <div use:dndzone={{items: journey.infoTexts, flipDurationMs, type: 'infoText'}}
              onconsider={handleDndConsider}
              onfinalize={handleDndFinalize}>
             {#each journey.infoTexts as info (info.id)}
