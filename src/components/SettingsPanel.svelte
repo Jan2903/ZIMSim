@@ -5,6 +5,8 @@
     import StationPicker from './StationPicker.svelte';
     import { setSimulatedTime, getSimulatedTime, timeConfig, config } from '../js/utils/config.js';
     import { MOT_PRESETS, getSmartHeaderString, MOT_ALL_KEYS } from '../js/utils/motManager.js';
+    import { ansagenStore } from '../js/utils/ansagenStore.svelte.js';
+    import { open } from '@tauri-apps/plugin-dialog';
     
     let { modalsComp } = $props();
 
@@ -157,6 +159,51 @@
         reader.readAsText(file);
         e.target.value = ''; // Reset
     }
+
+    let audioZipInput;
+    async function handleZipLoad() {
+        if (ansagenStore.isTauri) {
+            try {
+                const file = await open({
+                    multiple: false,
+                    filters: [{ name: 'ZIP', extensions: ['zip'] }]
+                });
+                if (file) {
+                    ansagenStore.setFileRef(file, file.split(/[/\\]/).pop());
+                }
+            } catch (e) {
+                console.error("Failed to open dialog", e);
+            }
+        } else {
+            // Web: try File System Access API
+            if (window.showOpenFilePicker) {
+                try {
+                    const [fileHandle] = await window.showOpenFilePicker({
+                        types: [{ description: 'ZIP Files', accept: { 'application/zip': ['.zip'] } }],
+                        multiple: false
+                    });
+                    await ansagenStore.setFileRef(fileHandle, fileHandle.name);
+                } catch (e) {
+                    if (e.name !== 'AbortError') {
+                        console.error("Failed to get file handle", e);
+                        // Fallback to classic input
+                        audioZipInput.click();
+                    }
+                }
+            } else {
+                // Safari/iOS Fallback
+                audioZipInput.click();
+            }
+        }
+    }
+
+    function handleWebZipUpload(e) {
+        const file = e.target.files[0];
+        if (file) {
+            ansagenStore.setFileRef(file, file.name);
+        }
+        e.target.value = ''; // Reset
+    }
 </script>
 
 <div class="settings-container">
@@ -274,6 +321,28 @@
                     </select>
                     <label>Länge (m): <input type="number" id="platform_length" class="short-input" bind:value={journeyStore.stationContext.platform.length} oninput={() => trainDisplay.updateAll()}></label>
                     <label>Standort (m): <input type="number" id="platform_location" class="short-input" bind:value={journeyStore.stationContext.platform.location} oninput={() => trainDisplay.updateAll()}></label>
+                </div>
+
+                <h3 style="margin-top: 25px;">Ansagen</h3>
+                <div class="form-row column-layout" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px;">
+                    <div style="margin-bottom: 10px; font-size: 0.9em;">
+                        {#if ansagenStore.status === 'loaded'}
+                            <span style="color: #4CAF50;">✓ ZIP verknüpft:</span> {ansagenStore.fileName}
+                            <div style="margin-top: 5px;">
+                                <button class="btn-secondary btn-sm" onclick={() => ansagenStore.clearFileRef()}>Verknüpfung aufheben</button>
+                            </div>
+                        {:else}
+                            <span style="color: #ff9800;">⚠ Keine ZIP verknüpft</span>
+                            <div style="font-size: 0.85em; opacity: 0.8; margin-top: 5px;">
+                                Lade die Audio-Daten (ZIP), um Ansagen abzuspielen.
+                            </div>
+                        {/if}
+                    </div>
+                    <button class="btn-primary" onclick={handleZipLoad}>
+                        {ansagenStore.status === 'loaded' ? 'ZIP ändern' : 'ZIP laden'}
+                    </button>
+                    <!-- Fallback hidden file input for Safari/iOS or when File System Access API fails -->
+                    <input type="file" bind:this={audioZipInput} style="display: none;" accept=".zip" onchange={handleWebZipUpload}>
                 </div>
 
                 <h3 style="margin-top: 25px;">Sonstige Einstellungen</h3>

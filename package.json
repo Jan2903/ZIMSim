@@ -32,7 +32,10 @@
   },
   "dependencies": {
     "@sveltejs/vite-plugin-svelte": "^7.3.0",
+    "@tauri-apps/plugin-dialog": "^2.7.2",
     "@tauri-apps/plugin-http": "^2.5.9",
+    "@zip.js/zip.js": "^2.8.54",
+    "idb-keyval": "^6.3.0",
     "svelte": "^5.56.9",
     "svelte-dnd-action": "^0.9.78"
   }

@@ -6,6 +6,8 @@
     import StationPicker from './StationPicker.svelte';
     import { portalDropdown } from '../js/utils/portal.js';
     import { RisTextService } from '../js/utils/risTextService.js';
+    import { ansagenGenerator } from '../js/utils/ansagenGenerator.js';
+    import { ansagenPlayer } from '../js/utils/ansagenPlayer.svelte.js';
 
     let { journey = $bindable() } = $props();
     
@@ -130,13 +132,31 @@
         journey.destinationKurz = station.nameKurz;
         triggerUpdate();
     }
+
+    function playAnsage(mode) {
+        let playlist = [];
+        if (mode === 'Einfahrt') playlist = ansagenGenerator.generateEinfahrt(journey);
+        else if (mode === 'Steht') playlist = ansagenGenerator.generateSteht(journey);
+        else if (mode === 'Information') playlist = ansagenGenerator.generateInformation(journey);
+        else if (mode === 'Anschluesse') playlist = ansagenGenerator.generateAnschluesse(journey);
+        
+        ansagenPlayer.play(playlist);
+    }
 </script>
 
 <div class="journey-details">
     <div class="details-grid">
         <!-- LINKE SPALTE: STAMMDATEN -->
         <div class="detail-section">
-            <h4 style="margin-bottom: 15px; border-bottom: 1px solid var(--border-color, #444); padding-bottom: 5px;">Stammdaten</h4>
+            <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid var(--border-color, #444); padding-bottom: 5px; margin-bottom: 15px;">
+                <h4 style="margin: 0;">Stammdaten</h4>
+                <div style="display: flex; gap: 5px;">
+                    <button class="btn-secondary btn-sm" onclick={() => playAnsage('Einfahrt')} title="Ansage Einfahrt generieren">🔊 Einfahrt</button>
+                    <button class="btn-secondary btn-sm" onclick={() => playAnsage('Steht')} title="Ansage Steht generieren">🔊 Steht</button>
+                    <button class="btn-secondary btn-sm" onclick={() => playAnsage('Information')} title="Ansage Information generieren">🔊 Info</button>
+                    <button class="btn-secondary btn-sm" onclick={() => playAnsage('Anschluesse')} title="Ansage Anschlüsse generieren">🔊 Anschlüsse</button>
+                </div>
+            </div>
             
             <!-- Name -->
             <div class="detail-row" style="display: flex; gap: 15px; align-items: flex-start; margin-bottom: 15px;">
