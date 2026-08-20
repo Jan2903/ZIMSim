@@ -10,7 +10,7 @@ export class RisTextService {
     static async load() {
         if (this.isLoaded) return;
         try {
-            const response = await fetch('/stations/RIS_Texte.csv');
+            const response = await fetch(import.meta.env.BASE_URL + 'stations/RIS_Texte.csv');
             const arrayBuffer = await response.arrayBuffer();
             // Windows-1252 / ISO-8859-1 decoding for ANSI
             const decoder = new TextDecoder('windows-1252');
