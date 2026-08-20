@@ -17,8 +17,7 @@ export const trainDisplay = new TrainDisplay(journeyStore);
  */
 function createDemoData() {
     const j1 = journeyStore.addJourney({
-        category: 'ICE',
-        number: '543',
+        name: 'ICE 543',
         destination: 'Düsseldorf Hbf',
         scheduledTime: '14:30',
         expectedTime: '14:32',
@@ -38,18 +37,17 @@ function createDemoData() {
                     { type: 'control_car', length: 25, coachClass: 1, wagonIdentificationNumber: 37, amenities: [], open: true },
                     { type: 'middle_car',  length: 25, coachClass: 1, wagonIdentificationNumber: 36, amenities: [], open: true },
                     { type: 'middle_car',  length: 25, coachClass: 2, wagonIdentificationNumber: 35, amenities: [], open: true },
-                    { type: 'middle_car',  length: 25, coachClass: 2, wagonIdentificationNumber: 34, amenities: ['g'], open: true },
+                    { type: 'middle_car',  length: 25, coachClass: 2, wagonIdentificationNumber: 34, amenities: ['BOARD_RESTAURANT'], open: true },
                     { type: 'middle_car',  length: 25, coachClass: 2, wagonIdentificationNumber: 33, amenities: [], open: true },
                     { type: 'middle_car',  length: 25, coachClass: 2, wagonIdentificationNumber: 32, amenities: [], open: true },
-                    { type: 'control_car', length: 25, coachClass: 2, wagonIdentificationNumber: 31, amenities: ['f'], open: true }
+                    { type: 'control_car', length: 25, coachClass: 2, wagonIdentificationNumber: 31, amenities: ['BIKE_SPACE'], open: true }
                 ]
             }]
         }
     });
 
     const j2 = journeyStore.addJourney({
-        category: 'ICE',
-        number: '553',
+        name: 'ICE 553',
         destination: 'Köln Hbf',
         scheduledTime: '14:30',
         expectedTime: '14:32',
@@ -70,9 +68,9 @@ function createDemoData() {
                     { type: 'middle_car',  length: 25, coachClass: 1, wagonIdentificationNumber: 26, amenities: [], open: true },
                     { type: 'middle_car',  length: 25, coachClass: 2, wagonIdentificationNumber: 25, amenities: [], open: true },
                     { type: 'middle_car',  length: 25, coachClass: 2, wagonIdentificationNumber: 24, amenities: [], open: true },
-                    { type: 'middle_car',  length: 25, coachClass: 2, wagonIdentificationNumber: 23, amenities: ['g'], open: true },
+                    { type: 'middle_car',  length: 25, coachClass: 2, wagonIdentificationNumber: 23, amenities: ['BOARD_RESTAURANT'], open: true },
                     { type: 'middle_car',  length: 25, coachClass: 2, wagonIdentificationNumber: 22, amenities: [], open: true },
-                    { type: 'control_car', length: 25, coachClass: 2, wagonIdentificationNumber: 21, amenities: ['f'], open: true }
+                    { type: 'control_car', length: 25, coachClass: 2, wagonIdentificationNumber: 21, amenities: ['BIKE_SPACE'], open: true }
                 ]
             }]
         }
@@ -83,8 +81,7 @@ function createDemoData() {
 
     // Dritter Zug: ICE L 2310 nach Westerland(Sylt) - Langes Gleis, kurzer Zug -> Gut für Zoom
     journeyStore.addJourney({
-        category: 'ICE',
-        number: '2310',
+        name: 'ICE 2310',
         destination: 'Westerland(Sylt)',
         scheduledTime: '15:15',
         expectedTime: '15:15',
@@ -102,7 +99,7 @@ function createDemoData() {
                 },
                 coaches: [
                     { type: 'locomotive', length: 19.975, coachClass: null, wagonIdentificationNumber: null, amenities: [], open: true },
-                    { type: 'middle_car', length: 18.317, coachClass: 2, wagonIdentificationNumber: 1, amenities: ['f'], open: true },
+                    { type: 'middle_car', length: 18.317, coachClass: 2, wagonIdentificationNumber: 1, amenities: ['BIKE_SPACE'], open: true },
                     { type: 'middle_car', length: 13.3, coachClass: 2, wagonIdentificationNumber: 2, amenities: [], open: true },
                     { type: 'middle_car', length: 13.3, coachClass: 2, wagonIdentificationNumber: 3, amenities: [], open: true },
                     { type: 'middle_car', length: 13.3, coachClass: 2, wagonIdentificationNumber: 4, amenities: [], open: true },
@@ -110,13 +107,13 @@ function createDemoData() {
                     { type: 'middle_car', length: 13.3, coachClass: 2, wagonIdentificationNumber: 6, amenities: [], open: true },
                     { type: 'middle_car', length: 13.3, coachClass: 2, wagonIdentificationNumber: 7, amenities: [], open: true },
                     { type: 'middle_car', length: 13.3, coachClass: 2, wagonIdentificationNumber: 8, amenities: [], open: true },
-                    { type: 'middle_car', length: 13.3, coachClass: 2, wagonIdentificationNumber: 9, amenities: ['r'], open: true },
+                    { type: 'middle_car', length: 13.3, coachClass: 2, wagonIdentificationNumber: 9, amenities: ['WHEELCHAIR_SPACE'], open: true },
                     { type: 'middle_car', length: 13.3, coachClass: 2, wagonIdentificationNumber: 10, amenities: [], open: true },
                     { type: 'middle_car', length: 13.3, coachClass: 2, wagonIdentificationNumber: 11, amenities: [], open: true },
                     { type: 'middle_car', length: 13.3, coachClass: 2, wagonIdentificationNumber: 12, amenities: [], open: true },
-                    { type: 'middle_car', length: 13.3, coachClass: 2, wagonIdentificationNumber: 13, amenities: ['r'], open: true },
-                    { type: 'middle_car', length: 13.3, coachClass: null, wagonIdentificationNumber: 14, amenities: ['g'], open: true },
-                    { type: 'middle_car', length: 13.3, coachClass: 1, wagonIdentificationNumber: 15, amenities: ['r'], open: true },
+                    { type: 'middle_car', length: 13.3, coachClass: 2, wagonIdentificationNumber: 13, amenities: ['WHEELCHAIR_SPACE'], open: true },
+                    { type: 'middle_car', length: 13.3, coachClass: null, wagonIdentificationNumber: 14, amenities: ['BOARD_RESTAURANT'], open: true },
+                    { type: 'middle_car', length: 13.3, coachClass: 1, wagonIdentificationNumber: 15, amenities: ['WHEELCHAIR_SPACE'], open: true },
                     { type: 'middle_car', length: 13.3, coachClass: 1, wagonIdentificationNumber: 16, amenities: [], open: true },
                     { type: 'control_car', length: 18.33, coachClass: 1, wagonIdentificationNumber: 17, amenities: [], open: true }
                 ]

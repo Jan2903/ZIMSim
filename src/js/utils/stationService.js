@@ -10,7 +10,7 @@ export class StationService {
     static async loadStations() {
         if (this.isLoaded) return;
         try {
-            const response = await fetch('/stations/stations.csv');
+            const response = await fetch(import.meta.env.BASE_URL + 'stations/stations.csv');
             const csvText = await response.text();
             this.parseCSV(csvText);
             this.isLoaded = true;
