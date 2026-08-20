@@ -17,6 +17,8 @@
     // Autocomplete State für Verspätungsgrund
     let showReasonDropdown = $state(false);
     let reasonWrapperRef = $state();
+    
+    let showStopDetails = $state(false);
 
     // Initialen Text setzen
     $effect(() => {
@@ -366,11 +368,14 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
             <h4>Zuglauf (Halte)</h4>
             <div style="display: flex; gap: 10px;">
+                <button class="btn-secondary" onclick={() => showStopDetails = !showStopDetails}>
+                    {showStopDetails ? 'An/Ab/Gl verbergen' : 'An/Ab/Gl anzeigen'}
+                </button>
                 <button class="btn-secondary" onclick={toggleAllStops}>👁️ Alle umschalten</button>
                 <button class="btn-secondary" onclick={autoGenVias}>⚡ Auto-Vias</button>
                 <button class="btn-secondary" onclick={addStop}>+ Halt hinzufügen</button>
             </div>
         </div>
-        <StopEditor bind:journey />
+        <StopEditor bind:journey {showStopDetails} />
     </div>
 </div>
