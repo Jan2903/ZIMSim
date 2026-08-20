@@ -74,8 +74,12 @@
     <div class="journey-col-main">
         <div class="journey-summary" role="button" tabindex="0" onclick={toggleExpand} onpointerdown={(e) => e.stopPropagation()} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(); } }}>
             <span class="journey-name">{journey.displayNameOverride || journey.name || '(kein Name)'}</span>
-            {#if journey.ankunft}
-                <span class="badge badge-arrival">ⓐ</span>
+            {#if journey.infoscreen}
+                <span class="badge badge-info" title="Infoscreen">ⓘ</span>
+            {:else if journey.ankunft}
+                <span class="badge badge-arrival" title="Ankunft">An</span>
+            {:else}
+                <span class="badge badge-departure" title="Abfahrt">Ab</span>
             {/if}
             <span class="journey-destination">{journey.destination || '—'}</span>
             <span class="journey-time">{journey.scheduledTime || '—'}</span>
