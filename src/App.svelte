@@ -4,6 +4,7 @@
     import Header from './components/Header.svelte';
     import SettingsPanel from './components/SettingsPanel.svelte';
     import Modals from './components/Modals.svelte';
+    import PlayerOverlay from './components/PlayerOverlay.svelte';
 
     let modalsComp = $state();
 
@@ -59,3 +60,5 @@
 <SettingsPanel {modalsComp} />
 
 <Modals bind:this={modalsComp} />
+
+<PlayerOverlay />
