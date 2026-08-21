@@ -1,5 +1,5 @@
 <script>
-    import { journeyStore, trainDisplay } from '../js/main.js';
+    import { journeyStore, trainDisplay } from '../js/stores.js';
 
     let isDbModalOpen = $state(false);
     let importType = $state('departure_list');

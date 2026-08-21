@@ -1,5 +1,5 @@
 <script>
-    import { journeyStore, trainDisplay } from '../js/main.js';
+    import { journeyStore, trainDisplay } from '../js/stores.js';
     import { StationService } from '../js/utils/stationService.js';
     import JourneyList from './JourneyList.svelte';
     import StationPicker from './StationPicker.svelte';

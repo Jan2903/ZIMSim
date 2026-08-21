@@ -1,5 +1,5 @@
 <script>
-    import { journeyStore, trainDisplay } from '../js/main.js';
+    import { journeyStore, trainDisplay } from '../js/stores.js';
     import { uiState } from '../js/models/uiState.svelte.js';
     import InfoTextEditor from './InfoTextEditor.svelte';
     import StopEditor from './StopEditor.svelte';

@@ -1,15 +1,8 @@
 // js/main.js
-import { JourneyStore } from './models/journeyStore.svelte.js';
-import { Journey } from './models/journey.svelte.js';
-import { Formation } from './models/formation.js';
-import { TrainDisplay } from './displays/trainDisplay.js';
-
+import { journeyStore, trainDisplay } from './stores.js';
 import { preloadImages } from './utils/utils.js';
 import { StationService } from './utils/stationService.js';
 import { RisTextService } from './utils/risTextService.js';
-
-export const journeyStore = new JourneyStore();
-export const trainDisplay = new TrainDisplay(journeyStore);
 
 
 /**

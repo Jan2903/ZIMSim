@@ -1,5 +1,5 @@
 <script>
-    import { trainDisplay } from '../js/main.js';
+    import { trainDisplay } from '../js/stores.js';
     import { dndzone } from 'svelte-dnd-action';
     import { flip } from 'svelte/animate';
     import { Stop } from '../js/models/stop.svelte.js';

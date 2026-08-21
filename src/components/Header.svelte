@@ -17,6 +17,6 @@
 <header class="page-header">
     <h2>ZugInfoMonitor</h2>
     <div class="header-actions">
-        <button id="download-btn" onclick={downloadScreenshot}>📸 Screenshot downloaden</button>
+        <button id="download-btn" onclick={downloadScreenshot}>Screenshot downloaden</button>
     </div>
 </header>

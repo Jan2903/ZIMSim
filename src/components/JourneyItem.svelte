@@ -1,6 +1,6 @@
 <script>
     import { uiState } from '../js/models/uiState.svelte.js';
-    import { journeyStore, trainDisplay } from '../js/main.js';
+    import { journeyStore, trainDisplay } from '../js/stores.js';
     import { getMotForCategory } from '../js/utils/motManager.js';
     import JourneyDetails from './JourneyDetails.svelte';
 
