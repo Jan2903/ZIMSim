@@ -25,18 +25,17 @@
   },
   "homepage": "https://github.com/Jan2903/ZIMSim#readme",
   "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^7.3.0",
     "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/cli": "^2.11.4",
-    "esbuild": "^0.28.2",
+    "svelte": "^5.56.9",
     "vite": "^8.2.1"
   },
   "dependencies": {
-    "@sveltejs/vite-plugin-svelte": "^7.3.0",
     "@tauri-apps/plugin-dialog": "^2.7.2",
     "@tauri-apps/plugin-http": "^2.5.9",
     "@zip.js/zip.js": "^2.8.54",
     "idb-keyval": "^6.3.0",
-    "svelte": "^5.56.9",
     "svelte-dnd-action": "^0.9.78"
   }
 }

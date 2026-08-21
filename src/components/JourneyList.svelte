@@ -1,7 +1,7 @@
 <script>
     import { dndzone } from 'svelte-dnd-action';
     import { flip } from 'svelte/animate';
-    import { journeyStore, trainDisplay } from '../js/main.js';
+    import { journeyStore, trainDisplay } from '../js/stores.js';
     import JourneyItem from './JourneyItem.svelte';
     import { uiState } from '../js/models/uiState.svelte.js';
 

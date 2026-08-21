@@ -1,6 +1,6 @@
 // js/utils/utils.js
 import { config } from './config.js';
-import { journeyStore, trainDisplay } from '../main.js';
+import { journeyStore, trainDisplay } from '../stores.js';
 
 export const images = {};
 export const pictogramNames = ['wagen_fehlen', 'wagenreihung_fahrrad', 'wagenreihung_gastronomie', 'wagenreihung_bistro', 'wagenreihung_mehrzweck', 'wagenreihung_rollstuhl', 'wagenreihung_schlafwagen', 'wagenreihung_liegewagen'];
