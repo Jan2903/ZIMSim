@@ -2,7 +2,6 @@
     import { journeyStore, trainDisplay } from '../js/stores.js';
     import { uiState } from '../js/models/uiState.svelte.js';
     import InfoTextEditor from './InfoTextEditor.svelte';
-    import FormationEditor from './FormationEditor.svelte';
     import StopEditor from './StopEditor.svelte';
     import StationPicker from './StationPicker.svelte';
     import { portalDropdown } from '../js/utils/portal.js';
@@ -381,8 +380,17 @@
     </div>
     
     <div class="detail-section" style="margin-top: 25px;">
-        <h4 style="margin-bottom: 10px;">Wagenreihung</h4>
-        <FormationEditor bind:journey />
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <h4>Wagenreihung</h4>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-secondary">📥 Import</button>
+                <button class="btn-secondary">📤 Export</button>
+                <button class="btn-secondary" title="Dreht die Reihenfolge aller Gruppen und Wagen um">🔁 Komplett drehen</button>
+                <button class="btn-secondary">+ Neue Gruppe</button>
+            </div>
+        </div>
+        <!-- FormationEditor placeholder -->
+        <div style="color: #888; font-style: italic; padding: 10px; border: 1px dashed #555;">Wagenreihungs-Editor (coming soon)</div>
     </div>
 
     <div class="details-actions" style="margin-top: 20px;">

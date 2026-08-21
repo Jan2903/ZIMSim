@@ -253,7 +253,7 @@
                                 onSelect={selectStation}
                             />
                         </div>
-                        <button id="btn_api_station_search" class="btn-secondary" style="padding: 8px 12px; margin: 0;" onclick={() => modalsComp?.openDbImport()} title="DB Import Dialog öffnen">API Suche</button>
+                        <button id="btn_api_station_search" class="btn-secondary" style="padding: 8px 12px; margin: 0;">API Suche</button>
                     </div>
 
                     <label style="margin-top: 5px;">Datum/Uhrzeit: <input type="datetime-local" step="1" id="custom_time_input" value={customTimeString} onchange={onCustomTimeChange}></label>
