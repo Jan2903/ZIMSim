@@ -214,16 +214,16 @@ export class AnsagenGenerator {
 
         if (mm === '0' || mm === '00') {
             playlist.push({
-                file: `${this.lang}/zeiten/stunden/tief/${parseInt(hh)}.opus`,
+                file: `${this.lang}/zeiten/stunden/tief/${parseInt(hh, 10)}.opus`,
                 text: `${hh} Uhr`
             });
         } else {
             playlist.push({
-                file: `${this.lang}/zeiten/stunden/hoch/${parseInt(hh)}.opus`,
+                file: `${this.lang}/zeiten/stunden/hoch/${parseInt(hh, 10)}.opus`,
                 text: `${hh} Uhr`
             });
             playlist.push({
-                file: `${this.lang}/zeiten/minuten/tief/${parseInt(mm)}.opus`,
+                file: `${this.lang}/zeiten/minuten/tief/${parseInt(mm, 10)}.opus`,
                 text: mm
             });
         }
