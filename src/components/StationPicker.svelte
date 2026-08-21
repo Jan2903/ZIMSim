@@ -1,6 +1,6 @@
 <script>
     import { StationService } from '../js/utils/stationService.js';
-    import { journeyStore } from '../js/main.js';
+    import { journeyStore } from '../js/stores.js';
     import { portalDropdown } from '../js/utils/portal.js';
 
     let { value = $bindable(), onSelect = null, onInput = null, placeholder = "Station suchen", cssClass = "jfield" } = $props();
