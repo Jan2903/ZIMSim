@@ -80,6 +80,9 @@ export class JourneyStore {
         const idx = this.journeys.findIndex(j => j.id === id);
         if (idx < 0) return false;
 
+        // Verknüpfung aufräumen
+        this.unlinkJourney(id);
+
         // Coupling aufräumen
         const journey = this.journeys[idx];
         if (journey.couplingGroupId) {
@@ -379,7 +382,7 @@ export class JourneyStore {
 
         if (journey.ankunft) {
             // Finde die Abfahrt, die auf diese Ankunft zeigt
-            return this.journeys.find(j => j.linkedArrivalJourneyId === id) || null;
+            return this.journeys.find(j => !j.ankunft && j.linkedArrivalJourneyId === id) || null;
         } else {
             // Finde die Ankunft, auf die diese Abfahrt zeigt
             if (!journey.linkedArrivalJourneyId) return null;
@@ -388,15 +391,77 @@ export class JourneyStore {
     }
 
     /**
-     * Verknüpft eine Ankunft mit einer Abfahrt.
-     * @param {string|null} arrivalId 
-     * @param {string} departureId 
+     * Verknüpft eine Ankunft mit einer Abfahrt (in beliebiger Reihenfolge).
+     * Löst vorherige Verknüpfungen beider Partner automatisch und sauber auf.
+     * @param {string} id1 - ID der ersten Journey
+     * @param {string} id2 - ID der zweiten Journey
+     * @returns {boolean} true bei Erfolg
      */
-    linkJourneys(arrivalId, departureId) {
-        const departure = this.getJourney(departureId);
-        if (departure) {
-            departure.linkedArrivalJourneyId = arrivalId;
+    linkJourneys(id1, id2) {
+        const j1 = this.getJourney(id1);
+        const j2 = this.getJourney(id2);
+        if (!j1 || !j2) return false;
+
+        let arrival = null;
+        let departure = null;
+
+        if (j1.ankunft && !j2.ankunft) {
+            arrival = j1;
+            departure = j2;
+        } else if (!j1.ankunft && j2.ankunft) {
+            departure = j1;
+            arrival = j2;
+        } else {
+            console.warn("linkJourneys: Es muss genau eine Ankunft und eine Abfahrt verknüpft werden.");
+            return false;
         }
+
+        // 1. Falls die Ankunft bereits mit einer anderen Abfahrt verknüpft war, diese auflösen
+        this.journeys.forEach(j => {
+            if (!j.ankunft && j.linkedArrivalJourneyId === arrival.id && j.id !== departure.id) {
+                j.linkedArrivalJourneyId = null;
+            }
+        });
+
+        // 2. Abfahrt mit der Ankunft verknüpfen
+        departure.linkedArrivalJourneyId = arrival.id;
+
+        // Sicherstellen, dass auf der Ankunft selbst kein verwaister linkedArrivalJourneyId liegt
+        arrival.linkedArrivalJourneyId = null;
+
+        return true;
+    }
+
+    /**
+     * Löst die Verknüpfung einer Journey auf (egal ob Ankunft oder Abfahrt).
+     * @param {string} id - Journey-ID
+     */
+    unlinkJourney(id) {
+        const journey = this.getJourney(id);
+        if (!journey) return;
+
+        if (journey.ankunft) {
+            // Alle Abfahrten finden, die auf diese Ankunft verweisen, und entkoppeln
+            this.journeys.forEach(j => {
+                if (j.linkedArrivalJourneyId === id) {
+                    j.linkedArrivalJourneyId = null;
+                }
+            });
+        } else {
+            journey.linkedArrivalJourneyId = null;
+        }
+    }
+
+    /**
+     * Schaltet den Modus einer Journey zwischen Ankunft und Abfahrt um
+     * und bereinigt bestehende Verknüpfungen.
+     * @param {string} id - Journey-ID
+     */
+    toggleJourneyMode(id) {
+        const journey = this.getJourney(id);
+        if (!journey) return;
+        this.unlinkJourney(id);
+        journey.ankunft = !journey.ankunft;
     }
 
     /**
@@ -502,11 +567,9 @@ export class JourneyStore {
                     
                     // Wir akzeptieren die Wende, wenn Operator passt und die Plan-Wende <= 180 Min ist
                     if (operatorMatch && diffPlan <= MAX_TURNAROUND) {
-                        // Treffer! Verknüpfen.
+                        // Treffer! Verknüpfen (strikte 1:1 Beziehung)
                         T.linkedArrivalJourneyId = A.id;
-                        linkedAny = true;
-                        currentDiff = event.diff;
-                        continue;
+                        break;
                     }
                 }
 

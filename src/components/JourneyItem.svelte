@@ -50,13 +50,7 @@
         return 'coupling-middle';
     });
 
-    function getLinkedArrival() {
-        return journeyStore.getJourney(journey.linkedArrivalJourneyId);
-    }
-    
-    function getLinkedDeparture() {
-        return journeyStore.journeys.find(j => j.linkedArrivalJourneyId === journey.id);
-    }
+    let linkedJourney = $derived(journeyStore.getLinkedJourney(journey.id));
 </script>
 
 <div class="journey-row {journey.ausfall ? 'journey-cancelled' : ''} {isHidden ? 'mot-hidden' : ''}">
@@ -95,18 +89,18 @@
                 {/if}
             </span>
             
-            {#if journey.linkedArrivalJourneyId}
-                {#if getLinkedArrival()}
-                    <span class="badge badge-link" title="Kommt von Ankunft (anklicken zum Öffnen)" style="cursor: pointer; background: #4dabf7; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.85em; margin-right: 8px;">
-                        🔗 Kommt aus {getLinkedArrival().effectiveDisplayName} ({getLinkedArrival().scheduledTime})
-                    </span>
-                {/if}
-            {:else if journey.ankunft}
-                {#if getLinkedDeparture()}
-                    <span class="badge badge-link" title="Wird zu Abfahrt (anklicken zum Öffnen)" style="cursor: pointer; background: #4dabf7; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.85em; margin-right: 8px;">
-                        🔗 Wird zu {getLinkedDeparture().effectiveDisplayName} ({getLinkedDeparture().scheduledTime})
-                    </span>
-                {/if}
+            {#if linkedJourney}
+                <!-- svelte-ignore a11y_click_events_have_key_events -->
+                <!-- svelte-ignore a11y_no_static_element_interactions -->
+                <span class="badge badge-link" 
+                      title="{journey.ankunft ? 'Wird zu Abfahrt' : 'Kommt von Ankunft'} (anklicken zum Öffnen)" 
+                      style="cursor: pointer; background: #4dabf7; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.85em; margin-right: 8px;"
+                      onclick={(e) => {
+                          e.stopPropagation();
+                          uiState.expandedJourneyId = linkedJourney.id;
+                      }}>
+                    🔗 {journey.ankunft ? 'Wird zu' : 'Kommt aus'} {linkedJourney.effectiveDisplayName} ({linkedJourney.scheduledTime})
+                </span>
             {/if}
             
             <button class="btn-icon expand-toggle">{isExpanded ? '▾' : '▸'}</button>
