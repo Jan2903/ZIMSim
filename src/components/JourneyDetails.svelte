@@ -161,11 +161,11 @@
             <!-- Name -->
             <div class="detail-row" style="display: flex; gap: 15px; align-items: flex-start; margin-bottom: 15px;">
                 <div style="display: flex; flex-direction: column; width: 200px;">
-                    <label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Name</label>
+                    <!-- svelte-ignore a11y_label_has_associated_control -->`n<label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Name</label>
                     <input type="text" class="jfield" bind:value={journey.name} oninput={triggerUpdate} style="width: 100%;" placeholder="z.B. RE 70 / 95835">
                 </div>
                 <div style="display: flex; flex-direction: column; flex-grow: 1;">
-                    <label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Zusatz / Überschreiben</label>
+                    <!-- svelte-ignore a11y_label_has_associated_control -->`n<label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Zusatz / Überschreiben</label>
                     <input type="text" class="jfield" bind:value={journey.displayNameOverride} oninput={triggerUpdate} placeholder={journey.name || 'auto'} style="width: 100%;">
                 </div>
             </div>
@@ -173,11 +173,11 @@
             <!-- Ziel / Herkunft -->
             <div class="detail-row" style="display: flex; gap: 15px; align-items: flex-start; margin-bottom: 15px;">
                 <div style="display: flex; flex-direction: column; width: 200px;">
-                    <label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Ziel / Herkunft</label>
+                    <!-- svelte-ignore a11y_label_has_associated_control -->`n<label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Ziel / Herkunft</label>
                     <StationPicker bind:value={journey.destination} placeholder="Station suchen" onSelect={onDestinationSelect} />
                 </div>
                 <div style="display: flex; flex-direction: column; flex-grow: 1;">
-                    <label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Zusatz / Überschreiben</label>
+                    <!-- svelte-ignore a11y_label_has_associated_control -->`n<label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Zusatz / Überschreiben</label>
                     <input type="text" class="jfield" bind:value={journey.destinationOverride} oninput={triggerUpdate} placeholder={journey.destination || 'Auto'} style="width: 100%;">
                 </div>
             </div>
@@ -187,11 +187,11 @@
                 <!-- Zeit Block -->
                 <div style="display: flex; gap: 10px; flex-grow: 1;">
                     <div style="display: flex; flex-direction: column; flex: 1;">
-                        <label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Zeit (Plan)</label>
+                        <!-- svelte-ignore a11y_label_has_associated_control -->`n<label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Zeit (Plan)</label>
                         <input type="text" class="jfield" bind:value={journey.scheduledTime} oninput={triggerUpdate} placeholder="z.B. 14:30" style="width: 100%; text-align: center;">
                     </div>
                     <div style="display: flex; flex-direction: column; flex: 1;">
-                        <label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Echtzeit</label>
+                        <!-- svelte-ignore a11y_label_has_associated_control -->`n<label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Echtzeit</label>
                         <input type="text" class="jfield" bind:value={journey.expectedTime} oninput={triggerUpdate} placeholder="optional" style="width: 100%; text-align: center; color: var(--error-color, #ff6b6b); font-weight: bold;">
                     </div>
                 </div>
@@ -201,11 +201,11 @@
                 <!-- Gleis Block -->
                 <div style="display: flex; gap: 10px; flex-grow: 1;">
                     <div style="display: flex; flex-direction: column; flex: 1;">
-                        <label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Gleis/Plattform</label>
+                        <!-- svelte-ignore a11y_label_has_associated_control -->`n<label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Gleis/Plattform</label>
                         <input type="text" class="jfield" bind:value={journey.platform} oninput={triggerUpdate} placeholder="z.B. 4" style="width: 100%; text-align: center;">
                     </div>
                     <div style="display: flex; flex-direction: column; flex: 1;">
-                        <label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Echtzeit</label>
+                        <!-- svelte-ignore a11y_label_has_associated_control -->`n<label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Echtzeit</label>
                         <input type="text" class="jfield" bind:value={journey.ezGleis} oninput={triggerUpdate} placeholder="optional" style="width: 100%; text-align: center; color: var(--error-color, #ff6b6b); font-weight: bold;">
                     </div>
                 </div>
@@ -213,7 +213,7 @@
             
             <!-- Verknüpfte Fahrt -->
             <div class="detail-row" style="display: flex; flex-direction: column; margin-bottom: 15px;">
-                <label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block; text-align: left;">Verknüpfte Fahrt (Fahrzeugtausch/Wende)</label>
+                <!-- svelte-ignore a11y_label_has_associated_control -->`n<label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block; text-align: left;">Verknüpfte Fahrt (Fahrzeugtausch/Wende)</label>
                 <div bind:this={linkWrapperRef} style="position: relative; width: 100%;">
                     <input type="text" class="jfield" style="width: 100%; margin: 0;"
                            placeholder="Fahrt suchen (Name, Ziel, Zeit)..."
@@ -240,7 +240,7 @@
             
             <!-- Verspätungsgrund -->
             <div class="detail-row" style="display: flex; flex-direction: column; margin-bottom: 15px;">
-                <label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block; text-align: left;">Verspätungsgrund</label>
+                <!-- svelte-ignore a11y_label_has_associated_control -->`n<label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block; text-align: left;">Verspätungsgrund</label>
                 <div bind:this={reasonWrapperRef} style="position: relative; width: 100%;">
                     <input type="text" class="jfield" style="width: 100%; margin: 0;"
                            placeholder="Suchen oder eigenen Text eingeben"
@@ -288,12 +288,12 @@
                 
                 <!-- Ausfall & Infoscreen -->
                 <div style="display: flex; flex-direction: column; justify-content: center; gap: 12px; flex-grow: 1;">
-                    <label class="checkbox-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin: 0;">
+                    <!-- svelte-ignore a11y_label_has_associated_control -->`n<label class="checkbox-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin: 0;">
                         <input type="checkbox" bind:checked={journey.ausfall} onchange={triggerUpdate} style="width: 18px; height: 18px; cursor: pointer;">
                         <span style="font-size: 1.05em; {journey.ausfall ? 'color: #ff6b6b; font-weight: bold;' : ''}">Zugausfall</span>
                     </label>
                     
-                    <label class="checkbox-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin: 0;">
+                    <!-- svelte-ignore a11y_label_has_associated_control -->`n<label class="checkbox-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin: 0;">
                         <input type="checkbox" bind:checked={journey.infoscreen} onchange={triggerUpdate} style="width: 18px; height: 18px; cursor: pointer;">
                         <span style="font-size: 1.05em;">Infoscreen (Lauftext/ Sonderanzeige)</span>
                     </label>
@@ -309,7 +309,7 @@
             
             <!-- Row 3: Verkehrt heute ab -->
             <div class="detail-row" style="display: flex; flex-direction: column; margin-bottom: 20px;">
-                <label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block; text-align: left;">Verkehrt heute ab (Station)</label>
+                <!-- svelte-ignore a11y_label_has_associated_control -->`n<label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block; text-align: left;">Verkehrt heute ab (Station)</label>
                 <div style="display: flex; gap: 8px; align-items: center;">
                     <div style="flex-grow: 1;">
                         <StationPicker 
@@ -342,7 +342,7 @@
 
                 <!-- Startmeter -->
                 <div style="display: flex; flex-direction: column; justify-content: center; width: 80px;">
-                    <label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block; text-align: center;">Startmeter</label>
+                    <!-- svelte-ignore a11y_label_has_associated_control -->`n<label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block; text-align: center;">Startmeter</label>
                     <input type="number" class="jfield" bind:value={journey.startMeter} oninput={triggerUpdate} style="width: 100%; min-width: 0; text-align: center;" placeholder="z.B. 50">
                 </div>
 
@@ -350,9 +350,9 @@
 
                 <!-- Skalierung -->
                 <div style="display: flex; flex-direction: column; justify-content: center; flex-grow: 1;">
-                    <label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Skalierung (Zoom)</label>
+                    <!-- svelte-ignore a11y_label_has_associated_control -->`n<label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Skalierung (Zoom)</label>
                     <div style="display: flex; align-items: center; gap: 15px;">
-                        <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
+                        <!-- svelte-ignore a11y_label_has_associated_control -->`n<label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
                             <input type="checkbox" bind:checked={journey.skalieren} onchange={triggerUpdate} style="width: 16px; height: 16px;">
                             <span>Aktiv</span>
                         </label>
