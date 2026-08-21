@@ -22,37 +22,34 @@
     
     let showStopDetails = $state(false);
 
-    // Initialen Text setzen
+    // Initialen Text synchronisieren via Store-Methode
     $effect(() => {
-        if (journey.linkedArrivalJourneyId) {
-            const linked = journeyStore.getJourney(journey.linkedArrivalJourneyId);
-            if (linked) {
-                linkSearchText = `${linked.effectiveDisplayName} (${linked.scheduledTime})`;
-            } else {
-                linkSearchText = journey.linkedArrivalJourneyId;
-            }
+        const linked = journeyStore.getLinkedJourney(journey.id);
+        if (linked) {
+            linkSearchText = `${linked.effectiveDisplayName} (${linked.scheduledTime})`;
         } else {
             linkSearchText = '';
         }
     });
 
-    // Filter-Logik für Autocomplete Verknüpfung
+    // Filter-Logik für Autocomplete Verknüpfung:
+    // Nur komplementäre Typen! (Abfahrt sucht Ankünfte, Ankunft sucht Abfahrten)
     let filteredJourneys = $derived.by(() => {
-        const query = linkSearchText.toLowerCase();
-        let list = journeyStore.journeys.filter(j => j.id !== journey.id);
+        const query = linkSearchText.toLowerCase().trim();
+        const targetIsArrival = !journey.ankunft;
+        let list = journeyStore.journeys.filter(j => j.id !== journey.id && j.ankunft === targetIsArrival);
         
-        // Wenn ein Query existiert und nicht exakt dem ausgewählten Text entspricht
-        if (query) {
-            const selectedMatch = journey.linkedArrivalJourneyId ? journeyStore.getJourney(journey.linkedArrivalJourneyId) : null;
-            const selectedString = selectedMatch ? `${selectedMatch.effectiveDisplayName} (${selectedMatch.scheduledTime})`.toLowerCase() : '';
-            
-            if (query !== selectedString) {
-                list = list.filter(j => 
-                    (j.effectiveDisplayName && j.effectiveDisplayName.toLowerCase().includes(query)) ||
-                    (j.destination && j.destination.toLowerCase().includes(query)) ||
-                    (j.scheduledTime && j.scheduledTime.includes(query))
-                );
-            }
+        const linkedPartner = journeyStore.getLinkedJourney(journey.id);
+        const selectedString = linkedPartner ? `${linkedPartner.effectiveDisplayName} (${linkedPartner.scheduledTime})`.toLowerCase() : '';
+
+        if (query && query !== selectedString) {
+            list = list.filter(j => 
+                (j.effectiveDisplayName && j.effectiveDisplayName.toLowerCase().includes(query)) ||
+                (j.destination && j.destination.toLowerCase().includes(query)) ||
+                (j.scheduledTime && j.scheduledTime.includes(query)) ||
+                (j.platform && j.platform.toString().includes(query)) ||
+                (j.ezGleis && j.ezGleis.toString().includes(query))
+            );
         }
         return list;
     });
@@ -70,10 +67,10 @@
 
     function setLinkedJourney(targetJourney) {
         if (!targetJourney) {
-            journey.linkedArrivalJourneyId = null;
+            journeyStore.unlinkJourney(journey.id);
             linkSearchText = '';
         } else {
-            journey.linkedArrivalJourneyId = targetJourney.id;
+            journeyStore.linkJourneys(journey.id, targetJourney.id);
             linkSearchText = `${targetJourney.effectiveDisplayName} (${targetJourney.scheduledTime})`;
         }
         showLinkDropdown = false;
@@ -161,11 +158,11 @@
             <!-- Name -->
             <div class="detail-row" style="display: flex; gap: 15px; align-items: flex-start; margin-bottom: 15px;">
                 <div style="display: flex; flex-direction: column; width: 200px;">
-                    <!-- svelte-ignore a11y_label_has_associated_control -->`n<label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Name</label>
+                    <span style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Name</span>
                     <input type="text" class="jfield" bind:value={journey.name} oninput={triggerUpdate} style="width: 100%;" placeholder="z.B. RE 70 / 95835">
                 </div>
                 <div style="display: flex; flex-direction: column; flex-grow: 1;">
-                    <!-- svelte-ignore a11y_label_has_associated_control -->`n<label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Zusatz / Überschreiben</label>
+                    <span style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Zusatz / Überschreiben</span>
                     <input type="text" class="jfield" bind:value={journey.displayNameOverride} oninput={triggerUpdate} placeholder={journey.name || 'auto'} style="width: 100%;">
                 </div>
             </div>
@@ -173,11 +170,11 @@
             <!-- Ziel / Herkunft -->
             <div class="detail-row" style="display: flex; gap: 15px; align-items: flex-start; margin-bottom: 15px;">
                 <div style="display: flex; flex-direction: column; width: 200px;">
-                    <!-- svelte-ignore a11y_label_has_associated_control -->`n<label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Ziel / Herkunft</label>
+                    <span style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Ziel / Herkunft</span>
                     <StationPicker bind:value={journey.destination} placeholder="Station suchen" onSelect={onDestinationSelect} />
                 </div>
                 <div style="display: flex; flex-direction: column; flex-grow: 1;">
-                    <!-- svelte-ignore a11y_label_has_associated_control -->`n<label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Zusatz / Überschreiben</label>
+                    <span style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Zusatz / Überschreiben</span>
                     <input type="text" class="jfield" bind:value={journey.destinationOverride} oninput={triggerUpdate} placeholder={journey.destination || 'Auto'} style="width: 100%;">
                 </div>
             </div>
@@ -187,11 +184,11 @@
                 <!-- Zeit Block -->
                 <div style="display: flex; gap: 10px; flex-grow: 1;">
                     <div style="display: flex; flex-direction: column; flex: 1;">
-                        <!-- svelte-ignore a11y_label_has_associated_control -->`n<label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Zeit (Plan)</label>
+                        <span style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Zeit (Plan)</span>
                         <input type="text" class="jfield" bind:value={journey.scheduledTime} oninput={triggerUpdate} placeholder="z.B. 14:30" style="width: 100%; text-align: center;">
                     </div>
                     <div style="display: flex; flex-direction: column; flex: 1;">
-                        <!-- svelte-ignore a11y_label_has_associated_control -->`n<label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Echtzeit</label>
+                        <span style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Echtzeit</span>
                         <input type="text" class="jfield" bind:value={journey.expectedTime} oninput={triggerUpdate} placeholder="optional" style="width: 100%; text-align: center; color: var(--error-color, #ff6b6b); font-weight: bold;">
                     </div>
                 </div>
@@ -201,11 +198,11 @@
                 <!-- Gleis Block -->
                 <div style="display: flex; gap: 10px; flex-grow: 1;">
                     <div style="display: flex; flex-direction: column; flex: 1;">
-                        <!-- svelte-ignore a11y_label_has_associated_control -->`n<label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Gleis/Plattform</label>
+                        <span style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Gleis/Plattform</span>
                         <input type="text" class="jfield" bind:value={journey.platform} oninput={triggerUpdate} placeholder="z.B. 4" style="width: 100%; text-align: center;">
                     </div>
                     <div style="display: flex; flex-direction: column; flex: 1;">
-                        <!-- svelte-ignore a11y_label_has_associated_control -->`n<label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Echtzeit</label>
+                        <span style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Echtzeit</span>
                         <input type="text" class="jfield" bind:value={journey.ezGleis} oninput={triggerUpdate} placeholder="optional" style="width: 100%; text-align: center; color: var(--error-color, #ff6b6b); font-weight: bold;">
                     </div>
                 </div>
@@ -213,10 +210,12 @@
             
             <!-- Verknüpfte Fahrt -->
             <div class="detail-row" style="display: flex; flex-direction: column; margin-bottom: 15px;">
-                <!-- svelte-ignore a11y_label_has_associated_control -->`n<label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block; text-align: left;">Verknüpfte Fahrt (Fahrzeugtausch/Wende)</label>
+                <span style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block; text-align: left;">
+                    {journey.ankunft ? 'Wird zu Abfahrt (Wende / Fahrzeugtausch)' : 'Kommt aus Ankunft (Wende / Fahrzeugtausch)'}
+                </span>
                 <div bind:this={linkWrapperRef} style="position: relative; width: 100%;">
                     <input type="text" class="jfield" style="width: 100%; margin: 0;"
-                           placeholder="Fahrt suchen (Name, Ziel, Zeit)..."
+                           placeholder={journey.ankunft ? 'Abfahrt suchen (Name, Ziel, Zeit)...' : 'Ankunft suchen (Name, Herkunft, Zeit)...'}
                            bind:value={linkSearchText}
                            onfocus={() => showLinkDropdown = true}
                            onblur={() => setTimeout(() => showLinkDropdown = false, 200)}>
@@ -227,12 +226,27 @@
                             <!-- svelte-ignore a11y_click_events_have_key_events -->
                             <li class="autocomplete-item" style="padding: 8px; cursor: pointer; border-bottom: 1px solid var(--border-color, #444);" onclick={() => setLinkedJourney(null)}>-- Keine Verknüpfung --</li>
                             {#each filteredJourneys as a}
+                                {@const existingPartner = journeyStore.getLinkedJourney(a.id)}
                                 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
                                 <!-- svelte-ignore a11y_click_events_have_key_events -->
-                                <li class="autocomplete-item" style="padding: 8px; cursor: pointer; border-bottom: 1px solid var(--border-color, #444);" onclick={() => setLinkedJourney(a)}>
-                                    {a.effectiveDisplayName} ({a.scheduledTime}) - Gl. {a.ezGleis || a.platform}
+                                <li class="autocomplete-item" style="padding: 8px; cursor: pointer; border-bottom: 1px solid var(--border-color, #444); display: flex; justify-content: space-between; align-items: center;" onclick={() => setLinkedJourney(a)}>
+                                    <span>
+                                        <strong>{a.effectiveDisplayName}</strong> ({a.scheduledTime})
+                                        {#if a.destination} - {a.destination}{/if}
+                                        {#if a.ezGleis || a.platform} - Gl. {a.ezGleis || a.platform}{/if}
+                                    </span>
+                                    {#if existingPartner && existingPartner.id !== journey.id}
+                                        <span style="font-size: 0.75em; opacity: 0.7; color: #ff9800; margin-left: 8px;">
+                                            (bereits mit {existingPartner.effectiveDisplayName} verknüpft)
+                                        </span>
+                                    {/if}
                                 </li>
                             {/each}
+                            {#if filteredJourneys.length === 0}
+                                <li style="padding: 8px; color: #888; font-style: italic;">
+                                    {journey.ankunft ? 'Keine passenden Abfahrten vorhanden' : 'Keine passenden Ankünfte vorhanden'}
+                                </li>
+                            {/if}
                         </ul>
                     {/if}
                 </div>
@@ -240,7 +254,7 @@
             
             <!-- Verspätungsgrund -->
             <div class="detail-row" style="display: flex; flex-direction: column; margin-bottom: 15px;">
-                <!-- svelte-ignore a11y_label_has_associated_control -->`n<label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block; text-align: left;">Verspätungsgrund</label>
+                <span style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block; text-align: left;">Verspätungsgrund</span>
                 <div bind:this={reasonWrapperRef} style="position: relative; width: 100%;">
                     <input type="text" class="jfield" style="width: 100%; margin: 0;"
                            placeholder="Suchen oder eigenen Text eingeben"
@@ -276,7 +290,7 @@
                 <!-- Ankunft/Abfahrt Toggle -->
                 <!-- svelte-ignore a11y_click_events_have_key_events -->
                 <!-- svelte-ignore a11y_no_static_element_interactions -->
-                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; width: 80px;" onclick={() => { journey.ankunft = !journey.ankunft; triggerUpdate(); }}>
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; width: 80px;" onclick={() => { journeyStore.toggleJourneyMode(journey.id); triggerUpdate(); }}>
                     <div style="font-size: 0.85em; opacity: 0.8; margin-bottom: 8px;">Modus</div>
                     <div style="width: 44px; height: 22px; background: var(--bg-panel, #1a1a1a); border-radius: 11px; position: relative; border: 2px solid var(--border-color, #555); box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);">
                         <div style="width: 16px; height: 16px; background: {journey.ankunft ? '#ff6b6b' : '#4dabf7'}; border-radius: 50%; position: absolute; top: 1px; transition: 0.2s; {journey.ankunft ? 'right: 1px;' : 'left: 1px;'} box-shadow: 0 1px 3px rgba(0,0,0,0.4);"></div>
@@ -288,12 +302,12 @@
                 
                 <!-- Ausfall & Infoscreen -->
                 <div style="display: flex; flex-direction: column; justify-content: center; gap: 12px; flex-grow: 1;">
-                    <!-- svelte-ignore a11y_label_has_associated_control -->`n<label class="checkbox-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin: 0;">
+                    <label class="checkbox-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin: 0;">
                         <input type="checkbox" bind:checked={journey.ausfall} onchange={triggerUpdate} style="width: 18px; height: 18px; cursor: pointer;">
                         <span style="font-size: 1.05em; {journey.ausfall ? 'color: #ff6b6b; font-weight: bold;' : ''}">Zugausfall</span>
                     </label>
                     
-                    <!-- svelte-ignore a11y_label_has_associated_control -->`n<label class="checkbox-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin: 0;">
+                    <label class="checkbox-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin: 0;">
                         <input type="checkbox" bind:checked={journey.infoscreen} onchange={triggerUpdate} style="width: 18px; height: 18px; cursor: pointer;">
                         <span style="font-size: 1.05em;">Infoscreen (Lauftext/ Sonderanzeige)</span>
                     </label>
@@ -309,7 +323,7 @@
             
             <!-- Row 3: Verkehrt heute ab -->
             <div class="detail-row" style="display: flex; flex-direction: column; margin-bottom: 20px;">
-                <!-- svelte-ignore a11y_label_has_associated_control -->`n<label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block; text-align: left;">Verkehrt heute ab (Station)</label>
+                <span style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block; text-align: left;">Verkehrt heute ab (Station)</span>
                 <div style="display: flex; gap: 8px; align-items: center;">
                     <div style="flex-grow: 1;">
                         <StationPicker 
@@ -342,7 +356,7 @@
 
                 <!-- Startmeter -->
                 <div style="display: flex; flex-direction: column; justify-content: center; width: 80px;">
-                    <!-- svelte-ignore a11y_label_has_associated_control -->`n<label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block; text-align: center;">Startmeter</label>
+                    <span style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block; text-align: center;">Startmeter</span>
                     <input type="number" class="jfield" bind:value={journey.startMeter} oninput={triggerUpdate} style="width: 100%; min-width: 0; text-align: center;" placeholder="z.B. 50">
                 </div>
 
@@ -350,9 +364,9 @@
 
                 <!-- Skalierung -->
                 <div style="display: flex; flex-direction: column; justify-content: center; flex-grow: 1;">
-                    <!-- svelte-ignore a11y_label_has_associated_control -->`n<label style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Skalierung (Zoom)</label>
+                    <span style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Skalierung (Zoom)</span>
                     <div style="display: flex; align-items: center; gap: 15px;">
-                        <!-- svelte-ignore a11y_label_has_associated_control -->`n<label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
+                        <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
                             <input type="checkbox" bind:checked={journey.skalieren} onchange={triggerUpdate} style="width: 16px; height: 16px;">
                             <span>Aktiv</span>
                         </label>
