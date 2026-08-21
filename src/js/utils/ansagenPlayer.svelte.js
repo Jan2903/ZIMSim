@@ -15,6 +15,7 @@ export class AnsagenPlayer {
     _cachedZipReader = null;
     _sourceNodes = [];
     _timeouts = [];
+    _playId = 0;
 
     constructor() {}
 
@@ -86,14 +87,18 @@ export class AnsagenPlayer {
         this.totalFiles = playlist.length;
         this.currentIndex = -1;
         this.isPlaying = true;
+        
+        const currentPlayId = this._playId;
 
         let startTime = this._audioContext.currentTime + 0.1;
 
         for (let i = 0; i < playlist.length; i++) {
-            if (!this.isPlaying) break; // If stopped during loading
+            if (this._playId !== currentPlayId || !this.isPlaying) break; // If stopped during loading
 
             const item = playlist[i];
             const buffer = await this._getAudioBuffer(item.file);
+            
+            if (this._playId !== currentPlayId || !this.isPlaying) break; // Check again after await
             
             if (buffer) {
                 const source = this._audioContext.createBufferSource();
@@ -131,11 +136,14 @@ export class AnsagenPlayer {
         const timeUntilEnd = (startTime - this._audioContext.currentTime) * 1000;
         const endTimeoutId = setTimeout(() => {
             this.isPlaying = false;
+            this._sourceNodes = [];
+            this._timeouts = [];
         }, Math.max(0, timeUntilEnd));
         this._timeouts.push(endTimeoutId);
     }
 
     stop() {
+        this._playId++;
         this.isPlaying = false;
         this.currentIndex = -1;
         this.currentText = '';
@@ -160,8 +168,9 @@ export class AnsagenPlayer {
         // 1. Calculate total duration and collect all buffers
         let totalDuration = 0;
         const buffersToRender = [];
+        const listToExport = [...this.playlist];
         
-        for (const item of this.playlist) {
+        for (const item of listToExport) {
             const buffer = await this._getAudioBuffer(item.file);
             if (buffer) {
                 buffersToRender.push(buffer);
