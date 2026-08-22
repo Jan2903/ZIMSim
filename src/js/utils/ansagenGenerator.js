@@ -1,38 +1,5 @@
 import { StationService } from './stationService.js';
-
-export const audioModules = {
-    GLEIS: { de: { file: "016.opus", text: "Gleis" } },
-    EINFAHRT: { de: { file: "012.opus", text: "Einfahrt" } },
-    NACH: { de: { file: "0054.opus", text: "nach" } },
-    UEBER: { de: { file: "035.opus", text: "über" } },
-    VEREINT_MIT: { de: { file: "031.opus", text: "vereint mit" } },
-    ABFAHRT_URSPRUENGLICH: { de: { file: "002.opus", text: "Abfahrt ursprünglich" } },
-    ABFAHRT: { de: { file: "001.opus", text: "Abfahrt" } },
-    ZUGTEILUNG_1: { de: { file: "045.opus", text: "Zug wird geteilt" } },
-    UND: { de: { file: "036.opus", text: "und" } },
-    ZUGTEILUNG_2: { de: { file: "015.opus", text: "Wir bitten um Beachtung" } },
-    VORSICHT_BEI_DER_EINFAHRT: { de: { file: "046.opus", text: "Vorsicht bei der Einfahrt" } },
-    VON: { de: { file: "0065.opus", text: "von" } },
-    WEITER_ALS: { de: { file: "040.opus", text: "weiter als" } },
-    ANKUNFT: { de: { file: "005.opus", text: "Ankunft" } },
-    BITTE_NICHT_EINSTEIGEN: { de: { file: "007.opus", text: "bitte nicht einsteigen" } },
-    STEHT: { de: { file: "034.opus", text: "steht" } },
-    INFORMATION_ZU: { de: { file: "030.opus", text: "Information zu" } },
-    GRUND_ODER_VERSPAETUNG: { de: { file: "021.opus", text: "Grund / Verspätung Einleitung" } },
-    ZUGAUSFALL: { de: { file: "044.opus", text: "fällt heute aus" } },
-    HEUTE_NUR_BIS: { de: { file: "020.opus", text: "heute nur bis" } },
-    HALTAUSFALL: { de: { file: "022.opus", text: "hält heute nicht in" } },
-    ZUSATZHALT: { de: { file: "014.opus", text: "hält zusätzlich in" } },
-    ERSATZZUG: { de: { file: "042.opus", text: "Ersatzzug für" } },
-    ABFERTIGUNG_1: { de: { file: "0048.opus", text: "Zur Abfahrt" } },
-    ABFERTIGUNG_2: { de: { file: "0011.opus", text: "Bitte Türen schließen" } },
-    ACHTUNG_GLEIS: { de: { file: "0153.opus", text: "Achtung an Gleis" } },
-    ZUG_FAEHRT_DURCH: { de: { file: "0155.opus", text: "Ein Zug fährt durch" } },
-    ZURUECKTRETEN: { de: { file: "0159.opus", text: "Bitte treten Sie zurück" } },
-    ANSCHLUESSE: { de: { file: "026.opus", text: "Ihre nächsten Anschlüsse" } },
-    VON_GLEIS: { de: { file: "039.opus", text: "von Gleis" } },
-    HEUTE_VON_GLEIS: { de: { file: "018.opus", text: "heute von Gleis" } }
-};
+import { audioModules } from './audioModules.js';
 
 export class AnsagenGenerator {
     constructor() {
@@ -109,7 +76,7 @@ export class AnsagenGenerator {
                 const remainder = parseInt(cleanNum.substring(1), 10).toString();
                 
                 playlist.push({
-                    file: `${this.lang}/gleise_zahlen/${defaultPitch}/${hundreds}.opus`,
+                    file: `${this.lang}/gleise_zahlen/${defaultPitch}/${hundreds}_.opus`,
                     text: hundreds
                 });
                 
@@ -241,24 +208,25 @@ export class AnsagenGenerator {
 
     // --- MAIN MODES ---
 
-    /**
-     * Generates the playlist for "Einfahrt"
-     */
     generateEinfahrt(journey) {
         const p = [];
         this._gong(p);
         
         const gleis = journey.ezGleis || journey.platform;
+        
         if (gleis) {
             this._module(p, 'GLEIS');
             this._number(p, gleis, 'hoch');
-            this._module(p, 'EINFAHRT'); // "Einfahrt"
-        } else {
-            this._module(p, 'INFORMATION_ZU');
         }
-        
+
+        this._module(p, 'EINFAHRT');
         this._train(p, journey.name);
-        this._module(p, 'NACH');
+        
+        if (journey.isArrival) {
+            this._module(p, 'VON');
+        } else {
+            this._module(p, 'NACH');
+        }
         this._targetWithVia(p, journey.destination, journey.vias);
         
         // Delay Check
@@ -270,10 +238,18 @@ export class AnsagenGenerator {
             if (diff > 0) delay = Math.floor(diff / 5) * 5;
         }
 
-        if (delay > 0) {
-            this._module(p, 'ABFAHRT_URSPRUENGLICH');
+        if (delay >= 5) {
+            if (journey.isArrival) {
+                this._module(p, 'ANKUNFT_URSPRUENGLICH');
+            } else {
+                this._module(p, 'ABFAHRT_URSPRUENGLICH');
+            }
         } else {
-            this._module(p, 'ABFAHRT');
+            if (journey.isArrival) {
+                this._module(p, 'ANKUNFT');
+            } else {
+                this._module(p, 'ABFAHRT');
+            }
         }
         
         this._time(p, journey.scheduledTime);
@@ -294,10 +270,19 @@ export class AnsagenGenerator {
         
         this._module(p, 'STEHT');
         this._train(p, journey.name);
-        this._module(p, 'NACH');
+        
+        if (journey.isArrival) {
+            this._module(p, 'VON');
+        } else {
+            this._module(p, 'NACH');
+        }
         this._targetWithVia(p, journey.destination, journey.vias);
         
-        this._module(p, 'ABFAHRT');
+        if (journey.isArrival) {
+            this._module(p, 'ANKUNFT');
+        } else {
+            this._module(p, 'ABFAHRT');
+        }
         this._time(p, journey.scheduledTime);
 
         return p;
@@ -308,11 +293,26 @@ export class AnsagenGenerator {
         this._gong(p);
         this._module(p, 'INFORMATION_ZU');
         this._train(p, journey.name);
-        this._module(p, 'NACH');
+        
+        if (journey.isArrival) {
+            this._module(p, 'VON');
+        } else {
+            this._module(p, 'NACH');
+        }
         this._targetWithVia(p, journey.destination, journey.vias);
         
-        this._module(p, 'ABFAHRT');
+        if (journey.isArrival) {
+            this._module(p, 'ANKUNFT');
+        } else {
+            this._module(p, 'ABFAHRT');
+        }
         this._time(p, journey.scheduledTime);
+
+        if (journey.isCancelled) {
+            this._module(p, 'ZUGAUSFALL');
+            this._module(p, 'ENTSCHULDIGUNG');
+            return p;
+        }
 
         let delay = 0;
         if (journey.expectedTime && journey.scheduledTime) {
@@ -323,9 +323,9 @@ export class AnsagenGenerator {
         }
 
         if (delay >= 5) {
-            // verspaetung_heute/ca_$delay_Minuten_spaeter.opus
+            const delayStr = String(delay).padStart(3, '0');
             p.push({
-                file: `${this.lang}/zeiten/verspaetung_heute/ca_${delay}_Minuten_spaeter.opus`,
+                file: `${this.lang}/zeiten/verspaetung_heute/ca_${delayStr}_Minuten_spaeter.opus`,
                 text: `ca. ${delay} Minuten später`
             });
         }
