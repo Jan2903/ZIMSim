@@ -216,6 +216,91 @@ export class AnsagenGenerator {
         }
     }
 
+    _generateDeviations(playlist, journey) {
+        if (!journey.stops || journey.stops.length === 0) return;
+
+        const startIndex = journey._currentStopIndex >= 0 ? journey._currentStopIndex + 1 : 0;
+        const futureStops = journey.stops.slice(startIndex);
+
+        if (futureStops.length === 0) return;
+
+        let nurBisStation = null;
+        let activeFutureStops = [];
+
+        // Check for nurBis (if the last stop is cancelled)
+        if (futureStops[futureStops.length - 1].cancelled) {
+            let lastActiveIndex = -1;
+            for (let i = futureStops.length - 1; i >= 0; i--) {
+                if (!futureStops[i].cancelled) {
+                    lastActiveIndex = i;
+                    break;
+                }
+            }
+
+            if (lastActiveIndex >= 0) {
+                nurBisStation = futureStops[lastActiveIndex].name;
+            }
+        }
+
+        // Haltausfälle und Zusatzhalte über alle zukünftigen Halte
+        let cancelledStops = futureStops.filter(s => s.cancelled).map(s => s.name);
+        let additionalStops = futureStops.filter(s => s.additional).map(s => s.name);
+
+        // Limit to max 3
+        if (cancelledStops.length > 3) cancelledStops = cancelledStops.slice(0, 3);
+        if (additionalStops.length > 3) additionalStops = additionalStops.slice(0, 3);
+
+        // A. Nur Bis
+        if (nurBisStation) {
+            const ibnr = this._getIbnr(nurBisStation);
+            if (ibnr) {
+                this._module(playlist, 'HEUTE_NUR_BIS');
+                playlist.push({
+                    file: `${this.lang}/ziele/variante2/tief/${ibnr}.opus`,
+                    text: nurBisStation
+                });
+            }
+        }
+
+        // B. Zusatzhalte
+        if (additionalStops.length > 0) {
+            this._module(playlist, 'ZUSATZHALT_IN');
+            this._addStationList(playlist, additionalStops);
+        }
+
+        // C. Haltausfälle
+        if (cancelledStops.length > 0) {
+            this._module(playlist, 'HALTAUSFALL_IN');
+            this._addStationList(playlist, cancelledStops);
+        }
+    }
+
+    _addStationList(playlist, stationNames) {
+        const validStations = stationNames.map(name => ({
+            name: name,
+            ibnr: this._getIbnr(name)
+        })).filter(s => s.ibnr !== null);
+
+        for (let i = 0; i < validStations.length; i++) {
+            const { name, ibnr } = validStations[i];
+            
+            if (i === validStations.length - 1) {
+                if (i > 0) {
+                    this._module(playlist, 'UND');
+                }
+                playlist.push({
+                    file: `${this.lang}/ziele/variante2/tief/${ibnr}.opus`,
+                    text: name
+                });
+            } else {
+                playlist.push({
+                    file: `${this.lang}/ziele/variante2/hoch/${ibnr}.opus`,
+                    text: name
+                });
+            }
+        }
+    }
+
     /**
      * Gong
      */
@@ -275,6 +360,7 @@ export class AnsagenGenerator {
         }
         
         this._time(p, journey.scheduledTime);
+        this._generateDeviations(p, journey);
         this._module(p, 'VORSICHT_BEI_DER_EINFAHRT');
 
         return p;
@@ -306,6 +392,7 @@ export class AnsagenGenerator {
             this._module(p, 'ABFAHRT');
         }
         this._time(p, journey.scheduledTime);
+        this._generateDeviations(p, journey);
 
         return p;
     }
@@ -353,6 +440,8 @@ export class AnsagenGenerator {
                 text: `ca. ${delay} Minuten später`
             });
         }
+        
+        this._generateDeviations(p, journey);
 
         if (journey.ezGleis && journey.ezGleis !== journey.platform) {
             this._module(p, 'HEUTE_VON_GLEIS');

@@ -188,8 +188,8 @@ export const audioModules = {
         fr: { file: "042.opus", text: "" }
     },
     ENTSCHULDIGUNG: {
-        de: { file: "entschuldigung.opus", text: "Wir bitten um Entschuldigung." },
-        en: { file: "entschuldigung_en.opus", text: "We apologize." },
-        fr: { file: "entschuldigung_fr.opus", text: "Nous nous excusons." }
+        de: { file: "042.opus", text: "Wir bitten um Entschuldigung." },
+        en: { file: "036.opus", text: "We apologize for any inconvenience." },
+        fr: { file: "042.opus", text: "Nous nous excusons." }
     }
 }
