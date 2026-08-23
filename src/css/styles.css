@@ -954,3 +954,24 @@ input:checked + .slider:before { transform: translateX(20px); }
     grid-template-columns: 1fr 1fr;
     gap: 6px;
 }
+
+/* --- MOBILE REFACTORING --- */
+.form-row-responsive { display: flex; gap: 15px; margin-bottom: 15px; }
+.form-row-responsive.align-top { align-items: flex-start; }
+.form-row-responsive.align-stretch { align-items: stretch; }
+
+.form-group { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.form-group.fixed-width { flex: 0 0 200px; }
+.form-group-label { font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block; text-align: left; }
+.form-group-label.center { text-align: center; }
+
+.settings-box { background: rgba(0,0,0,0.1); padding: 12px 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.05); }
+.settings-divider { width: 1px; background: var(--border); margin: 5px 0; }
+.audio-action-bar { display: flex; gap: 5px; margin-top: 15px; flex-wrap: wrap; }
+
+@media (max-width: 768px) {
+    .form-row-responsive { flex-direction: column; gap: 10px; }
+    .form-group.fixed-width { flex: 1 1 auto; width: 100%; }
+    .settings-divider { width: 100%; height: 1px; margin: 10px 0; }
+    .settings-container { padding: 0 10px; }
+}

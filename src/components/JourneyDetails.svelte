@@ -147,70 +147,64 @@
         <div class="detail-section">
             <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid var(--border-color, #444); padding-bottom: 5px; margin-bottom: 15px;">
                 <h4 style="margin: 0;">Stammdaten</h4>
-                <div style="display: flex; gap: 5px;">
-                    <button class="btn-secondary btn-sm" onclick={() => playAnsage('Einfahrt')} title="Ansage Einfahrt generieren">🔊 Einfahrt</button>
-                    <button class="btn-secondary btn-sm" onclick={() => playAnsage('Steht')} title="Ansage Steht generieren">🔊 Steht</button>
-                    <button class="btn-secondary btn-sm" onclick={() => playAnsage('Information')} title="Ansage Information generieren">🔊 Info</button>
-                    <button class="btn-secondary btn-sm" onclick={() => playAnsage('Anschluesse')} title="Ansage Anschlüsse generieren">🔊 Anschlüsse</button>
-                </div>
             </div>
             
             <!-- Name -->
-            <div class="detail-row" style="display: flex; gap: 15px; align-items: flex-start; margin-bottom: 15px;">
-                <div style="display: flex; flex-direction: column; width: 200px;">
-                    <span style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Name</span>
+            <div class="form-row-responsive align-top">
+                <div class="form-group fixed-width">
+                    <span class="form-group-label">Name</span>
                     <input type="text" class="jfield" bind:value={journey.name} oninput={triggerUpdate} style="width: 100%;" placeholder="z.B. RE 70 / 95835">
                 </div>
-                <div style="display: flex; flex-direction: column; flex-grow: 1;">
-                    <span style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Zusatz / Überschreiben</span>
+                <div class="form-group">
+                    <span class="form-group-label">Zusatz / Überschreiben</span>
                     <input type="text" class="jfield" bind:value={journey.displayNameOverride} oninput={triggerUpdate} placeholder={journey.name || 'auto'} style="width: 100%;">
                 </div>
             </div>
             
             <!-- Ziel / Herkunft -->
-            <div class="detail-row" style="display: flex; gap: 15px; align-items: flex-start; margin-bottom: 15px;">
-                <div style="display: flex; flex-direction: column; width: 200px;">
-                    <span style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Ziel / Herkunft</span>
+            <div class="form-row-responsive align-top">
+                <div class="form-group fixed-width">
+                    <span class="form-group-label">Ziel / Herkunft</span>
                     <StationPicker bind:value={journey.destination} placeholder="Station suchen" onSelect={onDestinationSelect} />
                 </div>
-                <div style="display: flex; flex-direction: column; flex-grow: 1;">
-                    <span style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Zusatz / Überschreiben</span>
+                <div class="form-group">
+                    <span class="form-group-label">Zusatz / Überschreiben</span>
                     <input type="text" class="jfield" bind:value={journey.destinationOverride} oninput={triggerUpdate} placeholder={journey.destination || 'Auto'} style="width: 100%;">
                 </div>
             </div>
             
             <!-- Zeit & Gleis in einer Box zusammengefasst -->
-            <div class="detail-row" style="display: flex; gap: 20px; align-items: stretch; margin-bottom: 20px; background: rgba(0,0,0,0.1); padding: 12px 15px; border-radius: 6px;">
+            <div class="settings-box form-row-responsive align-stretch" style="margin-bottom: 20px;">
                 <!-- Zeit Block -->
-                <div style="display: flex; gap: 10px; flex-grow: 1;">
-                    <div style="display: flex; flex-direction: column; flex: 1;">
-                        <span style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Zeit (Plan)</span>
+                <div class="form-group" style="flex-direction: row; gap: 10px;">
+                    <div class="form-group">
+                        <span class="form-group-label center">Zeit (Plan)</span>
                         <input type="text" class="jfield" bind:value={journey.scheduledTime} oninput={triggerUpdate} placeholder="z.B. 14:30" style="width: 100%; text-align: center;">
                     </div>
-                    <div style="display: flex; flex-direction: column; flex: 1;">
-                        <span style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Echtzeit</span>
+                    <div class="form-group">
+                        <span class="form-group-label center">Echtzeit</span>
                         <input type="text" class="jfield" bind:value={journey.expectedTime} oninput={triggerUpdate} placeholder="optional" style="width: 100%; text-align: center; color: var(--error-color, #ff6b6b); font-weight: bold;">
                     </div>
                 </div>
                 
-                <div style="width: 1px; background: var(--border-color, #444); margin: 5px 0;"></div>
+                <div class="settings-divider"></div>
                 
                 <!-- Gleis Block -->
-                <div style="display: flex; gap: 10px; flex-grow: 1;">
-                    <div style="display: flex; flex-direction: column; flex: 1;">
-                        <span style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Gleis/Plattform</span>
+                <div class="form-group" style="flex-direction: row; gap: 10px;">
+                    <div class="form-group">
+                        <span class="form-group-label center">Gleis/Plattf.</span>
                         <input type="text" class="jfield" bind:value={journey.platform} oninput={triggerUpdate} placeholder="z.B. 4" style="width: 100%; text-align: center;">
                     </div>
-                    <div style="display: flex; flex-direction: column; flex: 1;">
-                        <span style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Echtzeit</span>
+                    <div class="form-group">
+                        <span class="form-group-label center">Echtzeit</span>
                         <input type="text" class="jfield" bind:value={journey.ezGleis} oninput={triggerUpdate} placeholder="optional" style="width: 100%; text-align: center; color: var(--error-color, #ff6b6b); font-weight: bold;">
                     </div>
                 </div>
             </div>
             
             <!-- Verknüpfte Fahrt -->
-            <div class="detail-row" style="display: flex; flex-direction: column; margin-bottom: 15px;">
-                <span style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block; text-align: left;">
+            <div class="form-group" style="margin-bottom: 15px;">
+                <span class="form-group-label">
                     {journey.ankunft ? 'Wird zu Abfahrt (Wende / Fahrzeugtausch)' : 'Kommt aus Ankunft (Wende / Fahrzeugtausch)'}
                 </span>
                 <div bind:this={linkWrapperRef} style="position: relative; width: 100%;">
@@ -253,8 +247,8 @@
             </div>
             
             <!-- Verspätungsgrund -->
-            <div class="detail-row" style="display: flex; flex-direction: column; margin-bottom: 15px;">
-                <span style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block; text-align: left;">Verspätungsgrund</span>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <span class="form-group-label">Verspätungsgrund</span>
                 <div bind:this={reasonWrapperRef} style="position: relative; width: 100%;">
                     <input type="text" class="jfield" style="width: 100%; margin: 0;"
                            placeholder="Suchen oder eigenen Text eingeben"
@@ -279,6 +273,13 @@
                     {/if}
                 </div>
             </div>
+            
+            <div class="audio-action-bar">
+                <button class="btn-secondary btn-sm" onclick={() => playAnsage('Einfahrt')} title="Ansage Einfahrt generieren">🔊 Einfahrt</button>
+                <button class="btn-secondary btn-sm" onclick={() => playAnsage('Steht')} title="Ansage Steht generieren">🔊 Steht</button>
+                <button class="btn-secondary btn-sm" onclick={() => playAnsage('Information')} title="Ansage Information generieren">🔊 Info</button>
+                <button class="btn-secondary btn-sm" onclick={() => playAnsage('Anschluesse')} title="Ansage Anschlüsse generieren">🔊 Anschlüsse</button>
+            </div>
         </div>
         
         <!-- RECHTE SPALTE: ANZEIGE -->
@@ -286,11 +287,11 @@
             <h4 style="margin-bottom: 15px; border-bottom: 1px solid var(--border-color, #444); padding-bottom: 5px;">Anzeige</h4>
             
             <!-- Row 1: Status & Modus (Ankunft/Abfahrt, Ausfall, Infoscreen) -->
-            <div class="detail-row" style="display: flex; gap: 20px; align-items: stretch; margin-bottom: 20px; background: rgba(0,0,0,0.1); padding: 12px 15px; border-radius: 6px;">
+            <div class="settings-box form-row-responsive align-stretch" style="margin-bottom: 20px;">
                 <!-- Ankunft/Abfahrt Toggle -->
                 <!-- svelte-ignore a11y_click_events_have_key_events -->
                 <!-- svelte-ignore a11y_no_static_element_interactions -->
-                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; width: 80px;" onclick={() => { journeyStore.toggleJourneyMode(journey.id); triggerUpdate(); }}>
+                <div class="form-group" style="align-items: center; justify-content: center; cursor: pointer; flex: 0 0 80px;" onclick={() => { journeyStore.toggleJourneyMode(journey.id); triggerUpdate(); }}>
                     <div style="font-size: 0.85em; opacity: 0.8; margin-bottom: 8px;">Modus</div>
                     <div style="width: 44px; height: 22px; background: var(--bg-panel, #1a1a1a); border-radius: 11px; position: relative; border: 2px solid var(--border-color, #555); box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);">
                         <div style="width: 16px; height: 16px; background: {journey.ankunft ? '#ff6b6b' : '#4dabf7'}; border-radius: 50%; position: absolute; top: 1px; transition: 0.2s; {journey.ankunft ? 'right: 1px;' : 'left: 1px;'} box-shadow: 0 1px 3px rgba(0,0,0,0.4);"></div>
@@ -298,10 +299,10 @@
                     <div style="font-size: 0.85em; margin-top: 8px; font-weight: bold; color: {journey.ankunft ? '#ff6b6b' : '#4dabf7'};">{journey.ankunft ? 'Ankunft' : 'Abfahrt'}</div>
                 </div>
                 
-                <div style="width: 1px; background: var(--border-color, #444); margin: 5px 0;"></div>
+                <div class="settings-divider"></div>
                 
                 <!-- Ausfall & Infoscreen -->
-                <div style="display: flex; flex-direction: column; justify-content: center; gap: 12px; flex-grow: 1;">
+                <div class="form-group" style="justify-content: center; gap: 12px;">
                     <label class="checkbox-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin: 0;">
                         <input type="checkbox" bind:checked={journey.ausfall} onchange={triggerUpdate} style="width: 18px; height: 18px; cursor: pointer;">
                         <span style="font-size: 1.05em; {journey.ausfall ? 'color: #ff6b6b; font-weight: bold;' : ''}">Ausfall</span>
@@ -315,15 +316,13 @@
             </div>
             
             <!-- Row 2: InfoTexte -->
-            <div class="detail-row" style="margin-bottom: 20px;">
-                <div style="width: 100%;">
-                    <InfoTextEditor {journey} />
-                </div>
+            <div style="margin-bottom: 20px;">
+                <InfoTextEditor {journey} />
             </div>
             
             <!-- Row 3: Verkehrt heute ab -->
-            <div class="detail-row" style="display: flex; flex-direction: column; margin-bottom: 20px;">
-                <span style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block; text-align: left;">Verkehrt heute ab (Station)</span>
+            <div class="form-group" style="margin-bottom: 20px;">
+                <span class="form-group-label">Verkehrt heute ab (Station)</span>
                 <div style="display: flex; gap: 8px; align-items: center;">
                     <div style="flex-grow: 1;">
                         <StationPicker 
@@ -340,11 +339,11 @@
             </div>
 
             <!-- Row 4: Wagenreihung Display Settings -->
-            <div class="detail-row" style="display: flex; gap: 20px; align-items: stretch; background: rgba(0,0,0,0.1); padding: 12px 15px; border-radius: 6px;">
+            <div class="settings-box form-row-responsive align-stretch" style="margin-bottom: 20px;">
                 <!-- Richtung Toggle -->
                 <!-- svelte-ignore a11y_click_events_have_key_events -->
                 <!-- svelte-ignore a11y_no_static_element_interactions -->
-                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; width: 80px;" onclick={() => { journey.direction = journey.direction === 1 ? 0 : 1; triggerUpdate(); }}>
+                <div class="form-group" style="align-items: center; justify-content: center; cursor: pointer; flex: 0 0 80px;" onclick={() => { journey.direction = journey.direction === 1 ? 0 : 1; triggerUpdate(); }}>
                     <div style="font-size: 0.85em; opacity: 0.8; margin-bottom: 8px;">Fahrtrichtung</div>
                     <div style="width: 44px; height: 22px; background: var(--bg-panel, #1a1a1a); border-radius: 11px; position: relative; border: 2px solid var(--border-color, #555); box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);">
                         <div style="width: 16px; height: 16px; background: #4dabf7; border-radius: 50%; position: absolute; top: 1px; transition: 0.2s; {journey.direction === 1 ? 'right: 1px;' : 'left: 1px;'} box-shadow: 0 1px 3px rgba(0,0,0,0.4);"></div>
@@ -352,26 +351,26 @@
                     <div style="font-size: 0.85em; margin-top: 8px; font-weight: bold;">{journey.direction === 1 ? 'Rechts' : 'Links'}</div>
                 </div>
 
-                <div style="width: 1px; background: var(--border-color, #444); margin: 5px 0;"></div>
+                <div class="settings-divider"></div>
 
                 <!-- Startmeter -->
-                <div style="display: flex; flex-direction: column; justify-content: center; width: 80px;">
-                    <span style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block; text-align: center;">Startmeter</span>
-                    <input type="number" class="jfield" bind:value={journey.startMeter} oninput={triggerUpdate} style="width: 100%; min-width: 0; text-align: center;" placeholder="z.B. 50">
+                <div class="form-group" style="justify-content: center; flex: 0 0 80px;">
+                    <span class="form-group-label center">Startmeter</span>
+                    <input type="number" class="jfield" bind:value={journey.startMeter} oninput={triggerUpdate} style="width: 100%; text-align: center;" placeholder="z.B. 50">
                 </div>
 
-                <div style="width: 1px; background: var(--border-color, #444); margin: 5px 0;"></div>
+                <div class="settings-divider"></div>
 
                 <!-- Skalierung -->
-                <div style="display: flex; flex-direction: column; justify-content: center; flex-grow: 1;">
-                    <span style="font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; display: block;">Skalierung (Zoom)</span>
+                <div class="form-group" style="justify-content: center;">
+                    <span class="form-group-label">Skalierung (Zoom)</span>
                     <div style="display: flex; align-items: center; gap: 15px;">
-                        <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
-                            <input type="checkbox" bind:checked={journey.skalieren} onchange={triggerUpdate} style="width: 16px; height: 16px;">
-                            <span>Aktiv</span>
+                        <label class="checkbox-label" style="margin: 0; min-height: 24px;">
+                            <input type="checkbox" bind:checked={journey.skalieren} onchange={triggerUpdate}>
+                            Aktiv
                         </label>
                         {#if journey.skalieren}
-                            <input type="number" step="0.01" class="jfield" bind:value={journey.scaleFactor} oninput={triggerUpdate} style="width: 70px; min-width: 0; text-align: center;" placeholder="Faktor (1.0)">
+                            <input type="number" step="0.01" class="jfield" bind:value={journey.scaleFactor} oninput={triggerUpdate} style="width: 70px; text-align: center;" placeholder="1.0">
                         {/if}
                     </div>
                 </div>
@@ -380,9 +379,9 @@
     </div>
     
     <div class="detail-section" style="margin-top: 25px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
             <h4>Wagenreihung</h4>
-            <div style="display: flex; gap: 10px;">
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                 <button class="btn-secondary">📥 Import</button>
                 <button class="btn-secondary">📤 Export</button>
                 <button class="btn-secondary" title="Dreht die Reihenfolge aller Gruppen und Wagen um">🔁 Komplett drehen</button>
@@ -393,15 +392,15 @@
         <div style="color: #888; font-style: italic; padding: 10px; border: 1px dashed #555;">Wagenreihungs-Editor (coming soon)</div>
     </div>
 
-    <div class="details-actions" style="margin-top: 20px;">
+    <div class="details-actions" style="margin-top: 20px; flex-wrap: wrap;">
         <button class="btn-secondary" onclick={toggleCoupling}>{journey.couplingGroupId ? '🔗 Entkoppeln' : '🔗 Koppeln'}</button>
         <button class="btn-danger" onclick={deleteJourney}>🗑️ Löschen</button>
     </div>
     
     <div class="detail-section" style="margin-top: 15px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
             <h4>Zuglauf (Halte)</h4>
-            <div style="display: flex; gap: 10px;">
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                 <button class="btn-secondary" onclick={() => showStopDetails = !showStopDetails}>
                     {showStopDetails ? 'An/Ab/Gl verbergen' : 'An/Ab/Gl anzeigen'}
                 </button>
