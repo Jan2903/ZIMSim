@@ -1,5 +1,6 @@
 import { StationService } from './stationService.js';
 import { audioModules } from './audioModules.js';
+import { ansagenStore } from './ansagenStore.svelte.js';
 
 export class AnsagenGenerator {
     constructor() {
@@ -12,12 +13,8 @@ export class AnsagenGenerator {
      */
     _getIbnr(stationName) {
         if (!stationName) return null;
-        // Exact match or find in aliases
-        const match = StationService.stations.find(s => 
-            s.name.toLowerCase() === stationName.toLowerCase() || 
-            s.aliases.some(a => a.toLowerCase() === stationName.toLowerCase())
-        );
-        return match ? match.ibnr : '8000105'; // Fallback to Frankfurt(Main)Hbf as dummy
+        const match = StationService.getStationByIdOrName(null, stationName);
+        return match ? match.ibnr : null;
     }
 
     /**
@@ -112,7 +109,16 @@ export class AnsagenGenerator {
         const targetIbnr = this._getIbnr(targetStr);
         if (!targetIbnr) return;
 
-        if (vias && vias.length > 0) {
+        // Apply maxVias setting
+        let maxVias = ansagenStore.maxVias;
+        let activeVias = [];
+        if (maxVias === 6) {
+            activeVias = [...vias]; // Alle
+        } else if (maxVias > 0) {
+            activeVias = vias.slice(0, maxVias);
+        }
+
+        if (activeVias && activeVias.length > 0) {
             // Target is in the middle -> hoch
             playlist.push({
                 file: `${this.lang}/ziele/variante2/hoch/${targetIbnr}.opus`,
@@ -121,12 +127,23 @@ export class AnsagenGenerator {
             
             this._module(playlist, 'UEBER');
             
-            // Just take the first via for now
-            const viaIbnr = this._getIbnr(vias[0]);
-            playlist.push({
-                file: `${this.lang}/ziele/variante2/tief/${viaIbnr}.opus`,
-                text: vias[0]
-            });
+            for (let i = 0; i < activeVias.length; i++) {
+                const viaName = activeVias[i];
+                const viaIbnr = this._getIbnr(viaName);
+                if (i === activeVias.length - 1) {
+                    // Last via -> tief
+                    playlist.push({
+                        file: `${this.lang}/ziele/variante2/tief/${viaIbnr}.opus`,
+                        text: viaName
+                    });
+                } else {
+                    // Intermediate via -> hoch
+                    playlist.push({
+                        file: `${this.lang}/ziele/variante2/hoch/${viaIbnr}.opus`,
+                        text: viaName
+                    });
+                }
+            }
         } else {
             // Target is at the end -> tief
             playlist.push({
@@ -179,18 +196,21 @@ export class AnsagenGenerator {
         const [hh, mm] = timeStr.split(':');
         if (!hh || !mm) return;
 
+        const hourStr = String(parseInt(hh, 10)).padStart(2, '0');
+        const minStr = String(parseInt(mm, 10)).padStart(2, '0');
+
         if (mm === '0' || mm === '00') {
             playlist.push({
-                file: `${this.lang}/zeiten/stunden/tief/${parseInt(hh, 10)}.opus`,
+                file: `${this.lang}/zeiten/stunden/tief/${hourStr}.opus`,
                 text: `${hh} Uhr`
             });
         } else {
             playlist.push({
-                file: `${this.lang}/zeiten/stunden/hoch/${parseInt(hh, 10)}.opus`,
+                file: `${this.lang}/zeiten/stunden/hoch/${hourStr}.opus`,
                 text: `${hh} Uhr`
             });
             playlist.push({
-                file: `${this.lang}/zeiten/minuten/tief/${parseInt(mm, 10)}.opus`,
+                file: `${this.lang}/zeiten/minuten/tief/${minStr}.opus`,
                 text: mm
             });
         }
@@ -234,7 +254,9 @@ export class AnsagenGenerator {
         if (journey.expectedTime && journey.scheduledTime) {
             const [sh, sm] = journey.scheduledTime.split(':').map(Number);
             const [eh, em] = journey.expectedTime.split(':').map(Number);
-            const diff = (eh * 60 + em) - (sh * 60 + sm);
+            let diff = (eh * 60 + em) - (sh * 60 + sm);
+            if (diff < -720) diff += 1440; // Crossed midnight forward
+            else if (diff > 720) diff -= 1440; // Crossed midnight backward
             if (diff > 0) delay = Math.floor(diff / 5) * 5;
         }
 
@@ -309,7 +331,7 @@ export class AnsagenGenerator {
         this._time(p, journey.scheduledTime);
 
         if (journey.isCancelled) {
-            this._module(p, 'ZUGAUSFALL');
+            this._module(p, 'FAELLT_HEUTE_AUS');
             this._module(p, 'ENTSCHULDIGUNG');
             return p;
         }
@@ -318,7 +340,9 @@ export class AnsagenGenerator {
         if (journey.expectedTime && journey.scheduledTime) {
             const [sh, sm] = journey.scheduledTime.split(':').map(Number);
             const [eh, em] = journey.expectedTime.split(':').map(Number);
-            const diff = (eh * 60 + em) - (sh * 60 + sm);
+            let diff = (eh * 60 + em) - (sh * 60 + sm);
+            if (diff < -720) diff += 1440; // Crossed midnight forward
+            else if (diff > 720) diff -= 1440; // Crossed midnight backward
             if (diff > 0) delay = Math.floor(diff / 5) * 5;
         }
 

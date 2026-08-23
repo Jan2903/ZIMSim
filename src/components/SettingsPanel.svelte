@@ -325,6 +325,16 @@
 
                 <h3 style="margin-top: 25px;">Ansagen</h3>
                 <div class="form-row column-layout" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px;">
+                    <div style="margin-bottom: 15px;">
+                        <label for="ansagen_vias_slider" style="display: block; margin-bottom: 5px;">
+                            Anzahl Vias in Ansage: 
+                            <strong>{ansagenStore.maxVias === 6 ? 'Alle' : ansagenStore.maxVias}</strong>
+                        </label>
+                        <input type="range" id="ansagen_vias_slider" min="0" max="6" step="1" style="width: 100%;" 
+                               bind:value={ansagenStore.maxVias} 
+                               onchange={() => localStorage.setItem('ansagen_max_vias', ansagenStore.maxVias)}>
+                    </div>
+                    
                     <div style="margin-bottom: 10px; font-size: 0.9em;">
                         {#if ansagenStore.status === 'loaded'}
                             <span style="color: #4CAF50;">✓ ZIP verknüpft:</span> {ansagenStore.fileName}
