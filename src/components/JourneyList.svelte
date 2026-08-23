@@ -18,7 +18,12 @@
 </script>
 
 <div class="journey-list-inner"
-     use:dndzone={{items: journeyStore.journeys, flipDurationMs, type: 'journey'}}
+     use:dndzone={{
+         items: journeyStore.journeys, 
+         flipDurationMs, 
+         type: 'journey',
+         dragDisabled: uiState.expandedJourneyId !== null
+     }}
      onconsider={handleDndConsider}
      onfinalize={handleDndFinalize}>
     {#each journeyStore.journeys as journey, i (journey.id)}

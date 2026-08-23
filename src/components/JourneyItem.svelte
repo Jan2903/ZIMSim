@@ -78,8 +78,21 @@
             <span class="journey-destination">{journey.destination || '—'}</span>
             <span class="journey-time">{journey.scheduledTime || '—'}</span>
             
-            {#if journey.expectedTime && journey.expectedTime !== journey.scheduledTime}
-                <span class="delay-indicator">{journey.expectedTime}</span>
+            {#if journey.ausfall}
+                <span class="status-badge status-cancelled">
+                    <span class="status-dot"></span>
+                    Ausfall
+                </span>
+            {:else if journey.expectedTime && journey.expectedTime !== journey.scheduledTime}
+                <span class="status-badge status-delayed">
+                    <span class="status-dot"></span>
+                    {journey.expectedTime}
+                </span>
+            {:else if !journey.infoscreen}
+                <span class="status-badge status-ontime">
+                    <span class="status-dot"></span>
+                    Pünktlich
+                </span>
             {/if}
             
             <span class="journey-platform">
