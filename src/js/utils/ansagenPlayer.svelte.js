@@ -13,11 +13,50 @@ export class AnsagenPlayer {
     _audioContext = null;
     _cachedZipEntries = null;
     _cachedZipReader = null;
+    _cachedZipMap = null;
+    _lastFileRef = null;
+    _initZipPromise = null;
     _sourceNodes = [];
     _timeouts = [];
     _playId = 0;
 
     constructor() {}
+
+    async _ensureZipEntries() {
+        if (ansagenStore.isTauri) return;
+        const fileRef = ansagenStore.fileRef;
+        if (!fileRef) return;
+
+        if (this._lastFileRef !== fileRef) {
+            if (this._cachedZipReader) {
+                try { await this._cachedZipReader.close(); } catch(e) {}
+            }
+            this._cachedZipEntries = null;
+            this._cachedZipMap = null;
+            this._cachedZipReader = null;
+            this._initZipPromise = null;
+            this._lastFileRef = fileRef;
+        }
+
+        if (!this._cachedZipEntries) {
+            if (!this._initZipPromise) {
+                this._initZipPromise = (async () => {
+                    let file = fileRef;
+                    if (typeof fileRef.getFile === 'function') {
+                        file = await fileRef.getFile();
+                    }
+                    this._cachedZipReader = new ZipReader(new BlobReader(file));
+                    this._cachedZipEntries = await this._cachedZipReader.getEntries();
+                    this._cachedZipMap = new Map();
+                    for (const entry of this._cachedZipEntries) {
+                        const fn = entry.filename.replace(/\\/g, '/');
+                        this._cachedZipMap.set(fn, entry);
+                    }
+                })();
+            }
+            await this._initZipPromise;
+        }
+    }
 
     _initAudioContext() {
         if (!this._audioContext) {
@@ -46,23 +85,30 @@ export class AnsagenPlayer {
             }
         } else {
             // Web: extract from ZIP using zip.js
-            const fileRef = ansagenStore.fileRef;
-            if (!fileRef) return null;
-
-            if (!this._cachedZipEntries) {
-                let file = fileRef;
-                if (typeof fileRef.getFile === 'function') {
-                    file = await fileRef.getFile();
-                }
-                this._cachedZipReader = new ZipReader(new BlobReader(file));
-                this._cachedZipEntries = await this._cachedZipReader.getEntries();
-            }
+            await this._ensureZipEntries();
+            if (!this._cachedZipEntries) return null;
 
             const searchPath = filepath.replace(/\\/g, '/');
-            const entry = this._cachedZipEntries.find(e => {
-                const fn = e.filename.replace(/\\/g, '/');
-                return fn === searchPath || fn.endsWith('/' + searchPath);
-            });
+            const tryPaths = [
+                searchPath,
+                'site/' + searchPath
+            ];
+            
+            // Fallback: Wenn 'variante2' (oder andere) gefragt ist, probiere 'variante1'
+            if (searchPath.includes('/variante2/') || searchPath.includes('/variante3/')) {
+                const fallback = searchPath.replace('/variante2/', '/variante1/')
+                                           .replace('/variante3/', '/variante1/');
+                if (fallback !== searchPath) {
+                    tryPaths.push(fallback);
+                    tryPaths.push('site/' + fallback);
+                }
+            }
+
+            let entry = null;
+            for (const p of tryPaths) {
+                entry = this._cachedZipMap.get(p);
+                if (entry) break;
+            }
 
             if (!entry) {
                 console.warn("File not found in ZIP:", filepath);
@@ -90,15 +136,18 @@ export class AnsagenPlayer {
         
         const currentPlayId = this._playId;
 
+        // Load all audio buffers concurrently before scheduling to ensure gapless playback
+        const loadPromises = playlist.map(item => this._getAudioBuffer(item.file));
+        const buffers = await Promise.all(loadPromises);
+
+        // Check if stopped during loading
+        if (this._playId !== currentPlayId || !this.isPlaying) return;
+
         let startTime = this._audioContext.currentTime + 0.1;
 
         for (let i = 0; i < playlist.length; i++) {
-            if (this._playId !== currentPlayId || !this.isPlaying) break; // If stopped during loading
-
             const item = playlist[i];
-            const buffer = await this._getAudioBuffer(item.file);
-            
-            if (this._playId !== currentPlayId || !this.isPlaying) break; // Check again after await
+            const buffer = buffers[i];
             
             if (buffer) {
                 const source = this._audioContext.createBufferSource();
@@ -165,13 +214,15 @@ export class AnsagenPlayer {
         
         this._initAudioContext();
         
-        // 1. Calculate total duration and collect all buffers
+        // 1. Calculate total duration and collect all buffers concurrently
+        const listToExport = [...this.playlist];
+        const loadPromises = listToExport.map(item => this._getAudioBuffer(item.file));
+        const loadedBuffers = await Promise.all(loadPromises);
+
         let totalDuration = 0;
         const buffersToRender = [];
-        const listToExport = [...this.playlist];
         
-        for (const item of listToExport) {
-            const buffer = await this._getAudioBuffer(item.file);
+        for (const buffer of loadedBuffers) {
             if (buffer) {
                 buffersToRender.push(buffer);
                 totalDuration += buffer.duration;

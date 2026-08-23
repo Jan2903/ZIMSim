@@ -5,6 +5,7 @@ export class AnsagenStore {
     fileName = $state('');
     fileRef = $state(null); // String (Tauri path), FileSystemFileHandle, or File object
     isTauri = $state(false);
+    maxVias = $state(4); // 0-5, 6 means 'All'
 
     constructor() {
         this.init();
@@ -12,6 +13,11 @@ export class AnsagenStore {
 
     async init() {
         try {
+            const savedVias = localStorage.getItem('ansagen_max_vias');
+            if (savedVias !== null) {
+                this.maxVias = parseInt(savedVias, 10);
+            }
+
             // If window.__TAURI__ exists, we are running in Tauri
             if (window.__TAURI__ || window.__TAURI_INTERNALS__) {
                 this.isTauri = true;
