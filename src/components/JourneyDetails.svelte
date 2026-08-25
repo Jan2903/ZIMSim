@@ -176,7 +176,7 @@
             <!-- Zeit & Gleis in einer Box zusammengefasst -->
             <div class="settings-box form-row-responsive align-stretch" style="margin-bottom: 20px;">
                 <!-- Zeit Block -->
-                <div class="form-group" style="flex-direction: row; gap: 10px;">
+                <div class="form-group" style="flex-direction: row; gap: 10px; flex-wrap: wrap;">
                     <div class="form-group">
                         <span class="form-group-label center">Zeit (Plan)</span>
                         <input type="text" class="jfield" bind:value={journey.scheduledTime} oninput={triggerUpdate} placeholder="z.B. 14:30" style="width: 100%; text-align: center;">
@@ -190,7 +190,7 @@
                 <div class="settings-divider"></div>
                 
                 <!-- Gleis Block -->
-                <div class="form-group" style="flex-direction: row; gap: 10px;">
+                <div class="form-group" style="flex-direction: row; gap: 10px; flex-wrap: wrap;">
                     <div class="form-group">
                         <span class="form-group-label center">Gleis/Plattf.</span>
                         <input type="text" class="jfield" bind:value={journey.platform} oninput={triggerUpdate} placeholder="z.B. 4" style="width: 100%; text-align: center;">

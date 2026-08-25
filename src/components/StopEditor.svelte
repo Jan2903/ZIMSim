@@ -50,7 +50,7 @@
              onfinalize={handleDndFinalize}>
             {#each journey.stops as stop, i (stop.id)}
                 <div animate:flip={{duration: flipDurationMs}} class="stop-editor-item" style="display: flex; flex-direction: column; margin-bottom: 5px; padding: 5px; background: var(--bg-input); border-radius: 5px; border: 1px solid var(--border); {stop.cancelled ? 'opacity: 0.5; text-decoration: line-through;' : ''} {i === journey._currentStopIndex ? 'border-left: 3px solid #ff6b6b;' : ''}">
-                    <div class="stop-editor-row-main" style="display: flex; gap: 8px; align-items: center;">
+                    <div class="stop-editor-row-main" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                         <span class="stop-drag-handle" title="Drag & Drop" style="cursor: move;">⠿</span>
                         
                         <button class="btn-icon" title={stop.showAsVia ? 'Als Via markiert' : 'Nicht als Via markiert'} onclick={() => toggleVia(stop)}>
@@ -84,7 +84,7 @@
                     </div>
                     
                     {#if showStopDetails}
-                        <div class="stop-editor-row-details" style="display: flex; gap: 15px; align-items: center; padding-left: 54px; margin-top: 6px;">
+                        <div class="stop-editor-row-details" style="display: flex; gap: 15px; align-items: center; padding-left: 54px; margin-top: 6px; flex-wrap: wrap;">
                             <label style="display: flex; align-items: center; gap: 5px; color: var(--text-muted); font-size: 0.85em;">An: <input type="text" class="s-prop short-input" bind:value={stop.arrivalTime} oninput={triggerUpdate} placeholder="HH:MM" title="Ankunft" style="width: 60px;"></label>
                             <label style="display: flex; align-items: center; gap: 5px; color: var(--text-muted); font-size: 0.85em;">Ab: <input type="text" class="s-prop short-input" bind:value={stop.departureTime} oninput={triggerUpdate} placeholder="HH:MM" title="Abfahrt" style="width: 60px;"></label>
                             <label style="display: flex; align-items: center; gap: 5px; color: var(--text-muted); font-size: 0.85em;">Gl: <input type="text" class="s-prop short-input" bind:value={stop.platform} oninput={triggerUpdate} placeholder="z.B. 1" title="Gleis" style="width: 60px;"></label>
