@@ -41,16 +41,22 @@ export class AnsagenPlayer {
         if (!this._cachedZipEntries) {
             if (!this._initZipPromise) {
                 this._initZipPromise = (async () => {
-                    let file = fileRef;
-                    if (typeof fileRef.getFile === 'function') {
-                        file = await fileRef.getFile();
-                    }
-                    this._cachedZipReader = new ZipReader(new BlobReader(file));
-                    this._cachedZipEntries = await this._cachedZipReader.getEntries();
-                    this._cachedZipMap = new Map();
-                    for (const entry of this._cachedZipEntries) {
-                        const fn = entry.filename.replace(/\\/g, '/');
-                        this._cachedZipMap.set(fn, entry);
+                    try {
+                        let file = fileRef;
+                        if (typeof fileRef.getFile === 'function') {
+                            file = await fileRef.getFile();
+                        }
+                        this._cachedZipReader = new ZipReader(new BlobReader(file));
+                        this._cachedZipEntries = await this._cachedZipReader.getEntries();
+                        this._cachedZipMap = new Map();
+                        for (const entry of this._cachedZipEntries) {
+                            const fn = entry.filename.replace(/\\/g, '/');
+                            this._cachedZipMap.set(fn, entry);
+                        }
+                    } catch (e) {
+                        console.error("Fehler beim Initialisieren des ZIP-Readers:", e);
+                        this._initZipPromise = null;
+                        this._cachedZipEntries = null;
                     }
                 })();
             }
@@ -125,6 +131,11 @@ export class AnsagenPlayer {
     }
 
     async play(playlist) {
+        if (!await ansagenStore.verifyPermission()) {
+            console.warn("Wiedergabe abgebrochen: Fehlende Dateiberechtigungen für die ZIP-Datei.");
+            return;
+        }
+
         this.stop();
         if (!playlist || playlist.length === 0) return;
 
@@ -211,6 +222,11 @@ export class AnsagenPlayer {
 
     async exportWav() {
         if (!this.playlist || this.playlist.length === 0) return;
+        
+        if (!await ansagenStore.verifyPermission()) {
+            console.warn("Export abgebrochen: Fehlende Dateiberechtigungen für die ZIP-Datei.");
+            return;
+        }
         
         this._initAudioContext();
         

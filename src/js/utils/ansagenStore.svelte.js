@@ -73,6 +73,29 @@ export class AnsagenStore {
         }
     }
 
+    async verifyPermission() {
+        if (this.isTauri || !this.fileRef) return true;
+        
+        // Prüfen, ob FileSystemFileHandle API unterstützt wird
+        if (typeof this.fileRef.queryPermission !== 'function') return true;
+
+        try {
+            const opts = { mode: 'read' };
+            if ((await this.fileRef.queryPermission(opts)) === 'granted') {
+                return true;
+            }
+            if ((await this.fileRef.requestPermission(opts)) === 'granted') {
+                return true;
+            }
+            // Optional: Bei Ablehnung Verknüpfung direkt aufheben, damit UI konsistent ist
+            // await this.clearFileRef();
+            return false;
+        } catch (e) {
+            console.error("Fehler bei der Berechtigungsprüfung:", e);
+            return false;
+        }
+    }
+
     async clearFileRef() {
         this.fileRef = null;
         this.fileName = '';
