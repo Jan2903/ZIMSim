@@ -19,6 +19,8 @@ export class AnsagenPlayer {
     _sourceNodes = [];
     _timeouts = [];
     _playId = 0;
+    _bufferCache = new Map();
+    _maxCacheSize = 500; // LRU Cache Limit (ca. 75 MB max)
 
     constructor() {}
 
@@ -35,6 +37,7 @@ export class AnsagenPlayer {
             this._cachedZipMap = null;
             this._cachedZipReader = null;
             this._initZipPromise = null;
+            this._bufferCache.clear();
             this._lastFileRef = fileRef;
         }
 
@@ -73,7 +76,32 @@ export class AnsagenPlayer {
         }
     }
 
-    async _getAudioBuffer(filepath) {
+    _getAudioBuffer(filepath) {
+        if (this._bufferCache.has(filepath)) {
+            // LRU: Element wurde benutzt, also ans Ende der Map schieben (als neustes markieren)
+            const cachedPromise = this._bufferCache.get(filepath);
+            this._bufferCache.delete(filepath);
+            this._bufferCache.set(filepath, cachedPromise);
+            return cachedPromise;
+        }
+
+        const fetchPromise = this._fetchAndDecodeAudio(filepath).catch(e => {
+            console.warn(`Fehler beim Laden von ${filepath}:`, e);
+            this._bufferCache.delete(filepath); // Bei Fehler aus Cache entfernen
+            return null;
+        });
+
+        // LRU: Wenn das Limit erreicht ist, das älteste Element (erstes in der Map) löschen
+        if (this._bufferCache.size >= this._maxCacheSize) {
+            const oldestKey = this._bufferCache.keys().next().value;
+            this._bufferCache.delete(oldestKey);
+        }
+
+        this._bufferCache.set(filepath, fetchPromise);
+        return fetchPromise;
+    }
+
+    async _fetchAndDecodeAudio(filepath) {
         let arrayBuffer = null;
 
         if (ansagenStore.isTauri) {
