@@ -1,4 +1,4 @@
-﻿/* css/styles.css */
+/* css/styles.css */
 
 /* --- Farbpalette & Variablen --- */
 :root {
@@ -560,7 +560,9 @@ input:checked + .slider:before { transform: translateX(20px); }
 .journey-list { display: flex; flex-direction: column; gap: 2px; }
 .journey-empty { padding: 24px; text-align: center; color: var(--text-muted); font-style: italic; }
 
-.journey-row { display: flex; align-items: stretch; background: var(--bg-input); border-radius: 6px; overflow: hidden; transition: background 0.15s, border 0.15s; border: 2px solid transparent; }
+.journey-row { display: flex; flex-direction: column; align-items: stretch; background: var(--bg-input); border-radius: 6px; overflow: hidden; transition: background 0.15s, border 0.15s; border: 2px solid transparent; }
+.journey-row-content { display: flex; align-items: stretch; width: 100%; }
+.journey-details-fullwidth { padding: 0 12px 12px 12px; }
 .journey-row:hover { background: #1a2744; }
 .journey-row.journey-cancelled { opacity: 0.6; }
 .journey-row.mot-hidden { display: none !important; }
@@ -760,7 +762,9 @@ input:checked + .slider:before { transform: translateX(20px); }
 .journey-list { display: flex; flex-direction: column; gap: 2px; }
 .journey-empty { padding: 24px; text-align: center; color: var(--text-muted); font-style: italic; }
 
-.journey-row { display: flex; align-items: stretch; background: var(--bg-input); border-radius: 6px; overflow: hidden; transition: background 0.15s, border 0.15s; border: 2px solid transparent; }
+.journey-row { display: flex; flex-direction: column; align-items: stretch; background: var(--bg-input); border-radius: 6px; overflow: hidden; transition: background 0.15s, border 0.15s; border: 2px solid transparent; }
+.journey-row-content { display: flex; align-items: stretch; width: 100%; }
+.journey-details-fullwidth { padding: 0 12px 12px 12px; }
 .journey-row:hover { background: #1a2744; }
 .journey-row.journey-cancelled { opacity: 0.6; }
 .journey-row.journey-cancelled .journey-name { text-decoration: line-through; }
