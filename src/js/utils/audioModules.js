@@ -37,6 +37,12 @@ export const audioModules = {
         en: { file: "002.opus", text: "and" },
         fr: { file: "042.opus", text: "et" }
     },
+
+    UND_VON_GLEIS: {
+        de: { file: "037.opus", text: "und von Gleis" },
+        en: { file: "002.opus", text: "and from platform" },
+        fr: { file: "042.opus", text: "et" }
+    },
     
     //An/Ab
     ABFAHRT: {
@@ -116,6 +122,16 @@ export const audioModules = {
         en: { file: "037.opus", text: "First class coaches today in platform sections" },
         fr: { file: "042.opus", text: "" }
     },
+    IM_ABSCHNITT: {
+        de: { file: "028.opus", text: "im Abschnitt"},
+        en: { file: "037.opus", text: "in platform section" },
+        fr: { file: "042.opus", text: "" }
+    },
+    IN_ABSCHNITTEN: {
+        de: { file: "028.opus", text: "im den Abschnitten"},
+        en: { file: "037.opus", text: "in platform sections" },
+        fr: { file: "042.opus", text: "" }
+    },
 
     //Haltabweichungen
     HEUTE_NUR_BIS: {
@@ -177,13 +193,31 @@ export const audioModules = {
         en: { file: "014.opus", text: "from platform" },
         fr: { file: "042.opus", text: "" }
     },
+
+    HEUTE_AUF_GLEIS: {
+        de: { file: "019.opus", text: "Heute auf Gleis" },
+        en: { file: "014.opus", text: "Today on platform" },
+        fr: { file: "042.opus", text: "" }
+    },
+
+    HEUTE_VON_GLEIS: {
+        de: { file: "023.opus", text: "Heute von Gleis" },
+        en: { file: "014.opus", text: "Today on platform" },
+        fr: { file: "042.opus", text: "" }
+    },
+
+    ICH_WIEDERHOLE: {
+        de: { file: "025.opus", text: "Ich wiederhole" },
+        en: { file: "014.opus", text: "I repeat" },
+        fr: { file: "042.opus", text: "" }
+    },
     ZUGVEREINIGUNG_TUEREN_GESCHLOSSEN: {
         de: { file: "010.opus", text: "Die Türen bleiben während der Zugvereinigung geschlossen" },
         en: { file: "014.opus", text: "from platform" },
         fr: { file: "042.opus", text: "" }
     },
     DIREKT_GEGENUEBER: {
-        de: { file: "039.opus", text: "direkt gegenüber" },
+        de: { file: "011.opus", text: "direkt gegenüber" },
         en: { file: "014.opus", text: "directly opposite" },
         fr: { file: "042.opus", text: "" }
     },
