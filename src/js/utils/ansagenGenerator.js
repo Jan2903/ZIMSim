@@ -311,6 +311,20 @@ export class AnsagenGenerator {
         });
     }
 
+    _calculateDelay(journey) {
+        if (!journey.expectedTime || !journey.scheduledTime) return 0;
+        
+        const [sh, sm] = journey.scheduledTime.split(':').map(Number);
+        const [eh, em] = journey.expectedTime.split(':').map(Number);
+        
+        let diff = (eh * 60 + em) - (sh * 60 + sm);
+        if (diff < -720) diff += 1440; // Crossed midnight forward
+        else if (diff > 720) diff -= 1440; // Crossed midnight backward
+        
+        if (diff > 0) return Math.floor(diff / 5) * 5;
+        return 0;
+    }
+
     // --- MAIN MODES ---
 
     generateEinfahrt(journey) {
@@ -329,21 +343,14 @@ export class AnsagenGenerator {
         
         if (journey.isArrival) {
             this._module(p, 'VON');
+            this._targetWithVia(p, journey.destination, []);
         } else {
             this._module(p, 'NACH');
+            this._targetWithVia(p, journey.destination, journey.vias);
         }
-        this._targetWithVia(p, journey.destination, journey.vias);
         
         // Delay Check
-        let delay = 0;
-        if (journey.expectedTime && journey.scheduledTime) {
-            const [sh, sm] = journey.scheduledTime.split(':').map(Number);
-            const [eh, em] = journey.expectedTime.split(':').map(Number);
-            let diff = (eh * 60 + em) - (sh * 60 + sm);
-            if (diff < -720) diff += 1440; // Crossed midnight forward
-            else if (diff > 720) diff -= 1440; // Crossed midnight backward
-            if (diff > 0) delay = Math.floor(diff / 5) * 5;
-        }
+        let delay = this._calculateDelay(journey);
 
         if (delay >= 5) {
             if (journey.isArrival) {
@@ -381,10 +388,11 @@ export class AnsagenGenerator {
         
         if (journey.isArrival) {
             this._module(p, 'VON');
+            this._targetWithVia(p, journey.destination, []);
         } else {
             this._module(p, 'NACH');
+            this._targetWithVia(p, journey.destination, journey.vias);
         }
-        this._targetWithVia(p, journey.destination, journey.vias);
         
         if (journey.isArrival) {
             this._module(p, 'ANKUNFT');
@@ -405,10 +413,11 @@ export class AnsagenGenerator {
         
         if (journey.isArrival) {
             this._module(p, 'VON');
+            this._targetWithVia(p, journey.destination, []);
         } else {
             this._module(p, 'NACH');
+            this._targetWithVia(p, journey.destination, journey.vias);
         }
-        this._targetWithVia(p, journey.destination, journey.vias);
         
         if (journey.isArrival) {
             this._module(p, 'ANKUNFT');
@@ -423,15 +432,7 @@ export class AnsagenGenerator {
             return p;
         }
 
-        let delay = 0;
-        if (journey.expectedTime && journey.scheduledTime) {
-            const [sh, sm] = journey.scheduledTime.split(':').map(Number);
-            const [eh, em] = journey.expectedTime.split(':').map(Number);
-            let diff = (eh * 60 + em) - (sh * 60 + sm);
-            if (diff < -720) diff += 1440; // Crossed midnight forward
-            else if (diff > 720) diff -= 1440; // Crossed midnight backward
-            if (diff > 0) delay = Math.floor(diff / 5) * 5;
-        }
+        let delay = this._calculateDelay(journey);
 
         if (delay >= 5) {
             const delayStr = String(delay).padStart(3, '0');
