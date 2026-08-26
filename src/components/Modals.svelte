@@ -82,33 +82,16 @@
 {/if}
 
 <style>
-.modal-overlay {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-}
-.modal-content {
-    background: white;
-    padding: 20px;
-    border-radius: 8px;
-    min-width: 500px;
-}
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-}
-.import-tabs {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 15px;
-    margin-top: 15px;
-}
-textarea {
-    width: 100%;
-    margin-bottom: 15px;
-}
+.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.modal-overlay.hidden { display: none; }
+.modal-content { background: var(--bg-card); border-radius: 12px; padding: 0; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column; min-width: 400px; }
+.modal-wide { width: 90%; max-width: 900px; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+.modal-header h3 { margin: 0; }
+.modal-close { background: none; border: none; color: var(--text-muted); font-size: 1.2em; cursor: pointer; padding: 4px; }
+.modal-body { padding: 20px; overflow-y: auto; flex: 1; }
+.modal-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--border); }
+.import-tabs { display: flex; gap: 8px; margin-bottom: 12px; margin-top: 15px; }
+textarea { width: 100%; background: var(--bg-input); color: var(--text-main); border: 1px solid var(--border); border-radius: 6px; padding: 12px; font-family: monospace; font-size: 0.85em; resize: vertical; box-sizing: border-box; margin-bottom: 15px; }
+.import-info { margin-top: 8px; color: var(--text-muted); font-size: 0.85em; }
 </style>
