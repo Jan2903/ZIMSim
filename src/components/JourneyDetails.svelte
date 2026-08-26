@@ -412,3 +412,15 @@
         <StopEditor bind:journey {showStopDetails} />
     </div>
 </div>
+
+<style>
+.journey-details { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+.details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 900px) { .details-grid { grid-template-columns: 1fr; } }
+.detail-section h4 { margin: 0 0 8px 0; color: var(--text-muted); font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.05em; }
+.detail-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; align-items: center; }
+.detail-row label { display: flex; align-items: center; gap: 4px; font-size: 0.9em; color: var(--text-muted); }
+.detail-row input[type="text"], .detail-row input[type="number"] { background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 4px 8px; border-radius: 4px; font-family: inherit; font-size: 0.9em; }
+.detail-row .short-input { width: 70px; }
+.details-actions { display: flex; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
+</style>

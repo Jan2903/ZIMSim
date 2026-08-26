@@ -1,0 +1,35 @@
+/* --- Farbpalette & Variablen --- */
+:root {
+    --bg-page: #121212;
+    --bg-card: #1e1e1e;
+    --bg-input: #252525;
+    --text-main: #f3f4f6;
+    --text-muted: #9ca3af;
+    --accent: #e2001a;
+    --accent-hover: #b30015;
+    --border: rgba(255, 255, 255, 0.08);
+    --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.4);
+    --db-navy: navy;
+    --db-dark: midnightblue;
+    
+    font-family: 'Inter', Roboto, system-ui, -apple-system, sans-serif;
+}
+
+@font-face {
+    font-family: 'Open Sans Condensed';
+    src: url('../fonts/OpenSansCondensed-SemiBold.woff2') format('woff2'),
+         url('../fonts/OpenSansCondensed-SemiBold.woff') format('woff'),
+         url('../fonts/OpenSansCondensed-SemiBold.ttf') format('truetype');
+    font-weight: 600;
+    font-style: normal;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg-page);
+    color: var(--text-main);
+    overflow-x: hidden;
+}
+
+.hidden { display: none !important; }
