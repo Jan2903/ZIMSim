@@ -53,74 +53,78 @@
     let linkedJourney = $derived(journeyStore.getLinkedJourney(journey.id));
 </script>
 
-<div class="journey-row {journey.ausfall ? 'journey-cancelled' : ''} {isHidden ? 'mot-hidden' : ''}">
-    <div class="journey-col-reorder">
-        <span class="journey-drag-handle" title="Drag & Drop">⠿</span>
-    </div>
-    <div class="journey-col-visibility">
-        <button class="btn-icon visibility-toggle" onclick={toggleVisibility} onpointerdown={(e) => e.stopPropagation()} title="Sichtbarkeit umschalten">
-            {journey.visible ? '👁' : '○'}
-        </button>
-    </div>
-    <div class="journey-col-coupling {couplingClass}">
-        <div class="coupling-line"></div>
-    </div>
-    <div class="journey-col-main">
-        <div class="journey-summary" role="button" tabindex="0" onclick={toggleExpand} onpointerdown={(e) => e.stopPropagation()} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(); } }}>
-            <span class="journey-name">{journey.displayNameOverride || journey.name || '(kein Name)'}</span>
-            {#if journey.infoscreen}
-                <span class="badge badge-info" title="Infoscreen">ⓘ</span>
-            {:else if journey.ankunft}
-                <span class="badge badge-arrival" title="Ankunft">An</span>
-            {:else}
-                <span class="badge badge-departure" title="Abfahrt">Ab</span>
-            {/if}
-            <span class="journey-destination">{journey.destination || '—'}</span>
-            <span class="journey-time">{journey.scheduledTime || '—'}</span>
-            
-            {#if journey.ausfall}
-                <span class="status-badge status-cancelled">
-                    <span class="status-dot"></span>
-                    Ausfall
-                </span>
-            {:else if journey.expectedTime && journey.expectedTime !== journey.scheduledTime}
-                <span class="status-badge status-delayed">
-                    <span class="status-dot"></span>
-                    {journey.expectedTime}
-                </span>
-            {:else if !journey.infoscreen}
-                <span class="status-badge status-ontime">
-                    <span class="status-dot"></span>
-                    Pünktlich
-                </span>
-            {/if}
-            
-            <span class="journey-platform">
-                {journey.platform ? 'Gl. ' + journey.platform : ''}
-                {#if journey.ezGleis && journey.ezGleis !== journey.platform}
-                    <span style="color: #ff6b6b; font-weight: bold;">({journey.ezGleis})</span>
-                {/if}
-            </span>
-            
-            {#if linkedJourney}
-                <!-- svelte-ignore a11y_click_events_have_key_events -->
-                <!-- svelte-ignore a11y_no_static_element_interactions -->
-                <span class="badge badge-link" 
-                      title="{journey.ankunft ? 'Wird zu Abfahrt' : 'Kommt von Ankunft'} (anklicken zum Öffnen)" 
-                      style="cursor: pointer; background: #4dabf7; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.85em; margin-right: 8px;"
-                      onclick={(e) => {
-                          e.stopPropagation();
-                          uiState.expandedJourneyId = linkedJourney.id;
-                      }}>
-                    🔗 {journey.ankunft ? 'Wird zu' : 'Kommt aus'} {linkedJourney.effectiveDisplayName} ({linkedJourney.scheduledTime})
-                </span>
-            {/if}
-            
-            <button class="btn-icon expand-toggle">{isExpanded ? '▾' : '▸'}</button>
+<div class="journey-row {journey.ausfall ? 'journey-cancelled' : ''} {isHidden ? 'mot-hidden' : ''} {isExpanded ? 'is-expanded' : ''}">
+    <div class="journey-row-content">
+        <div class="journey-col-reorder">
+            <span class="journey-drag-handle" title="Drag & Drop">⠿</span>
         </div>
-        
-        {#if isExpanded}
-            <JourneyDetails bind:journey />
-        {/if}
+        <div class="journey-col-visibility">
+            <button class="btn-icon visibility-toggle" onclick={toggleVisibility} onpointerdown={(e) => e.stopPropagation()} title="Sichtbarkeit umschalten">
+                {journey.visible ? '👁' : '○'}
+            </button>
+        </div>
+        <div class="journey-col-coupling {couplingClass}">
+            <div class="coupling-line"></div>
+        </div>
+        <div class="journey-col-main">
+            <div class="journey-summary" role="button" tabindex="0" onclick={toggleExpand} onpointerdown={(e) => e.stopPropagation()} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(); } }}>
+                <span class="journey-name">{journey.displayNameOverride || journey.name || '(kein Name)'}</span>
+                {#if journey.infoscreen}
+                    <span class="badge badge-info" title="Infoscreen">ⓘ</span>
+                {:else if journey.ankunft}
+                    <span class="badge badge-arrival" title="Ankunft">An</span>
+                {:else}
+                    <span class="badge badge-departure" title="Abfahrt">Ab</span>
+                {/if}
+                <span class="journey-destination">{journey.destination || '—'}</span>
+                <span class="journey-time">{journey.scheduledTime || '—'}</span>
+                
+                {#if journey.ausfall}
+                    <span class="status-badge status-cancelled">
+                        <span class="status-dot"></span>
+                        Ausfall
+                    </span>
+                {:else if journey.expectedTime && journey.expectedTime !== journey.scheduledTime}
+                    <span class="status-badge status-delayed">
+                        <span class="status-dot"></span>
+                        {journey.expectedTime}
+                    </span>
+                {:else if !journey.infoscreen}
+                    <span class="status-badge status-ontime">
+                        <span class="status-dot"></span>
+                        Pünktlich
+                    </span>
+                {/if}
+                
+                <span class="journey-platform">
+                    {journey.platform ? 'Gl. ' + journey.platform : ''}
+                    {#if journey.ezGleis && journey.ezGleis !== journey.platform}
+                        <span style="color: #ff6b6b; font-weight: bold;">({journey.ezGleis})</span>
+                    {/if}
+                </span>
+                
+                {#if linkedJourney}
+                    <!-- svelte-ignore a11y_click_events_have_key_events -->
+                    <!-- svelte-ignore a11y_no_static_element_interactions -->
+                    <span class="badge badge-link" 
+                          title="{journey.ankunft ? 'Wird zu Abfahrt' : 'Kommt von Ankunft'} (anklicken zum Öffnen)" 
+                          style="cursor: pointer; background: #4dabf7; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.85em; margin-right: 8px;"
+                          onclick={(e) => {
+                              e.stopPropagation();
+                              uiState.expandedJourneyId = linkedJourney.id;
+                          }}>
+                        🔗 {journey.ankunft ? 'Wird zu' : 'Kommt aus'} {linkedJourney.effectiveDisplayName} ({linkedJourney.scheduledTime})
+                    </span>
+                {/if}
+                
+                <button class="btn-icon expand-toggle">{isExpanded ? '▾' : '▸'}</button>
+            </div>
+        </div>
     </div>
+    
+    {#if isExpanded}
+        <div class="journey-details-fullwidth">
+            <JourneyDetails bind:journey />
+        </div>
+    {/if}
 </div>
