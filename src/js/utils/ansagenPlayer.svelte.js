@@ -1,5 +1,6 @@
-import { BlobReader, ZipReader, Uint8ArrayWriter } from '@zip.js/zip.js';
 import { ansagenStore } from './ansagenStore.svelte.js';
+import { audioStorageService } from './audioStorageService.js';
+import { wavExporter } from './wavExporter.js';
 
 export class AnsagenPlayer {
     isPlaying = $state(false);
@@ -11,61 +12,16 @@ export class AnsagenPlayer {
     progressText = $derived(this.totalFiles > 0 ? `${this.currentIndex + 1} / ${this.totalFiles}` : '');
 
     _audioContext = null;
-    _cachedZipEntries = null;
-    _cachedZipReader = null;
-    _cachedZipMap = null;
-    _lastFileRef = null;
-    _initZipPromise = null;
     _sourceNodes = [];
     _timeouts = [];
     _playId = 0;
     _bufferCache = new Map();
     _maxCacheSize = 500; // LRU Cache Limit (ca. 75 MB max)
+    
+    // Config for Look-ahead scheduling
+    _preloadCount = 2;
 
     constructor() {}
-
-    async _ensureZipEntries() {
-        if (ansagenStore.isTauri) return;
-        const fileRef = ansagenStore.fileRef;
-        if (!fileRef) return;
-
-        if (this._lastFileRef !== fileRef) {
-            if (this._cachedZipReader) {
-                try { await this._cachedZipReader.close(); } catch(e) {}
-            }
-            this._cachedZipEntries = null;
-            this._cachedZipMap = null;
-            this._cachedZipReader = null;
-            this._initZipPromise = null;
-            this._bufferCache.clear();
-            this._lastFileRef = fileRef;
-        }
-
-        if (!this._cachedZipEntries) {
-            if (!this._initZipPromise) {
-                this._initZipPromise = (async () => {
-                    try {
-                        let file = fileRef;
-                        if (typeof fileRef.getFile === 'function') {
-                            file = await fileRef.getFile();
-                        }
-                        this._cachedZipReader = new ZipReader(new BlobReader(file));
-                        this._cachedZipEntries = await this._cachedZipReader.getEntries();
-                        this._cachedZipMap = new Map();
-                        for (const entry of this._cachedZipEntries) {
-                            const fn = entry.filename.replace(/\\/g, '/');
-                            this._cachedZipMap.set(fn, entry);
-                        }
-                    } catch (e) {
-                        console.error("Fehler beim Initialisieren des ZIP-Readers:", e);
-                        this._initZipPromise = null;
-                        this._cachedZipEntries = null;
-                    }
-                })();
-            }
-            await this._initZipPromise;
-        }
-    }
 
     _initAudioContext() {
         if (!this._audioContext) {
@@ -78,20 +34,20 @@ export class AnsagenPlayer {
 
     _getAudioBuffer(filepath) {
         if (this._bufferCache.has(filepath)) {
-            // LRU: Element wurde benutzt, also ans Ende der Map schieben (als neustes markieren)
+            // LRU: Element wurde benutzt, also ans Ende der Map schieben
             const cachedPromise = this._bufferCache.get(filepath);
             this._bufferCache.delete(filepath);
             this._bufferCache.set(filepath, cachedPromise);
             return cachedPromise;
         }
 
-        const fetchPromise = this._fetchAndDecodeAudio(filepath).catch(e => {
+        const fetchPromise = audioStorageService.getAudioBuffer(filepath, this._audioContext).catch(e => {
             console.warn(`Fehler beim Laden von ${filepath}:`, e);
-            this._bufferCache.delete(filepath); // Bei Fehler aus Cache entfernen
+            this._bufferCache.delete(filepath);
             return null;
         });
 
-        // LRU: Wenn das Limit erreicht ist, das älteste Element (erstes in der Map) löschen
+        // LRU Limit
         if (this._bufferCache.size >= this._maxCacheSize) {
             const oldestKey = this._bufferCache.keys().next().value;
             this._bufferCache.delete(oldestKey);
@@ -99,82 +55,6 @@ export class AnsagenPlayer {
 
         this._bufferCache.set(filepath, fetchPromise);
         return fetchPromise;
-    }
-
-    _resolveZipEntry(filepath) {
-        if (!this._cachedZipMap) return null;
-        
-        const searchPath = filepath.replace(/\\/g, '/');
-        const basePaths = [
-            searchPath,
-            'site/' + searchPath
-        ];
-        
-        // Fallback: Wenn 'variante2' (oder andere) gefragt ist, probiere 'variante1'
-        if (searchPath.includes('/variante2/') || searchPath.includes('/variante3/')) {
-            const fallback = searchPath.replace('/variante2/', '/variante1/')
-                                       .replace('/variante3/', '/variante1/');
-            if (fallback !== searchPath) {
-                basePaths.push(fallback);
-                basePaths.push('site/' + fallback);
-            }
-        }
-
-        const extensions = ['.opus', '.wav'];
-
-        for (const bp of basePaths) {
-            for (const ext of extensions) {
-                const p = bp + ext;
-                const entry = this._cachedZipMap.get(p);
-                if (entry) return entry;
-            }
-        }
-        return null;
-    }
-
-    async _fetchAndDecodeAudio(filepath) {
-        let arrayBuffer = null;
-
-        if (ansagenStore.isTauri) {
-            // Fetch via Tauri command
-            try {
-                const { invoke } = await import('@tauri-apps/api/core');
-                let buffer;
-                try {
-                    buffer = await invoke('get_audio_snippet', { 
-                        zipPath: ansagenStore.fileRef, 
-                        filePath: filepath + '.opus' 
-                    });
-                } catch (e) {
-                    buffer = await invoke('get_audio_snippet', { 
-                        zipPath: ansagenStore.fileRef, 
-                        filePath: filepath + '.wav' 
-                    });
-                }
-                arrayBuffer = new Uint8Array(buffer).buffer;
-            } catch (e) {
-                console.warn("Failed to fetch from Tauri command:", e);
-                return null;
-            }
-        } else {
-            // Web: extract from ZIP using zip.js
-            await this._ensureZipEntries();
-            if (!this._cachedZipEntries) return null;
-
-            const entry = this._resolveZipEntry(filepath);
-
-            if (!entry) {
-                console.warn("File not found in ZIP:", filepath);
-                return null;
-            }
-
-            const uint8 = await entry.getData(new Uint8ArrayWriter());
-            arrayBuffer = uint8.buffer;
-        }
-
-        if (!arrayBuffer) return null;
-        
-        return await this._audioContext.decodeAudioData(arrayBuffer);
     }
 
     async play(playlist) {
@@ -193,7 +73,7 @@ export class AnsagenPlayer {
         this.currentIndex = -1;
         this.isPlaying = true;
         
-        const currentPlayId = this._playId;
+        const currentPlayId = ++this._playId;
 
         // TTS Fallback Mode
         if (!ansagenStore.fileRef) {
@@ -202,60 +82,80 @@ export class AnsagenPlayer {
         }
 
         this._initAudioContext();
+        
+        // Start Look-ahead Scheduler
+        this._schedulePlayback(playlist, currentPlayId);
+    }
 
-        // Load all audio buffers concurrently before scheduling to ensure gapless playback
-        const loadPromises = playlist.map(item => this._getAudioBuffer(item.file));
-        const buffers = await Promise.all(loadPromises);
-
-        // Check if stopped during loading
-        if (this._playId !== currentPlayId || !this.isPlaying) return;
-
+    async _schedulePlayback(playlist, playId) {
         let startTime = this._audioContext.currentTime + 0.1;
-
+        
         for (let i = 0; i < playlist.length; i++) {
+            if (this._playId !== playId || !this.isPlaying) break;
+
             const item = playlist[i];
-            const buffer = buffers[i];
+            const buffer = await this._getAudioBuffer(item.file);
             
+            if (this._playId !== playId || !this.isPlaying) break;
+
             if (buffer) {
+                // Buffer loaded, schedule it
                 const source = this._audioContext.createBufferSource();
                 source.buffer = buffer;
                 source.connect(this._audioContext.destination);
-                source.start(startTime);
                 
+                // If we fell behind, play immediately
+                if (startTime < this._audioContext.currentTime) {
+                    startTime = this._audioContext.currentTime;
+                }
+                
+                source.start(startTime);
                 this._sourceNodes.push(source);
 
                 // Schedule UI update
                 const timeUntilStart = (startTime - this._audioContext.currentTime) * 1000;
                 const timeoutId = setTimeout(() => {
-                    this.currentIndex = i;
-                    this.currentText = item.text;
-                    this.currentFile = item.file;
+                    if (this._playId === playId) {
+                        this.currentIndex = i;
+                        this.currentText = item.text;
+                        this.currentFile = item.file;
+                    }
                 }, Math.max(0, timeUntilStart));
-                
                 this._timeouts.push(timeoutId);
 
                 startTime += buffer.duration;
             } else {
-                // If audio fails, just update text immediately and wait 1s as a dummy gap
+                // Audio missing -> fallback gap
+                if (startTime < this._audioContext.currentTime) {
+                    startTime = this._audioContext.currentTime;
+                }
+                
                 const timeUntilStart = (startTime - this._audioContext.currentTime) * 1000;
                 const timeoutId = setTimeout(() => {
-                    this.currentIndex = i;
-                    this.currentText = item.text;
-                    this.currentFile = item.file + " (Fehlt)";
+                    if (this._playId === playId) {
+                        this.currentIndex = i;
+                        this.currentText = item.text;
+                        this.currentFile = item.file + " (Fehlt)";
+                    }
                 }, Math.max(0, timeUntilStart));
                 this._timeouts.push(timeoutId);
+                
                 startTime += 1.0;
             }
         }
 
-        // Schedule end
-        const timeUntilEnd = (startTime - this._audioContext.currentTime) * 1000;
-        const endTimeoutId = setTimeout(() => {
-            this.isPlaying = false;
-            this._sourceNodes = [];
-            this._timeouts = [];
-        }, Math.max(0, timeUntilEnd));
-        this._timeouts.push(endTimeoutId);
+        // Schedule end of playback
+        if (this._playId === playId && this.isPlaying) {
+            const timeUntilEnd = (startTime - this._audioContext.currentTime) * 1000;
+            const endTimeoutId = setTimeout(() => {
+                if (this._playId === playId) {
+                    this.isPlaying = false;
+                    this._sourceNodes = [];
+                    this._timeouts = [];
+                }
+            }, Math.max(0, timeUntilEnd));
+            this._timeouts.push(endTimeoutId);
+        }
     }
 
     async _playTTS(playlist, currentPlayId) {
@@ -272,7 +172,6 @@ export class AnsagenPlayer {
             this.currentText = item.text;
             this.currentFile = "";
 
-            // If text is empty (e.g. Gong) or very short, simulate short delay
             if (!item.text || item.text.trim() === '' || item.text.toLowerCase() === 'gong') {
                 await new Promise(resolve => {
                     const timeoutId = setTimeout(resolve, 1000);
@@ -283,7 +182,6 @@ export class AnsagenPlayer {
 
             await new Promise(resolve => {
                 const utterance = new SpeechSynthesisUtterance(item.text);
-                // Extract lang code from filepath (e.g., 'dt', 'en', 'fr') and map to BCP 47
                 let lang = 'de-DE';
                 if (item.file.startsWith('en/')) lang = 'en-US';
                 if (item.file.startsWith('fr/')) lang = 'fr-FR';
@@ -311,17 +209,14 @@ export class AnsagenPlayer {
         this.currentText = '';
         this.currentFile = '';
         
-        // Stop all playing audio nodes
         this._sourceNodes.forEach(node => {
             try { node.stop(); } catch(e) {}
         });
         this._sourceNodes = [];
 
-        // Clear all scheduled UI updates
         this._timeouts.forEach(clearTimeout);
         this._timeouts = [];
         
-        // Stop TTS
         if (window.speechSynthesis) {
             window.speechSynthesis.cancel();
         }
@@ -329,126 +224,8 @@ export class AnsagenPlayer {
 
     async exportWav() {
         if (!this.playlist || this.playlist.length === 0) return;
-        
-        if (!await ansagenStore.verifyPermission()) {
-            console.warn("Export abgebrochen: Fehlende Dateiberechtigungen für die ZIP-Datei.");
-            return;
-        }
-        
         this._initAudioContext();
-        
-        // 1. Calculate total duration and collect all buffers concurrently
-        const listToExport = [...this.playlist];
-        const loadPromises = listToExport.map(item => this._getAudioBuffer(item.file));
-        const loadedBuffers = await Promise.all(loadPromises);
-
-        let totalDuration = 0;
-        const buffersToRender = [];
-        
-        for (const buffer of loadedBuffers) {
-            if (buffer) {
-                buffersToRender.push(buffer);
-                totalDuration += buffer.duration;
-            }
-        }
-
-        if (buffersToRender.length === 0 || totalDuration === 0) return;
-
-        // 2. Create Offline Context
-        const sampleRate = buffersToRender[0].sampleRate;
-        const offlineCtx = new OfflineAudioContext(
-            buffersToRender[0].numberOfChannels,
-            sampleRate * totalDuration,
-            sampleRate
-        );
-
-        // 3. Schedule all buffers on offline context
-        let currentTime = 0;
-        for (const buffer of buffersToRender) {
-            const source = offlineCtx.createBufferSource();
-            source.buffer = buffer;
-            source.connect(offlineCtx.destination);
-            source.start(currentTime);
-            currentTime += buffer.duration;
-        }
-
-        // 4. Render
-        const renderedBuffer = await offlineCtx.startRendering();
-
-        // 5. Convert to WAV and trigger download
-        const wavBlob = this._audioBufferToWav(renderedBuffer);
-        const url = URL.createObjectURL(wavBlob);
-        
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `Ansage_${new Date().getTime()}.wav`;
-        a.click();
-        
-        URL.revokeObjectURL(url);
-    }
-
-    // Helper to convert AudioBuffer to WAV Blob
-    _audioBufferToWav(buffer) {
-        const numChannels = buffer.numberOfChannels;
-        const sampleRate = buffer.sampleRate;
-        const format = 1; // PCM
-        const bitDepth = 16;
-        
-        let result;
-        if (numChannels === 2) {
-            result = this._interleave(buffer.getChannelData(0), buffer.getChannelData(1));
-        } else {
-            result = buffer.getChannelData(0);
-        }
-
-        const dataLength = result.length * (bitDepth / 8);
-        const bufferLen = 44 + dataLength;
-        const arrayBuffer = new ArrayBuffer(bufferLen);
-        const view = new DataView(arrayBuffer);
-
-        // RIFF chunk descriptor
-        this._writeString(view, 0, 'RIFF');
-        view.setUint32(4, 36 + dataLength, true);
-        this._writeString(view, 8, 'WAVE');
-        // FMT sub-chunk
-        this._writeString(view, 12, 'fmt ');
-        view.setUint32(16, 16, true);
-        view.setUint16(20, format, true);
-        view.setUint16(22, numChannels, true);
-        view.setUint32(24, sampleRate, true);
-        view.setUint32(28, sampleRate * numChannels * (bitDepth / 8), true);
-        view.setUint16(32, numChannels * (bitDepth / 8), true);
-        view.setUint16(34, bitDepth, true);
-        // Data sub-chunk
-        this._writeString(view, 36, 'data');
-        view.setUint32(40, dataLength, true);
-
-        // Write PCM samples
-        let offset = 44;
-        for (let i = 0; i < result.length; i++, offset += 2) {
-            const s = Math.max(-1, Math.min(1, result[i]));
-            view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
-        }
-
-        return new Blob([view], { type: 'audio/wav' });
-    }
-
-    _interleave(leftChannel, rightChannel) {
-        const length = leftChannel.length + rightChannel.length;
-        const result = new Float32Array(length);
-        let inputIndex = 0;
-        for (let index = 0; index < length; ) {
-            result[index++] = leftChannel[inputIndex];
-            result[index++] = rightChannel[inputIndex];
-            inputIndex++;
-        }
-        return result;
-    }
-
-    _writeString(view, offset, string) {
-        for (let i = 0; i < string.length; i++) {
-            view.setUint8(offset + i, string.charCodeAt(i));
-        }
+        await wavExporter.exportWav(this.playlist, this._audioContext);
     }
 }
 
