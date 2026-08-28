@@ -101,6 +101,37 @@ export class AnsagenPlayer {
         return fetchPromise;
     }
 
+    _resolveZipEntry(filepath) {
+        if (!this._cachedZipMap) return null;
+        
+        const searchPath = filepath.replace(/\\/g, '/');
+        const basePaths = [
+            searchPath,
+            'site/' + searchPath
+        ];
+        
+        // Fallback: Wenn 'variante2' (oder andere) gefragt ist, probiere 'variante1'
+        if (searchPath.includes('/variante2/') || searchPath.includes('/variante3/')) {
+            const fallback = searchPath.replace('/variante2/', '/variante1/')
+                                       .replace('/variante3/', '/variante1/');
+            if (fallback !== searchPath) {
+                basePaths.push(fallback);
+                basePaths.push('site/' + fallback);
+            }
+        }
+
+        const extensions = ['.opus', '.wav'];
+
+        for (const bp of basePaths) {
+            for (const ext of extensions) {
+                const p = bp + ext;
+                const entry = this._cachedZipMap.get(p);
+                if (entry) return entry;
+            }
+        }
+        return null;
+    }
+
     async _fetchAndDecodeAudio(filepath) {
         let arrayBuffer = null;
 
@@ -108,10 +139,18 @@ export class AnsagenPlayer {
             // Fetch via Tauri command
             try {
                 const { invoke } = await import('@tauri-apps/api/core');
-                const buffer = await invoke('get_audio_snippet', { 
-                    zipPath: ansagenStore.fileRef, 
-                    filePath: filepath 
-                });
+                let buffer;
+                try {
+                    buffer = await invoke('get_audio_snippet', { 
+                        zipPath: ansagenStore.fileRef, 
+                        filePath: filepath + '.opus' 
+                    });
+                } catch (e) {
+                    buffer = await invoke('get_audio_snippet', { 
+                        zipPath: ansagenStore.fileRef, 
+                        filePath: filepath + '.wav' 
+                    });
+                }
                 arrayBuffer = new Uint8Array(buffer).buffer;
             } catch (e) {
                 console.warn("Failed to fetch from Tauri command:", e);
@@ -122,27 +161,7 @@ export class AnsagenPlayer {
             await this._ensureZipEntries();
             if (!this._cachedZipEntries) return null;
 
-            const searchPath = filepath.replace(/\\/g, '/');
-            const tryPaths = [
-                searchPath,
-                'site/' + searchPath
-            ];
-            
-            // Fallback: Wenn 'variante2' (oder andere) gefragt ist, probiere 'variante1'
-            if (searchPath.includes('/variante2/') || searchPath.includes('/variante3/')) {
-                const fallback = searchPath.replace('/variante2/', '/variante1/')
-                                           .replace('/variante3/', '/variante1/');
-                if (fallback !== searchPath) {
-                    tryPaths.push(fallback);
-                    tryPaths.push('site/' + fallback);
-                }
-            }
-
-            let entry = null;
-            for (const p of tryPaths) {
-                entry = this._cachedZipMap.get(p);
-                if (entry) break;
-            }
+            const entry = this._resolveZipEntry(filepath);
 
             if (!entry) {
                 console.warn("File not found in ZIP:", filepath);
@@ -159,21 +178,30 @@ export class AnsagenPlayer {
     }
 
     async play(playlist) {
-        if (!await ansagenStore.verifyPermission()) {
-            console.warn("Wiedergabe abgebrochen: Fehlende Dateiberechtigungen für die ZIP-Datei.");
-            return;
+        if (ansagenStore.fileRef) {
+            if (!await ansagenStore.verifyPermission()) {
+                console.warn("Wiedergabe abgebrochen: Fehlende Dateiberechtigungen für die ZIP-Datei.");
+                return;
+            }
         }
 
         this.stop();
         if (!playlist || playlist.length === 0) return;
 
-        this._initAudioContext();
         this.playlist = playlist;
         this.totalFiles = playlist.length;
         this.currentIndex = -1;
         this.isPlaying = true;
         
         const currentPlayId = this._playId;
+
+        // TTS Fallback Mode
+        if (!ansagenStore.fileRef) {
+            this._playTTS(playlist, currentPlayId);
+            return;
+        }
+
+        this._initAudioContext();
 
         // Load all audio buffers concurrently before scheduling to ensure gapless playback
         const loadPromises = playlist.map(item => this._getAudioBuffer(item.file));
@@ -230,6 +258,52 @@ export class AnsagenPlayer {
         this._timeouts.push(endTimeoutId);
     }
 
+    async _playTTS(playlist, currentPlayId) {
+        if (!window.speechSynthesis) {
+            this.isPlaying = false;
+            return;
+        }
+
+        for (let i = 0; i < playlist.length; i++) {
+            if (this._playId !== currentPlayId || !this.isPlaying) return;
+            
+            const item = playlist[i];
+            this.currentIndex = i;
+            this.currentText = item.text;
+            this.currentFile = "";
+
+            // If text is empty (e.g. Gong) or very short, simulate short delay
+            if (!item.text || item.text.trim() === '' || item.text.toLowerCase() === 'gong') {
+                await new Promise(resolve => {
+                    const timeoutId = setTimeout(resolve, 1000);
+                    this._timeouts.push(timeoutId);
+                });
+                continue;
+            }
+
+            await new Promise(resolve => {
+                const utterance = new SpeechSynthesisUtterance(item.text);
+                // Extract lang code from filepath (e.g., 'dt', 'en', 'fr') and map to BCP 47
+                let lang = 'de-DE';
+                if (item.file.startsWith('en/')) lang = 'en-US';
+                if (item.file.startsWith('fr/')) lang = 'fr-FR';
+                utterance.lang = lang;
+                
+                utterance.onend = resolve;
+                utterance.onerror = resolve;
+                
+                window.speechSynthesis.speak(utterance);
+            });
+        }
+
+        if (this._playId === currentPlayId) {
+            this.isPlaying = false;
+            this.currentIndex = -1;
+            this.currentText = '';
+            this.currentFile = '';
+        }
+    }
+
     stop() {
         this._playId++;
         this.isPlaying = false;
@@ -246,6 +320,11 @@ export class AnsagenPlayer {
         // Clear all scheduled UI updates
         this._timeouts.forEach(clearTimeout);
         this._timeouts = [];
+        
+        // Stop TTS
+        if (window.speechSynthesis) {
+            window.speechSynthesis.cancel();
+        }
     }
 
     async exportWav() {
