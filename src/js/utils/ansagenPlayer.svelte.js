@@ -125,22 +125,49 @@ export class AnsagenPlayer {
 
                 startTime += buffer.duration;
             } else {
-                // Audio missing -> fallback gap
+                // Audio missing -> on-the-fly TTS fallback
                 if (startTime < this._audioContext.currentTime) {
                     startTime = this._audioContext.currentTime;
                 }
                 
                 const timeUntilStart = (startTime - this._audioContext.currentTime) * 1000;
-                const timeoutId = setTimeout(() => {
-                    if (this._playId === playId) {
-                        this.currentIndex = i;
-                        this.currentText = item.text;
-                        this.currentFile = item.file + " (Fehlt)";
-                    }
-                }, Math.max(0, timeUntilStart));
-                this._timeouts.push(timeoutId);
                 
-                startTime += 1.0;
+                // Wait until the Web Audio playback reaches this point
+                if (timeUntilStart > 0) {
+                    await new Promise(resolve => {
+                        const id = setTimeout(resolve, timeUntilStart);
+                        this._timeouts.push(id);
+                    });
+                }
+                
+                if (this._playId !== playId || !this.isPlaying) break;
+                
+                this.currentIndex = i;
+                this.currentText = item.text;
+                this.currentFile = item.file + " (TTS Fallback)";
+
+                if (window.speechSynthesis && item.text && item.text.trim() !== '' && item.text.toLowerCase() !== 'gong') {
+                    await new Promise(resolve => {
+                        const utterance = new SpeechSynthesisUtterance(item.text);
+                        let lang = 'de-DE';
+                        if (item.file.startsWith('en/')) lang = 'en-US';
+                        if (item.file.startsWith('fr/')) lang = 'fr-FR';
+                        utterance.lang = lang;
+                        
+                        utterance.onend = resolve;
+                        utterance.onerror = resolve;
+                        
+                        window.speechSynthesis.speak(utterance);
+                    });
+                } else if (!item.text || item.text.trim() === '' || item.text.toLowerCase() === 'gong') {
+                    await new Promise(resolve => {
+                        const id = setTimeout(resolve, 1000);
+                        this._timeouts.push(id);
+                    });
+                }
+
+                // Resync Web Audio startTime since real time has passed
+                startTime = this._audioContext.currentTime + 0.1;
             }
         }
 
