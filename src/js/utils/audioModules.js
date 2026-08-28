@@ -9,8 +9,6 @@ export const audioModules = {
         en: { file: "022", text: "Now arriving" },
         fr: { file: "022", text: "" }
     },
-    
-
     //Bindewörter
     NACH: {
         de: { file: "0054", text: "nach" },
@@ -128,7 +126,7 @@ export const audioModules = {
         fr: { file: "042", text: "" }
     },
     IN_ABSCHNITTEN: {
-        de: { file: "028", text: "im den Abschnitten"},
+        de: { file: "028", text: "in den Abschnitten"},
         en: { file: "037", text: "in platform sections" },
         fr: { file: "042", text: "" }
     },
