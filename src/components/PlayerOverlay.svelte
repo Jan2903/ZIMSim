@@ -18,9 +18,11 @@
                     <span class="playing-icon">⏹</span>
                 {/if}
                 <span class="progress">{ansagenPlayer.progressText}</span>
+                {#if ansagenPlayer.currentFile}
                 <span class="filename" title={ansagenPlayer.currentFile}>
-                    {ansagenPlayer.currentFile ? ansagenPlayer.currentFile.split('/').pop() : ''}
+                    {ansagenPlayer.currentFile.split('/').pop()}
                 </span>
+                {/if}
             </div>
             
             <div class="subtitle-text">

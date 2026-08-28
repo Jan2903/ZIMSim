@@ -41,63 +41,59 @@ export class AnsagenGenerator {
     _number(playlist, numStr, defaultPitch = 'hoch') {
         if (!numStr) return;
         
-        // Remove non-digits for simplicity, or handle letters if needed
         const cleanNum = String(numStr).replace(/\D/g, '');
         if (!cleanNum) return;
 
-        // Leading zeros
+        // Leading zeros: spell out digits
         if (cleanNum.startsWith('0')) {
-            for (let i = 0; i < cleanNum.length; i++) {
-                playlist.push({
-                    file: `${this.lang}/gleise_zahlen/${defaultPitch}/${cleanNum[i]}.opus`,
-                    text: cleanNum[i]
-                });
+            for (const digit of cleanNum) {
+                this._pushNumberAudio(playlist, digit, defaultPitch);
             }
             return;
         }
 
         const len = cleanNum.length;
+
         if (len <= 2) {
-            playlist.push({
-                file: `${this.lang}/gleise_zahlen/${defaultPitch}/${cleanNum}.opus`,
-                text: cleanNum
-            });
-        } else if (len === 3) {
+            this._pushNumberAudio(playlist, cleanNum, defaultPitch);
+            return;
+        }
+        
+        if (len === 3) {
             if (cleanNum.endsWith('00')) {
-                playlist.push({
-                    file: `${this.lang}/gleise_zahlen/${defaultPitch}/${cleanNum}.opus`,
-                    text: cleanNum
-                });
+                this._pushNumberAudio(playlist, cleanNum, defaultPitch);
             } else {
                 const hundreds = cleanNum[0] + '00';
                 const remainder = parseInt(cleanNum.substring(1), 10).toString();
                 
                 playlist.push({
-                    file: `${this.lang}/gleise_zahlen/${defaultPitch}/${hundreds}_.opus`,
+                    file: `${this.lang}/gleise_zahlen/${defaultPitch}/${hundreds}_`,
                     text: hundreds
                 });
-                
-                // Remainder is 1-99 without leading zero
-                playlist.push({
-                    file: `${this.lang}/gleise_zahlen/${defaultPitch}/${remainder}.opus`,
-                    text: remainder
-                });
+                this._pushNumberAudio(playlist, remainder, defaultPitch);
             }
-        } else if (len === 4) {
-            const p1 = cleanNum.substring(0, 2);
-            const p2 = cleanNum.substring(2, 4);
-            
-            this._number(playlist, p1, 'tief');
-            this._number(playlist, p2, defaultPitch);
-        } else if (len === 5) {
-            const p1 = cleanNum.substring(0, 2);
-            const p2 = cleanNum.substring(2, 3);
-            const p3 = cleanNum.substring(3, 5);
-            
-            this._number(playlist, p1, defaultPitch);
-            this._number(playlist, p2, defaultPitch);
-            this._number(playlist, p3, defaultPitch);
+            return;
         }
+
+        if (len === 4) {
+            this._number(playlist, cleanNum.substring(0, 2), 'tief');
+            this._number(playlist, cleanNum.substring(2, 4), defaultPitch);
+            return;
+        }
+
+        if (len >= 5) {
+            this._number(playlist, cleanNum.substring(0, 2), defaultPitch);
+            this._number(playlist, cleanNum.substring(2, 3), defaultPitch);
+            this._number(playlist, cleanNum.substring(3, 5), defaultPitch);
+            return;
+        }
+    }
+
+    _pushNumberAudio(playlist, number, pitch) {
+        playlist.push({
+            file: `${this.lang}/gleise_zahlen/${pitch}/${number}`,
+            text: number
+        });
     }
 
     /**
@@ -121,7 +117,7 @@ export class AnsagenGenerator {
         if (activeVias && activeVias.length > 0) {
             // Target is in the middle -> hoch
             playlist.push({
-                file: `${this.lang}/ziele/variante2/hoch/${targetIbnr}.opus`,
+                file: `${this.lang}/ziele/variante2/hoch/${targetIbnr}`,
                 text: targetStr
             });
             
@@ -133,13 +129,13 @@ export class AnsagenGenerator {
                 if (i === activeVias.length - 1) {
                     // Last via -> tief
                     playlist.push({
-                        file: `${this.lang}/ziele/variante2/tief/${viaIbnr}.opus`,
+                        file: `${this.lang}/ziele/variante2/tief/${viaIbnr}`,
                         text: viaName
                     });
                 } else {
                     // Intermediate via -> hoch
                     playlist.push({
-                        file: `${this.lang}/ziele/variante2/hoch/${viaIbnr}.opus`,
+                        file: `${this.lang}/ziele/variante2/hoch/${viaIbnr}`,
                         text: viaName
                     });
                 }
@@ -147,7 +143,7 @@ export class AnsagenGenerator {
         } else {
             // Target is at the end -> tief
             playlist.push({
-                file: `${this.lang}/ziele/variante2/tief/${targetIbnr}.opus`,
+                file: `${this.lang}/ziele/variante2/tief/${targetIbnr}`,
                 text: targetStr
             });
         }
@@ -178,7 +174,7 @@ export class AnsagenGenerator {
 
         if (gattung) {
             playlist.push({
-                file: `${this.lang}/zuggattungen/hoch/${gattung.toLowerCase()}.opus`,
+                file: `${this.lang}/zuggattungen/hoch/${gattung.toLowerCase()}`,
                 text: gattung
             });
         }
@@ -201,16 +197,16 @@ export class AnsagenGenerator {
 
         if (mm === '0' || mm === '00') {
             playlist.push({
-                file: `${this.lang}/zeiten/stunden/tief/${hourStr}.opus`,
+                file: `${this.lang}/zeiten/stunden/tief/${hourStr}`,
                 text: `${hh} Uhr`
             });
         } else {
             playlist.push({
-                file: `${this.lang}/zeiten/stunden/hoch/${hourStr}.opus`,
+                file: `${this.lang}/zeiten/stunden/hoch/${hourStr}`,
                 text: `${hh} Uhr`
             });
             playlist.push({
-                file: `${this.lang}/zeiten/minuten/tief/${minStr}.opus`,
+                file: `${this.lang}/zeiten/minuten/tief/${minStr}`,
                 text: mm
             });
         }
@@ -256,7 +252,7 @@ export class AnsagenGenerator {
             if (ibnr) {
                 this._module(playlist, 'HEUTE_NUR_BIS');
                 playlist.push({
-                    file: `${this.lang}/ziele/variante2/tief/${ibnr}.opus`,
+                    file: `${this.lang}/ziele/variante2/tief/${ibnr}`,
                     text: nurBisStation
                 });
             }
@@ -289,12 +285,12 @@ export class AnsagenGenerator {
                     this._module(playlist, 'UND');
                 }
                 playlist.push({
-                    file: `${this.lang}/ziele/variante2/tief/${ibnr}.opus`,
+                    file: `${this.lang}/ziele/variante2/tief/${ibnr}`,
                     text: name
                 });
             } else {
                 playlist.push({
-                    file: `${this.lang}/ziele/variante2/hoch/${ibnr}.opus`,
+                    file: `${this.lang}/ziele/variante2/hoch/${ibnr}`,
                     text: name
                 });
             }
@@ -306,7 +302,7 @@ export class AnsagenGenerator {
      */
     _gong(playlist) {
         playlist.push({
-            file: `gong/513/513_2.opus`, // Standard DB Gong (without lang prefix)
+            file: `gong/513/513_2`, // Standard DB Gong (without lang prefix)
             text: "Gong"
         });
     }
@@ -437,7 +433,7 @@ export class AnsagenGenerator {
         if (delay >= 5) {
             const delayStr = String(delay).padStart(3, '0');
             p.push({
-                file: `${this.lang}/zeiten/verspaetung_heute/ca_${delayStr}_Minuten_spaeter.opus`,
+                file: `${this.lang}/zeiten/verspaetung_heute/ca_${delayStr}_Minuten_spaeter`,
                 text: `ca. ${delay} Minuten später`
             });
         }
