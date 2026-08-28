@@ -41,6 +41,11 @@ export const audioModules = {
         en: { file: "002", text: "and from platform" },
         fr: { file: "042", text: "et" }
     },
+    BIS: {
+        de: { file: "032", text: "bis" },
+        en: { file: "000", text: "to" },
+        fr: { file: "000", text: "" }
+    },
     
     //An/Ab
     ABFAHRT: {

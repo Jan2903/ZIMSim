@@ -1,6 +1,7 @@
 import { StationService } from './stationService.js';
 import { audioModules } from './audioModules.js';
 import { ansagenStore } from './ansagenStore.svelte.js';
+import { parseTrack } from './trackUtils.js';
 
 export class AnsagenGenerator {
     constructor() {
@@ -13,17 +14,22 @@ export class AnsagenGenerator {
         return match ? match.ibnr : null;
     }
 
+    _pushAudio(playlist, filePath, text) {
+        if (!text || text.trim() === "") return;
+        playlist.push({
+            file: filePath,
+            text: text
+        });
+    }
+
     _module(playlist, modKey) {
         const mod = audioModules[modKey];
-        if (mod && mod.de) {
+        if (mod && mod.de && mod.de.text && mod.de.text.trim() !== "") {
             const filename = mod.de.file;
             const basename = filename.split('.')[0];
             const folder = basename.length === 3 ? 'module_3_1' : 'module';
             
-            playlist.push({
-                file: `${this.lang}/${folder}/${filename}`,
-                text: mod.de.text
-            });
+            this._pushAudio(playlist, `${this.lang}/${folder}/${filename}`, mod.de.text);
         }
     }
 
@@ -79,10 +85,7 @@ export class AnsagenGenerator {
     }
 
     _pushNumberAudio(playlist, number, pitch) {
-        playlist.push({
-            file: `${this.lang}/gleise_zahlen/${pitch}/${number}`,
-            text: number
-        });
+        this._pushAudio(playlist, `${this.lang}/gleise_zahlen/${pitch}/${number}`, number);
     }
 
     _targetWithVia(playlist, targetStr, vias = []) {
@@ -290,9 +293,27 @@ export class AnsagenGenerator {
     
     _appendPlatform(playlist, journey) {
         const gleis = journey.ezGleis || journey.platform;
-        if (gleis) {
-            this._module(playlist, 'GLEIS');
-            this._number(playlist, gleis, 'hoch');
+        if (!gleis) return;
+        
+        const parsed = parseTrack(gleis);
+        this._module(playlist, 'GLEIS');
+        this._number(playlist, parsed.base, 'hoch');
+
+        const sections = parsed.sections;
+        if (!sections || sections.length === 0 || sections[0] === '*') {
+            return;
+        }
+
+        if (sections.length === 1) {
+            const sec = sections[0].toLowerCase();
+            this._pushAudio(playlist, `${this.lang}/abschnitte/hoch/${sec}`, sections[0]);
+        } else {
+            const first = sections[0].toLowerCase();
+            const last = sections[sections.length - 1].toLowerCase();
+            
+            this._pushAudio(playlist, `${this.lang}/abschnitte/hoch/${first}`, sections[0]);
+            this._module(playlist, 'BIS');
+            this._pushAudio(playlist, `${this.lang}/abschnitte/hoch/${last}`, sections[sections.length - 1]);
         }
     }
 

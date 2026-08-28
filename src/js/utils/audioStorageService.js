@@ -51,32 +51,35 @@ class WebZipStorageProvider {
         }
     }
 
-    _resolveZipEntry(filepath) {
+    _resolveZipEntry(filepaths) {
         if (!this._cachedZipMap) return null;
         
-        const searchPath = filepath.replace(/\\/g, '/');
-        const basePaths = [
-            searchPath,
-            'site/' + searchPath
-        ];
-        
-        // Fallback: Wenn 'variante2' (oder andere) gefragt ist, probiere 'variante1'
-        if (searchPath.includes('/variante2/') || searchPath.includes('/variante3/')) {
-            const fallback = searchPath.replace('/variante2/', '/variante1/')
-                                       .replace('/variante3/', '/variante1/');
-            if (fallback !== searchPath) {
-                basePaths.push(fallback);
-                basePaths.push('site/' + fallback);
-            }
-        }
-
+        const pathsToTry = Array.isArray(filepaths) ? filepaths : [filepaths];
         const extensions = ['.opus', '.wav'];
 
-        for (const bp of basePaths) {
-            for (const ext of extensions) {
-                const p = bp + ext;
-                const entry = this._cachedZipMap.get(p);
-                if (entry) return entry;
+        for (const filepath of pathsToTry) {
+            const searchPath = filepath.replace(/\\/g, '/');
+            const basePaths = [
+                searchPath,
+                'site/' + searchPath
+            ];
+            
+            // Fallback: Wenn 'variante2' (oder andere) gefragt ist, probiere 'variante1'
+            if (searchPath.includes('/variante2/') || searchPath.includes('/variante3/')) {
+                const fallback = searchPath.replace('/variante2/', '/variante1/')
+                                           .replace('/variante3/', '/variante1/');
+                if (fallback !== searchPath) {
+                    basePaths.push(fallback);
+                    basePaths.push('site/' + fallback);
+                }
+            }
+            
+            for (const bp of basePaths) {
+                for (const ext of extensions) {
+                    const p = bp + ext;
+                    const entry = this._cachedZipMap.get(p);
+                    if (entry) return entry;
+                }
             }
         }
         return null;
@@ -98,22 +101,43 @@ class WebZipStorageProvider {
 }
 
 class TauriStorageProvider {
-    async getArrayBuffer(filepath) {
+    async getArrayBuffer(filepaths) {
         try {
             const { invoke } = await import('@tauri-apps/api/core');
-            let buffer;
-            try {
-                buffer = await invoke('get_audio_snippet', { 
-                    zipPath: ansagenStore.fileRef, 
-                    filePath: filepath + '.opus' 
-                });
-            } catch (e) {
-                buffer = await invoke('get_audio_snippet', { 
-                    zipPath: ansagenStore.fileRef, 
-                    filePath: filepath + '.wav' 
-                });
+            const pathsToTry = Array.isArray(filepaths) ? filepaths : [filepaths];
+            
+            for (let filepath of pathsToTry) {
+                filepath = filepath.replace(/\\/g, '/');
+                
+                const basePaths = [filepath];
+                if (filepath.includes('/variante2/') || filepath.includes('/variante3/')) {
+                    const fallback = filepath.replace('/variante2/', '/variante1/')
+                                             .replace('/variante3/', '/variante1/');
+                    if (fallback !== filepath) basePaths.push(fallback);
+                }
+
+                for (const bp of basePaths) {
+                    let buffer;
+                    try {
+                        buffer = await invoke('get_audio_snippet', { 
+                            zipPath: ansagenStore.fileRef, 
+                            filePath: bp + '.opus' 
+                        });
+                        if (buffer) return new Uint8Array(buffer).buffer;
+                    } catch (e) {
+                        try {
+                            buffer = await invoke('get_audio_snippet', { 
+                                zipPath: ansagenStore.fileRef, 
+                                filePath: bp + '.wav' 
+                            });
+                            if (buffer) return new Uint8Array(buffer).buffer;
+                        } catch (e2) {
+                            // Try next extension or next fallback path
+                        }
+                    }
+                }
             }
-            return new Uint8Array(buffer).buffer;
+            return null;
         } catch (e) {
             console.warn("Failed to fetch from Tauri command:", e);
             return null;
