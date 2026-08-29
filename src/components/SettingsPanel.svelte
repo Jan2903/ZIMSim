@@ -1,12 +1,12 @@
 <script>
-    import { journeyStore, trainDisplay } from '../js/stores.js';
-    import { StationService } from '../js/services/stationService.js';
-    import { uiState } from '../js/models/uiState.svelte.js';
+    import { journeyStore, trainDisplay } from '../js/core/state/stores.js';
+    import { StationService } from '../js/features/station/stationService.js';
+    import { uiState } from '../js/core/state/uiState.svelte.js';
     import { fade, slide } from 'svelte/transition';
     import JourneyList from './JourneyList.svelte';
     import StationPicker from './StationPicker.svelte';
-    import { setSimulatedTime, getSimulatedTime, timeConfig, config } from '../js/utils/config.js';
-    import { MOT_PRESETS, getSmartHeaderString, MOT_ALL_KEYS } from '../js/domain/motManager.js';
+    import { setSimulatedTime, getSimulatedTime, timeConfig, config } from '../js/core/utils/config.js';
+    import { MOT_PRESETS, getSmartHeaderString, MOT_ALL_KEYS } from '../js/features/station/motManager.js';
     import { ansagenStore } from '../js/audio/ansagenStore.svelte.js';
     import { open } from '@tauri-apps/plugin-dialog';
     

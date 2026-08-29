@@ -1,9 +1,9 @@
 // js/models/journey.js
-import { Stop } from './stop.svelte.js';
-import { Formation } from './formation.js';
-import { parseTrainName, formatDisplayName } from '../domain/trainNumberFormatter.js';
-import { RisTextService } from '../services/risTextService.js';
-import { StationService } from '../services/stationService.js';
+import { Stop } from '../station/stop.svelte.js';
+import { Formation } from '../formation/formationModel.js';
+import { parseTrainName, formatDisplayName } from './trainNumberFormatter.js';
+import { RisTextService } from '../../core/services/risTextService.js';
+import { StationService } from '../station/stationService.js';
 
 /**
  * Repräsentiert eine einzelne Fahrt (Abfahrt oder Ankunft).
