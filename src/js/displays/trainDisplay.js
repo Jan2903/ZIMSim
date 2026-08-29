@@ -1,13 +1,13 @@
 // js/displays/trainDisplay.js
 // Orchestrator — delegiert an spezialisierte Renderer-Module
 import { config } from '../utils/config.js';
-import { LAYOUTS } from './layouts.js';
-import { COLORS } from './constants.js';
-import { ScrollManager } from './scrollManager.js';
-import { drawFormation } from './formationRenderer.js';
-import { drawTrainInfo, shouldRenderFormation } from './trainInfoRenderer.js';
-import { drawListeRow } from './listeRenderer.js';
-import { drawVitrine32Wagenstand } from './vitrineRenderer.js';
+import { LAYOUTS } from './core/layouts.js';
+import { COLORS } from './core/constants.js';
+import { ScrollManager } from './core/scrollManager.js';
+import { drawFormation } from './components/formationRenderer.js';
+import { drawTrainInfo, shouldRenderFormation } from './components/trainInfoRenderer.js';
+import { drawListeRow } from './components/listeRenderer.js';
+import { drawVitrine32Wagenstand } from './components/vitrineRenderer.js';
 
 export class TrainDisplay {
     constructor(journeyStore) {

@@ -1,7 +1,7 @@
 // js/displays/sharedRenderers.js
 import { COLORS, FONTS } from './constants.js';
 import { drawText } from './textUtils.js';
-import { getSimulatedTime } from '../utils/config.js';
+import { getSimulatedTime } from '../../utils/config.js';
 
 /**
  * Zeichnet das DB-Logo (abgerundetes Rechteck mit Text "DB")

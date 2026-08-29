@@ -1,5 +1,5 @@
 import { ansagenStore } from './ansagenStore.svelte.js';
-import { audioStorageService } from './audioStorageService.js';
+import { audioStorageService } from '../services/audioStorageService.js';
 
 export class WavExporter {
     async exportWav(playlist, audioContext) {

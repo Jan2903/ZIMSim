@@ -1,7 +1,7 @@
 // js/displays/formationRenderer.js
-import { Coach } from '../models/coach.js';
-import { COLORS, FONTS, FORMATION } from './constants.js';
-import { drawText } from './textUtils.js';
+import { Coach } from '../../models/coach.js';
+import { COLORS, FONTS, FORMATION } from '../core/constants.js';
+import { drawText } from '../core/textUtils.js';
 import {
     drawLocomotive, drawStartWagon, drawEndWagon, drawMiddleWagon,
     drawCoupling, drawDirectionArrow, drawFirstClassBar,
@@ -10,7 +10,7 @@ import {
     drawFullscreenWagonNumbers, drawCompactWagonNumbers,
     mapCoachType, getSafeCenter
 } from './coachRenderer.js';
-import { calculateCoachPositions } from '../utils/formationUtils.js';
+import { calculateCoachPositions } from '../../domain/formationUtils.js';
 
 // Debug-Schalter: Meter-Markierungen am Bahnsteig anzeigen
 export let DEBUG_METERS = false;
@@ -56,8 +56,8 @@ export function drawSectors(ctx, sections, scaleFactor, startX = FORMATION.THRES
  * Sektoren, Richtungspfeile und Features (Nummern/Klasse/Ausstattung).
  *
  * @param {CanvasRenderingContext2D} ctx
- * @param {import('../models/journey.js').Journey[]} journeys - Array von Fahrt-Daten (1+ bei Flügelzügen).
- * @param {import('../models/platform.js').Platform} platform - Das Bahnsteig-Objekt.
+ * @param {import('../../models/journey.js').Journey[]} journeys - Array von Fahrt-Daten (1+ bei Flügelzügen).
+ * @param {import('../../models/platform.js').Platform} platform - Das Bahnsteig-Objekt.
  * @param {object} options
  * @param {boolean} options.fullScreen - Hauptmonitor (true) oder Nebenmonitor (false).
  * @param {string} options.activeFeature - 'wagennummern', 'ausstattung' oder 'klasse'.

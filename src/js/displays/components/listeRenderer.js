@@ -7,7 +7,7 @@
  * TODO: Implementierung ausstehend — wird in einem zukünftigen Feature umgesetzt.
  *
  * @param {CanvasRenderingContext2D} ctx - Der Canvas-Kontext.
- * @param {import('../models/journey.js').Journey} journey - Die Fahrt-Daten.
+ * @param {import('../../models/journey.js').Journey} journey - Die Fahrt-Daten.
  * @param {number} width - Die verfügbare Breite.
  * @param {number} height - Die verfügbare Höhe.
  */

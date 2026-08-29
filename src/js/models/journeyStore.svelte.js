@@ -3,8 +3,8 @@ import { Journey } from './journey.svelte.js';
 import { Formation } from './formation.js';
 import { Platform } from './platform.js';
 import { FormationParser } from './formationParser.js';
-import { getMotForCategory, MOT_ALL_KEYS } from '../utils/motManager.js';
-import { parseTrack, sectionsOverlap } from '../utils/trackUtils.js';
+import { getMotForCategory, MOT_ALL_KEYS } from '../domain/motManager.js';
+import { parseTrack, sectionsOverlap } from '../domain/trackUtils.js';
 
 /**
  * Zentrale Datenverwaltung — ersetzt das alte TrainData.

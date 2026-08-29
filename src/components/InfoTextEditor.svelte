@@ -1,6 +1,6 @@
 <script>
     import { trainDisplay } from '../js/stores.js';
-    import { RisTextService } from '../js/utils/risTextService.js';
+    import { RisTextService } from '../js/services/risTextService.js';
     import { dndzone } from 'svelte-dnd-action';
     import { flip } from 'svelte/animate';
 

@@ -1,9 +1,9 @@
 // js/displays/trainInfoRenderer.js
-import { COLORS, FONTS, INFO } from './constants.js';
-import { drawText, drawWrappedText, drawInfoTopText, drawTextInRectangle } from './textUtils.js';
+import { COLORS, FONTS, INFO } from '../core/constants.js';
+import { drawText, drawWrappedText, drawInfoTopText, drawTextInRectangle } from '../core/textUtils.js';
 import { drawPictograms } from './pictogramRenderer.js';
-import { calculateCoachPositions, getSectorsForCoaches } from '../utils/formationUtils.js';
-import { formatDisplayName } from '../utils/trainNumberFormatter.js';
+import { calculateCoachPositions, getSectorsForCoaches } from '../../domain/formationUtils.js';
+import { formatDisplayName } from '../../domain/trainNumberFormatter.js';
 
 function areJourneysMerged(journeys) {
     if (!journeys || journeys.length <= 1) return true;
@@ -74,10 +74,10 @@ function getPlatformSectors(targetJourney, allJourneys, platform) {
  * Bei gekoppelten Zügen (Flügelzüge) enthält das Array mehrere Journeys.
  *
  * @param {CanvasRenderingContext2D} ctx
- * @param {import('../models/journey.js').Journey[]} journeys - Array von Fahrt-Daten (1+ bei Flügelzügen).
+ * @param {import('../../models/journey.js').Journey[]} journeys - Array von Fahrt-Daten (1+ bei Flügelzügen).
  * @param {number} width - Die verfügbare Breite des Screens.
  * @param {number} height - Die verfügbare Höhe des Screens.
- * @param {import('./textUtils.js').RenderContext} renderCtx - Render-Kontext.
+ * @param {import('../core/textUtils.js').RenderContext} renderCtx - Render-Kontext.
  */
 export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
     const { fullScreen, screen, scrollManager, zugID, canvas, cssScale = 1 } = renderCtx;

@@ -1,5 +1,5 @@
 <script>
-    import { ansagenPlayer } from '../js/utils/ansagenPlayer.svelte.js';
+    import { ansagenPlayer } from '../js/audio/ansagenPlayer.svelte.js';
 
     function handleReplay() {
         if (ansagenPlayer.playlist.length > 0) {
