@@ -1,11 +1,13 @@
 <script>
     import { journeyStore, trainDisplay } from '../js/stores.js';
-    import { StationService } from '../js/utils/stationService.js';
+    import { StationService } from '../js/services/stationService.js';
+    import { uiState } from '../js/models/uiState.svelte.js';
+    import { fade, slide } from 'svelte/transition';
     import JourneyList from './JourneyList.svelte';
     import StationPicker from './StationPicker.svelte';
     import { setSimulatedTime, getSimulatedTime, timeConfig, config } from '../js/utils/config.js';
-    import { MOT_PRESETS, getSmartHeaderString, MOT_ALL_KEYS } from '../js/utils/motManager.js';
-    import { ansagenStore } from '../js/utils/ansagenStore.svelte.js';
+    import { MOT_PRESETS, getSmartHeaderString, MOT_ALL_KEYS } from '../js/domain/motManager.js';
+    import { ansagenStore } from '../js/audio/ansagenStore.svelte.js';
     import { open } from '@tauri-apps/plugin-dialog';
     
     let { modalsComp } = $props();

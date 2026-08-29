@@ -5,9 +5,9 @@
     import StopEditor from './StopEditor.svelte';
     import StationPicker from './StationPicker.svelte';
     import { portalDropdown } from '../js/utils/portal.js';
-    import { RisTextService } from '../js/utils/risTextService.js';
-    import { ansagenGenerator } from '../js/utils/ansagenGenerator.js';
-    import { ansagenPlayer } from '../js/utils/ansagenPlayer.svelte.js';
+    import { RisTextService } from '../js/services/risTextService.js';
+    import { ansagenGenerator } from '../js/audio/ansagenGenerator.js';
+    import { ansagenPlayer } from '../js/audio/ansagenPlayer.svelte.js';
 
     let { journey = $bindable() } = $props();
     

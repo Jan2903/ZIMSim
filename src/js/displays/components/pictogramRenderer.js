@@ -1,6 +1,6 @@
 // js/displays/pictogramRenderer.js
-import { COLORS, FONTS, INFO } from './constants.js';
-import { images } from '../utils/utils.js';
+import { COLORS, FONTS, INFO } from '../core/constants.js';
+import { images } from '../../utils/utils.js';
 
 /**
  * Zeichnet ein Bild sicher auf den Canvas mit optionalem Farb-Tinting.

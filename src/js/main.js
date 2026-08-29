@@ -1,8 +1,8 @@
 // js/main.js
 import { journeyStore, trainDisplay } from './stores.js';
 import { preloadImages } from './utils/utils.js';
-import { StationService } from './utils/stationService.js';
-import { RisTextService } from './utils/risTextService.js';
+import { StationService } from './services/stationService.js';
+import { RisTextService } from './services/risTextService.js';
 
 
 /**

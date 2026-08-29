@@ -1,5 +1,5 @@
 <script>
-    import { StationService } from '../js/utils/stationService.js';
+    import { StationService } from '../js/services/stationService.js';
     import { journeyStore } from '../js/stores.js';
     import { portalDropdown } from '../js/utils/portal.js';
 

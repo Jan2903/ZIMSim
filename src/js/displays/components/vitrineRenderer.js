@@ -1,8 +1,8 @@
-import { COLORS, FONTS, FORMATION } from './constants.js';
+import { COLORS, FONTS, FORMATION } from '../core/constants.js';
 import { drawFormation, drawSectors } from './formationRenderer.js';
-import { drawText } from './textUtils.js';
-import { drawDBLogo, drawAnalogClock } from './sharedRenderers.js';
-import { getSimulatedTime } from '../utils/config.js';
+import { drawText } from '../core/textUtils.js';
+import { drawDBLogo, drawAnalogClock } from '../core/sharedRenderers.js';
+import { getSimulatedTime } from '../../utils/config.js';
 
 function drawVitrineHeader(ctx, width, activeFeatureIndex, progress, trackNumber, featureAlpha = 1.0) {
     // 1. Clock (Left)

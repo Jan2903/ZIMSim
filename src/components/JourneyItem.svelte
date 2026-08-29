@@ -1,7 +1,7 @@
 <script>
     import { uiState } from '../js/models/uiState.svelte.js';
     import { journeyStore, trainDisplay } from '../js/stores.js';
-    import { getMotForCategory } from '../js/utils/motManager.js';
+    import { getMotForCategory } from '../js/domain/motManager.js';
     import JourneyDetails from './JourneyDetails.svelte';
 
     let { journey = $bindable() } = $props();
