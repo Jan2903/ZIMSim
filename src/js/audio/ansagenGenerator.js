@@ -1,7 +1,7 @@
-import { StationService } from '../services/stationService.js';
+import { StationService } from '../features/station/stationService.js';
 import { audioModules } from './audioModules.js';
 import { ansagenStore } from './ansagenStore.svelte.js';
-import { parseTrack } from '../domain/trackUtils.js';
+import { parseTrack } from '../core/utils/trackUtils.js';
 
 export class AnsagenGenerator {
     constructor() {

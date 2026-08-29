@@ -1,6 +1,6 @@
 // js/displays/coachRenderer.js
 import { COLORS, FONTS, FORMATION, COUPLING } from '../core/constants.js';
-import { images } from '../../utils/utils.js';
+import { images } from '../../core/utils/utils.js';
 
 /**
  * Berechnet die sichere x-Koordinate für ein Feature.

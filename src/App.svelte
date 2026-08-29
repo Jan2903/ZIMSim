@@ -1,6 +1,6 @@
 <script>
     import { onMount } from 'svelte';
-    import { journeyStore, trainDisplay } from './js/stores.js';
+    import { journeyStore, trainDisplay } from './js/core/state/stores.js';
     import Header from './components/Header.svelte';
     import SettingsPanel from './components/SettingsPanel.svelte';
     import Modals from './components/Modals.svelte';

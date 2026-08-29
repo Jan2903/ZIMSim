@@ -1,8 +1,8 @@
 <script>
-    import { trainDisplay } from '../js/stores.js';
+    import { trainDisplay } from '../js/core/state/stores.js';
     import { dndzone } from 'svelte-dnd-action';
     import { flip } from 'svelte/animate';
-    import { Stop } from '../js/models/stop.svelte.js';
+    import { Stop } from '../js/features/station/stop.svelte.js';
     import StationPicker from './StationPicker.svelte';
 
     let { journey = $bindable(), showStopDetails = false } = $props();

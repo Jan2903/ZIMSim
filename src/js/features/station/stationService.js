@@ -1,4 +1,4 @@
-import { journeyStore } from '../stores.js';
+import { journeyStore } from '../../core/state/stores.js';
 
 export class StationService {
     static stations = [];

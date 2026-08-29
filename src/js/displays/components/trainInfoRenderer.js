@@ -2,8 +2,8 @@
 import { COLORS, FONTS, INFO } from '../core/constants.js';
 import { drawText, drawWrappedText, drawInfoTopText, drawTextInRectangle } from '../core/textUtils.js';
 import { drawPictograms } from './pictogramRenderer.js';
-import { calculateCoachPositions, getSectorsForCoaches } from '../../domain/formationUtils.js';
-import { formatDisplayName } from '../../domain/trainNumberFormatter.js';
+import { calculateCoachPositions, getSectorsForCoaches } from '../../features/formation/formationUtils.js';
+import { formatDisplayName } from '../../features/journey/trainNumberFormatter.js';
 
 function areJourneysMerged(journeys) {
     if (!journeys || journeys.length <= 1) return true;

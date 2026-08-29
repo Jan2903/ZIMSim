@@ -1,5 +1,5 @@
 import { BlobReader, ZipReader, Uint8ArrayWriter } from '@zip.js/zip.js';
-import { ansagenStore } from '../audio/ansagenStore.svelte.js';
+import { ansagenStore } from '../../audio/ansagenStore.svelte.js';
 
 class WebZipStorageProvider {
     constructor() {

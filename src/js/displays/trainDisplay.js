@@ -1,8 +1,9 @@
 // js/displays/trainDisplay.js
 // Orchestrator — delegiert an spezialisierte Renderer-Module
-import { config } from '../utils/config.js';
+import { config } from '../core/utils/config.js';
 import { LAYOUTS } from './core/layouts.js';
 import { COLORS } from './core/constants.js';
+import { Journey } from '../features/journey/journey.svelte.js';
 import { ScrollManager } from './core/scrollManager.js';
 import { drawFormation } from './components/formationRenderer.js';
 import { drawTrainInfo, shouldRenderFormation } from './components/trainInfoRenderer.js';

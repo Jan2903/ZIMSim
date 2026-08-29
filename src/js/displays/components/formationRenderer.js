@@ -1,5 +1,5 @@
 // js/displays/formationRenderer.js
-import { Coach } from '../../models/coach.js';
+import { Coach } from '../../features/formation/coachModel.js';
 import { COLORS, FONTS, FORMATION } from '../core/constants.js';
 import { drawText } from '../core/textUtils.js';
 import {
@@ -10,7 +10,7 @@ import {
     drawFullscreenWagonNumbers, drawCompactWagonNumbers,
     mapCoachType, getSafeCenter
 } from './coachRenderer.js';
-import { calculateCoachPositions } from '../../domain/formationUtils.js';
+import { calculateCoachPositions } from '../../features/formation/formationUtils.js';
 
 // Debug-Schalter: Meter-Markierungen am Bahnsteig anzeigen
 export let DEBUG_METERS = false;
@@ -57,7 +57,7 @@ export function drawSectors(ctx, sections, scaleFactor, startX = FORMATION.THRES
  *
  * @param {CanvasRenderingContext2D} ctx
  * @param {import('../../models/journey.js').Journey[]} journeys - Array von Fahrt-Daten (1+ bei Flügelzügen).
- * @param {import('../../models/platform.js').Platform} platform - Das Bahnsteig-Objekt.
+ * @param {import('../../features/station/platform.js').Platform} platform - Das Bahnsteig-Objekt.
  * @param {object} options
  * @param {boolean} options.fullScreen - Hauptmonitor (true) oder Nebenmonitor (false).
  * @param {string} options.activeFeature - 'wagennummern', 'ausstattung' oder 'klasse'.

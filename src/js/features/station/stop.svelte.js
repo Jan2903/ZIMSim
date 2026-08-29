@@ -1,5 +1,5 @@
 // js/models/stop.svelte.js
-import { StationService } from '../services/stationService.js';
+import { StationService } from './stationService.js';
 
 /**
  * Repräsentiert einen einzelnen Halt einer Fahrt.

@@ -1,11 +1,11 @@
 <script>
-    import { journeyStore, trainDisplay } from '../js/stores.js';
-    import { uiState } from '../js/models/uiState.svelte.js';
+    import { journeyStore, trainDisplay } from '../js/core/state/stores.js';
+    import { uiState } from '../js/core/state/uiState.svelte.js';
     import InfoTextEditor from './InfoTextEditor.svelte';
     import StopEditor from './StopEditor.svelte';
     import StationPicker from './StationPicker.svelte';
-    import { portalDropdown } from '../js/utils/portal.js';
-    import { RisTextService } from '../js/services/risTextService.js';
+    import { portalDropdown } from '../js/core/utils/portal.js';
+    import { RisTextService } from '../js/core/services/risTextService.js';
     import { ansagenGenerator } from '../js/audio/ansagenGenerator.js';
     import { ansagenPlayer } from '../js/audio/ansagenPlayer.svelte.js';
 
@@ -118,7 +118,7 @@
     }
 
     function addStop() {
-        import('../js/models/stop.svelte.js').then(module => {
+        import('../js/features/station/stop.svelte.js').then(module => {
             journey.stops.push(new module.Stop({ id: crypto.randomUUID(), name: '' }));
             triggerUpdate();
         });

@@ -1,5 +1,5 @@
 // js/models/formation.js
-import { Coach } from './coach.js';
+import { Coach } from './coachModel.js';
 
 /**
  * Repräsentiert eine Zuggruppe innerhalb einer Formation (ein Zugteil).
