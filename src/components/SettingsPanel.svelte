@@ -1,6 +1,7 @@
 <script>
     import { journeyStore, trainDisplay } from '../js/core/state/stores.js';
     import { StationService } from '../js/features/station/stationService.js';
+    import { IrisApiService } from '../js/core/services/irisApiService.js';
     import { uiState } from '../js/core/state/uiState.svelte.js';
     import { fade, slide } from 'svelte/transition';
     import JourneyList from './JourneyList.svelte';
@@ -54,6 +55,39 @@
 
     function addManualJourney() {
         journeyStore.addJourney();
+    }
+    
+    let isFetchingIris = $state(false);
+
+    async function fetchIrisData() {
+        if (!journeyStore.stationContext.stationId) {
+            alert('Bitte zuerst eine Station auswählen!');
+            return;
+        }
+        isFetchingIris = true;
+        try {
+            const eva = journeyStore.stationContext.stationId;
+            const time = getSimulatedTime();
+            const journeysData = await IrisApiService.loadJourneys(eva, time);
+            
+            if (journeysData.length === 0) {
+                alert('Keine Fahrplandaten gefunden.');
+            } else {
+                if (journeyStore.journeys.length > 0) {
+                    if (confirm('Sollen die bestehenden Fahrten gelöscht werden?')) {
+                        journeyStore.journeys = [];
+                    }
+                }
+                for (const jData of journeysData) {
+                    journeyStore.addJourney(jData);
+                }
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Fehler beim Abrufen der IRIS-Daten.');
+        } finally {
+            isFetchingIris = false;
+        }
     }
     
     function onLayoutChange(event) {
@@ -215,6 +249,9 @@
                 <div class="journey-list-header">
                     <h3>Fahrten</h3>
                     <div class="journey-list-actions">
+                        <button class="btn-secondary btn-sm" onclick={fetchIrisData} disabled={isFetchingIris}>
+                            {isFetchingIris ? 'Lädt...' : 'IRIS API Suche'}
+                        </button>
                         <button id="add_journey_btn" class="btn-primary btn-sm" onclick={addManualJourney}>+ Fahrt hinzufügen</button>
                     </div>
                 </div>
