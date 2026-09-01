@@ -7,6 +7,7 @@
     import JourneyList from './JourneyList.svelte';
     import StationPicker from './StationPicker.svelte';
     import { setSimulatedTime, getSimulatedTime, timeConfig, config } from '../js/core/utils/config.js';
+    import { irisPollingService, irisConfig } from '../js/core/services/irisPollingService.svelte.js';
     import { MOT_PRESETS, getSmartHeaderString, MOT_ALL_KEYS } from '../js/features/station/motManager.js';
     import { ansagenStore } from '../js/audio/ansagenStore.svelte.js';
     import { open } from '@tauri-apps/plugin-dialog';
@@ -66,21 +67,10 @@
         }
         isFetchingIris = true;
         try {
-            const eva = journeyStore.stationContext.stationId;
-            const time = getSimulatedTime();
-            const journeysData = await IrisApiService.loadJourneys(eva, time);
-            
-            if (journeysData.length === 0) {
-                alert('Keine Fahrplandaten gefunden.');
+            if (irisConfig.autoUpdateInterval > 0) {
+                irisPollingService.start();
             } else {
-                if (journeyStore.journeys.length > 0) {
-                    if (confirm('Sollen die bestehenden Fahrten gelöscht werden?')) {
-                        journeyStore.journeys = [];
-                    }
-                }
-                for (const jData of journeysData) {
-                    journeyStore.addJourney(jData);
-                }
+                await irisPollingService.pollRealtime(true);
             }
         } catch (e) {
             console.error(e);
@@ -360,6 +350,31 @@
                     </select>
                     <label>Länge (m): <input type="number" id="platform_length" class="short-input" bind:value={journeyStore.stationContext.platform.length} oninput={() => trainDisplay.updateAll()}></label>
                     <label>Standort (m): <input type="number" id="platform_location" class="short-input" bind:value={journeyStore.stationContext.platform.location} oninput={() => trainDisplay.updateAll()}></label>
+                </div>
+
+                <h3 style="margin-top: 25px;">DB IRIS Live-Daten</h3>
+                <div class="form-row column-layout" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px;">
+                    <label style="display: block; margin-bottom: 5px;">
+                        Auto-Update (Polling):
+                        <select style="width: 100%; margin-top: 5px; padding: 4px;" bind:value={irisConfig.autoUpdateInterval} onchange={() => irisPollingService.restart()}>
+                            <option value={0}>Aus</option>
+                            <option value={20}>Alle 20 Sekunden</option>
+                            <option value={30}>Alle 30 Sekunden</option>
+                            <option value={60}>Alle 60 Sekunden</option>
+                        </select>
+                    </label>
+                    <label style="display: block; margin-bottom: 5px; margin-top: 10px;">
+                        Anzeige-Zeitfenster (Zukunft in Std.):
+                        <input type="number" class="short-input" min="0" max="10" bind:value={irisConfig.futureWindowHours} onchange={() => irisPollingService.pollRealtime()}>
+                    </label>
+                    <label class="checkbox-label" style="margin-top: 10px;">
+                        <input type="checkbox" bind:checked={irisConfig.autoAnnouncements}>
+                        Autom. Ansagen (Verspätungen & Autoplay)
+                    </label>
+                    <label class="checkbox-label" style="margin-top: 10px;">
+                        <input type="checkbox" bind:checked={irisConfig.autoSort} onchange={() => { if(irisConfig.autoSort) journeyStore.sortJourneys(); }}>
+                        Züge automatisch nach Echtzeit sortieren
+                    </label>
                 </div>
 
                 <h3 style="margin-top: 25px;">Ansagen</h3>

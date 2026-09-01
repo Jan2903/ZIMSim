@@ -103,6 +103,24 @@ export class JourneyStore {
     }
 
     /**
+     * Sortiert alle Fahrten aufsteigend nach ihrer Abfahrts-/Ankunftszeit.
+     * Nutzt bevorzugt Echtzeitdaten (_effectiveTimeMs).
+     */
+    sortJourneys() {
+        this.journeys.sort((a, b) => {
+            const timeA = a._effectiveTimeMs || Infinity;
+            const timeB = b._effectiveTimeMs || Infinity;
+            
+            if (timeA === timeB) {
+                // Bei exakt gleicher Zeit (z.B. Flügelzüge) nach ID/Name sortieren, 
+                // um Flackern zu verhindern
+                return a.name.localeCompare(b.name);
+            }
+            return timeA - timeB;
+        });
+    }
+
+    /**
      * Ermittelt Start- und Endindex eines Journey-Blocks (inklusive Kupplung).
      * @param {string} id - Journey-ID
      * @returns {{startIndex: number, endIndex: number}|null}

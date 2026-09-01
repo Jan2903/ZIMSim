@@ -1,16 +1,35 @@
 import { RisTextService } from './risTextService.js';
 import { StationService } from '../../features/station/stationService.js';
+import { IrisCacheService } from './irisCacheService.js';
 
 export class IrisApiService {
     static BASE_URL = 'https://iris.noncd.db.de/iris-tts/timetable';
 
     /**
-     * Lade Fahrplandaten und Echtzeitdaten von DB-IRIS, kombiniere sie.
+     * Lade ausschließlich die Basis-Fahrplandaten für die vorherige, aktuelle und nächste Stunde.
+     * Nutzt den IrisCacheService, um redundante Netzwerkanfragen zu vermeiden.
+     * @param {string} eva 
+     * @param {Date} dateObj 
+     * @returns {Promise<Map>} Eine Map mit den geparsten Fahrplandaten (ohne Echtzeit).
      */
-    static async loadJourneys(eva, dateObj = new Date()) {
+    static async loadBasePlan(eva, dateObj = new Date()) {
         const fetchPlanForHour = async (dateObjOffset) => {
             const { dateStr, hourStr } = this._formatIrisDate(dateObjOffset);
-            return await this._fetchXml(`/plan/${eva}/${dateStr}/${hourStr}`);
+            const cacheKey = IrisCacheService.getPlanKey(eva, dateStr, hourStr);
+            
+            let xmlText = IrisCacheService.get(cacheKey);
+            if (!xmlText) {
+                const res = await fetch(`${this.BASE_URL}/plan/${eva}/${dateStr}/${hourStr}`);
+                if (res.ok) {
+                    xmlText = await res.text();
+                    IrisCacheService.set(cacheKey, xmlText);
+                } else {
+                    console.error(`[IrisApiService] Error fetching plan for ${eva} at ${dateStr} ${hourStr}: HTTP ${res.status}`);
+                    return null;
+                }
+            }
+            
+            return new window.DOMParser().parseFromString(xmlText, 'text/xml');
         };
 
         const prevHour = new Date(dateObj.getTime() - 60 * 60 * 1000);
@@ -28,24 +47,113 @@ export class IrisApiService {
         if (planCurr) this._parsePlan(planCurr, journeys);
         if (planNext) this._parsePlan(planNext, journeys);
 
-        // Echtzeit laden
-        const fchgXml = await this._fetchXml(`/fchg/${eva}`);
-        if (fchgXml) {
-            this._applyRealtime(journeys, fchgXml);
-        }
-
-        return this._mapToZimsimFormat(journeys, eva);
+        return journeys;
     }
 
-    static async _fetchXml(path) {
+    /**
+     * Sucht im Echtzeit-XML nach Zug-IDs, für die uns der Basis-Plan fehlt (z.B. wegen hoher Verspätung).
+     * Lädt diese Pläne nach und ergänzt sie im übergebenen journeys Map.
+     */
+    static async loadMissingPlans(eva, realtimeXml, journeysMap) {
+        if (!realtimeXml) return;
+        const sNodes = realtimeXml.querySelectorAll('s');
+        const missingHours = new Set();
+        
+        for (const s of sNodes) {
+            const id = s.getAttribute('id');
+            if (journeysMap.has(id)) continue;
+            
+            // Format der ID z.B.: ...-2401011530-... (YYMMDDHHMM)
+            const match = id.match(/-(\d{10})-/);
+            if (match) {
+                const timestampStr = match[1];
+                const dateStr = timestampStr.slice(0, 6);
+                const hh = timestampStr.slice(6, 8);
+                const cacheKey = IrisCacheService.getPlanKey(eva, dateStr, hh);
+                
+                if (!IrisCacheService.get(cacheKey)) {
+                    missingHours.add(`${dateStr}|${hh}`);
+                }
+            }
+        }
+        
+        for (const hourKey of missingHours) {
+            const [dateStr, hh] = hourKey.split('|');
+            const cacheKey = IrisCacheService.getPlanKey(eva, dateStr, hh);
+            let xmlText = IrisCacheService.get(cacheKey);
+            if (!xmlText) {
+                try {
+                    const res = await fetch(`${this.BASE_URL}/plan/${eva}/${dateStr}/${hh}`);
+                    if (res.ok) {
+                        xmlText = await res.text();
+                        IrisCacheService.set(cacheKey, xmlText);
+                    }
+                } catch (e) {
+                    console.error(`[IrisApiService] Error fetching missing plan ${dateStr} ${hh}`, e);
+                }
+            }
+            if (xmlText) {
+                const xml = new window.DOMParser().parseFromString(xmlText, 'text/xml');
+                this._parsePlan(xml, journeysMap);
+            }
+        }
+    }
+
+    /**
+     * Ruft separat die Echtzeitdaten ab (Standard: fchg).
+
+     * @param {string} eva 
+     * @param {string} type 'fchg' (Full Changes) oder 'rchg' (Recent Changes)
+     * @returns {Promise<Document|null>} XML Document
+     */
+    static async fetchRealtime(eva, type = 'fchg') {
         try {
-            const res = await fetch(`${this.BASE_URL}${path}`);
+            const res = await fetch(`${this.BASE_URL}/${type}/${eva}`);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const text = await res.text();
             return new window.DOMParser().parseFromString(text, 'text/xml');
         } catch (e) {
-            console.error(`[IrisApiService] Error fetching ${path}:`, e);
+            console.error(`[IrisApiService] Error fetching realtime (${type}) for ${eva}:`, e);
             return null;
+        }
+    }
+
+    /**
+     * Wendet die abgerufenen Echtzeitdaten (XML) auf die bestehenden Fahrplandaten (Map) an.
+     * @param {Map} journeys 
+     * @param {Document} realtimeXml 
+     */
+    static mergeRealtime(journeys, realtimeXml) {
+        if (!realtimeXml) return;
+        
+        const sNodes = realtimeXml.querySelectorAll('s');
+        for (const s of sNodes) {
+            const id = s.getAttribute('id');
+            if (!journeys.has(id)) continue;
+            
+            const journey = journeys.get(id);
+            const ar = s.querySelector('ar');
+            const dp = s.querySelector('dp');
+            const msgs = s.querySelectorAll('m');
+
+            if (ar) {
+                journey.rt.ar = {
+                    ct: ar.getAttribute('ct'),
+                    cp: ar.getAttribute('cp'),
+                    pp: ar.getAttribute('pp'),
+                    cs: ar.getAttribute('cs')
+                };
+            }
+            if (dp) {
+                journey.rt.dp = {
+                    ct: dp.getAttribute('ct'),
+                    cp: dp.getAttribute('cp'),
+                    pp: dp.getAttribute('pp'),
+                    cs: dp.getAttribute('cs')
+                };
+            }
+            
+            journey.rt.messages = Array.from(msgs).map(m => m.getAttribute('c')).filter(c => c);
         }
     }
 
@@ -88,40 +196,16 @@ export class IrisApiService {
         return journeys;
     }
 
-    static _applyRealtime(journeys, xml) {
-        const sNodes = xml.querySelectorAll('s');
-        for (const s of sNodes) {
-            const id = s.getAttribute('id');
-            if (!journeys.has(id)) continue;
-            
-            const journey = journeys.get(id);
-            const ar = s.querySelector('ar');
-            const dp = s.querySelector('dp');
-            const msgs = s.querySelectorAll('m');
-
-            if (ar) {
-                journey.rt.ar = {
-                    ct: ar.getAttribute('ct'),
-                    cp: ar.getAttribute('cp'),
-                    pp: ar.getAttribute('pp'),
-                    cs: ar.getAttribute('cs')
-                };
-            }
-            if (dp) {
-                journey.rt.dp = {
-                    ct: dp.getAttribute('ct'),
-                    cp: dp.getAttribute('cp'),
-                    pp: dp.getAttribute('pp'),
-                    cs: dp.getAttribute('cs')
-                };
-            }
-            
-            journey.rt.messages = Array.from(msgs).map(m => m.getAttribute('c')).filter(c => c);
-        }
-    }
-
-    static _mapToZimsimFormat(journeysMap, eva) {
+    /**
+     * Mappt das interne Map-Format in die Struktur für das ZIMSim-UI.
+     * Filtert Züge heraus, deren Abfahrt/Ankunft zu weit in der Vergangenheit oder Zukunft liegt.
+     */
+    static mapToZimsimFormat(journeysMap, eva, simulatedTime, futureWindowHours = 2) {
         const results = [];
+        const simTimeMs = simulatedTime ? simulatedTime.getTime() : Date.now();
+        const pastThreshold = simTimeMs - (3 * 60 * 1000); // 3 Minuten in der Vergangenheit
+        const futureThreshold = simTimeMs + (futureWindowHours * 60 * 60 * 1000); // X Stunden in der Zukunft
+
         for (const raw of journeysMap.values()) {
             const isArrivalOnly = raw.ar && !raw.dp;
             const primaryNode = raw.dp || raw.ar;
@@ -144,6 +228,16 @@ export class IrisApiService {
 
             const scheduledTime = this._parseIrisTime(primaryNode.pt);
             const expectedTime = (rtNode && rtNode.ct) ? this._parseIrisTime(rtNode.ct) : '';
+            
+            // Sliding Window Check
+            const effectiveTimeStr = (rtNode && rtNode.ct) ? rtNode.ct : primaryNode.pt;
+            const effectiveTimeMs = this._parseIrisDateTime(effectiveTimeStr);
+            if (effectiveTimeMs) {
+                if (effectiveTimeMs < pastThreshold || effectiveTimeMs > futureThreshold) {
+                    continue; // Außerhalb des Sichtbarkeitsfensters
+                }
+            }
+
             const delayReason = this._getDelayReason(raw.rt.messages);
             
             // Haltepunkte (Vias) anreichern
@@ -189,6 +283,9 @@ export class IrisApiService {
             let formattedName = `${raw.type || ''} ${raw.number || ''}`.trim();
             if (primaryNode.l) {
                 let lineStr = primaryNode.l;
+                // Add space between letters and numbers (e.g. 'RE6' -> 'RE 6')
+                lineStr = lineStr.replace(/^([A-Za-z]+)(\d+)$/, '$1 $2');
+                
                 if (!lineStr.toUpperCase().includes((raw.type || '').toUpperCase()) && /^\d+$/.test(lineStr)) {
                     lineStr = `${raw.type} ${lineStr}`.trim();
                 }
@@ -203,13 +300,11 @@ export class IrisApiService {
 
             let echtzeitGleis = (rtNode && rtNode.cp) ? rtNode.cp : '';
 
-            // Wenn es nie ein Plangleis gab, aber ein Gleis in Echtzeit bekannt gegeben wurde (Gleisbekanntgabe)
             if (!planGleis && echtzeitGleis) {
                 planGleis = echtzeitGleis;
                 echtzeitGleis = '';
             }
             
-            // Wenn Echtzeitgleis identisch mit Plangleis ist, ist es kein Gleiswechsel
             if (planGleis === echtzeitGleis) {
                 echtzeitGleis = '';
             }
@@ -230,18 +325,33 @@ export class IrisApiService {
                 ankunft: isArrivalOnly,
                 stops: stops,
                 delayReason: delayReason,
-                couplingGroupId: primaryNode.wings || null
+                couplingGroupId: primaryNode.wings || null,
+                _effectiveTimeMs: effectiveTimeMs // Für internen Gebrauch (Autoplay Ticker)
             });
         }
         return results;
     }
 
     static _formatIrisDate(date) {
-        const pad = n => n.toString().padStart(2, '0');
-        const yy = date.getFullYear().toString().slice(-2);
-        const mm = pad(date.getMonth() + 1);
-        const dd = pad(date.getDate());
-        const HH = pad(date.getHours());
+        // Zwingend Europe/Berlin Zeitzone für DB IRIS
+        const formatter = new Intl.DateTimeFormat('en-US', {
+            timeZone: 'Europe/Berlin',
+            year: '2-digit',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            hourCycle: 'h23'
+        });
+        const parts = formatter.formatToParts(date);
+        let yy, mm, dd, HH;
+        
+        for (const part of parts) {
+            if (part.type === 'year') yy = part.value;
+            if (part.type === 'month') mm = part.value;
+            if (part.type === 'day') dd = part.value;
+            if (part.type === 'hour') HH = part.value.padStart(2, '0');
+        }
+        
         return { dateStr: `${yy}${mm}${dd}`, hourStr: HH };
     }
 
@@ -251,6 +361,16 @@ export class IrisApiService {
         const hh = irisTimeStr.slice(6, 8);
         const min = irisTimeStr.slice(8, 10);
         return `${hh}:${min}`;
+    }
+
+    static _parseIrisDateTime(irisTimeStr) {
+        if (!irisTimeStr || irisTimeStr.length !== 10) return null;
+        const yy = 2000 + parseInt(irisTimeStr.slice(0, 2), 10);
+        const mm = parseInt(irisTimeStr.slice(2, 4), 10) - 1;
+        const dd = parseInt(irisTimeStr.slice(4, 6), 10);
+        const hh = parseInt(irisTimeStr.slice(6, 8), 10);
+        const min = parseInt(irisTimeStr.slice(8, 10), 10);
+        return new Date(yy, mm, dd, hh, min).getTime();
     }
 
     static _getDelayReason(messageCodes) {
