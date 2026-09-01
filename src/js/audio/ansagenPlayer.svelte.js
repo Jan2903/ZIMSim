@@ -56,132 +56,164 @@ export class AnsagenPlayer {
         this._bufferCache.set(filepath, fetchPromise);
         return fetchPromise;
     }
+    _isPreparing = false;
+
+    enqueue(newPlaylist) {
+        if (!newPlaylist || newPlaylist.length === 0) return;
+        
+        if (this.isPlaying || this._isPreparing) {
+            this.playlist.push({ file: '', text: '' });
+            this.playlist.push(...newPlaylist);
+            this.totalFiles = this.playlist.length;
+        } else {
+            this.play([...newPlaylist]);
+        }
+    }
 
     async play(playlist) {
+        this._isPreparing = true;
+        let hasPermission = true;
         if (ansagenStore.fileRef) {
-            if (!await ansagenStore.verifyPermission()) {
-                console.warn("Wiedergabe abgebrochen: Fehlende Dateiberechtigungen für die ZIP-Datei.");
-                return;
+            hasPermission = await ansagenStore.verifyPermission();
+            if (!hasPermission) {
+                console.warn("Wiedergabe: Fehlende Dateiberechtigungen für die ZIP-Datei. Nutze TTS Fallback.");
             }
         }
 
         this.stop();
-        if (!playlist || playlist.length === 0) return;
+        if (!playlist || playlist.length === 0) {
+            this._isPreparing = false;
+            return;
+        }
 
-        this.playlist = playlist;
-        this.totalFiles = playlist.length;
+        // Kopie anlegen, damit wir sie zur Laufzeit mit enqueue() verlängern können
+        this.playlist = [...playlist];
+        this.totalFiles = this.playlist.length;
         this.currentIndex = -1;
         this.isPlaying = true;
+        this._isPreparing = false;
         
         const currentPlayId = ++this._playId;
 
         // TTS Fallback Mode
-        if (!ansagenStore.fileRef) {
-            this._playTTS(playlist, currentPlayId);
+        if (!ansagenStore.fileRef || !hasPermission) {
+            this._playTTS(this.playlist, currentPlayId);
             return;
         }
 
         this._initAudioContext();
         
         // Start Look-ahead Scheduler
-        this._schedulePlayback(playlist, currentPlayId);
+        this._schedulePlayback(this.playlist, currentPlayId);
     }
 
     async _schedulePlayback(playlist, playId) {
         let startTime = this._audioContext.currentTime + 0.1;
+        let i = 0;
         
-        for (let i = 0; i < playlist.length; i++) {
-            if (this._playId !== playId || !this.isPlaying) break;
+        while (this._playId === playId && this.isPlaying) {
+            if (i < playlist.length) {
+                const item = playlist[i];
 
-            const item = playlist[i];
-            const buffer = await this._getAudioBuffer(item.file);
-            
-            if (this._playId !== playId || !this.isPlaying) break;
-
-            if (buffer) {
-                // Buffer loaded, schedule it
-                const source = this._audioContext.createBufferSource();
-                source.buffer = buffer;
-                source.connect(this._audioContext.destination);
-                
-                // If we fell behind, play immediately
-                if (startTime < this._audioContext.currentTime) {
-                    startTime = this._audioContext.currentTime;
+                // Künstliche Pause, wenn keine Datei angegeben ist
+                if (!item.file) {
+                    startTime += 1.5; // 1.5 Sekunden Pause
+                    i++;
+                    continue;
                 }
-                
-                source.start(startTime);
-                this._sourceNodes.push(source);
 
-                // Schedule UI update
-                const timeUntilStart = (startTime - this._audioContext.currentTime) * 1000;
-                const timeoutId = setTimeout(() => {
-                    if (this._playId === playId) {
-                        this.currentIndex = i;
-                        this.currentText = item.text;
-                        this.currentFile = item.file;
-                    }
-                }, Math.max(0, timeUntilStart));
-                this._timeouts.push(timeoutId);
-
-                startTime += buffer.duration;
-            } else {
-                // Audio missing -> on-the-fly TTS fallback
-                if (startTime < this._audioContext.currentTime) {
-                    startTime = this._audioContext.currentTime;
-                }
-                
-                const timeUntilStart = (startTime - this._audioContext.currentTime) * 1000;
-                
-                // Wait until the Web Audio playback reaches this point
-                if (timeUntilStart > 0) {
-                    await new Promise(resolve => {
-                        const id = setTimeout(resolve, timeUntilStart);
-                        this._timeouts.push(id);
-                    });
-                }
+                const buffer = await this._getAudioBuffer(item.file);
                 
                 if (this._playId !== playId || !this.isPlaying) break;
-                
-                this.currentIndex = i;
-                this.currentText = item.text;
-                this.currentFile = item.file + " (TTS Fallback)";
 
-                if (window.speechSynthesis && item.text && item.text.trim() !== '' && item.text.toLowerCase() !== 'gong') {
-                    await new Promise(resolve => {
-                        const utterance = new SpeechSynthesisUtterance(item.text);
-                        let lang = 'de-DE';
-                        if (item.file.startsWith('en/')) lang = 'en-US';
-                        if (item.file.startsWith('fr/')) lang = 'fr-FR';
-                        utterance.lang = lang;
-                        
-                        utterance.onend = resolve;
-                        utterance.onerror = resolve;
-                        
-                        window.speechSynthesis.speak(utterance);
-                    });
-                } else if (!item.text || item.text.trim() === '' || item.text.toLowerCase() === 'gong') {
-                    await new Promise(resolve => {
-                        const id = setTimeout(resolve, 1000);
-                        this._timeouts.push(id);
-                    });
+                if (buffer) {
+                    // Buffer loaded, schedule it
+                    const source = this._audioContext.createBufferSource();
+                    source.buffer = buffer;
+                    source.connect(this._audioContext.destination);
+                    
+                    // If we fell behind, play immediately
+                    if (startTime < this._audioContext.currentTime) {
+                        startTime = this._audioContext.currentTime;
+                    }
+                    
+                    source.start(startTime);
+                    this._sourceNodes.push(source);
+
+                    // Schedule UI update
+                    const timeUntilStart = (startTime - this._audioContext.currentTime) * 1000;
+                    const currentIndex = i; // capture loop variable
+                    const timeoutId = setTimeout(() => {
+                        if (this._playId === playId) {
+                            this.currentIndex = currentIndex;
+                            this.currentText = item.text;
+                            this.currentFile = item.file;
+                        }
+                    }, Math.max(0, timeUntilStart));
+                    this._timeouts.push(timeoutId);
+
+                    startTime += buffer.duration;
+                } else {
+                    // Audio missing -> on-the-fly TTS fallback
+                    if (startTime < this._audioContext.currentTime) {
+                        startTime = this._audioContext.currentTime;
+                    }
+                    
+                    const timeUntilStart = (startTime - this._audioContext.currentTime) * 1000;
+                    
+                    // Wait until the Web Audio playback reaches this point
+                    if (timeUntilStart > 0) {
+                        await new Promise(resolve => {
+                            const id = setTimeout(resolve, timeUntilStart);
+                            this._timeouts.push(id);
+                        });
+                    }
+                    
+                    if (this._playId !== playId || !this.isPlaying) break;
+                    
+                    const currentIndex = i;
+                    this.currentIndex = currentIndex;
+                    this.currentText = item.text;
+                    this.currentFile = item.file + " (TTS Fallback)";
+
+                    if (window.speechSynthesis && item.text && item.text.trim() !== '' && item.text.toLowerCase() !== 'gong') {
+                        await new Promise(resolve => {
+                            const utterance = new SpeechSynthesisUtterance(item.text);
+                            let lang = 'de-DE';
+                            if (item.file.startsWith('en/')) lang = 'en-US';
+                            if (item.file.startsWith('fr/')) lang = 'fr-FR';
+                            utterance.lang = lang;
+                            
+                            utterance.onend = resolve;
+                            utterance.onerror = resolve;
+                            
+                            window.speechSynthesis.speak(utterance);
+                        });
+                    } else if (!item.text || item.text.trim() === '' || item.text.toLowerCase() === 'gong') {
+                        await new Promise(resolve => {
+                            const id = setTimeout(resolve, 1000);
+                            this._timeouts.push(id);
+                        });
+                    }
+
+                    // Resync Web Audio startTime since real time has passed
+                    startTime = this._audioContext.currentTime + 0.1;
                 }
-
-                // Resync Web Audio startTime since real time has passed
-                startTime = this._audioContext.currentTime + 0.1;
-            }
-        }
-
-        // Schedule end of playback
-        if (this._playId === playId && this.isPlaying) {
-            const timeUntilEnd = (startTime - this._audioContext.currentTime) * 1000;
-            const endTimeoutId = setTimeout(() => {
-                if (this._playId === playId) {
+                
+                i++;
+            } else {
+                // We reached the end of the currently scheduled playlist.
+                // Check if all scheduled audio has finished playing.
+                if (this._audioContext.currentTime >= startTime) {
                     this.isPlaying = false;
                     this._sourceNodes = [];
                     this._timeouts = [];
+                    break;
+                } else {
+                    // Wait 200ms and check again (allows enqueue to append to playlist)
+                    await new Promise(r => setTimeout(r, 200));
                 }
-            }, Math.max(0, timeUntilEnd));
-            this._timeouts.push(endTimeoutId);
+            }
         }
     }
 

@@ -136,6 +136,9 @@ export class AnsagenGenerator {
     _train(playlist, trainName) {
         if (!trainName) return;
 
+        // "RE 6 / 12345" -> "RE 6"
+        trainName = trainName.split('/')[0].trim();
+
         let gattung = '';
         let nummer = '';
 

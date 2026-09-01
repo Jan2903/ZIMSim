@@ -13,6 +13,8 @@ export const timeConfig = {
     baseSimTime: Date.now()
 };
 
+
+
 export function getSimulatedTime() {
     if (timeConfig.isRunning) {
         return new Date(timeConfig.baseSimTime + (Date.now() - timeConfig.baseRealTime));

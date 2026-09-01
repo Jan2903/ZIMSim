@@ -5,6 +5,7 @@
     import SettingsPanel from './components/SettingsPanel.svelte';
     import Modals from './components/Modals.svelte';
     import PlayerOverlay from './components/PlayerOverlay.svelte';
+    import StatusOverlay from './components/StatusOverlay.svelte';
 
     let modalsComp = $state();
     let canvasElement = $state();
@@ -66,3 +67,5 @@
 <Modals bind:this={modalsComp} />
 
 <PlayerOverlay />
+
+<StatusOverlay />
