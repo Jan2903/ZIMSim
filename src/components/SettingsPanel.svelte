@@ -268,7 +268,7 @@
                     <label class="radio-card"><input type="radio" name="layout_select" value="zimvitrine32wagenstand" onchange={onLayoutChange}> Vitrine 32</label>
                 </div>
                 <div class="checkbox-group" style="margin-top: 10px;">
-                    <label class="checkbox-label"><input type="checkbox" id="nrw_mode_checkbox" bind:checked={journeyStore.nrwMode}> Nur Liniennummern (NRW)</label>
+                    <label class="checkbox-label"><input type="checkbox" id="nrw_mode_checkbox" bind:checked={journeyStore.nrwMode} onchange={() => trainDisplay.updateAll()}> Nur Liniennummern (NRW)</label>
                 </div>
                 
                 <h3 style="margin-top: 25px;">Bahnhof/Station</h3>
