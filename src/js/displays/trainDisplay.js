@@ -481,15 +481,8 @@ export class TrainDisplay {
                 const primary = group[0];
                 let visibleTexts = primary.infoTexts ? [...primary.infoTexts.filter(t => t.visible)] : [];
                 
-                if (!primary.ankunft && primary.linkedArrivalJourneyId) {
-                    const arrival = this.journeyStore.getJourney(primary.linkedArrivalJourneyId);
-                    if (arrival) {
-                        const contextText = primary.generateArrivalContextText(arrival);
-                        if (contextText) {
-                            visibleTexts.unshift({ text: contextText, visible: true, type: 'dynamic' });
-                        }
-                    }
-                }
+                // Ankunftstext und Schwächungstext sind nun nativ als Bausteine in `infoTexts` vorhanden.
+                // Es ist kein manuelles Hinzufügen für die Rotation mehr nötig.
                 
                 // Bei Gleiswechsel sollen laut Nutzer-Anforderung KEINE Infotexte rotieren/angezeigt werden,
                 // sondern dauerhaft die Vias (wie auf Display 2).
