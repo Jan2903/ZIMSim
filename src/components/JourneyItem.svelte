@@ -32,6 +32,14 @@
             
             if (!hasPlatform && !hasEzGleis && !hasNoTrackCondition) return true;
         }
+
+        if (uiState.hideLinkedArrivals && journey.ankunft && !isExpanded) {
+            const linkedDep = journeyStore.journeys.find(j => !j.ankunft && j.linkedArrivalJourneyId === journey.id);
+            if (linkedDep && linkedDep.name === journey.name) {
+                return true;
+            }
+        }
+        
         return false;
     });
 
@@ -53,7 +61,7 @@
     let linkedJourney = $derived(journeyStore.getLinkedJourney(journey.id));
 </script>
 
-<div class="journey-row {journey.ausfall ? 'journey-cancelled' : ''} {isHidden ? 'mot-hidden' : ''} {isExpanded ? 'is-expanded' : ''}">
+<div id="journey-{journey.id}" class="journey-row {journey.ausfall ? 'journey-cancelled' : ''} {isHidden ? 'mot-hidden' : ''} {isExpanded ? 'is-expanded' : ''}">
     <div class="journey-row-content">
         <div class="journey-col-reorder">
             <span class="journey-drag-handle" title="Drag & Drop">⠿</span>
@@ -112,6 +120,10 @@
                           onclick={(e) => {
                               e.stopPropagation();
                               uiState.expandedJourneyId = linkedJourney.id;
+                              setTimeout(() => {
+                                  const el = document.getElementById('journey-' + linkedJourney.id);
+                                  if (el) el.scrollIntoView({behavior: 'smooth', block: 'center'});
+                              }, 50);
                           }}>
                         🔗 {journey.ankunft ? 'Wird zu' : 'Kommt aus'} {linkedJourney.effectiveDisplayName} ({linkedJourney.scheduledTime})
                     </span>
