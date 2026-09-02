@@ -149,18 +149,19 @@ class IrisPollingService {
                 );
                 
                 // Update journeyStore in-place to avoid destroying UI state
-                const activeIds = new Set(journeysData.map(d => d.journeyId));
+                const activeIds = new Set(journeysData.map(d => `${d.journeyId}_${d.ankunft}`));
                 
                 // Remove outdated journeys
                 for (let i = journeyStore.journeys.length - 1; i >= 0; i--) {
-                    if (!activeIds.has(journeyStore.journeys[i].journeyId)) {
-                        journeyStore.removeJourney(journeyStore.journeys[i].id);
+                    const j = journeyStore.journeys[i];
+                    if (!activeIds.has(`${j.journeyId}_${j.ankunft}`)) {
+                        journeyStore.removeJourney(j.id);
                     }
                 }
                 
                 // Add or update
                 for (const jData of journeysData) {
-                    let existing = journeyStore.journeys.find(j => j.journeyId === jData.journeyId);
+                    let existing = journeyStore.journeys.find(j => j.journeyId === jData.journeyId && j.ankunft === jData.ankunft);
                     if (existing) {
                         // Update existing fields where relevant for realtime
                         existing.expectedTime = jData.expectedTime;
@@ -172,6 +173,9 @@ class IrisPollingService {
                         journeyStore.addJourney(jData);
                     }
                 }
+
+                // Verknüpfe Ankünfte und Abfahrten (Durchfahrten/Wenden)
+                journeyStore.autoLinkJourneys();
                 
                 trainDisplay.updateAll();
                 

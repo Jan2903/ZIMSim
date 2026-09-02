@@ -19,129 +19,146 @@ export class IrisDataMapper {
         const futureThreshold = simTimeMs + (futureWindowHours * 60 * 60 * 1000); // X Stunden in der Zukunft
 
         for (const raw of journeysMap.values()) {
-            const isArrivalOnly = raw.ar && !raw.dp;
-            const primaryNode = raw.dp || raw.ar;
-            
-            if (!primaryNode) continue;
-            
-            let rtNode = isArrivalOnly ? raw.rt.ar : raw.rt.dp;
-            
-            // Fallback für Echtzeit-Daten: Wenn fchg nur <ar> aber kein <dp> schickt (oder <dp> unvollständig ist)
-            if (!isArrivalOnly && raw.rt.ar) {
-                if (!rtNode) {
-                    rtNode = raw.rt.ar;
-                } else {
-                    if (!rtNode.cp && raw.rt.ar.cp) rtNode.cp = raw.rt.ar.cp;
-                    if (!rtNode.ct && raw.rt.ar.ct) rtNode.ct = raw.rt.ar.ct;
-                    if (!rtNode.pp && raw.rt.ar.pp) rtNode.pp = raw.rt.ar.pp;
-                    if (!rtNode.cs && raw.rt.ar.cs) rtNode.cs = raw.rt.ar.cs;
-                }
+            if (raw.ar) {
+                const mappedAr = this._mapSingleNode(raw, 'ar', pastThreshold, futureThreshold);
+                if (mappedAr) results.push(mappedAr);
             }
-
-            const scheduledTime = this._parseIrisTime(primaryNode.pt);
-            const expectedTime = (rtNode && rtNode.ct) ? this._parseIrisTime(rtNode.ct) : '';
-            
-            // Sliding Window Check
-            const effectiveTimeStr = (rtNode && rtNode.ct) ? rtNode.ct : primaryNode.pt;
-            const effectiveTimeMs = this._parseIrisDateTime(effectiveTimeStr);
-            if (effectiveTimeMs) {
-                if (effectiveTimeMs < pastThreshold || effectiveTimeMs > futureThreshold) {
-                    continue; // Außerhalb des Sichtbarkeitsfensters
-                }
+            if (raw.dp) {
+                const mappedDp = this._mapSingleNode(raw, 'dp', pastThreshold, futureThreshold);
+                if (mappedDp) results.push(mappedDp);
             }
-
-            const delayReason = this._getDelayReason(raw.rt.messages);
-            
-            // Haltepunkte (Vias) anreichern
-            const stops = primaryNode.ppth ? primaryNode.ppth.split('|').map((s, i) => {
-                const stopData = { name: s, showAsVia: true, routeIndex: i, nameKurz: s };
-                if (StationService.isLoaded) {
-                    const st = StationService.getStationByIdOrName(null, s);
-                    if (st) {
-                        stopData.name = st.name;
-                        stopData.nameKurz = st.nameKurz || st.name;
-                    }
-                }
-                return stopData;
-            }) : [];
-
-            // Ziel (bzw. Herkunft bei Ankünften) ermitteln
-            let destName = '';
-
-            if (isArrivalOnly) {
-                destName = raw.ar.pde || '';
-                if (!destName && stops.length > 0) {
-                    destName = stops[0].name;
-                }
-            } else {
-                destName = primaryNode.pde || '';
-                if (!destName && stops.length > 0) {
-                    destName = stops[stops.length - 1].name;
-                }
-            }
-
-            let destLang = destName;
-            let destKurz = destName;
-            if (destName && StationService.isLoaded) {
-                const destSt = StationService.getStationByIdOrName(null, destName);
-                if (destSt) {
-                    destName = destSt.name;
-                    destLang = destSt.name;
-                    destKurz = destSt.nameKurz || destSt.name;
-                }
-            }
-
-            // Zugnamen formatieren
-            let formattedName = `${raw.type || ''} ${raw.number || ''}`.trim();
-            if (primaryNode.l) {
-                let lineStr = primaryNode.l;
-                // Add space between letters and numbers (e.g. 'RE6' -> 'RE 6')
-                lineStr = lineStr.replace(/^([A-Za-z]+)(\d+)$/, '$1 $2');
-                
-                if (!lineStr.toUpperCase().includes((raw.type || '').toUpperCase()) && /^\d+$/.test(lineStr)) {
-                    lineStr = `${raw.type} ${lineStr}`.trim();
-                }
-                formattedName = `${lineStr} / ${raw.number}`;
-            }
-
-            // Gleislogik: Plan- und Echtzeitgleis ermitteln
-            let planGleis = primaryNode.pp || (raw.ar ? raw.ar.pp : '') || '';
-            if (!planGleis && rtNode && rtNode.pp) {
-                planGleis = rtNode.pp; // Manchmal kommt das Plangleis erst im Echtzeit-Feed
-            }
-
-            let echtzeitGleis = (rtNode && rtNode.cp) ? rtNode.cp : '';
-
-            if (!planGleis && echtzeitGleis) {
-                planGleis = echtzeitGleis;
-                echtzeitGleis = '';
-            }
-            
-            if (planGleis === echtzeitGleis) {
-                echtzeitGleis = '';
-            }
-
-            results.push({
-                journeyId: raw.id,
-                name: formattedName,
-                produktGattung: raw.class,
-                operator: raw.operator,
-                destination: destName,
-                destinationLang: destLang,
-                destinationKurz: destKurz,
-                scheduledTime: scheduledTime,
-                expectedTime: expectedTime,
-                platform: planGleis,
-                ezGleis: echtzeitGleis,
-                ausfall: (rtNode && rtNode.cs === 'c'),
-                ankunft: isArrivalOnly,
-                stops: stops,
-                delayReason: delayReason,
-                couplingGroupId: primaryNode.wings || null,
-                _effectiveTimeMs: effectiveTimeMs // Für internen Gebrauch (Autoplay Ticker)
-            });
         }
         return results;
+    }
+
+    /**
+     * Mappt einen spezifischen IRIS-Knoten (ar oder dp) in das ZIMSim Format.
+     * @param {Object} raw Das rohe Zug-Objekt
+     * @param {string} nodeType 'ar' oder 'dp'
+     * @param {number} pastThreshold Timestamp Grenze Vergangenheit
+     * @param {number} futureThreshold Timestamp Grenze Zukunft
+     * @returns {Object|null} Gemapptes Objekt oder null, falls außerhalb des Fensters
+     */
+    static _mapSingleNode(raw, nodeType, pastThreshold, futureThreshold) {
+        const isArrival = nodeType === 'ar';
+        const primaryNode = isArrival ? raw.ar : raw.dp;
+        if (!primaryNode) return null;
+        
+        let rtNode = isArrival ? raw.rt.ar : raw.rt.dp;
+        
+        // Fallback für Echtzeit-Daten: Wenn fchg unvollständige rt-Daten schickt,
+        // kann bei dp einiges aus ar übernommen werden (z.B. Gleis), wenn vorhanden.
+        if (!isArrival && raw.rt.ar) {
+            if (!rtNode) {
+                rtNode = raw.rt.ar;
+            } else {
+                if (!rtNode.cp && raw.rt.ar.cp) rtNode.cp = raw.rt.ar.cp;
+                if (!rtNode.ct && raw.rt.ar.ct) rtNode.ct = raw.rt.ar.ct;
+                if (!rtNode.pp && raw.rt.ar.pp) rtNode.pp = raw.rt.ar.pp;
+                if (!rtNode.cs && raw.rt.ar.cs) rtNode.cs = raw.rt.ar.cs;
+            }
+        }
+
+        const scheduledTime = this._parseIrisTime(primaryNode.pt);
+        const expectedTime = (rtNode && rtNode.ct) ? this._parseIrisTime(rtNode.ct) : '';
+        
+        // Sliding Window Check
+        const effectiveTimeStr = (rtNode && rtNode.ct) ? rtNode.ct : primaryNode.pt;
+        const effectiveTimeMs = this._parseIrisDateTime(effectiveTimeStr);
+        if (effectiveTimeMs) {
+            if (effectiveTimeMs < pastThreshold || effectiveTimeMs > futureThreshold) {
+                return null; // Außerhalb des Sichtbarkeitsfensters
+            }
+        }
+
+        const delayReason = this._getDelayReason(raw.rt.messages);
+        
+        // Haltepunkte (Vias) anreichern
+        const stops = primaryNode.ppth ? primaryNode.ppth.split('|').map((s, i) => {
+            const stopData = { name: s, showAsVia: true, routeIndex: i, nameKurz: s };
+            if (StationService.isLoaded) {
+                const st = StationService.getStationByIdOrName(null, s);
+                if (st) {
+                    stopData.name = st.name;
+                    stopData.nameKurz = st.nameKurz || st.name;
+                }
+            }
+            return stopData;
+        }) : [];
+
+        // Ziel (bzw. Herkunft bei Ankünften) ermitteln
+        let destName = primaryNode.pde || '';
+        if (!destName && stops.length > 0) {
+            if (isArrival) {
+                destName = stops[0].name;
+            } else {
+                destName = stops[stops.length - 1].name;
+            }
+        }
+
+        let destLang = destName;
+        let destKurz = destName;
+        if (destName && StationService.isLoaded) {
+            const destSt = StationService.getStationByIdOrName(null, destName);
+            if (destSt) {
+                destName = destSt.name;
+                destLang = destSt.name;
+                destKurz = destSt.nameKurz || destSt.name;
+            }
+        }
+
+        // Zugnamen formatieren
+        let formattedName = `${raw.type || ''} ${raw.number || ''}`.trim();
+        if (primaryNode.l) {
+            let lineStr = primaryNode.l;
+            // Add space between letters and numbers (e.g. 'RE6' -> 'RE 6')
+            lineStr = lineStr.replace(/^([A-Za-z]+)(\d+)$/, '$1 $2');
+            
+            if (!lineStr.toUpperCase().includes((raw.type || '').toUpperCase()) && /^\d+$/.test(lineStr)) {
+                lineStr = `${raw.type} ${lineStr}`.trim();
+            }
+            formattedName = `${lineStr} / ${raw.number}`;
+        }
+
+        // Gleislogik: Plan- und Echtzeitgleis ermitteln
+        let planGleis = primaryNode.pp || '';
+        if (!planGleis && !isArrival && raw.ar && raw.ar.pp) {
+            planGleis = raw.ar.pp; // Fallback auf ar
+        }
+        if (!planGleis && rtNode && rtNode.pp) {
+            planGleis = rtNode.pp; // Manchmal kommt das Plangleis erst im Echtzeit-Feed
+        }
+
+        let echtzeitGleis = (rtNode && rtNode.cp) ? rtNode.cp : '';
+
+        if (!planGleis && echtzeitGleis) {
+            planGleis = echtzeitGleis;
+            echtzeitGleis = '';
+        }
+        
+        if (planGleis === echtzeitGleis) {
+            echtzeitGleis = '';
+        }
+
+        return {
+            journeyId: raw.id,
+            name: formattedName,
+            produktGattung: raw.class,
+            operator: raw.operator,
+            destination: destName,
+            destinationLang: destLang,
+            destinationKurz: destKurz,
+            scheduledTime: scheduledTime,
+            expectedTime: expectedTime,
+            platform: planGleis,
+            ezGleis: echtzeitGleis,
+            ausfall: (rtNode && rtNode.cs === 'c'),
+            ankunft: isArrival,
+            stops: stops,
+            delayReason: delayReason,
+            couplingGroupId: primaryNode.wings || null,
+            _effectiveTimeMs: effectiveTimeMs // Für internen Gebrauch (Autoplay Ticker)
+        };
     }
 
     /**
