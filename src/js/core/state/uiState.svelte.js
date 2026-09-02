@@ -3,5 +3,6 @@ export const uiState = $state({
     expandedJourneyId: null,
     expandedGroups: [],
     manualTracks: [],
-    editingFormationJourneyId: null
+    editingFormationJourneyId: null,
+    hideLinkedArrivals: true
 });
