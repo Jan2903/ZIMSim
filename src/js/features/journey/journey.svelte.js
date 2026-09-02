@@ -270,7 +270,7 @@ export class Journey {
             text += ` von ${arrivalJourney.destination}`;
         }
 
-        return text + ' +++ ';
+        return text;
     }
 
     /** Effektiver Display-Name: Override oder auto-generiert */

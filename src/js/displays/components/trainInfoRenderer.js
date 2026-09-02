@@ -95,17 +95,8 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
     } = primary;
 
     if (!ankunft && primary.linkedArrivalJourneyId && renderCtx.journeyStore) {
-        const arrivalJourney = renderCtx.journeyStore.getJourney(primary.linkedArrivalJourneyId);
-        if (arrivalJourney) {
-            const contextText = primary.generateArrivalContextText(arrivalJourney);
-            if (contextText) {
-                if (scrollText) {
-                    scrollText = contextText + " +++ " + scrollText;
-                } else {
-                    scrollText = contextText;
-                }
-            }
-        }
+        // Der Ankunftstext wird nun nativ als 'arrival-context' im infoTexts Array von Journey verwaltet.
+        // Das bedeutet, primary.scrollText beinhaltet ihn bereits dynamisch!
     }
 
     const abfahrt = primary.scheduledTime || "";
@@ -145,42 +136,8 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
     
     const isMerged = areJourneysMerged(journeys);
 
-    if (!ankunft && !infoscreen && !hasAnyTrackChange && !ausfall && verkehrtAb === "0") {
-        let strengtheningText = "";
-        const primaryDest = (primary.destination || "").trim();
-        const primaryDestLang = primary.destinationLang || primary.destination;
-        
-        // Schwächung innerhalb einer Journey (Wagenreihung hat abweichende Gruppen-Ziele)
-        if (journeys.length === 1 && primary.formation && primary.formation.groups && primary.formation.groups.length > 1) {
-            const { allCoaches } = calculateCoachPositions(journeys);
-            
-            for (let i = 0; i < primary.formation.groups.length; i++) {
-                const group = primary.formation.groups[i];
-                const groupDest = (group.destination || "").trim();
-                
-                if (groupDest && groupDest !== primaryDest && groupDest !== primaryDestLang) {
-                    const nrwName = formatDisplayName(group.trainNumber || primary.name, true);
-                    const targetCoaches = allCoaches.filter(item => item.group === group);
-                    const sectors = getSectorsForCoaches(targetCoaches, renderCtx.platform);
-                    
-                    if (sectors) {
-                        const sectorParts = sectors.split('-');
-                        const firstSection = sectorParts[0];
-                        const lastSection = sectorParts.length > 1 ? sectorParts[1] : null;
-                        const deSectionText = lastSection ? `in den Abschnitten ${firstSection} bis ${lastSection}` : `im Abschnitt ${firstSection}`;
-                        const enSectionText = lastSection ? `in sections ${firstSection} to ${lastSection}` : `in section ${firstSection}`;
-                        strengtheningText += `Zugteil ${nrwName} ${deSectionText} endet in ${groupDest} +++ Train segment ${nrwName} ${enSectionText} ends in ${groupDest} +++ `;
-                    } else {
-                        strengtheningText += `Zugteil ${nrwName} endet in ${groupDest} +++ Train segment ${nrwName} ends in ${groupDest} +++ `;
-                    }
-                }
-            }
-        }
-        
-        if (strengtheningText) {
-            infoToScroll = strengtheningText + infoToScroll;
-        }
-    }
+    // Die Schwächung (Zugteil endet in...) wird nun nativ als 'strengthening' Baustein im infoTexts Array von Journey verwaltet!
+    // Dadurch beinhaltet `infoToScroll` (abgeleitet von `scrollText`) bereits alle aktivierten Texte in korrekter Reihenfolge.
 
     if (ankunft) infoToScroll = "Ankunft / Arrival";
     if (infoscreen || hasAnyTrackChange || ausfall || verkehrtAb !== "0") infoToScroll = "";
