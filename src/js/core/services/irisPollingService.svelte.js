@@ -218,9 +218,26 @@ class IrisPollingService {
         const newUpcoming = [];
 
         for (const journey of journeyStore.journeys) {
-            if (!journey._effectiveTimeMs) continue;
+            // Ansagen-Logik für Durchfahrten anpassen
+            if (journey.ankunft) {
+                const linkedDep = journeyStore.journeys.find(j => !j.ankunft && j.linkedArrivalJourneyId === journey.id);
+                if (linkedDep && linkedDep.name === journey.name) {
+                    continue; // Ankunft bei Durchfahrt überspringen, Abfahrt triggert die Ansage!
+                }
+            }
+
+            let effectiveTimeMs = journey._effectiveTimeMs;
             
-            const diffSecs = Math.floor((journey._effectiveTimeMs - simTimeMs) / 1000);
+            if (!journey.ankunft && journey.linkedArrivalJourneyId) {
+                const linkedArr = journeyStore.journeys.find(j => j.ankunft && j.id === journey.linkedArrivalJourneyId);
+                if (linkedArr && linkedArr.name === journey.name) {
+                    effectiveTimeMs = linkedArr._effectiveTimeMs; // Nutze Ankunftszeit für Countdown
+                }
+            }
+
+            if (!effectiveTimeMs) continue;
+            
+            const diffSecs = Math.floor((effectiveTimeMs - simTimeMs) / 1000);
             
             if (diffSecs > 0 && diffSecs <= 3600 && !journey._hasPlayedEinfahrt) {
                 // Collect for upcoming preview
