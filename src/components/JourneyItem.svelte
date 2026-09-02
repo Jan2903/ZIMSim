@@ -2,6 +2,7 @@
     import { uiState } from '../js/core/state/uiState.svelte.js';
     import { journeyStore, trainDisplay } from '../js/core/state/stores.js';
     import { getMotForCategory } from '../js/features/station/motManager.js';
+    import { formatDisplayName } from '../js/features/journey/trainNumberFormatter.js';
     import JourneyDetails from './JourneyDetails.svelte';
 
     let { journey = $bindable() } = $props();
@@ -76,7 +77,7 @@
         </div>
         <div class="journey-col-main">
             <div class="journey-summary" role="button" tabindex="0" onclick={toggleExpand} onpointerdown={(e) => e.stopPropagation()} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(); } }}>
-                <span class="journey-name">{journey.displayNameOverride || journey.name || '(kein Name)'}</span>
+                <span class="journey-name" title="{journey.effectiveDisplayName}">{formatDisplayName(journey.effectiveDisplayName, journeyStore.nrwMode) || '(kein Name)'}</span>
                 {#if journey.infoscreen}
                     <span class="badge badge-info" title="Infoscreen">ⓘ</span>
                 {:else if journey.ankunft}

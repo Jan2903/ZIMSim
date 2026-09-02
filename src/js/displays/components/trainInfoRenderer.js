@@ -4,6 +4,7 @@ import { drawText, drawWrappedText, drawInfoTopText, drawTextInRectangle } from 
 import { drawPictograms } from './pictogramRenderer.js';
 import { calculateCoachPositions, getSectorsForCoaches } from '../../features/formation/formationUtils.js';
 import { formatDisplayName } from '../../features/journey/trainNumberFormatter.js';
+import { journeyStore } from '../../core/state/stores.js';
 
 function areJourneysMerged(journeys) {
     if (!journeys || journeys.length <= 1) return true;
@@ -101,7 +102,7 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
 
     const abfahrt = primary.scheduledTime || "";
     const abfahrtA = primary.expectedTime || "";
-    const nr = journeys.map(j => j.effectiveDisplayName).filter(Boolean).join(' / ') || "";
+    const nr = journeys.map(j => formatDisplayName(j.effectiveDisplayName, journeyStore.nrwMode)).filter(Boolean).join(' / ') || "";
 
     const hasAnyTrackChange = journeys.some(j => j.hasTrackChange);
     
@@ -234,7 +235,7 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
                 }
                 
                 const rightAlignX = xOffset + zoneWidth - 70; // Matches 890 for 960 width
-                drawTextInRectangle(ctx, journey.effectiveDisplayName, rightAlignX, 200, FONTS.regular(75), 'right', 75, 10,
+                drawTextInRectangle(ctx, formatDisplayName(journey.effectiveDisplayName, journeyStore.nrwMode), rightAlignX, 200, FONTS.regular(75), 'right', 75, 10,
                     renderCtx, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true);
 
                 let yPos = 360;
@@ -327,7 +328,7 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
                 }
                 
                 drawText(ctx, destText, 50, yPos, destFont, textColor, 'left');
-                drawTextInRectangle(ctx, journey.effectiveDisplayName, 890, yPos, FONTS.regular(75), 'right', 75, 10,
+                drawTextInRectangle(ctx, formatDisplayName(journey.effectiveDisplayName, journeyStore.nrwMode), 890, yPos, FONTS.regular(75), 'right', 75, 10,
                     renderCtx, 0, COLORS.DIM_GREY, COLORS.WHITE, isDisrupted, true);
                 
                 const sectors = getPlatformSectors(journey, journeys, renderCtx.platform);
