@@ -133,6 +133,14 @@ export class AnsagenGenerator {
         }
     }
 
+    /**
+     * Generiert die Ansagenteile für den Zugnamen (Gattung und Nummer).
+     * Zuggattungen werden immer "hoch" gesprochen. Bei einbuchstabigen Zuggattungen (z.B. S-Bahnen)
+     * wird die Zugnummer "tief" gesprochen, ansonsten "hoch".
+     *
+     * @param {Array} playlist - Das Array, an das die Audio-Objekte angehängt werden.
+     * @param {string} trainName - Der Name des Zuges (z.B. "S 1", "RE 5", "ICE 123").
+     */
     _train(playlist, trainName) {
         if (!trainName) return;
 
@@ -163,7 +171,8 @@ export class AnsagenGenerator {
             });
         }
         if (nummer) {
-            this._number(playlist, nummer, 'hoch');
+            const numberPitch = gattung.length === 1 ? 'tief' : 'hoch';
+            this._number(playlist, nummer, numberPitch);
         }
     }
 
