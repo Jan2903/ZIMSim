@@ -3,7 +3,7 @@
     import { uiState } from '../js/core/state/uiState.svelte.js';
     import { moveItemUp, moveItemDown } from '../js/core/utils/arrayUtils.js';
     import { dndzone } from 'svelte-dnd-action';
-    import { flip } from 'svelte/animate';
+    import { safeFlip as flip } from '../js/core/utils/animationUtils.js';
     import { Stop } from '../js/features/station/stop.svelte.js';
     import StationPicker from './StationPicker.svelte';
 

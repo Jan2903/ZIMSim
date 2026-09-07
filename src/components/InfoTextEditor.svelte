@@ -4,7 +4,7 @@
     import { moveItemUp, moveItemDown } from '../js/core/utils/arrayUtils.js';
     import { RisTextService } from '../js/core/services/risTextService.js';
     import { dndzone } from 'svelte-dnd-action';
-    import { flip } from 'svelte/animate';
+    import { safeFlip as flip } from '../js/core/utils/animationUtils.js';
 
     let { journey } = $props();
     

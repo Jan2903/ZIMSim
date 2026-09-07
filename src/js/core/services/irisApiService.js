@@ -37,6 +37,24 @@ export class IrisApiService {
     }
 
     /**
+     * Prüft, ob der angefragte Zeitpunkt im von der API unterstützten Fenster liegt.
+     * Die API liefert ca. -12h bis +16h relativ zur echten Serverzeit.
+     */
+    static isWithinApiRange(dateStr, hourStr) {
+        const yy = 2000 + parseInt(dateStr.slice(0, 2), 10);
+        const mm = parseInt(dateStr.slice(2, 4), 10) - 1;
+        const dd = parseInt(dateStr.slice(4, 6), 10);
+        const hh = parseInt(hourStr, 10);
+        
+        const requestTime = new Date(yy, mm, dd, hh, 0, 0).getTime();
+        const now = Date.now();
+        const diffHours = (requestTime - now) / (1000 * 60 * 60);
+        
+        // Puffer: -12 Stunden bis +16 Stunden
+        return diffHours >= -12 && diffHours <= 16;
+    }
+
+    /**
      * Lade ausschließlich die Basis-Fahrplandaten für die vorherige, aktuelle und nächste Stunde.
      * Nutzt den IrisCacheService, um redundante Netzwerkanfragen zu vermeiden.
      * @param {string} eva 
@@ -47,6 +65,11 @@ export class IrisApiService {
     static async loadBasePlan(eva, dateObj = new Date(), signal = null) {
         const fetchPlanForHour = async (dateObjOffset) => {
             const { dateStr, hourStr } = this._formatIrisDate(dateObjOffset);
+            
+            if (!this.isWithinApiRange(dateStr, hourStr)) {
+                return null; // Zeit liegt außerhalb des erlaubten API-Fensters -> Vermeidet 404 XHR
+            }
+
             const cacheKey = IrisCacheService.getPlanKey(eva, dateStr, hourStr);
             
             let xmlText = IrisCacheService.get(cacheKey);
@@ -56,7 +79,9 @@ export class IrisApiService {
                     xmlText = await res.text();
                     IrisCacheService.set(cacheKey, xmlText);
                 } else {
-                    console.error(`[IrisApiService] Error fetching plan for ${eva} at ${dateStr} ${hourStr}: HTTP ${res.status}`);
+                    if (res.status !== 404) {
+                        console.error(`[IrisApiService] Error fetching plan for ${eva} at ${dateStr} ${hourStr}: HTTP ${res.status}`);
+                    }
                     return null;
                 }
             }
@@ -96,15 +121,26 @@ export class IrisApiService {
             const id = s.getAttribute('id');
             if (journeysMap.has(id)) continue;
             
-            // Format der ID z.B.: ...-2401011530-... (YYMMDDHHMM)
-            const match = id.match(/-(\d{10})-/);
-            if (match) {
-                const timestampStr = match[1];
-                const dateStr = timestampStr.slice(0, 6);
-                const hh = timestampStr.slice(6, 8);
+            let dateStr = null;
+            let hh = null;
+
+            // Suche nach ar oder dp Nodes um die LOKALE Zeit am Bahnhof zu finden
+            const arNode = Array.from(s.childNodes).find(n => n.nodeName === 'ar');
+            const dpNode = Array.from(s.childNodes).find(n => n.nodeName === 'dp');
+            const primaryNode = arNode || dpNode;
+
+            if (primaryNode) {
+                const pt = primaryNode.getAttribute('pt');
+                if (pt && pt.length >= 8) {
+                    dateStr = pt.slice(0, 6);
+                    hh = pt.slice(6, 8);
+                }
+            }
+            
+            if (dateStr && hh) {
                 const cacheKey = IrisCacheService.getPlanKey(eva, dateStr, hh);
                 
-                if (!IrisCacheService.get(cacheKey)) {
+                if (!IrisCacheService.get(cacheKey) && this.isWithinApiRange(dateStr, hh)) {
                     missingHours.add(`${dateStr}|${hh}`);
                 }
             }
@@ -120,6 +156,8 @@ export class IrisApiService {
                     if (res.ok) {
                         xmlText = await res.text();
                         IrisCacheService.set(cacheKey, xmlText);
+                    } else if (res.status !== 404) {
+                        console.error(`[IrisApiService] Error fetching missing plan ${dateStr} ${hh}: HTTP ${res.status}`);
                     }
                 } catch (e) {
                     if (e.name === 'AbortError') throw e; // Bubbling the abort upward
