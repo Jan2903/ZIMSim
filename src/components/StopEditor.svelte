@@ -48,6 +48,11 @@
         triggerUpdate();
     }
 
+    function toggleAudioVia(stop) {
+        stop.audioVia = !stop.audioVia;
+        triggerUpdate();
+    }
+
     function onStopStationSelect(stop, station) {
         stop.name = station.name;
         stop.nameKurz = station.nameKurz;
@@ -75,8 +80,12 @@
                             <button class="btn-icon" style="padding: 0; font-size: 0.7em;" onclick={() => moveDown(stop)} title="Runter">↓</button>
                         </div>
                         
-                        <button class="btn-icon" title={stop.showAsVia ? 'Als Via markiert' : 'Nicht als Via markiert'} onclick={() => toggleVia(stop)}>
+                        <button class="btn-icon" title={stop.showAsVia ? 'Als Anzeige-Via markiert' : 'Nicht als Anzeige-Via markiert'} onclick={() => toggleVia(stop)}>
                             {stop.showAsVia ? '👁' : '○'}
+                        </button>
+
+                        <button class="btn-icon" title={stop.audioVia ? 'Als Audio-Via markiert' : 'Nicht als Audio-Via markiert'} onclick={() => toggleAudioVia(stop)}>
+                            {stop.audioVia ? '🔊' : '🔈'}
                         </button>
                         
                         <div style="flex: 2; min-width: 120px; position: relative;">

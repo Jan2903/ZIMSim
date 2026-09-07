@@ -20,6 +20,7 @@ export class Stop {
     line = $state('');
     routeIndex = $state(-1);
     showAsVia = $state(false);
+    audioVia = $state(false);
     nameKurz = $state('');
     stationCategory = $state(99);
     boardingType = $state(null);
@@ -57,6 +58,7 @@ export class Stop {
 
         // Vias & Displays
         this.showAsVia = data.showAsVia || false;
+        this.audioVia = data.audioVia || false;
         this.nameKurz = data.nameKurz || '';
         this.stationCategory = data.stationCategory || 99;
         this.boardingType = data.boardingType || null; // null, 'ein', 'aus'
@@ -93,6 +95,7 @@ export class Stop {
             line: this.line,
             routeIndex: this.routeIndex,
             showAsVia: this.showAsVia,
+            audioVia: this.audioVia,
             nameKurz: this.nameKurz,
             stationCategory: this.stationCategory,
             boardingType: this.boardingType,

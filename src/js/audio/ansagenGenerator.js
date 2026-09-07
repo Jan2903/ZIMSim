@@ -350,7 +350,7 @@ export class AnsagenGenerator {
             this._targetWithVia(playlist, journey.destination, [], true);
         } else {
             this._module(playlist, 'NACH');
-            this._targetWithVia(playlist, journey.destination, journey.vias, false);
+            this._targetWithVia(playlist, journey.destination, journey.audioVias, false);
         }
     }
 
