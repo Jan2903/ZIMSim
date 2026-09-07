@@ -112,10 +112,13 @@ export class IrisApiService {
      * Sucht im Echtzeit-XML nach Zug-IDs, für die uns der Basis-Plan fehlt (z.B. wegen hoher Verspätung).
      * Lädt diese Pläne nach und ergänzt sie im übergebenen journeys Map.
      */
-    static async loadMissingPlans(eva, realtimeXml, journeysMap, signal = null) {
+    static async loadMissingPlans(eva, realtimeXml, journeysMap, currentSimTime, futureWindowHours, signal = null) {
         if (!realtimeXml) return;
         const sNodes = realtimeXml.querySelectorAll('s');
         const missingHours = new Set();
+        const simTimeMs = currentSimTime.getTime();
+        const pastThreshold = simTimeMs - (60 * 60 * 1000); // 1 hour past buffer
+        const futureThreshold = simTimeMs + (futureWindowHours * 60 * 60 * 1000);
         
         for (const s of sNodes) {
             const id = s.getAttribute('id');
@@ -131,6 +134,22 @@ export class IrisApiService {
 
             if (primaryNode) {
                 const pt = primaryNode.getAttribute('pt');
+                const ct = primaryNode.getAttribute('ct');
+                const effectiveTimeStr = ct || pt;
+
+                if (effectiveTimeStr && effectiveTimeStr.length >= 10) {
+                    const yy = 2000 + parseInt(effectiveTimeStr.slice(0, 2), 10);
+                    const mm = parseInt(effectiveTimeStr.slice(2, 4), 10) - 1;
+                    const dd = parseInt(effectiveTimeStr.slice(4, 6), 10);
+                    const h = parseInt(effectiveTimeStr.slice(6, 8), 10);
+                    const m = parseInt(effectiveTimeStr.slice(8, 10), 10);
+                    
+                    const effectiveTimeMs = new Date(yy, mm, dd, h, m).getTime();
+                    if (effectiveTimeMs < pastThreshold || effectiveTimeMs > futureThreshold) {
+                        continue; // Zug ist zeitlich nicht mehr relevant, Basisplan wird nicht benötigt
+                    }
+                }
+
                 if (pt && pt.length >= 8) {
                     dateStr = pt.slice(0, 6);
                     hh = pt.slice(6, 8);
