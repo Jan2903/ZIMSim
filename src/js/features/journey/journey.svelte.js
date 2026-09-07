@@ -4,6 +4,7 @@ import { Formation } from '../formation/formationModel.js';
 import { parseTrainName, formatDisplayName } from './trainNumberFormatter.js';
 import { RisTextService } from '../../core/services/risTextService.js';
 import { StationService } from '../station/stationService.js';
+import { ansagenStore } from '../../audio/ansagenStore.svelte.js';
 
 /**
  * Repräsentiert eine einzelne Fahrt (Abfahrt oder Ankunft).
@@ -324,10 +325,17 @@ export class Journey {
         return this.formation && !this.formation.isEmpty;
     }
 
-    /** Dynamisch berechnete Vias anhand der Halteliste */
+    /** Dynamisch berechnete Vias anhand der Halteliste (für Anzeige) */
     get vias() {
         return this.stops
-            .filter(s => s.showAsVia && !s.cancelled && s.boardingType !== 'ein')
+            .filter(s => s.showAsVia && (!s.cancelled || this.isCancelled) && s.boardingType !== 'ein')
+            .map(s => s.nameKurz || s.name);
+    }
+
+    /** Dynamisch berechnete Vias für die Ansagen */
+    get audioVias() {
+        return this.stops
+            .filter(s => s.audioVia && (!s.cancelled || this.isCancelled) && s.boardingType !== 'ein')
             .map(s => s.nameKurz || s.name);
     }
 
@@ -387,8 +395,12 @@ export class Journey {
         // Vias werden jetzt dynamisch über die Stops-Liste gesteuert
         // Wenn noch keine Vias markiert sind, können wir autoGenerateVias aufrufen
         const hasVias = this.stops.some(s => s.showAsVia);
+        const hasAudioVias = this.stops.some(s => s.audioVia);
         if (!hasVias && !this.ankunft) {
             this.autoGenerateVias(4);
+        }
+        if (!hasAudioVias && !this.ankunft) {
+            this.autoGenerateAudioVias(ansagenStore.maxVias, ansagenStore.viaSortMode);
         }
 
         // Halt-basierte Zugnummer übernehmen
@@ -417,7 +429,7 @@ export class Journey {
         
         if (startIndex >= endIndex) return; // Keine Zwischenhalte
 
-        let candidateStops = this.stops.slice(startIndex, endIndex).filter(s => !s.cancelled && s.boardingType !== 'ein');
+        let candidateStops = this.stops.slice(startIndex, endIndex).filter(s => (!s.cancelled || this.isCancelled) && s.boardingType !== 'ein');
 
         // Sortieren nach Kategorie (1 ist am wichtigsten, 99 am wenigsten)
         candidateStops.sort((a, b) => a.stationCategory - b.stationCategory);
@@ -427,6 +439,36 @@ export class Journey {
 
         // Flag setzen
         selected.forEach(s => s.showAsVia = true);
+    }
+
+    /**
+     * Setzt die "audioVia" Flags der Halte automatisch basierend auf viaSortMode (1 = Priorisiert, 2 = Standard).
+     */
+    autoGenerateAudioVias(maxCount, sortMode) {
+        if (!this.stops || this.stops.length === 0) return;
+
+        // Zurücksetzen
+        this.stops.forEach(s => s.audioVia = false);
+
+        const startIndex = this._currentStopIndex >= 0 ? this._currentStopIndex + 1 : 0;
+        const endIndex = this.stops.length - 1; 
+        
+        if (startIndex >= endIndex) return; 
+
+        let candidateStops = this.stops.slice(startIndex, endIndex).filter(s => (!s.cancelled || this.isCancelled) && s.boardingType !== 'ein');
+
+        if (sortMode === 1) {
+            // Priorisiert (Kategorie)
+            candidateStops.sort((a, b) => a.stationCategory - b.stationCategory);
+        }
+        // bei Standard (2) bleibt es chronologisch
+
+        let limit = maxCount;
+        if (limit === 6) limit = candidateStops.length; 
+        else if (limit < 0) limit = 0;
+
+        const selected = candidateStops.slice(0, limit);
+        selected.forEach(s => s.audioVia = true);
     }
 
     /**
@@ -581,6 +623,7 @@ export class Journey {
 
         // Auto-Generate Vias für den importierten Zuglauf
         journey.autoGenerateVias(4);
+        journey.autoGenerateAudioVias(ansagenStore.maxVias, ansagenStore.viaSortMode);
 
         // Auto-sync wenn Station-ID bekannt
         if (stationId) {

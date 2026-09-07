@@ -391,7 +391,33 @@
                             </label>
                             <input type="range" id="ansagen_vias_slider" min="0" max="6" step="1" style="width: 100%;" 
                                    bind:value={ansagenStore.maxVias} 
-                                   onchange={() => localStorage.setItem('ansagen_max_vias', ansagenStore.maxVias)}>
+                                   onchange={() => {
+                                       localStorage.setItem('ansagen_max_vias', ansagenStore.maxVias);
+                                       journeyStore.journeys.forEach(j => j.autoGenerateAudioVias(ansagenStore.maxVias, ansagenStore.viaSortMode));
+                                       trainDisplay.updateAll();
+                                   }}>
+                        </div>
+
+                        <div style="margin-bottom: 15px;">
+                            <span style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.9em;">Via-Halte Auswahl (Ansage):</span>
+                            <div class="segment-switch">
+                                <label>
+                                    <input type="radio" bind:group={ansagenStore.viaSortMode} value={1} onchange={() => {
+                                        localStorage.setItem('ansagen_via_sort_mode', 1);
+                                        journeyStore.journeys.forEach(j => j.autoGenerateAudioVias(ansagenStore.maxVias, ansagenStore.viaSortMode));
+                                        trainDisplay.updateAll();
+                                    }}>
+                                    <span>Priorisiert</span>
+                                </label>
+                                <label>
+                                    <input type="radio" bind:group={ansagenStore.viaSortMode} value={2} onchange={() => {
+                                        localStorage.setItem('ansagen_via_sort_mode', 2);
+                                        journeyStore.journeys.forEach(j => j.autoGenerateAudioVias(ansagenStore.maxVias, ansagenStore.viaSortMode));
+                                        trainDisplay.updateAll();
+                                    }}>
+                                    <span>Standard</span>
+                                </label>
+                            </div>
                         </div>
 
                         <div class="variant-settings">

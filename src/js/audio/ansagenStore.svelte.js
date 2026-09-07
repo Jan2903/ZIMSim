@@ -6,6 +6,7 @@ export class AnsagenStore {
     fileRef = $state(null); // String (Tauri path), FileSystemFileHandle, or File object
     isTauri = $state(false);
     maxVias = $state(4); // 0-5, 6 means 'All'
+    viaSortMode = $state(1); // 1 = Priorisiert, 2 = Standard
     
     // Varianten (1 = kurz, 2 = lang)
     variantZiel = $state(2);
@@ -22,6 +23,11 @@ export class AnsagenStore {
             const savedVias = localStorage.getItem('ansagen_max_vias');
             if (savedVias !== null) {
                 this.maxVias = parseInt(savedVias, 10);
+            }
+
+            const sSort = localStorage.getItem('ansagen_via_sort_mode');
+            if (sSort !== null) {
+                this.viaSortMode = parseInt(sSort, 10);
             }
 
             const sZiel = localStorage.getItem('ansagen_variant_ziel');
