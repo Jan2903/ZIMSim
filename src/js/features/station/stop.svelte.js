@@ -121,17 +121,7 @@ export class Stop {
     /** Hat dieser Halt eine Ankunft? */
     get hasArrival() { return this.arrival !== null; }
 
-    /** Formatierte Abfahrtszeit (nur HH:MM) */
-    get departureTime() {
-        if (!this.departure) return '';
-        return Stop.formatTime(this.departure.scheduled);
-    }
 
-    /** Formatierte Ankunftszeit (nur HH:MM) */
-    get arrivalTime() {
-        if (!this.arrival) return '';
-        return Stop.formatTime(this.arrival.scheduled);
-    }
 
     /**
      * Extrahiert HH:MM aus einem ISO-Datetime-String oder gibt den Wert direkt zurück.
