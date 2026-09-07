@@ -81,6 +81,8 @@ export class IrisDataMapper {
                 if (st) {
                     stopData.name = st.name;
                     stopData.nameKurz = st.nameKurz || st.name;
+                    stopData.extId = st.ibnr;
+                    stopData.stationCategory = st.kategorie;
                 }
             }
             return stopData;
@@ -98,12 +100,16 @@ export class IrisDataMapper {
 
         let destLang = destName;
         let destKurz = destName;
+        let destIbnr = '';
+        let destKategorie = 7;
         if (destName && StationService.isLoaded) {
             const destSt = StationService.getStationByIdOrName(null, destName);
             if (destSt) {
                 destName = destSt.name;
                 destLang = destSt.name;
                 destKurz = destSt.nameKurz || destSt.name;
+                destIbnr = destSt.ibnr;
+                destKategorie = destSt.kategorie;
             }
         }
 
@@ -148,6 +154,8 @@ export class IrisDataMapper {
             destination: destName,
             destinationLang: destLang,
             destinationKurz: destKurz,
+            destinationIbnr: destIbnr,
+            destinationCategory: destKategorie,
             scheduledTime: scheduledTime,
             expectedTime: expectedTime,
             platform: planGleis,

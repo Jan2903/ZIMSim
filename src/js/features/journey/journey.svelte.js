@@ -24,6 +24,8 @@ export class Journey {
     destinationOverride = $state('');
     destinationLang = $state('');
     destinationKurz = $state('');
+    destinationIbnr = $state('');
+    destinationCategory = $state(7);
     scheduledTime = $state('');
     expectedTime = $state('');
     platform = $state('');
@@ -65,6 +67,8 @@ export class Journey {
         this.destinationOverride = data.destinationOverride || '';
         this.destinationLang = data.destinationLang || this.destination;
         this.destinationKurz = data.destinationKurz || this.destination;
+        this.destinationIbnr = data.destinationIbnr || '';
+        this.destinationCategory = data.destinationCategory || 7;
 
         // === Zeiten ===
         this.scheduledTime = data.scheduledTime || '';
@@ -122,7 +126,11 @@ export class Journey {
         }));
 
         // === Halteliste (optional, für Details-Ansicht & API-Import) ===
-        this.stops = (data.stops || []).map(s => s instanceof Stop ? s : new Stop(s));
+        this.stops = (data.stops || []).map(s => {
+            const stop = s instanceof Stop ? s : new Stop(s);
+            if (!(s instanceof Stop)) stop.enrichWithStationData();
+            return stop;
+        });
         this._currentStopIndex = data._currentStopIndex !== undefined ? data._currentStopIndex : -1;
 
         // Migration: Falls alte _vias existieren, aber keine Stops, generiere Dummy-Stops
@@ -165,6 +173,8 @@ export class Journey {
             destinationOverride: this.destinationOverride,
             destinationLang: this.destinationLang,
             destinationKurz: this.destinationKurz,
+            destinationIbnr: this.destinationIbnr,
+            destinationCategory: this.destinationCategory,
             scheduledTime: this.scheduledTime,
             expectedTime: this.expectedTime,
             platform: this.platform,
