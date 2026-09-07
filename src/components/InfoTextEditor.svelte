@@ -1,5 +1,7 @@
 <script>
     import { trainDisplay } from '../js/core/state/stores.js';
+    import { uiState } from '../js/core/state/uiState.svelte.js';
+    import { moveItemUp, moveItemDown } from '../js/core/utils/arrayUtils.js';
     import { RisTextService } from '../js/core/services/risTextService.js';
     import { dndzone } from 'svelte-dnd-action';
     import { flip } from 'svelte/animate';
@@ -67,6 +69,20 @@
         info.visible = !info.visible;
         triggerUpdate();
     }
+    
+    function moveUp(info) {
+        const idx = journey.infoTexts.indexOf(info);
+        if (moveItemUp(journey.infoTexts, idx)) {
+            triggerUpdate();
+        }
+    }
+
+    function moveDown(info) {
+        const idx = journey.infoTexts.indexOf(info);
+        if (moveItemDown(journey.infoTexts, idx)) {
+            triggerUpdate();
+        }
+    }
 </script>
 
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
@@ -77,12 +93,18 @@
     {#if !journey.infoTexts || journey.infoTexts.length === 0}
         <div class="info-empty" style="color: #ccc; margin-bottom: 5px;">Keine Lauftexte vorhanden.</div>
     {:else}
-        <div use:dndzone={{items: journey.infoTexts, flipDurationMs, type: 'infoText'}}
+        <div use:dndzone={{items: journey.infoTexts, flipDurationMs, type: 'infoText', dragDisabled: !uiState.enableDragAndDrop}}
              onconsider={handleDndConsider}
              onfinalize={handleDndFinalize}>
             {#each journey.infoTexts as info (info.id)}
                 <div animate:flip={{duration: flipDurationMs}} class="info-editor-row" style="display: flex; gap: 5px; align-items: center; margin-bottom: 5px; padding: 5px; background: var(--bg-input); border-radius: 5px; border: 1px solid var(--border);">
-                    <span class="drag-handle" style="cursor: move;">⠿</span>
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 24px;">
+                        {#if uiState.enableDragAndDrop}
+                            <span class="drag-handle" style="cursor: move; font-size: 14px; margin-bottom: 2px;">⠿</span>
+                        {/if}
+                        <button class="btn-icon" style="padding: 0; font-size: 0.7em;" onclick={() => moveUp(info)} title="Hoch">↑</button>
+                        <button class="btn-icon" style="padding: 0; font-size: 0.7em;" onclick={() => moveDown(info)} title="Runter">↓</button>
+                    </div>
                     <button class="btn-icon" title={info.visible ? 'Sichtbar im Lauftext' : 'Versteckt'} onclick={() => toggleVisible(info)}>
                         {info.visible ? '👁' : '○'}
                     </button>

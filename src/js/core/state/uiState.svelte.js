@@ -4,5 +4,6 @@ export const uiState = $state({
     expandedGroups: [],
     manualTracks: [],
     editingFormationJourneyId: null,
-    hideLinkedArrivals: true
+    hideLinkedArrivals: true,
+    enableDragAndDrop: typeof window !== 'undefined' ? !window.matchMedia("(pointer: coarse)").matches : true
 });

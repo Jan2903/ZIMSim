@@ -22,7 +22,7 @@
          items: journeyStore.journeys, 
          flipDurationMs, 
          type: 'journey',
-         dragDisabled: uiState.expandedJourneyId !== null
+         dragDisabled: uiState.expandedJourneyId !== null || !uiState.enableDragAndDrop
      }}
      onconsider={handleDndConsider}
      onfinalize={handleDndFinalize}>

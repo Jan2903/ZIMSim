@@ -480,6 +480,7 @@
                         <div class="checkbox-group">
                             <label class="checkbox-label"><input type="checkbox" id="performance_mode_checkbox" bind:checked={isPerformanceMode}> Performance-Modus (30 FPS)</label>
                             <label class="checkbox-label"><input type="checkbox" bind:checked={uiState.hideLinkedArrivals}> Durchfahrt-Ankünfte verstecken</label>
+                            <label class="checkbox-label"><input type="checkbox" bind:checked={uiState.enableDragAndDrop}> Listen-Sortierung per Drag & Drop (ansonsten nur Pfeile)</label>
                         </div>
                     </div>
                 </CollapsibleSection>

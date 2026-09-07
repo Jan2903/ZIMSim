@@ -4,6 +4,7 @@
     import { getMotForCategory } from '../js/features/station/motManager.js';
     import { formatDisplayName } from '../js/features/journey/trainNumberFormatter.js';
     import JourneyDetails from './JourneyDetails.svelte';
+    import { moveItemUp, moveItemDown } from '../js/core/utils/arrayUtils.js';
 
     let { journey = $bindable() } = $props();
 
@@ -20,6 +21,20 @@
     function toggleVisibility() {
         journey.visible = !journey.visible;
         trainDisplay.updateAll();
+    }
+    
+    function moveUp() {
+        const idx = journeyStore.journeys.indexOf(journey);
+        if (moveItemUp(journeyStore.journeys, idx)) {
+            trainDisplay.updateAll();
+        }
+    }
+    
+    function moveDown() {
+        const idx = journeyStore.journeys.indexOf(journey);
+        if (moveItemDown(journeyStore.journeys, idx)) {
+            trainDisplay.updateAll();
+        }
     }
 
     let isHidden = $derived.by(() => {
@@ -65,7 +80,13 @@
 <div id="journey-{journey.id}" class="journey-row {journey.ausfall ? 'journey-cancelled' : ''} {isHidden ? 'mot-hidden' : ''} {isExpanded ? 'is-expanded' : ''}">
     <div class="journey-row-content">
         <div class="journey-col-reorder">
-            <span class="journey-drag-handle" title="Drag & Drop">⠿</span>
+            {#if uiState.enableDragAndDrop}
+                <span class="journey-drag-handle" title="Drag & Drop">⠿</span>
+            {/if}
+            <div class="move-arrows">
+                <button class="btn-icon arrow-btn" onclick={moveUp} title="Nach oben verschieben">↑</button>
+                <button class="btn-icon arrow-btn" onclick={moveDown} title="Nach unten verschieben">↓</button>
+            </div>
         </div>
         <div class="journey-col-visibility">
             <button class="btn-icon visibility-toggle" onclick={toggleVisibility} onpointerdown={(e) => e.stopPropagation()} title="Sichtbarkeit umschalten">
@@ -157,6 +178,9 @@
 .journey-col-reorder { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4px; background: rgba(0,0,0,0.15); width: 28px; }
 .journey-drag-handle { cursor: grab; font-size: 14px; color: var(--text-muted); margin-bottom: 4px; user-select: none; }
 .journey-drag-handle:active { cursor: grabbing; }
+.move-arrows { display: flex; flex-direction: column; gap: 2px; }
+.arrow-btn { padding: 0 4px; font-size: 0.8em; color: var(--text-muted); }
+.arrow-btn:hover { color: var(--text-main); }
 
 .journey-col-visibility { display: flex; align-items: flex-start; padding: 8px 4px 8px 8px; min-width: 36px; }
 
