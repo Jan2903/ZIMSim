@@ -133,6 +133,7 @@ export class Journey {
                 showAsVia: true,
                 routeIndex: i
             }));
+            this.stops.forEach(s => { if (this._isDestinationStop(s)) s.showAsVia = false; });
         } else if (this.stops.length === 0 && data.vias && data.vias.length > 0) {
             this.stops = data.vias.filter(v => v).map((v, i) => new Stop({
                 name: typeof v === 'string' ? v : v.name || '',
@@ -140,6 +141,7 @@ export class Journey {
                 showAsVia: true,
                 routeIndex: i
             }));
+            this.stops.forEach(s => { if (this._isDestinationStop(s)) s.showAsVia = false; });
         }
 
         // === Erweiterte Metadaten ===
@@ -440,6 +442,28 @@ export class Journey {
     }
 
     /**
+     * Prüft ob ein Halt inhaltlich dem Zielbahnhof entspricht.
+     */
+    _isDestinationStop(stop) {
+        if (!stop || !stop.name) return false;
+        if (!this.destination) return false;
+        
+        const sName = stop.name.toLowerCase().trim();
+        const dests = [
+            (this.destination || '').toLowerCase().trim(),
+            (this.destinationLang || '').toLowerCase().trim(),
+            (this.destinationKurz || '').toLowerCase().trim()
+        ].filter(Boolean);
+
+        for (const d of dests) {
+            if (sName === d || sName.includes(d) || d.includes(sName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Setzt die "showAsVia" Flags der Halte dynamisch basierend auf der Priorität
      * (Kategorie aus stations.csv) und dem verfügbaren Platz auf den Canvas-Monitoren.
      */
@@ -450,14 +474,21 @@ export class Journey {
         this.stops.forEach(s => s.showAsVia = false);
 
         // Bestimme den relevanten Bereich der Halte:
-        // Nach dem aktuellen Halt bis (exklusiv) zur Endstation.
+        // Ab dem aktuellen Halt. Zielbahnhof wird dynamisch ausgefiltert.
         const startIndex = this._currentStopIndex >= 0 ? this._currentStopIndex + 1 : 0;
-        const endIndex = this.stops.length - 1; // Zielbahnhof ist nicht via
         
-        if (startIndex >= endIndex) return; // Keine Zwischenhalte
+        if (startIndex >= this.stops.length) return; // Keine Zwischenhalte
 
         // Alle möglichen Vias
-        let candidateStops = this.stops.slice(startIndex, endIndex).filter(s => (!s.cancelled || this.isCancelled) && s.boardingType !== 'ein');
+        let candidateStops = this.stops.slice(startIndex).filter((s, idx, arr) => {
+            if (s.cancelled && !this.isCancelled) return false;
+            if (s.boardingType === 'ein') return false;
+            
+            // Zielbahnhof ist kein Via
+            if (this._isDestinationStop(s)) return false;
+            
+            return true;
+        });
 
         // Nach Kategorie sortieren (Wichtigste zuerst)
         const sortedCandidates = [...candidateStops].sort((a, b) => a.stationCategory - b.stationCategory);
@@ -498,11 +529,15 @@ export class Journey {
         this.stops.forEach(s => s.audioVia = false);
 
         const startIndex = this._currentStopIndex >= 0 ? this._currentStopIndex + 1 : 0;
-        const endIndex = this.stops.length - 1; 
         
-        if (startIndex >= endIndex) return; 
+        if (startIndex >= this.stops.length) return; 
 
-        let candidateStops = this.stops.slice(startIndex, endIndex).filter(s => (!s.cancelled || this.isCancelled) && s.boardingType !== 'ein');
+        let candidateStops = this.stops.slice(startIndex).filter((s, idx, arr) => {
+            if (s.cancelled && !this.isCancelled) return false;
+            if (s.boardingType === 'ein') return false;
+            if (this._isDestinationStop(s)) return false;
+            return true;
+        });
 
         if (sortMode === 1) {
             // Priorisiert (Kategorie)
@@ -567,12 +602,11 @@ export class Journey {
             }
         }
 
-        // WICHTIG: Die Fallback-Destination wird VOR dem Abschneiden aus dem Array ausgelesen (Zeile 367),
-        // sodass sie durch diesen Eingriff nicht kaputt gehen kann!
-        // Ansatz A: Bei Abfahrten steht der aktuelle Bahnhof als erstes Element und das Ziel als letztes Element in den Vias.
-        // Beide müssen für die Via-Anzeige entfernt werden, um Redundanzen zu vermeiden.
+        // Ansatz A: Bei Abfahrten steht der aktuelle Bahnhof als erstes Element in den Vias.
+        // Das Ziel stand früher als letztes Element drin und wurde weggeschnitten.
+        // Wir behalten das Ziel nun als letzten "Halt" in der Liste, damit es als ausfallend markiert werden kann.
         if (!isArrival && viasArray.length > 0) {
-            viasArray = viasArray.slice(1, -1);
+            viasArray = viasArray.slice(1);
         }
 
         const journey = new Journey({
