@@ -124,7 +124,7 @@ class IrisPollingService {
             
             if (realtimeXml) {
                 // Lazy loading of plans for delayed trains in fchg/rchg
-                await IrisApiService.loadMissingPlans(eva, realtimeXml, this.irisJourneysMap, signal);
+                await IrisApiService.loadMissingPlans(eva, realtimeXml, this.irisJourneysMap, currentSimTime, irisConfig.futureWindowHours, signal);
                 
                 // Keep track of old state for change announcements
                 const oldHashes = new Map();
