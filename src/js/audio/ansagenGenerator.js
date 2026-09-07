@@ -88,11 +88,21 @@ export class AnsagenGenerator {
         this._pushAudio(playlist, `${this.lang}/gleise_zahlen/${pitch}/${number}`, number);
     }
 
-    _targetWithVia(playlist, targetStr, vias = []) {
+    /**
+     * Fügt das Ziel oder die Herkunft mit Zwischenhalten (Vias) hinzu.
+     * @param {Array} playlist - Die Playlist
+     * @param {string} targetStr - Stationsname des Hauptziels
+     * @param {Array} vias - Liste der Vias
+     * @param {boolean} isArrival - true = Herkunft, false = Abfahrtsziel
+     */
+    _targetWithVia(playlist, targetStr, vias = [], isArrival = false) {
         if (!targetStr) return;
         
         const targetIbnr = this._getIbnr(targetStr);
         if (!targetIbnr) return;
+
+        const mainVariant = isArrival ? ansagenStore.variantHerkunft : ansagenStore.variantZiel;
+        const viaVariant = ansagenStore.variantVias;
 
         let maxVias = ansagenStore.maxVias;
         let activeVias = [];
@@ -104,7 +114,7 @@ export class AnsagenGenerator {
 
         if (activeVias && activeVias.length > 0) {
             playlist.push({
-                file: `${this.lang}/ziele/variante2/hoch/${targetIbnr}`,
+                file: `${this.lang}/ziele/variante${mainVariant}/hoch/${targetIbnr}`,
                 text: targetStr
             });
             
@@ -115,19 +125,19 @@ export class AnsagenGenerator {
                 const viaIbnr = this._getIbnr(viaName);
                 if (i === activeVias.length - 1) {
                     playlist.push({
-                        file: `${this.lang}/ziele/variante2/tief/${viaIbnr}`,
+                        file: `${this.lang}/ziele/variante${viaVariant}/tief/${viaIbnr}`,
                         text: viaName
                     });
                 } else {
                     playlist.push({
-                        file: `${this.lang}/ziele/variante2/hoch/${viaIbnr}`,
+                        file: `${this.lang}/ziele/variante${viaVariant}/hoch/${viaIbnr}`,
                         text: viaName
                     });
                 }
             }
         } else {
             playlist.push({
-                file: `${this.lang}/ziele/variante2/tief/${targetIbnr}`,
+                file: `${this.lang}/ziele/variante${mainVariant}/tief/${targetIbnr}`,
                 text: targetStr
             });
         }
@@ -236,8 +246,9 @@ export class AnsagenGenerator {
             const ibnr = this._getIbnr(nurBisStation);
             if (ibnr) {
                 this._module(playlist, 'HEUTE_NUR_BIS');
+                const mainVariant = ansagenStore.variantZiel;
                 playlist.push({
-                    file: `${this.lang}/ziele/variante2/tief/${ibnr}`,
+                    file: `${this.lang}/ziele/variante${mainVariant}/tief/${ibnr}`,
                     text: nurBisStation
                 });
             }
@@ -260,6 +271,8 @@ export class AnsagenGenerator {
             ibnr: this._getIbnr(name)
         })).filter(s => s.ibnr !== null);
 
+        const viaVariant = ansagenStore.variantVias;
+
         for (let i = 0; i < validStations.length; i++) {
             const { name, ibnr } = validStations[i];
             
@@ -268,12 +281,12 @@ export class AnsagenGenerator {
                     this._module(playlist, 'UND');
                 }
                 playlist.push({
-                    file: `${this.lang}/ziele/variante2/tief/${ibnr}`,
+                    file: `${this.lang}/ziele/variante${viaVariant}/tief/${ibnr}`,
                     text: name
                 });
             } else {
                 playlist.push({
-                    file: `${this.lang}/ziele/variante2/hoch/${ibnr}`,
+                    file: `${this.lang}/ziele/variante${viaVariant}/hoch/${ibnr}`,
                     text: name
                 });
             }
@@ -334,10 +347,10 @@ export class AnsagenGenerator {
         
         if (journey.isArrival) {
             this._module(playlist, 'VON');
-            this._targetWithVia(playlist, journey.destination, []);
+            this._targetWithVia(playlist, journey.destination, [], true);
         } else {
             this._module(playlist, 'NACH');
-            this._targetWithVia(playlist, journey.destination, journey.vias);
+            this._targetWithVia(playlist, journey.destination, journey.vias, false);
         }
     }
 

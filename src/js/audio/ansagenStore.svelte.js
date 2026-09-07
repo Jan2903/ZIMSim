@@ -6,6 +6,12 @@ export class AnsagenStore {
     fileRef = $state(null); // String (Tauri path), FileSystemFileHandle, or File object
     isTauri = $state(false);
     maxVias = $state(4); // 0-5, 6 means 'All'
+    
+    // Varianten (1 = kurz, 2 = lang)
+    variantZiel = $state(2);
+    variantHerkunft = $state(1);
+    variantVias = $state(1);
+    variantZugteilung = $state(2);
 
     constructor() {
         this.init();
@@ -17,6 +23,18 @@ export class AnsagenStore {
             if (savedVias !== null) {
                 this.maxVias = parseInt(savedVias, 10);
             }
+
+            const sZiel = localStorage.getItem('ansagen_variant_ziel');
+            if (sZiel !== null) this.variantZiel = parseInt(sZiel, 10);
+
+            const sHerkunft = localStorage.getItem('ansagen_variant_herkunft');
+            if (sHerkunft !== null) this.variantHerkunft = parseInt(sHerkunft, 10);
+
+            const sVias = localStorage.getItem('ansagen_variant_vias');
+            if (sVias !== null) this.variantVias = parseInt(sVias, 10);
+
+            const sZug = localStorage.getItem('ansagen_variant_zugteilung');
+            if (sZug !== null) this.variantZugteilung = parseInt(sZug, 10);
 
             // If window.__TAURI__ exists, we are running in Tauri
             if (window.__TAURI__ || window.__TAURI_INTERNALS__) {
