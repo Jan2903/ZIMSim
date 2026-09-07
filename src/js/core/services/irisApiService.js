@@ -229,13 +229,20 @@ export class IrisApiService {
             const msgs = s.querySelectorAll('m');
 
             if (ar) {
-                journey.rt.ar = this._extractNodeAttributes(ar, ['ct', 'cp', 'pp', 'cs']);
+                journey.rt.ar = this._extractNodeAttributes(ar, ['ct', 'cp', 'pp', 'cs', 'cpth']);
             }
             if (dp) {
-                journey.rt.dp = this._extractNodeAttributes(dp, ['ct', 'cp', 'pp', 'cs']);
+                journey.rt.dp = this._extractNodeAttributes(dp, ['ct', 'cp', 'pp', 'cs', 'cpth']);
             }
             
-            journey.rt.messages = Array.from(msgs).map(m => m.getAttribute('c')).filter(c => c);
+            journey.rt.messages = Array.from(msgs).map(m => ({
+                id: m.getAttribute('id'),
+                c: m.getAttribute('c'),
+                t: m.getAttribute('t'),
+                ts: m.getAttribute('ts'),
+                from: m.getAttribute('from'),
+                to: m.getAttribute('to')
+            })).filter(m => m.c);
         }
     }
 
@@ -257,6 +264,7 @@ export class IrisApiService {
                 number: tl.getAttribute('n'),
                 class: tl.getAttribute('f'),
                 operator: tl.getAttribute('o'),
+                tripType: tl.getAttribute('t'),
                 ar: this._extractNodeAttributes(ar, planAttrs),
                 dp: this._extractNodeAttributes(dp, planAttrs),
                 rt: {}
