@@ -1,5 +1,7 @@
 <script>
     import { trainDisplay } from '../js/core/state/stores.js';
+    import { uiState } from '../js/core/state/uiState.svelte.js';
+    import { moveItemUp, moveItemDown } from '../js/core/utils/arrayUtils.js';
     import { dndzone } from 'svelte-dnd-action';
     import { flip } from 'svelte/animate';
     import { Stop } from '../js/features/station/stop.svelte.js';
@@ -26,6 +28,20 @@
         journey.stops = journey.stops.filter(s => s !== stop);
         triggerUpdate();
     }
+    
+    function moveUp(stop) {
+        const idx = journey.stops.indexOf(stop);
+        if (moveItemUp(journey.stops, idx)) {
+            triggerUpdate();
+        }
+    }
+
+    function moveDown(stop) {
+        const idx = journey.stops.indexOf(stop);
+        if (moveItemDown(journey.stops, idx)) {
+            triggerUpdate();
+        }
+    }
 
     function toggleVia(stop) {
         stop.showAsVia = !stop.showAsVia;
@@ -45,13 +61,19 @@
     <div class="stops-empty" style="color: #ccc;">Keine Halte vorhanden.</div>
 {:else}
     <div class="stops-editor-list" style="border: 1px solid var(--border); border-radius: 5px; background: transparent; padding: 5px;">
-        <div use:dndzone={{items: journey.stops, flipDurationMs, type: 'stop'}}
+        <div use:dndzone={{items: journey.stops, flipDurationMs, type: 'stop', dragDisabled: !uiState.enableDragAndDrop}}
              onconsider={handleDndConsider}
              onfinalize={handleDndFinalize}>
             {#each journey.stops as stop, i (stop.id)}
                 <div animate:flip={{duration: flipDurationMs}} class="stop-editor-item" style="display: flex; flex-direction: column; margin-bottom: 5px; padding: 5px; background: var(--bg-input); border-radius: 5px; border: 1px solid var(--border); {stop.cancelled ? 'opacity: 0.5; text-decoration: line-through;' : ''} {i === journey._currentStopIndex ? 'border-left: 3px solid #ff6b6b;' : ''}">
                     <div class="stop-editor-row-main" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                        <span class="stop-drag-handle" title="Drag & Drop" style="cursor: move;">⠿</span>
+                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 24px;">
+                            {#if uiState.enableDragAndDrop}
+                                <span class="stop-drag-handle" title="Drag & Drop" style="cursor: move; font-size: 14px; margin-bottom: 2px;">⠿</span>
+                            {/if}
+                            <button class="btn-icon" style="padding: 0; font-size: 0.7em;" onclick={() => moveUp(stop)} title="Hoch">↑</button>
+                            <button class="btn-icon" style="padding: 0; font-size: 0.7em;" onclick={() => moveDown(stop)} title="Runter">↓</button>
+                        </div>
                         
                         <button class="btn-icon" title={stop.showAsVia ? 'Als Via markiert' : 'Nicht als Via markiert'} onclick={() => toggleVia(stop)}>
                             {stop.showAsVia ? '👁' : '○'}
