@@ -20,8 +20,6 @@
     let showReasonDropdown = $state(false);
     let reasonWrapperRef = $state();
     
-    let showStopDetails = $state(false);
-
     // Initialen Text synchronisieren via Store-Methode
     $effect(() => {
         const linked = journeyStore.getLinkedJourney(journey.id);
@@ -113,7 +111,10 @@
     }
 
     function autoGenVias() {
-        journey.autoGenerateVias();
+        if (!journey.ankunft) {
+            journey.autoGenerateVias(4);
+            journey.autoGenerateAudioVias(ansagenStore.maxVias, ansagenStore.viaSortMode);
+        }
         triggerUpdate();
     }
 
@@ -401,15 +402,12 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
             <h4>Zuglauf (Halte)</h4>
             <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <button class="btn-secondary" onclick={() => showStopDetails = !showStopDetails}>
-                    {showStopDetails ? 'An/Ab/Gl verbergen' : 'An/Ab/Gl anzeigen'}
-                </button>
                 <button class="btn-secondary" onclick={toggleAllStops}>👁️ Alle umschalten</button>
                 <button class="btn-secondary" onclick={autoGenVias}>⚡ Auto-Vias</button>
                 <button class="btn-secondary" onclick={addStop}>+ Halt hinzufügen</button>
             </div>
         </div>
-        <StopEditor bind:journey {showStopDetails} />
+        <StopEditor bind:journey />
     </div>
 </div>
 

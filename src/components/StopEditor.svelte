@@ -7,7 +7,7 @@
     import { Stop } from '../js/features/station/stop.svelte.js';
     import StationPicker from './StationPicker.svelte';
 
-    let { journey = $bindable(), showStopDetails = false } = $props();
+    let { journey = $bindable() } = $props();
 
     const flipDurationMs = 200;
 
@@ -113,14 +113,6 @@
                         
                         <button class="btn-icon" title="Halt entfernen" onclick={() => removeStop(stop)}>✕</button>
                     </div>
-                    
-                    {#if showStopDetails}
-                        <div class="stop-editor-row-details" style="display: flex; gap: 15px; align-items: center; padding-left: 54px; margin-top: 6px; flex-wrap: wrap;">
-                            <label style="display: flex; align-items: center; gap: 5px; color: var(--text-muted); font-size: 0.85em;">An: <input type="text" class="s-prop short-input" bind:value={stop.arrivalTime} oninput={triggerUpdate} placeholder="HH:MM" title="Ankunft" style="width: 60px;"></label>
-                            <label style="display: flex; align-items: center; gap: 5px; color: var(--text-muted); font-size: 0.85em;">Ab: <input type="text" class="s-prop short-input" bind:value={stop.departureTime} oninput={triggerUpdate} placeholder="HH:MM" title="Abfahrt" style="width: 60px;"></label>
-                            <label style="display: flex; align-items: center; gap: 5px; color: var(--text-muted); font-size: 0.85em;">Gl: <input type="text" class="s-prop short-input" bind:value={stop.platform} oninput={triggerUpdate} placeholder="z.B. 1" title="Gleis" style="width: 60px;"></label>
-                        </div>
-                    {/if}
                 </div>
             {/each}
         </div>

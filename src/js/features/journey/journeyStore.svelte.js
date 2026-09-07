@@ -1,5 +1,6 @@
 // js/models/journeyStore.svelte.js
 import { Journey } from './journey.svelte.js';
+import { ansagenStore } from '../../audio/ansagenStore.svelte.js';
 import { Formation } from '../formation/formationModel.js';
 import { Platform } from '../station/platform.js';
 import { FormationParser } from '../formation/formationParser.js';
@@ -718,6 +719,11 @@ export class JourneyStore {
         for (const entry of entries) {
             const journey = Journey.fromDepartureEntry(entry, isArrival);
             journey.ankunft = isArrival;
+            
+            // Audio-Vias für importierte IRIS Journeys generieren (Display Vias werden von der DB API geliefert)
+            if (!isArrival) {
+                journey.autoGenerateAudioVias(ansagenStore.maxVias, ansagenStore.viaSortMode);
+            }
 
             // Duplikate vermeiden: Selbe HAFAS journeyId + selbe Ankunft/Abfahrt-Rolle
             if (journey.journeyId) {
