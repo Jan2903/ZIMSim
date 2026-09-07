@@ -57,7 +57,7 @@
         stop.name = station.name;
         stop.nameKurz = station.nameKurz;
         stop.extId = station.ibnr || station.eva;
-        stop.stationCategory = station.kategorie || 99;
+        stop.stationCategory = station.kategorie || 7;
         triggerUpdate();
     }
 </script>

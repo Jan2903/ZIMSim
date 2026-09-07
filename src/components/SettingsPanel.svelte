@@ -568,4 +568,13 @@
         color: white;
         font-weight: bold;
     }
+    @media (max-width: 768px) {
+        .segment-switch span {
+            padding: 10px 12px;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    }
 </style>

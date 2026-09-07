@@ -64,3 +64,8 @@
 .amenity-checks { display: flex; gap: 4px; font-size: 0.9em; }
 .amenity-checks label { cursor: pointer; }
 .remove-coach-btn { color: #ef4444 !important; font-weight: bold; }
+
+@media (max-width: 768px) {
+    .mot-summary { min-height: 44px; padding: 12px; }
+    .mot-presets .mot-preset-btn { min-height: 44px; }
+}
