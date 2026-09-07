@@ -212,7 +212,7 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
             let yPos = 470;
             drawText(ctx, primary.destinationLang || primary.destination, 100, yPos, FONTS.regular(200), COLORS.WHITE, 'left');
             const viaText = (primary.vias || []).join(' - ');
-            drawWrappedText(ctx, viaText, 112, yPos + 200,  1800,100,FONTS.regular(75), COLORS.WHITE, 'left');
+            drawWrappedText(ctx, viaText, 112, yPos + 200,  1800,100,FONTS.regular(75), COLORS.WHITE, 'left', 2);
         } else {
             const zoneWidth = width / 2; // Split screen for true wing trains
             const maxTrains = Math.min(journeys.length, 2);
@@ -242,7 +242,7 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
                 drawText(ctx, journey.destinationLang || journey.destination, xOffset + 50, yPos, FONTS.regular(128), COLORS.WHITE, 'left');
                 yPos += 160;
                 const viaText = (journey.vias || []).join(' - ');
-                drawWrappedText(ctx, viaText, xOffset + 50, yPos, zoneWidth - 100, 100, FONTS.regular(75), COLORS.WHITE, 'left');
+                drawWrappedText(ctx, viaText, xOffset + 50, yPos, zoneWidth - 100, 100, FONTS.regular(75), COLORS.WHITE, 'left', 3);
             }
         }
 
@@ -303,14 +303,14 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
 
             if (infoToDraw) {
                 const viaFont = FONTS.regular(isDisrupted ? 70 : 75);
-                drawWrappedText(ctx, infoToDraw, 50, yPos, 880, 100, viaFont, textColor, 'left');
+                drawWrappedText(ctx, infoToDraw, 50, yPos, 880, 100, viaFont, textColor, 'left', 3);
             } else if (!ausfall) {
                 let viaText = (primary.vias || []).join(' - ');
                 if (verkehrtAb !== "0") {
                     viaText = 'Verkehrt heute ab / Departing today from ' + verkehrtAb;
                 }
                 const viaFont = FONTS.regular(isDisrupted ? 70 : 75);
-                drawWrappedText(ctx, viaText, 50, yPos, 880, 100, viaFont, textColor, 'left');
+                drawWrappedText(ctx, viaText, 50, yPos, 880, 100, viaFont, textColor, 'left', 3);
             }
         } else {
             let yPos = 360;

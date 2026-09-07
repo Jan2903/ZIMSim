@@ -397,7 +397,7 @@ export class Journey {
         const hasVias = this.stops.some(s => s.showAsVia);
         const hasAudioVias = this.stops.some(s => s.audioVia);
         if (!hasVias && !this.ankunft) {
-            this.autoGenerateVias(4);
+            this.autoGenerateVias();
         }
         if (!hasAudioVias && !this.ankunft) {
             this.autoGenerateAudioVias(ansagenStore.maxVias, ansagenStore.viaSortMode);
@@ -413,10 +413,37 @@ export class Journey {
     }
 
     /**
-     * Setzt die "showAsVia" Flags der Halte automatisch basierend auf der Priorität
-     * (Kategorie aus stations.csv), beschränkt auf maxCount.
+     * Berechnet, wie viele Zeilen ein Text bei gegebener Breite einnimmt.
      */
-    autoGenerateVias(maxCount = 4) {
+    static calculateTextLines(text, maxWidth, font = 'normal 75px "Open Sans Condensed", sans-serif') {
+        if (typeof document === 'undefined') return 1; // Fallback for non-browser envs
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.font = font;
+        
+        const words = text.split(' ');
+        let lines = 1;
+        let currentLine = '';
+        
+        for (let i = 0; i < words.length; i++) {
+            const testLine = currentLine + words[i] + ' ';
+            const testWidth = ctx.measureText(testLine).width;
+            
+            if (testWidth > maxWidth && i > 0) {
+                lines++;
+                currentLine = words[i] + ' ';
+            } else {
+                currentLine = testLine;
+            }
+        }
+        return lines;
+    }
+
+    /**
+     * Setzt die "showAsVia" Flags der Halte dynamisch basierend auf der Priorität
+     * (Kategorie aus stations.csv) und dem verfügbaren Platz auf den Canvas-Monitoren.
+     */
+    autoGenerateVias() {
         if (!this.stops || this.stops.length === 0) return;
 
         // Zurücksetzen
@@ -429,13 +456,33 @@ export class Journey {
         
         if (startIndex >= endIndex) return; // Keine Zwischenhalte
 
+        // Alle möglichen Vias
         let candidateStops = this.stops.slice(startIndex, endIndex).filter(s => (!s.cancelled || this.isCancelled) && s.boardingType !== 'ein');
 
-        // Sortieren nach Kategorie (1 ist am wichtigsten, 99 am wenigsten)
-        candidateStops.sort((a, b) => a.stationCategory - b.stationCategory);
+        // Nach Kategorie sortieren (Wichtigste zuerst)
+        const sortedCandidates = [...candidateStops].sort((a, b) => a.stationCategory - b.stationCategory);
 
-        // Top N auswählen
-        const selected = candidateStops.slice(0, maxCount);
+        let selected = [];
+        
+        for (const candidate of sortedCandidates) {
+            selected.push(candidate);
+            
+            // IMMER chronologisch sortieren für die Anzeige
+            selected.sort((a, b) => a.routeIndex - b.routeIndex);
+            
+            const viaText = selected.map(s => s.nameKurz || s.name).join(' - ');
+            
+            // Bedingung 1: max 2 Zeilen auf Hauptmonitor (Breite 1800)
+            const linesMain = Journey.calculateTextLines(viaText, 1800);
+            // Bedingung 2: max 3 Zeilen auf Nebenmonitor (Breite 880)
+            const linesSide = Journey.calculateTextLines(viaText, 880);
+            
+            if (linesMain > 2 || linesSide > 3) {
+                // Passt nicht mehr! Wieder entfernen und aufhören
+                selected = selected.filter(s => s !== candidate);
+                break;
+            }
+        }
 
         // Flag setzen
         selected.forEach(s => s.showAsVia = true);
@@ -622,7 +669,7 @@ export class Journey {
         journey.stops.forEach(s => s.enrichWithStationData());
 
         // Auto-Generate Vias für den importierten Zuglauf
-        journey.autoGenerateVias(4);
+        journey.autoGenerateVias();
         journey.autoGenerateAudioVias(ansagenStore.maxVias, ansagenStore.viaSortMode);
 
         // Auto-sync wenn Station-ID bekannt

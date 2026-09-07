@@ -24,8 +24,9 @@ export function drawText(ctx, text, x, y, font, textColor, textAlign) {
  * Zeichnet Text mit automatischem Zeilenumbruch.
  * @returns {number} Die Y-Position nach der letzten Zeile.
  */
-export function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight, font, textColor, textAlign) {
+export function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight, font, textColor, textAlign, maxLines = 0) {
     let line = '';
+    let lineCount = 0;
     if (text !== "") {
         const words = text.split(' ');
         ctx.font = font; // Wird für die Breitenmessung benötigt
@@ -34,6 +35,10 @@ export function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight, font, tex
             const testLine = line + words[n] + ' ';
             const testWidth = ctx.measureText(testLine).width;
             if (testWidth > maxWidth && n > 0) {
+                lineCount++;
+                if (maxLines > 0 && lineCount > maxLines) {
+                    return y; // Hard cutoff: max lines reached
+                }
                 drawText(ctx, line, x, y, font, textColor, textAlign);
                 line = words[n] + ' ';
                 y += lineHeight;
@@ -41,7 +46,11 @@ export function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight, font, tex
                 line = testLine;
             }
         }
-        drawText(ctx, line, x, y, font, textColor, textAlign);
+        
+        lineCount++;
+        if (maxLines === 0 || lineCount <= maxLines) {
+            drawText(ctx, line, x, y, font, textColor, textAlign);
+        }
     }
     return y + (line === '' ? 0 : lineHeight);
 }
