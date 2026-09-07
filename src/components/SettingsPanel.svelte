@@ -388,6 +388,66 @@
                                bind:value={ansagenStore.maxVias} 
                                onchange={() => localStorage.setItem('ansagen_max_vias', ansagenStore.maxVias)}>
                     </div>
+
+                    <div class="variant-settings">
+                        <span style="display: block; margin-bottom: 8px; font-weight: bold; font-size: 0.9em;">Stationsnamen Varianten:</span>
+                        
+                        <div class="variant-row">
+                            <span class="variant-label">Ziel (Abfahrt)</span>
+                            <div class="segment-switch">
+                                <label>
+                                    <input type="radio" bind:group={ansagenStore.variantZiel} value={1} onchange={() => localStorage.setItem('ansagen_variant_ziel', ansagenStore.variantZiel)}>
+                                    <span>Kurz</span>
+                                </label>
+                                <label>
+                                    <input type="radio" bind:group={ansagenStore.variantZiel} value={2} onchange={() => localStorage.setItem('ansagen_variant_ziel', ansagenStore.variantZiel)}>
+                                    <span>Lang</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="variant-row">
+                            <span class="variant-label">Herkunft (Ankunft)</span>
+                            <div class="segment-switch">
+                                <label>
+                                    <input type="radio" bind:group={ansagenStore.variantHerkunft} value={1} onchange={() => localStorage.setItem('ansagen_variant_herkunft', ansagenStore.variantHerkunft)}>
+                                    <span>Kurz</span>
+                                </label>
+                                <label>
+                                    <input type="radio" bind:group={ansagenStore.variantHerkunft} value={2} onchange={() => localStorage.setItem('ansagen_variant_herkunft', ansagenStore.variantHerkunft)}>
+                                    <span>Lang</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="variant-row">
+                            <span class="variant-label">Vias (Zwischenhalte)</span>
+                            <div class="segment-switch">
+                                <label>
+                                    <input type="radio" bind:group={ansagenStore.variantVias} value={1} onchange={() => localStorage.setItem('ansagen_variant_vias', ansagenStore.variantVias)}>
+                                    <span>Kurz</span>
+                                </label>
+                                <label>
+                                    <input type="radio" bind:group={ansagenStore.variantVias} value={2} onchange={() => localStorage.setItem('ansagen_variant_vias', ansagenStore.variantVias)}>
+                                    <span>Lang</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="variant-row">
+                            <span class="variant-label">Zugteilung</span>
+                            <div class="segment-switch">
+                                <label>
+                                    <input type="radio" bind:group={ansagenStore.variantZugteilung} value={1} onchange={() => localStorage.setItem('ansagen_variant_zugteilung', ansagenStore.variantZugteilung)}>
+                                    <span>Kurz</span>
+                                </label>
+                                <label>
+                                    <input type="radio" bind:group={ansagenStore.variantZugteilung} value={2} onchange={() => localStorage.setItem('ansagen_variant_zugteilung', ansagenStore.variantZugteilung)}>
+                                    <span>Lang</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
                     
                     <div style="margin-bottom: 10px; font-size: 0.9em;">
                         {#if ansagenStore.status === 'loaded'}
@@ -428,3 +488,50 @@
         </div>
     </div>
 </div>
+
+<style>
+    .variant-settings {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 15px;
+        margin-bottom: 15px;
+        padding-top: 15px;
+        border-top: 1px solid rgba(255,255,255,0.1);
+    }
+    .variant-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .variant-label {
+        font-size: 0.9em;
+    }
+    .segment-switch {
+        display: flex;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 6px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .segment-switch label {
+        cursor: pointer;
+        margin: 0;
+    }
+    .segment-switch input[type="radio"] {
+        display: none;
+    }
+    .segment-switch span {
+        display: block;
+        padding: 4px 12px;
+        font-size: 0.85em;
+        transition: background 0.2s, color 0.2s;
+        text-align: center;
+        min-width: 50px;
+    }
+    .segment-switch input[type="radio"]:checked + span {
+        background: var(--accent, #e2001a);
+        color: white;
+        font-weight: bold;
+    }
+</style>
