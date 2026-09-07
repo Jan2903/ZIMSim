@@ -55,10 +55,12 @@
 
 <Header />
 
-<div class="display-container" bind:this={outerContainer} style="position: relative; width: 100%; overflow: hidden;">
-    <div bind:this={scaleWrapper} class="scale-wrapper" style="position: absolute; top: 0; left: 0; width: 4428px; height: 1600px; transform-origin: top left; background-color: var(--db-dark); overflow: hidden;">
-        <div id="hardware-bezel" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 20; pointer-events: none;"></div>
-        <canvas bind:this={canvasElement} id="zimCanvas" width="4428" height="1600" style="position: absolute; top: 0; left: 0; z-index: 10;"></canvas>
+<div class="display-wrapper" style="width: 100%; overflow-x: auto; overflow-y: hidden;">
+    <div class="display-container" bind:this={outerContainer} style="position: relative; width: 100%; min-width: 900px; overflow: hidden;">
+        <div bind:this={scaleWrapper} class="scale-wrapper" style="position: absolute; top: 0; left: 0; width: 4428px; height: 1600px; transform-origin: top left; background-color: var(--db-dark); overflow: hidden;">
+            <div id="hardware-bezel" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 20; pointer-events: none;"></div>
+            <canvas bind:this={canvasElement} id="zimCanvas" width="4428" height="1600" style="position: absolute; top: 0; left: 0; z-index: 10;"></canvas>
+        </div>
     </div>
 </div>
 
