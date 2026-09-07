@@ -71,13 +71,50 @@ export class IrisDataMapper {
             }
         }
 
-        const delayReason = this._getDelayReason(raw.rt.messages);
+        const { delayReason, qosMessages } = this._processMessages(raw.rt.messages, effectiveTimeMs || simTimeMs);
         
         // Haltepunkte (Vias) anreichern
-        const stops = primaryNode.ppth ? primaryNode.ppth.split('|').map((s, i) => {
-            const stopData = { name: s, showAsVia: true, routeIndex: i, nameKurz: s };
+        const plannedStops = primaryNode.ppth ? primaryNode.ppth.split('|') : [];
+        const changedStops = (rtNode && rtNode.cpth) ? rtNode.cpth.split('|') : null;
+        
+        let mergedStopsList = [];
+        if (!changedStops) {
+            mergedStopsList = plannedStops.map(name => ({ name, isCancelled: false, isAdditional: false }));
+        } else {
+            let pIdx = 0;
+            for (let i = 0; i < changedStops.length; i++) {
+                const cStop = changedStops[i];
+                const matchIdx = plannedStops.indexOf(cStop, pIdx);
+                if (matchIdx !== -1) {
+                    for (let j = pIdx; j < matchIdx; j++) {
+                        if (!changedStops.includes(plannedStops[j])) {
+                            mergedStopsList.push({ name: plannedStops[j], isCancelled: true, isAdditional: false });
+                        }
+                    }
+                    mergedStopsList.push({ name: cStop, isCancelled: false, isAdditional: false });
+                    pIdx = matchIdx + 1;
+                } else {
+                    mergedStopsList.push({ name: cStop, isCancelled: false, isAdditional: true });
+                }
+            }
+            for (let j = pIdx; j < plannedStops.length; j++) {
+                if (!changedStops.includes(plannedStops[j])) {
+                    mergedStopsList.push({ name: plannedStops[j], isCancelled: true, isAdditional: false });
+                }
+            }
+        }
+
+        const stops = mergedStopsList.map((stopItem, i) => {
+            const stopData = { 
+                name: stopItem.name, 
+                showAsVia: true, 
+                routeIndex: i, 
+                nameKurz: stopItem.name,
+                isCancelled: stopItem.isCancelled,
+                isAdditional: stopItem.isAdditional
+            };
             if (StationService.isLoaded) {
-                const st = StationService.getStationByIdOrName(null, s);
+                const st = StationService.getStationByIdOrName(null, stopItem.name);
                 if (st) {
                     stopData.name = st.name;
                     stopData.nameKurz = st.nameKurz || st.name;
@@ -86,7 +123,7 @@ export class IrisDataMapper {
                 }
             }
             return stopData;
-        }) : [];
+        });
 
         // Ziel (bzw. Herkunft bei Ankünften) ermitteln
         let destName = primaryNode.pde || '';
@@ -151,6 +188,7 @@ export class IrisDataMapper {
             name: formattedName,
             produktGattung: raw.class,
             operator: raw.operator,
+            isReplacementTrain: raw.tripType === 'e',
             destination: destName,
             destinationLang: destLang,
             destinationKurz: destKurz,
@@ -164,6 +202,7 @@ export class IrisDataMapper {
             ankunft: isArrival,
             stops: stops,
             delayReason: delayReason,
+            qosMessages: qosMessages,
             couplingGroupId: primaryNode.wings || null,
             _effectiveTimeMs: effectiveTimeMs // Für internen Gebrauch (Autoplay Ticker)
         };
@@ -197,18 +236,49 @@ export class IrisDataMapper {
     }
 
     /**
-     * Ermittelt den Verspätungsgrund anhand der übergebenen Message-Codes.
-     * @param {Array<string>} messageCodes 
-     * @returns {string} Der Text des Verspätungsgrunds
+     * Verarbeitet die rohen IRIS-Meldungen, filtert ungültige heraus und trennt sie
+     * in den primären Verspätungsgrund und eine Liste von weiteren gültigen QoS-Messages.
+     * @param {Array<Object>} messages 
+     * @param {number} simulatedTimeMs 
+     * @returns {Object} { delayReason, qosMessages }
      */
-    static _getDelayReason(messageCodes) {
-        if (!messageCodes || messageCodes.length === 0) return '';
-        if (!RisTextService.isLoaded) return '';
+    static _processMessages(messages, simulatedTimeMs) {
+        if (!messages || messages.length === 0) return { delayReason: '', qosMessages: [] };
         
-        for (const code of messageCodes) {
-            const preset = RisTextService.presets.find(p => p.code === code);
-            if (preset) return preset.text;
+        const validMessages = [];
+        
+        for (const msg of messages) {
+            // Gültigkeitsprüfung (validFrom / validTo)
+            if (msg.from && msg.to) {
+                const fromMs = this._parseIrisDateTime(msg.from);
+                const toMs = this._parseIrisDateTime(msg.to);
+                
+                if (fromMs && simulatedTimeMs < fromMs) continue; // Noch nicht gültig
+                if (toMs && simulatedTimeMs > toMs) continue; // Nicht mehr gültig
+            }
+            
+            validMessages.push(msg);
         }
-        return '';
+        
+        // Sortiere Meldungen absteigend nach Timestamp, damit die neueste zuerst kommt
+        validMessages.sort((a, b) => {
+            const tsA = this._parseIrisDateTime(a.ts) || 0;
+            const tsB = this._parseIrisDateTime(b.ts) || 0;
+            return tsB - tsA;
+        });
+
+        // 1. Primären Verspätungsgrund ermitteln
+        let delayReason = '';
+        if (RisTextService.isLoaded) {
+            for (const msg of validMessages) {
+                const preset = RisTextService.presets.find(p => p.code === msg.c);
+                if (preset) {
+                    delayReason = preset.text;
+                    break; 
+                }
+            }
+        }
+        
+        return { delayReason, qosMessages: validMessages };
     }
 }
