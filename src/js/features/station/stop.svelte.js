@@ -22,7 +22,7 @@ export class Stop {
     showAsVia = $state(false);
     audioVia = $state(false);
     nameKurz = $state('');
-    stationCategory = $state(99);
+    stationCategory = $state(7);
     boardingType = $state(null);
     messages = $state([]);
 
@@ -60,7 +60,7 @@ export class Stop {
         this.showAsVia = data.showAsVia || false;
         this.audioVia = data.audioVia || false;
         this.nameKurz = data.nameKurz || '';
-        this.stationCategory = data.stationCategory || 99;
+        this.stationCategory = data.stationCategory || 7;
         this.boardingType = data.boardingType || null; // null, 'ein', 'aus'
 
         if (data.risNotizen) {
@@ -103,13 +103,11 @@ export class Stop {
         };
     }
 
-    /**
-     * Reichert den Halt mit Daten aus der stations.csv an, falls vorhanden.
-     */
     enrichWithStationData() {
         if (!StationService.isLoaded) return;
         const station = StationService.getStationByIdOrName(this.extId, this.name);
         if (station) {
+            this.extId = station.ibnr || this.extId;
             this.nameKurz = station.nameKurz || this.nameKurz;
             this.stationCategory = station.kategorie || this.stationCategory;
         }

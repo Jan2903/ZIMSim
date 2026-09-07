@@ -48,7 +48,7 @@ export class StationService {
                     aliases: aliases,
                     nameKurz: cols[2].trim(),
                     ds100: cols[3].trim(),
-                    kategorie: parseInt(cols[4].trim()) || 99 // Standard Kategorie falls fehlerhaft
+                    kategorie: parseInt(cols[4].trim()) || 7 // Standard Kategorie falls fehlerhaft
                 });
             }
         }
@@ -91,15 +91,18 @@ export class StationService {
     }
 
     /**
-     * Normalisiert einen String für den flexiblen Vergleich (entfernt Leerzeichen und wandelt in Kleinbuchstaben um).
+     * Normalisiert einen String für den flexiblen Vergleich (entfernt Leerzeichen, Sonderzeichen und vereinheitlicht Begriffe).
      */
     static normalizeName(name) {
         if (!name) return '';
-        return name.toLowerCase().replace(/\s+/g, '');
+        return name.toLowerCase()
+            .replace(/[\s\(\)\-\.,]/g, '') // Leerzeichen und gängige Sonderzeichen entfernen
+            .replace(/straße|strasse/g, 'str')
+            .replace(/hauptbahnhof/g, 'hbf');
     }
 
     /**
-     * Sucht nach einer Station anhand von extId (IBNR) oder exaktem Namen (ignoriert Leerzeichen).
+     * Sucht nach einer Station anhand von extId (IBNR) oder Namen (ignoriert Leerzeichen und Sonderzeichen).
      * @param {string} extId 
      * @param {string} name 
      * @returns {object|null}
@@ -114,10 +117,22 @@ export class StationService {
         }
         if (!found && name) {
             const normName = this.normalizeName(name);
+            
+            // 1. Exakter Match auf dem normalisierten String
             found = allStations.find(s => {
                 const matchesAlias = (s.aliases || []).some(alias => this.normalizeName(alias) === normName);
                 return matchesAlias || this.normalizeName(s.nameKurz) === normName || this.normalizeName(s.name) === normName;
             });
+
+            // 2. Fallback: Substring Match (einer enthält den anderen), um z.B. "(tief)" abzufangen
+            if (!found && normName.length > 3) {
+                found = allStations.find(s => {
+                    const normCsvName = this.normalizeName(s.name);
+                    const normCsvKurz = this.normalizeName(s.nameKurz);
+                    return (normName.includes(normCsvName) || normCsvName.includes(normName)) ||
+                           (normCsvKurz && (normName.includes(normCsvKurz) || normCsvKurz.includes(normName)));
+                });
+            }
         }
         return found;
     }
