@@ -100,6 +100,11 @@ class IrisPollingService {
         const signal = this._abortController.signal;
         
         try {
+            if (isInitial) {
+                // Synchronisiere Serverzeit beim initialen Laden
+                await IrisApiService.fetchServerTime();
+            }
+
             // Check if hour changed or initial load, if so, load new base plan
             if (isInitial || currentSimTime.getHours() !== this._lastSimulatedHour) {
                 this._lastSimulatedHour = currentSimTime.getHours();
@@ -118,8 +123,15 @@ class IrisPollingService {
                 }
             }
 
-            // Using rchg for updates, fchg for initial
-            const fetchType = isInitial ? 'fchg' : 'rchg';
+            // Using rchg for updates, fchg for initial or if last poll was > 90s ago
+            let fetchType = isInitial ? 'fchg' : 'rchg';
+            if (!isInitial && this.lastPollTime) {
+                const timeSinceLastPoll = Date.now() - this.lastPollTime.getTime();
+                if (timeSinceLastPoll > 90000) { // 90 Sekunden
+                    fetchType = 'fchg';
+                }
+            }
+
             const realtimeXml = await IrisApiService.fetchRealtime(eva, fetchType, signal);
             
             if (realtimeXml) {
