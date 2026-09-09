@@ -20,11 +20,11 @@ export class IrisDataMapper {
 
         for (const raw of journeysMap.values()) {
             if (raw.ar) {
-                const mappedAr = this._mapSingleNode(raw, 'ar', pastThreshold, futureThreshold);
+                const mappedAr = this._mapSingleNode(raw, 'ar', pastThreshold, futureThreshold, simTimeMs);
                 if (mappedAr) results.push(mappedAr);
             }
             if (raw.dp) {
-                const mappedDp = this._mapSingleNode(raw, 'dp', pastThreshold, futureThreshold);
+                const mappedDp = this._mapSingleNode(raw, 'dp', pastThreshold, futureThreshold, simTimeMs);
                 if (mappedDp) results.push(mappedDp);
             }
         }
@@ -37,9 +37,10 @@ export class IrisDataMapper {
      * @param {string} nodeType 'ar' oder 'dp'
      * @param {number} pastThreshold Timestamp Grenze Vergangenheit
      * @param {number} futureThreshold Timestamp Grenze Zukunft
+     * @param {number} simTimeMs Die aktuelle simulierte Zeit
      * @returns {Object|null} Gemapptes Objekt oder null, falls außerhalb des Fensters
      */
-    static _mapSingleNode(raw, nodeType, pastThreshold, futureThreshold) {
+    static _mapSingleNode(raw, nodeType, pastThreshold, futureThreshold, simTimeMs) {
         const isArrival = nodeType === 'ar';
         const primaryNode = isArrival ? raw.ar : raw.dp;
         if (!primaryNode) return null;
@@ -73,7 +74,37 @@ export class IrisDataMapper {
 
         const { delayReason, qosMessages } = this._processMessages(raw.rt.messages, effectiveTimeMs || simTimeMs);
         
-        // Haltepunkte (Vias) anreichern
+        const stops = this._processStops(primaryNode, rtNode);
+        const { destName, destLang, destKurz, destIbnr, destKategorie } = this._resolveDestination(primaryNode, stops, isArrival);
+        const formattedName = this._formatTrainName(raw, primaryNode);
+        const { planGleis, echtzeitGleis } = this._resolveTracks(primaryNode, rtNode, isArrival, raw);
+
+        return {
+            journeyId: raw.id,
+            name: formattedName,
+            produktGattung: raw.class,
+            operator: raw.operator,
+            isReplacementTrain: raw.tripType === 'e',
+            destination: destName,
+            destinationLang: destLang,
+            destinationKurz: destKurz,
+            destinationIbnr: destIbnr,
+            destinationCategory: destKategorie,
+            scheduledTime: scheduledTime,
+            expectedTime: expectedTime,
+            platform: planGleis,
+            ezGleis: echtzeitGleis,
+            ausfall: (rtNode && rtNode.cs === 'c'),
+            ankunft: isArrival,
+            stops: stops,
+            delayReason: delayReason,
+            qosMessages: qosMessages,
+            couplingGroupId: primaryNode.wings || null,
+            _effectiveTimeMs: effectiveTimeMs // Für internen Gebrauch (Autoplay Ticker)
+        };
+    }
+
+    static _processStops(primaryNode, rtNode) {
         const plannedStops = primaryNode.ppth ? primaryNode.ppth.split('|') : [];
         const changedStops = (rtNode && rtNode.cpth) ? rtNode.cpth.split('|') : null;
         
@@ -104,7 +135,7 @@ export class IrisDataMapper {
             }
         }
 
-        const stops = mergedStopsList.map((stopItem, i) => {
+        return mergedStopsList.map((stopItem, i) => {
             const stopData = { 
                 name: stopItem.name, 
                 showAsVia: true, 
@@ -124,8 +155,9 @@ export class IrisDataMapper {
             }
             return stopData;
         });
+    }
 
-        // Ziel (bzw. Herkunft bei Ankünften) ermitteln
+    static _resolveDestination(primaryNode, stops, isArrival) {
         let destName = primaryNode.pde || '';
         if (!destName && stops.length > 0) {
             if (isArrival) {
@@ -149,8 +181,10 @@ export class IrisDataMapper {
                 destKategorie = destSt.kategorie;
             }
         }
+        return { destName, destLang, destKurz, destIbnr, destKategorie };
+    }
 
-        // Zugnamen formatieren
+    static _formatTrainName(raw, primaryNode) {
         let formattedName = `${raw.type || ''} ${raw.number || ''}`.trim();
         if (primaryNode.l) {
             let lineStr = primaryNode.l;
@@ -162,8 +196,10 @@ export class IrisDataMapper {
             }
             formattedName = `${lineStr} / ${raw.number}`;
         }
+        return formattedName;
+    }
 
-        // Gleislogik: Plan- und Echtzeitgleis ermitteln
+    static _resolveTracks(primaryNode, rtNode, isArrival, raw) {
         let planGleis = primaryNode.pp || '';
         if (!planGleis && !isArrival && raw.ar && raw.ar.pp) {
             planGleis = raw.ar.pp; // Fallback auf ar
@@ -183,29 +219,7 @@ export class IrisDataMapper {
             echtzeitGleis = '';
         }
 
-        return {
-            journeyId: raw.id,
-            name: formattedName,
-            produktGattung: raw.class,
-            operator: raw.operator,
-            isReplacementTrain: raw.tripType === 'e',
-            destination: destName,
-            destinationLang: destLang,
-            destinationKurz: destKurz,
-            destinationIbnr: destIbnr,
-            destinationCategory: destKategorie,
-            scheduledTime: scheduledTime,
-            expectedTime: expectedTime,
-            platform: planGleis,
-            ezGleis: echtzeitGleis,
-            ausfall: (rtNode && rtNode.cs === 'c'),
-            ankunft: isArrival,
-            stops: stops,
-            delayReason: delayReason,
-            qosMessages: qosMessages,
-            couplingGroupId: primaryNode.wings || null,
-            _effectiveTimeMs: effectiveTimeMs // Für internen Gebrauch (Autoplay Ticker)
-        };
+        return { planGleis, echtzeitGleis };
     }
 
     /**

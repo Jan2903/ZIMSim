@@ -25,6 +25,7 @@ class IrisPollingService {
         this.generator = new AnsagenGenerator();
         this._lastSimulatedHour = null;
         this.irisJourneysMap = new Map();
+        this._mappedCache = new Map();
         
         // Spam-Schutz Mechanismen
         this._debounceTimer = null;
@@ -113,6 +114,7 @@ class IrisPollingService {
                 const basePlan = await IrisApiService.loadBasePlan(eva, currentSimTime, signal);
                 if (isInitial) {
                     this.irisJourneysMap = basePlan || new Map();
+                    this._mappedCache.clear();
                 } else {
                     // Mergen des neuen Plans in die bestehende Map (alte Züge bleiben wg fchg erhalten)
                     for (const [id, raw] of (basePlan || new Map()).entries()) {
@@ -138,12 +140,10 @@ class IrisPollingService {
                 // Lazy loading of plans for delayed trains in fchg/rchg
                 await IrisApiService.loadMissingPlans(eva, realtimeXml, this.irisJourneysMap, currentSimTime, irisConfig.futureWindowHours, signal);
                 
-                // Keep track of old state for change announcements
+                // Keep track of old state for change announcements and performance
                 const oldHashes = new Map();
-                if (irisConfig.autoAnnouncements) {
-                    for (const [id, j] of this.irisJourneysMap.entries()) {
-                        oldHashes.set(id, this._hashJourney(j));
-                    }
+                for (const [id, j] of this.irisJourneysMap.entries()) {
+                    oldHashes.set(id, this._hashJourney(j));
                 }
                 
                 // Merge realtime (this mutates this.irisJourneysMap)
@@ -152,39 +152,42 @@ class IrisPollingService {
                 // Garbage Collection: Alte Züge löschen um Memory Leak zu vermeiden
                 this._cleanupOldJourneys(currentSimTime);
 
+                // Performance-Optimization: Only map journeys that have changed
+                const dirtyJourneysMap = new Map();
+                for (const [id, raw] of this.irisJourneysMap.entries()) {
+                    const newHash = this._hashJourney(raw);
+                    if (isInitial || newHash !== oldHashes.get(id)) {
+                        dirtyJourneysMap.set(id, raw);
+                    }
+                }
+
                 // Update display models über den neuen Mapper
-                const journeysData = IrisDataMapper.mapToZimsimFormat(
-                    this.irisJourneysMap, 
+                const dirtyJourneysData = IrisDataMapper.mapToZimsimFormat(
+                    dirtyJourneysMap, 
                     eva, 
                     currentSimTime,
                     irisConfig.futureWindowHours
                 );
-                
-                // Update journeyStore in-place to avoid destroying UI state
-                const activeIds = new Set(journeysData.map(d => `${d.journeyId}_${d.ankunft}`));
-                
-                // Remove outdated journeys
-                for (let i = journeyStore.journeys.length - 1; i >= 0; i--) {
-                    const j = journeyStore.journeys[i];
-                    if (!activeIds.has(`${j.journeyId}_${j.ankunft}`)) {
-                        journeyStore.removeJourney(j.id);
-                    }
+
+                for (const item of dirtyJourneysData) {
+                    this._mappedCache.set(`${item.journeyId}_${item.ankunft}`, item);
                 }
-                
-                // Add or update
-                for (const jData of journeysData) {
-                    let existing = journeyStore.journeys.find(j => j.journeyId === jData.journeyId && j.ankunft === jData.ankunft);
-                    if (existing) {
-                        // Update existing fields where relevant for realtime
-                        existing.expectedTime = jData.expectedTime;
-                        existing.ezGleis = jData.ezGleis;
-                        existing.delayReason = jData.delayReason;
-                        existing.ausfall = jData.ausfall;
-                        existing._effectiveTimeMs = jData._effectiveTimeMs;
+
+                // Sliding Window Check für alle Züge (auch ungeänderte)
+                const pastThreshold = currentSimTime.getTime() - (3 * 60 * 1000);
+                const futureThreshold = currentSimTime.getTime() + (irisConfig.futureWindowHours * 60 * 60 * 1000);
+                const allJourneysData = [];
+
+                for (const [key, item] of this._mappedCache.entries()) {
+                    if (item._effectiveTimeMs && (item._effectiveTimeMs < pastThreshold || item._effectiveTimeMs > futureThreshold)) {
+                        this._mappedCache.delete(key);
                     } else {
-                        journeyStore.addJourney(jData);
+                        allJourneysData.push(item);
                     }
                 }
+                
+                // Update journeyStore
+                journeyStore.upsertIrisJourneys(allJourneysData);
 
                 // Verknüpfe Ankünfte und Abfahrten (Durchfahrten/Wenden)
                 journeyStore.autoLinkJourneys();
@@ -297,7 +300,8 @@ class IrisPollingService {
     _hashJourney(j) {
         const ar = j.rt?.ar || {};
         const dp = j.rt?.dp || {};
-        return `${ar.ct || ''}_${ar.cp || ''}_${ar.cs || ''}_${dp.ct || ''}_${dp.cp || ''}_${dp.cs || ''}`;
+        const msgs = j.rt?.messages ? j.rt.messages.map(m => m.id || m.c).join(',') : '';
+        return `${ar.ct || ''}_${ar.cp || ''}_${ar.cs || ''}_${ar.cpth || ''}_${dp.ct || ''}_${dp.cp || ''}_${dp.cs || ''}_${dp.cpth || ''}_${msgs}`;
     }
 
     _checkForChanges(oldHashes) {
