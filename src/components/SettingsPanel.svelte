@@ -352,7 +352,7 @@
                             {/each}
                         </select>
                         <label>Länge (m): <input type="number" id="platform_length" class="short-input" bind:value={journeyStore.stationContext.platform.length} oninput={() => trainDisplay.updateAll()}></label>
-                        <label>Standort (m): <input type="number" id="platform_location" class="short-input" bind:value={journeyStore.stationContext.platform.location} oninput={() => trainDisplay.updateAll()}></label>
+                        <label>Standort (m): <input type="number" id="platform_location" class="short-input" bind:value={journeyStore.stationContext.platform.currentLocation} oninput={() => trainDisplay.updateAll()}></label>
                     </div>
                 </CollapsibleSection>
 

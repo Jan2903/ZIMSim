@@ -101,10 +101,6 @@ class IrisPollingService {
         const signal = this._abortController.signal;
         
         try {
-            if (isInitial) {
-                // Synchronisiere Serverzeit beim initialen Laden
-                await IrisApiService.fetchServerTime();
-            }
 
             // Check if hour changed or initial load, if so, load new base plan
             if (isInitial || currentSimTime.getHours() !== this._lastSimulatedHour) {

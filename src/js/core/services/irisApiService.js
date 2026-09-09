@@ -6,27 +6,6 @@ export class IrisApiService {
     // --- Rate Limiting & Queue ---
     static _queuePromise = Promise.resolve();
     static _minRequestInterval = 250; // 250ms Mindestabstand zwischen API Calls
-    static _serverTimeOffset = 0; // Offset in ms (Serverzeit - Clientzeit)
-
-    /**
-     * Ruft die Serverzeit der DB ab und berechnet den Offset zur lokalen Systemzeit.
-     */
-    static async fetchServerTime() {
-        try {
-            const res = await fetch('https://iris.noncd.db.de/irisWebclient/Configuration?serverTime=true');
-            if (res.ok) {
-                const serverDateTimeStr = res.headers.get('serverDateTime'); // "Thu, 26 Oct 2023 14:12:00 GMT"
-                const offsetStr = res.headers.get('offset'); // "7200000" (Zeitzonen-Offset in ms)
-                
-                if (serverDateTimeStr && offsetStr) {
-                    const serverTimeMs = new Date(serverDateTimeStr.replace('GMT', '')).getTime() + parseInt(offsetStr, 10);
-                    this._serverTimeOffset = serverTimeMs - Date.now();
-                }
-            }
-        } catch (e) {
-            console.error('[IrisApiService] Error fetching server time:', e);
-        }
-    }
 
     /**
      * Führt einen Netzwerk-Fetch aus, reiht ihn aber in eine Queue ein,
@@ -66,9 +45,8 @@ export class IrisApiService {
         const mm = parseInt(dateStr.slice(2, 4), 10) - 1;
         const dd = parseInt(dateStr.slice(4, 6), 10);
         const hh = parseInt(hourStr, 10);
-        
         const requestTime = new Date(yy, mm, dd, hh, 0, 0).getTime();
-        const now = Date.now() + this._serverTimeOffset;
+        const now = Date.now();
         const diffHours = (requestTime - now) / (1000 * 60 * 60);
         
         // Puffer: -12 Stunden bis +16 Stunden

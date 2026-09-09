@@ -57,7 +57,7 @@ export function drawSectors(ctx, sections, scaleFactor, startX = FORMATION.THRES
  *
  * @param {CanvasRenderingContext2D} ctx
  * @param {import('../../models/journey.js').Journey[]} journeys - Array von Fahrt-Daten (1+ bei Flügelzügen).
- * @param {import('../../features/station/platform.js').Platform} platform - Das Bahnsteig-Objekt.
+ * @param {import('../../features/station/platform.svelte.js').Platform} platform - Das Bahnsteig-Objekt.
  * @param {object} options
  * @param {boolean} options.fullScreen - Hauptmonitor (true) oder Nebenmonitor (false).
  * @param {string} options.activeFeature - 'wagennummern', 'ausstattung' oder 'klasse'.

@@ -77,7 +77,7 @@ export function calculateCoachPositions(journeys) {
  * Ermittelt die zutreffenden Sektoren für eine Liste von Wagen basierend auf deren Mitte.
  *
  * @param {Array} coaches - Array von Wagen-Objekten mit startM und endM.
- * @param {import('../models/platform.js').Platform} platform - Das Bahnsteig-Objekt.
+ * @param {import('../station/platform.svelte.js').Platform} platform - Das Bahnsteig-Objekt.
  * @returns {string} Die Sektoren als String (z.B. "A", "A-C" oder "").
  */
 export function getSectorsForCoaches(coaches, platform) {
