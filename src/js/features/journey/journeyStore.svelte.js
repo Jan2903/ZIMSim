@@ -1,8 +1,9 @@
 // js/models/journeyStore.svelte.js
 import { Journey } from './journey.svelte.js';
+import { Stop } from '../station/stop.svelte.js';
 import { ansagenStore } from '../../audio/ansagenStore.svelte.js';
 import { Formation } from '../formation/formationModel.js';
-import { Platform } from '../station/platform.js';
+import { Platform } from '../station/platform.svelte.js';
 import { FormationParser } from '../formation/formationParser.js';
 import { getMotForCategory, MOT_ALL_KEYS } from '../station/motManager.js';
 import { parseTrack, sectionsOverlap } from '../../core/utils/trackUtils.js';
@@ -132,9 +133,19 @@ export class JourneyStore {
                 if (existing._effectiveTimeMs !== jData._effectiveTimeMs) existing._effectiveTimeMs = jData._effectiveTimeMs;
                 
                 // Deep compare arrays to avoid Svelte reactivity spam
-                if (JSON.stringify(existing.stops) !== JSON.stringify(jData.stops)) {
-                    existing.stops = jData.stops;
+                const currentStopsStr = JSON.stringify(existing.stops.map(s => ({...s, id: ''})));
+                const newStopsStr = JSON.stringify(jData.stops.map(s => ({...s, id: ''})));
+                
+                if (currentStopsStr !== newStopsStr) {
+                    existing.stops = jData.stops.map(s => {
+                        const prevStop = existing.stops.find(old => old.name === s.name);
+                        const data = { ...s };
+                        if (prevStop) data.id = prevStop.id;
+                        else data.id = crypto.randomUUID();
+                        return new Stop(data);
+                    });
                 }
+                
                 if (JSON.stringify(existing.qosMessages) !== JSON.stringify(jData.qosMessages)) {
                     existing.qosMessages = jData.qosMessages;
                 }

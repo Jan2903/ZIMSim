@@ -1,4 +1,9 @@
 export class Platform {
+    name = $state('');
+    length = $state(400);
+    currentLocation = $state(100);
+    sections = $state([]);
+
     constructor(data = {}) {
         this.name = data.name || '';
         this.length = data.length || 400;
