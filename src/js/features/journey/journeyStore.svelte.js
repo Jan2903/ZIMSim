@@ -106,6 +106,45 @@ export class JourneyStore {
     }
 
     /**
+     * Aktualisiert den Store mit gemappten IRIS Daten.
+     * @param {Array} journeysData 
+     */
+    upsertIrisJourneys(journeysData) {
+        const activeIds = new Set(journeysData.map(d => `${d.journeyId}_${d.ankunft}`));
+        
+        // Remove outdated journeys
+        for (let i = this.journeys.length - 1; i >= 0; i--) {
+            const j = this.journeys[i];
+            if (!activeIds.has(`${j.journeyId}_${j.ankunft}`)) {
+                this.removeJourney(j.id);
+            }
+        }
+        
+        // Add or update
+        for (const jData of journeysData) {
+            let existing = this.journeys.find(j => j.journeyId === jData.journeyId && j.ankunft === jData.ankunft);
+            if (existing) {
+                // Update existing fields where relevant for realtime, avoiding unnecessary reactivity
+                if (existing.expectedTime !== jData.expectedTime) existing.expectedTime = jData.expectedTime;
+                if (existing.ezGleis !== jData.ezGleis) existing.ezGleis = jData.ezGleis;
+                if (existing.delayReason !== jData.delayReason) existing.delayReason = jData.delayReason;
+                if (existing.ausfall !== jData.ausfall) existing.ausfall = jData.ausfall;
+                if (existing._effectiveTimeMs !== jData._effectiveTimeMs) existing._effectiveTimeMs = jData._effectiveTimeMs;
+                
+                // Deep compare arrays to avoid Svelte reactivity spam
+                if (JSON.stringify(existing.stops) !== JSON.stringify(jData.stops)) {
+                    existing.stops = jData.stops;
+                }
+                if (JSON.stringify(existing.qosMessages) !== JSON.stringify(jData.qosMessages)) {
+                    existing.qosMessages = jData.qosMessages;
+                }
+            } else {
+                this.addJourney(jData);
+            }
+        }
+    }
+
+    /**
      * Sortiert alle Fahrten aufsteigend nach ihrer Abfahrts-/Ankunftszeit.
      * Nutzt bevorzugt Echtzeitdaten (_effectiveTimeMs).
      */
