@@ -3,13 +3,21 @@ import { config } from './config.js';
 import { journeyStore, trainDisplay } from '../state/stores.js';
 
 export const images = {};
-export const pictogramNames = ['wagen_fehlen', 'wagenreihung_fahrrad', 'wagenreihung_gastronomie', 'wagenreihung_bistro', 'wagenreihung_mehrzweck', 'wagenreihung_rollstuhl', 'wagenreihung_schlafwagen', 'wagenreihung_liegewagen'];
+export const pictogramFiles = {
+    'wagen_fehlen': 'png',
+    'wagenreihung_fahrrad': 'svg',
+    'wagenreihung_gastronomie': 'png',
+    'wagenreihung_bistro': 'png',
+    'wagenreihung_mehrzweck': 'png',
+    'wagenreihung_rollstuhl': 'png',
+    'wagenreihung_schlafwagen': 'svg',
+    'wagenreihung_liegewagen': 'svg'
+};
 
 export function preloadImages() {
-    const promises = pictogramNames.map(name => {
+    const promises = Object.entries(pictogramFiles).map(([name, ext]) => {
         return new Promise((resolve) => {
             images[name] = new Image();
-            let triedSvg = false;
             
             images[name].onload = () => {
                 images[name].isLoaded = true;
@@ -17,18 +25,12 @@ export function preloadImages() {
             };
             
             images[name].onerror = () => {
-                if (!triedSvg) {
-                    triedSvg = true;
-                    images[name].src = `images/icons/${name}.png`;
-                } else {
-                    console.warn(`Failed to load image: images/icons/${name} (.svg and .png)`);
-                    images[name].isBroken = true;
-                    resolve();
-                }
+                console.warn(`Failed to load image: images/icons/${name}.${ext}`);
+                images[name].isBroken = true;
+                resolve();
             };
 
-            // Start loading with SVG
-            images[name].src = `images/icons/${name}.svg`;
+            images[name].src = `images/icons/${name}.${ext}`;
         });
     });
     return Promise.all(promises);
