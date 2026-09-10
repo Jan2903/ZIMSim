@@ -1,19 +1,19 @@
 // js/models/journeyStore.svelte.js
 import { Journey } from './journey.svelte.js';
-import { Stop } from '../station/stop.svelte.js';
-import { ansagenStore } from '../../audio/ansagenStore.svelte.js';
-import { Formation } from '../formation/formationModel.js';
 import { Platform } from '../station/platform.svelte.js';
-import { FormationParser } from '../formation/formationParser.js';
-import { getMotForCategory, MOT_ALL_KEYS } from '../station/motManager.js';
-import { parseTrack, sectionsOverlap } from '../../core/utils/trackUtils.js';
-import { calculateCoachPositions, getSectorsForCoaches } from '../formation/formationUtils.js';
-import { formatDisplayName } from './trainNumberFormatter.js';
+import { MOT_ALL_KEYS } from '../station/motManager.js';
+import { JourneyReorderService } from './services/journeyReorderService.js';
+import { JourneyCouplingService } from './services/journeyCouplingService.js';
+import { JourneyLinkingService } from './services/journeyLinkingService.js';
+import { JourneyFilterService } from './services/journeyFilterService.js';
+import { DynamicTextService } from './services/dynamicTextService.js';
+import { JourneyImportService } from './services/journeyImportService.js';
+import { JourneyStorageService } from './services/journeyStorageService.js';
 
 /**
- * Zentrale Datenverwaltung — ersetzt das alte TrainData.
- * Verwaltet die dynamische Journey-Liste, Station-Kontext,
- * Display-Zuweisungen und Coupling.
+ * Zentrale Datenverwaltung (Façade & reaktiver Svelte 5 Store).
+ * Hält den reaktiven Zustand für Fahrten, Stationen, Gleise und Filter,
+ * und delegiert Fachlogik an spezialisierte Services.
  */
 export class JourneyStore {
     // Station-Kontext
@@ -45,6 +45,8 @@ export class JourneyStore {
 
     /**
      * Fügt eine neue benutzerdefinierte Station hinzu.
+     * @param {string} name
+     * @returns {object}
      */
     addCustomStation(name) {
         const id = 'custom-' + crypto.randomUUID().split('-')[0];
@@ -111,66 +113,24 @@ export class JourneyStore {
      * @param {Array} journeysData 
      */
     upsertIrisJourneys(journeysData) {
-        const activeIds = new Set(journeysData.map(d => `${d.journeyId}_${d.ankunft}`));
-        
-        // Remove outdated journeys
-        for (let i = this.journeys.length - 1; i >= 0; i--) {
-            const j = this.journeys[i];
-            if (!activeIds.has(`${j.journeyId}_${j.ankunft}`)) {
-                this.removeJourney(j.id);
-            }
-        }
-        
-        // Add or update
-        for (const jData of journeysData) {
-            let existing = this.journeys.find(j => j.journeyId === jData.journeyId && j.ankunft === jData.ankunft);
-            if (existing) {
-                // Update existing fields where relevant for realtime, avoiding unnecessary reactivity
-                if (existing.expectedTime !== jData.expectedTime) existing.expectedTime = jData.expectedTime;
-                if (existing.ezGleis !== jData.ezGleis) existing.ezGleis = jData.ezGleis;
-                if (existing.delayReason !== jData.delayReason) existing.delayReason = jData.delayReason;
-                if (existing.ausfall !== jData.ausfall) existing.ausfall = jData.ausfall;
-                if (existing._effectiveTimeMs !== jData._effectiveTimeMs) existing._effectiveTimeMs = jData._effectiveTimeMs;
-                
-                // Deep compare arrays to avoid Svelte reactivity spam
-                const currentStopsStr = JSON.stringify(existing.stops.map(s => ({...s, id: ''})));
-                const newStopsStr = JSON.stringify(jData.stops.map(s => ({...s, id: ''})));
-                
-                if (currentStopsStr !== newStopsStr) {
-                    existing.stops = jData.stops.map(s => {
-                        const prevStop = existing.stops.find(old => old.name === s.name);
-                        const data = { ...s };
-                        if (prevStop) data.id = prevStop.id;
-                        else data.id = crypto.randomUUID();
-                        return new Stop(data);
-                    });
-                }
-                
-                if (JSON.stringify(existing.qosMessages) !== JSON.stringify(jData.qosMessages)) {
-                    existing.qosMessages = jData.qosMessages;
-                }
-            } else {
-                this.addJourney(jData);
-            }
-        }
+        JourneyImportService.upsertIrisJourneys(
+            this.journeys,
+            journeysData,
+            (jData) => this.addJourney(jData),
+            (id) => this.removeJourney(id)
+        );
     }
+
+    // ==========================================
+    // Reordering & Sortierung
+    // ==========================================
 
     /**
      * Sortiert alle Fahrten aufsteigend nach ihrer Abfahrts-/Ankunftszeit.
      * Nutzt bevorzugt Echtzeitdaten (_effectiveTimeMs).
      */
     sortJourneys() {
-        this.journeys.sort((a, b) => {
-            const timeA = a._effectiveTimeMs || Infinity;
-            const timeB = b._effectiveTimeMs || Infinity;
-            
-            if (timeA === timeB) {
-                // Bei exakt gleicher Zeit (z.B. Flügelzüge) nach ID/Name sortieren, 
-                // um Flackern zu verhindern
-                return a.name.localeCompare(b.name);
-            }
-            return timeA - timeB;
-        });
+        JourneyReorderService.sortJourneys(this.journeys);
     }
 
     /**
@@ -179,22 +139,7 @@ export class JourneyStore {
      * @returns {{startIndex: number, endIndex: number}|null}
      */
     getJourneyBlockBounds(id) {
-        const journeyIdx = this.journeys.findIndex(j => j.id === id);
-        if (journeyIdx < 0) return null;
-
-        const journey = this.journeys[journeyIdx];
-        if (!journey.couplingGroupId) {
-            return { startIndex: journeyIdx, endIndex: journeyIdx };
-        }
-
-        const groupId = journey.couplingGroupId;
-        const startIndex = this.journeys.findIndex(j => j.couplingGroupId === groupId);
-        let endIndex = startIndex;
-        while (endIndex + 1 < this.journeys.length && this.journeys[endIndex + 1].couplingGroupId === groupId) {
-            endIndex++;
-        }
-        
-        return { startIndex, endIndex };
+        return JourneyReorderService.getBlockBounds(this.journeys, id);
     }
 
     /**
@@ -202,15 +147,7 @@ export class JourneyStore {
      * @param {string} id - Journey-ID aus dem Block
      */
     moveJourneyGroupUp(id) {
-        const bounds = this.getJourneyBlockBounds(id);
-        if (!bounds || bounds.startIndex === 0) return; // Schon ganz oben
-
-        const prevJourney = this.journeys[bounds.startIndex - 1];
-        const prevBounds = this.getJourneyBlockBounds(prevJourney.id);
-        
-        const blockLength = bounds.endIndex - bounds.startIndex + 1;
-        const block = this.journeys.splice(bounds.startIndex, blockLength);
-        this.journeys.splice(prevBounds.startIndex, 0, ...block);
+        return JourneyReorderService.moveGroupUp(this.journeys, id);
     }
 
     /**
@@ -218,17 +155,7 @@ export class JourneyStore {
      * @param {string} id - Journey-ID aus dem Block
      */
     moveJourneyGroupDown(id) {
-        const bounds = this.getJourneyBlockBounds(id);
-        if (!bounds || bounds.endIndex === this.journeys.length - 1) return; // Schon ganz unten
-
-        const nextJourney = this.journeys[bounds.endIndex + 1];
-        const nextBounds = this.getJourneyBlockBounds(nextJourney.id);
-
-        const blockLength = bounds.endIndex - bounds.startIndex + 1;
-        const block = this.journeys.splice(bounds.startIndex, blockLength);
-        
-        const newIndex = nextBounds.endIndex - blockLength + 1;
-        this.journeys.splice(newIndex, 0, ...block);
+        return JourneyReorderService.moveGroupDown(this.journeys, id);
     }
 
     /**
@@ -237,79 +164,47 @@ export class JourneyStore {
      * @param {number} targetIndex - Wo der Block eingefügt werden soll (vor der Entnahme berechnet!)
      */
     moveJourneyGroupToIndex(id, targetIndex) {
-        const bounds = this.getJourneyBlockBounds(id);
-        if (!bounds) return;
-
-        // Wenn der Target-Index innerhalb des eigenen Blocks liegt, tun wir nichts
-        if (targetIndex >= bounds.startIndex && targetIndex <= bounds.endIndex + 1) return;
-
-        const blockLength = bounds.endIndex - bounds.startIndex + 1;
-        
-        let adjustedTarget = targetIndex;
-        if (targetIndex > bounds.endIndex) {
-            adjustedTarget -= blockLength;
-        }
-
-        const block = this.journeys.splice(bounds.startIndex, blockLength);
-        this.journeys.splice(adjustedTarget, 0, ...block);
+        return JourneyReorderService.moveGroupToIndex(this.journeys, id, targetIndex);
     }
 
     // ==========================================
-    // Display-Zuweisung
+    // Display-Zuweisung & Filterung
     // ==========================================
 
     /**
+     * Prüft, ob eine Journey in der Listenansicht ausgeblendet werden soll.
+     * @param {object} journey
+     * @param {boolean} [hideLinkedArrivals=false]
+     * @param {boolean} [isExpanded=false]
+     * @returns {boolean}
+     */
+    isJourneyHidden(journey, hideLinkedArrivals = false, isExpanded = false) {
+        return JourneyFilterService.isJourneyHidden(
+            journey,
+            this.activeMots,
+            this.activeTracks,
+            this.journeys,
+            hideLinkedArrivals,
+            isExpanded
+        );
+    }
+
+    /**
      * Gibt alle sichtbaren Journeys zurück (visible === true und passendes Verkehrsmittel).
-     * @param {object} options - Filter-Optionen (z.B. { boardType: 'default' })
+     * @param {object} [options={ boardType: 'default' }] - Filter-Optionen
      * @returns {Journey[]}
      */
     getVisibleJourneys(options = { boardType: 'default' }) {
-        return this.journeys.filter(j => {
-            if (!j.visible) return false;
-            
-            // Check Verkehrsmittel Filter
-            const mot = getMotForCategory(j.category);
-            // Wenn kein MOT gefunden wird (z.B. Testdaten ohne Kategorie), 
-            // zeigen wir ihn trotzdem an, oder falls der MOT aktiv ist.
-            if (mot && !this.activeMots.includes(mot)) {
-                return false;
-            }
+        return JourneyFilterService.getVisible(this.journeys, this.activeMots, this.activeTracks, options);
+    }
 
-            // Check Gleis Filter
-            if (this.activeTracks.length > 0) {
-                const hasPlatform = j.platform && this.activeTracks.includes(j.platform.toString());
-                const hasEzGleis = j.ezGleis && this.activeTracks.includes(j.ezGleis.toString());
-                const hasNoTrackCondition = (!j.platform && !j.ezGleis && this.activeTracks.includes('Ohne Gleis'));
-                
-                if (!hasPlatform && !hasEzGleis && !hasNoTrackCondition) {
-                    return false;
-                }
-            }
-
-            // Layout-spezifische Filterung (Ankunft vs. Abfahrt)
-            const boardType = options.boardType;
-
-            if (boardType === 'departuresOnly') {
-                if (j.ankunft) return false;
-            } else if (boardType === 'arrivalsOnly') {
-                if (!j.ankunft) return false;
-            } else if (boardType === 'mixed') {
-                // Zeigt alles an (kein Filter nötig)
-            } else {
-                // 'default': Zeige Abfahrten + ungebundene Ankünfte. 
-                // Ankünfte, die mit einer Abfahrt verknüpft sind, sollen nicht separat auf dem Monitor erscheinen.
-                if (j.ankunft) {
-                    const isLinkedToDeparture = this.journeys.some(
-                        dep => !dep.ankunft && dep.linkedArrivalJourneyId === j.id
-                    );
-                    if (isLinkedToDeparture) {
-                        return false;
-                    }
-                }
-            }
-            
-            return true;
-        });
+    /**
+     * Gibt alle sichtbaren Journey-Gruppen zurück (gekoppelte Züge zusammengefasst).
+     * @param {object} [options={ boardType: 'default' }]
+     * @returns {Journey[][]}
+     */
+    getVisibleJourneyGroups(options = { boardType: 'default' }) {
+        return JourneyFilterService.getVisibleGroups(this.journeys, this.activeMots, this.activeTracks, options);
     }
 
     /**
@@ -317,80 +212,42 @@ export class JourneyStore {
      * Bei gekoppelten Journeys werden alle Journeys der Coupling-Gruppe zurückgegeben.
      *
      * @param {number} slot - 1=Hauptmonitor, 2=Neben1, 3=Neben2
-     * @param {object} options - Filter-Optionen
+     * @param {object} [options={ boardType: 'default' }] - Filter-Optionen
      * @returns {Journey[]} Array von Journeys (1 oder mehrere bei Coupling)
      */
     getJourneysForSlot(slot, options = { boardType: 'default' }) {
-        // 1. Zuerst: Manuell zugewiesene Journeys für diesen Slot
-        const manuallyAssigned = this.journeys.find(
-            j => j.visible && j.displaySlot === slot
-        );
-
-        if (manuallyAssigned) {
-            return this._expandCoupling(manuallyAssigned);
-        }
-
-        // 2. Fallback: Auto-Zuweisung
-        // Gekoppelte Journeys werden als eine Einheit gezählt
-        const visible = this.getVisibleJourneys(options);
-        const usedSlots = new Set(
-            visible.filter(j => j.displaySlot !== null).map(j => j.displaySlot)
-        );
-
-        // Sichtbare Journeys in Gruppen aufteilen (gekoppelte = eine Gruppe)
-        const groups = [];
-        const seenCouplings = new Set();
-        for (const j of visible) {
-            if (j.displaySlot !== null) continue; // Manuell zugewiesene überspringen
-            if (j.couplingGroupId) {
-                if (seenCouplings.has(j.couplingGroupId)) continue; // Bereits gezählt
-                seenCouplings.add(j.couplingGroupId);
-                groups.push(this._expandCoupling(j));
-            } else {
-                groups.push([j]);
-            }
-        }
-
-        // Zähle, welcher Auto-Index dieser Slot bekommt
-        let autoIndex = 0;
-        for (let s = 1; s <= slot; s++) {
-            if (!usedSlots.has(s)) autoIndex++;
-        }
-        autoIndex--; // 0-basiert
-
-        if (autoIndex >= 0 && autoIndex < groups.length) {
-            return groups[autoIndex];
-        }
-
-        return [];
+        return JourneyFilterService.getForSlot(this.journeys, this.activeMots, this.activeTracks, slot, options);
     }
 
     /**
      * Expandiert eine Journey zu ihrer Coupling-Gruppe.
-     * @private
+     * @param {object} journey
+     * @returns {Journey[]}
+     */
+    expandCoupling(journey) {
+        return JourneyCouplingService.expandCoupling(this.journeys, journey);
+    }
+
+    /**
+     * Rückwärtskompatibilität für ältere Renderer-Aufrufe.
+     * @deprecated Nutzen Sie expandCoupling()
      */
     _expandCoupling(journey) {
-        if (!journey.couplingGroupId) return [journey];
-        return this.journeys.filter(
-            j => j.couplingGroupId === journey.couplingGroupId
-        );
+        return this.expandCoupling(journey);
     }
 
     /**
      * Gibt die Journeys zurück, die für den rotierenden Monitor verfügbar sind.
      * Das sind sichtbare Journeys, die nicht auf Slot 1 oder 2 liegen.
-     * @param {object} options - Filter-Optionen
+     * @param {object} [options={ boardType: 'default' }] - Filter-Optionen
      * @returns {Journey[]}
      */
     getRotatingJourneys(options = { boardType: 'default' }) {
-        const slot1 = this.getJourneysForSlot(1, options).map(j => j.id);
-        const slot2 = this.getJourneysForSlot(2, options).map(j => j.id);
-        const fixed = new Set([...slot1, ...slot2]);
-        return this.getVisibleJourneys(options).filter(j => !fixed.has(j.id));
+        return JourneyFilterService.getRotating(this.journeys, this.activeMots, this.activeTracks, options);
     }
 
     // ==========================================
-    // Coupling
+    // Coupling (Flügelzüge)
     // ==========================================
 
     /**
@@ -399,14 +256,7 @@ export class JourneyStore {
      * @param {string} id2 - ID der zweiten Journey
      */
     coupleJourneys(id1, id2) {
-        const j1 = this.getJourney(id1);
-        const j2 = this.getJourney(id2);
-        if (!j1 || !j2) return;
-
-        // Bestehende Gruppen-ID übernehmen oder neue erstellen
-        const groupId = j1.couplingGroupId || j2.couplingGroupId || crypto.randomUUID();
-        j1.couplingGroupId = groupId;
-        j2.couplingGroupId = groupId;
+        return JourneyCouplingService.couple(this.journeys, id1, id2);
     }
 
     /**
@@ -414,17 +264,7 @@ export class JourneyStore {
      * @param {string} id
      */
     uncoupleJourney(id) {
-        const journey = this.getJourney(id);
-        if (!journey || !journey.couplingGroupId) return;
-
-        const groupId = journey.couplingGroupId;
-        journey.couplingGroupId = null;
-
-        // Wenn nur noch eine Journey in der Gruppe, Gruppe auflösen
-        const remaining = this.journeys.filter(j => j.couplingGroupId === groupId);
-        if (remaining.length === 1) {
-            remaining[0].couplingGroupId = null;
-        }
+        return JourneyCouplingService.uncouple(this.journeys, id);
     }
 
     /**
@@ -433,8 +273,7 @@ export class JourneyStore {
      * @returns {Journey[]}
      */
     getCouplingGroup(groupId) {
-        if (!groupId) return [];
-        return this.journeys.filter(j => j.couplingGroupId === groupId);
+        return JourneyCouplingService.getCouplingGroup(this.journeys, groupId);
     }
 
     // ==========================================
@@ -448,17 +287,7 @@ export class JourneyStore {
      * @returns {Journey|null} Die verknüpfte Journey oder null
      */
     getLinkedJourney(id) {
-        const journey = this.getJourney(id);
-        if (!journey) return null;
-
-        if (journey.ankunft) {
-            // Finde die Abfahrt, die auf diese Ankunft zeigt
-            return this.journeys.find(j => !j.ankunft && j.linkedArrivalJourneyId === id) || null;
-        } else {
-            // Finde die Ankunft, auf die diese Abfahrt zeigt
-            if (!journey.linkedArrivalJourneyId) return null;
-            return this.getJourney(journey.linkedArrivalJourneyId) || null;
-        }
+        return JourneyLinkingService.getLinkedJourney(this.journeys, id);
     }
 
     /**
@@ -469,39 +298,11 @@ export class JourneyStore {
      * @returns {boolean} true bei Erfolg
      */
     linkJourneys(id1, id2) {
-        const j1 = this.getJourney(id1);
-        const j2 = this.getJourney(id2);
-        if (!j1 || !j2) return false;
-
-        let arrival = null;
-        let departure = null;
-
-        if (j1.ankunft && !j2.ankunft) {
-            arrival = j1;
-            departure = j2;
-        } else if (!j1.ankunft && j2.ankunft) {
-            departure = j1;
-            arrival = j2;
-        } else {
-            console.warn("linkJourneys: Es muss genau eine Ankunft und eine Abfahrt verknüpft werden.");
-            return false;
+        const success = JourneyLinkingService.link(this.journeys, id1, id2);
+        if (success) {
+            this.syncDynamicTexts();
         }
-
-        // 1. Falls die Ankunft bereits mit einer anderen Abfahrt verknüpft war, diese auflösen
-        this.journeys.forEach(j => {
-            if (!j.ankunft && j.linkedArrivalJourneyId === arrival.id && j.id !== departure.id) {
-                j.linkedArrivalJourneyId = null;
-            }
-        });
-
-        // 2. Abfahrt mit der Ankunft verknüpfen
-        departure.linkedArrivalJourneyId = arrival.id;
-
-        // Sicherstellen, dass auf der Ankunft selbst kein verwaister linkedArrivalJourneyId liegt
-        arrival.linkedArrivalJourneyId = null;
-
-        this.syncDynamicTexts();
-        return true;
+        return success;
     }
 
     /**
@@ -509,20 +310,9 @@ export class JourneyStore {
      * @param {string} id - Journey-ID
      */
     unlinkJourney(id) {
-        const journey = this.getJourney(id);
-        if (!journey) return;
-
-        if (journey.ankunft) {
-            // Alle Abfahrten finden, die auf diese Ankunft verweisen, und entkoppeln
-            this.journeys.forEach(j => {
-                if (j.linkedArrivalJourneyId === id) {
-                    j.linkedArrivalJourneyId = null;
-                }
-            });
-        } else {
-            journey.linkedArrivalJourneyId = null;
-        }
+        const success = JourneyLinkingService.unlink(this.journeys, id);
         this.syncDynamicTexts();
+        return success;
     }
 
     /**
@@ -531,213 +321,30 @@ export class JourneyStore {
      * @param {string} id - Journey-ID
      */
     toggleJourneyMode(id) {
-        const journey = this.getJourney(id);
-        if (!journey) return;
-        this.unlinkJourney(id);
-        journey.ankunft = !journey.ankunft;
-    }
-
-    /**
-     * Berechnet die Differenz in Minuten von A bis B (berücksichtigt Tageswechsel).
-     * @private
-     */
-    _diffMinutes(timeA, timeB) {
-        const minA = this._timeToMinutes(timeA);
-        const minB = this._timeToMinutes(timeB);
-        if (minA === null || minB === null) return 0;
-        let diff = minB - minA;
-        if (diff < 0) diff += 24 * 60;
-        return diff;
+        const success = JourneyLinkingService.toggleMode(this.journeys, id);
+        this.syncDynamicTexts();
+        return success;
     }
 
     /**
      * Verknüpft automatisch Ankünfte mit Abfahrten (Wenden / Fahrzeugtausch / Durchfahrten).
-     * Basiert auf einem physikalischen Zeitstrahl (Gleisbelegungsplan), um Dritt-Belegungen
-     * und Echtzeit-Szenarien fehlerfrei zu erkennen.
+     * Basiert auf einem physikalischen Zeitstrahl (Gleisbelegungsplan).
      */
     autoLinkJourneys() {
-        // Phase 1: Reset aller heuristischen Verknüpfungen
-        this.journeys.forEach(j => {
-            if (!j.ankunft && j.linkedArrivalJourneyId) {
-                const arr = this.getJourney(j.linkedArrivalJourneyId);
-                // Wenn es keine exakte Durchfahrt ist (journeyId identisch), Link entfernen
-                if (!arr || !j.journeyId || !arr.journeyId || j.journeyId !== arr.journeyId) {
-                    j.linkedArrivalJourneyId = null;
-                }
-            }
-        });
-
-        const arrivals = this.journeys.filter(j => j.ankunft && !j.ausfall);
-        const departures = this.journeys.filter(j => !j.ankunft && !j.ausfall);
-        
-        // Echte Durchfahrten (gleiche journeyId) sicherstellen (falls neue Imports dazu kamen)
-        for (const dep of departures) {
-            if (dep.linkedArrivalJourneyId) continue;
-            if (dep.journeyId) {
-                const exactMatch = arrivals.find(a => a.journeyId === dep.journeyId);
-                if (exactMatch) {
-                    dep.linkedArrivalJourneyId = exactMatch.id;
-                }
-            }
-        }
-
-        const MAX_TURNAROUND = 180;
-
-        // Phase 2 & 3: Chronologischer Scan in die Zukunft für jede Ankunft
-        for (const A of arrivals) {
-            // Bereits durch API oder Durchfahrt fix verknüpft? (Wird sie von einer Abfahrt referenziert?)
-            const isAlreadyLinked = departures.some(d => d.linkedArrivalJourneyId === A.id);
-            if (isAlreadyLinked) continue;
-
-            const trackStrA = A.ezGleis || A.platform;
-            const baseA = parseTrack(trackStrA);
-            if (!baseA.base) continue;
-
-            // Finde alle Events auf demselben Basis-Gleis in den nächsten MAX_TURNAROUND Minuten
-            const futureEvents = [];
-            for (const T of this.journeys) {
-                if (T.id === A.id || T.ausfall) continue;
-                
-                const trackStrT = T.ezGleis || T.platform;
-
-                // Überschneiden sich die Gleise? Wenn nicht, stören sie sich physisch nicht
-                if (!sectionsOverlap(trackStrA, trackStrT)) continue;
-
-                const diff = this._diffMinutes(
-                    A.expectedTime || A.scheduledTime || '00:00', 
-                    T.expectedTime || T.scheduledTime || '00:00'
-                );
-                
-                if (diff >= 0 && diff <= MAX_TURNAROUND) {
-                    futureEvents.push({ journey: T, diff: diff });
-                }
-            }
-
-            // Sortiere chronologisch ausgehend von A
-            futureEvents.sort((a, b) => a.diff - b.diff);
-
-            // Scanne die Zukunft
-            let linkedAny = false;
-            let currentDiff = -1;
-
-            for (const event of futureEvents) {
-                const T = event.journey;
-                
-                // Wenn wir bereits Verknüpfungen gemacht haben (z.B. bei diff=63), 
-                // und das nächste Event hat eine größere Diff (z.B. diff=65), 
-                // dann war's das (wir lassen die Flügelzüge auf gleicher Minute zu).
-                if (linkedAny && event.diff > currentDiff) {
-                    break;
-                }
-
-                // Ist T eine passende, unverknüpfte Abfahrt?
-                if (!T.ankunft && !T.linkedArrivalJourneyId) {
-                    const operatorMatch = (!A.operator || !T.operator || A.operator === T.operator);
-                    
-                    const arrPlan = A.scheduledTime || '00:00';
-                    const depPlan = T.scheduledTime || '00:00';
-                    const diffPlan = this._diffMinutes(arrPlan, depPlan);
-                    
-                    // Wir akzeptieren die Wende, wenn Operator passt und die Plan-Wende <= 180 Min ist
-                    if (operatorMatch && diffPlan <= MAX_TURNAROUND) {
-                        // Treffer! Verknüpfen (strikte 1:1 Beziehung)
-                        T.linkedArrivalJourneyId = A.id;
-                        break;
-                    }
-                }
-
-                // Wenn T keine passende Abfahrt ist, blockiert es das Gleis!
-                // Z.B. ein Fremdzug, eine neue Ankunft, oder eine nicht-passende Abfahrt.
-                // Da sich die Abschnitte überschneiden, muss A das Gleis physisch geräumt haben.
-                break;
-            }
-        }
-
-        // Nach dem Heuristik-Scan: Dynamische Texte generieren/updaten
+        JourneyLinkingService.autoLink(this.journeys);
         this.syncDynamicTexts();
     }
+
+    // ==========================================
+    // Dynamische Texte
+    // ==========================================
 
     /**
      * Synchronisiert dynamisch generierte Infotexte (Ankunftstext, Zugteilung)
      * als verwaltbare Bausteine im infoTexts-Array der jeweiligen Journey.
      */
     syncDynamicTexts() {
-        for (const journey of this.journeys) {
-            const upsertText = (type, text) => {
-                const existing = journey.infoTexts.find(t => t.type === type);
-                if (text) {
-                    if (existing) {
-                        existing.text = text;
-                    } else {
-                        journey.infoTexts.unshift({
-                            id: crypto.randomUUID(),
-                            text: text,
-                            visible: true,
-                            type: type
-                        });
-                    }
-                } else if (existing) {
-                    journey.infoTexts = journey.infoTexts.filter(t => t.type !== type);
-                }
-            };
-
-            // 1. Ankunftstext
-            let arrivalText = "";
-            if (!journey.ankunft && journey.linkedArrivalJourneyId) {
-                const arrival = this.getJourney(journey.linkedArrivalJourneyId);
-                if (arrival) {
-                    arrivalText = journey.generateArrivalContextText(arrival);
-                }
-            }
-            upsertText('arrival-context', arrivalText);
-
-            // 2. Schwächungstext (Zugteil endet in...)
-            let strengtheningText = "";
-            if (!journey.ankunft && !journey.infoscreen && !journey.hasTrackChange && !journey.ausfall && journey.verkehrtAb === "0") {
-                const group = this._expandCoupling(journey);
-                const primaryDest = (journey.destination || "").trim();
-                const primaryDestLang = journey.destinationLang || journey.destination;
-                
-                if (group.length === 1 && journey.formation && journey.formation.groups && journey.formation.groups.length > 1) {
-                    const { allCoaches } = calculateCoachPositions(group);
-                    
-                    let texts = [];
-                    for (let i = 0; i < journey.formation.groups.length; i++) {
-                        const formationGroup = journey.formation.groups[i];
-                        const groupDest = (formationGroup.destination || "").trim();
-                        
-                        if (groupDest && groupDest !== primaryDest && groupDest !== primaryDestLang) {
-                            const nrwName = formatDisplayName(formationGroup.trainNumber || journey.name, true);
-                            const targetCoaches = allCoaches.filter(item => item.group === formationGroup);
-                            const sectors = getSectorsForCoaches(targetCoaches, this.platform);
-                            
-                            if (sectors) {
-                                const sectorParts = sectors.split('-');
-                                const firstSection = sectorParts[0];
-                                const lastSection = sectorParts.length > 1 ? sectorParts[1] : null;
-                                const deSectionText = lastSection ? `in den Abschnitten ${firstSection} bis ${lastSection}` : `im Abschnitt ${firstSection}`;
-                                const enSectionText = lastSection ? `in sections ${firstSection} to ${lastSection}` : `in section ${firstSection}`;
-                                texts.push(`Zugteil ${nrwName} ${deSectionText} endet in ${groupDest} +++ Train segment ${nrwName} ${enSectionText} ends in ${groupDest}`);
-                            } else {
-                                texts.push(`Zugteil ${nrwName} endet in ${groupDest} +++ Train segment ${nrwName} ends in ${groupDest}`);
-                            }
-                        }
-                    }
-                    if (texts.length > 0) {
-                        strengtheningText = texts.join(' +++ ');
-                    }
-                }
-            }
-            upsertText('strengthening', strengtheningText);
-        }
-    }
-
-    /** Helper: HH:MM zu Minuten seit Mitternacht */
-    _timeToMinutes(timeStr) {
-        if (!timeStr) return null;
-        const [h, m] = timeStr.split(':').map(Number);
-        if (isNaN(h) || isNaN(m)) return null;
-        return h * 60 + m;
+        DynamicTextService.sync(this.journeys, this.stationContext.platform);
     }
 
     // ==========================================
@@ -750,7 +357,9 @@ export class JourneyStore {
      * @returns {Journey[]} Die erstellten Journeys
      */
     importFromDepartureList(data) {
-        return this._importList(data, false);
+        const created = JourneyImportService.importList(data, false, this.journeys);
+        this.autoLinkJourneys();
+        return created;
     }
 
     /**
@@ -759,40 +368,8 @@ export class JourneyStore {
      * @returns {Journey[]} Die erstellten Journeys
      */
     importFromArrivalList(data) {
-        return this._importList(data, true);
-    }
-
-    _importList(data, isArrival) {
-        const entries = data.entries || [];
-        const created = [];
-
-        for (const entry of entries) {
-            const journey = Journey.fromDepartureEntry(entry, isArrival);
-            journey.ankunft = isArrival;
-            
-            // Audio-Vias für importierte IRIS Journeys generieren (Display Vias werden von der DB API geliefert)
-            if (!isArrival) {
-                journey.autoGenerateAudioVias(ansagenStore.maxVias, ansagenStore.viaSortMode);
-            }
-
-            // Duplikate vermeiden: Selbe HAFAS journeyId + selbe Ankunft/Abfahrt-Rolle
-            if (journey.journeyId) {
-                const isDuplicate = this.journeys.some(j => 
-                    j.journeyId === journey.journeyId && j.ankunft === isArrival
-                );
-                if (isDuplicate) continue;
-            }
-
-            this.journeys.push(journey);
-            created.push(journey);
-        }
-
-        // Auto-Coupling erkennen: Gleiche Zeit + Gleiches Gleis = Flügelzug
-        this._detectCouplings(created);
-        
-        // Auto-Link für mögliche Wenden & Durchfahrten
+        const created = JourneyImportService.importList(data, true, this.journeys);
         this.autoLinkJourneys();
-
         return created;
     }
 
@@ -804,67 +381,9 @@ export class JourneyStore {
      * @returns {Journey|Journey[]} Die erstellte(n) Journey(s)
      */
     importFromJourney(data) {
-        // Initial als eine Journey parsen, um zu prüfen
-        const journey = Journey.fromJourneyData(data, this.stationContext.stationId);
-        
-        let splitNeeded = false;
-        let aPlan, aEz, dPlan, dEz;
-
-        const idx = journey._currentStopIndex;
-        if (idx >= 0 && data.halte && data.halte[idx]) {
-            const haltData = data.halte[idx];
-            if (haltData.ankunft && haltData.abfahrt) {
-                aPlan = haltData.ankunft.gleis || '';
-                aEz = haltData.ankunft.ezGleis || '';
-                dPlan = haltData.abfahrt.gleis || '';
-                dEz = haltData.abfahrt.ezGleis || '';
-                
-                const arrGleis = aEz || aPlan;
-                const depGleis = dEz || dPlan;
-                
-                if (arrGleis && depGleis && arrGleis !== depGleis) {
-                    splitNeeded = true;
-                }
-            }
-        }
-
-        if (splitNeeded) {
-            // Wir splitten die Journey!
-            const arrJourney = Journey.fromJourneyData(data, this.stationContext.stationId);
-            const depJourney = Journey.fromJourneyData(data, this.stationContext.stationId);
-            
-            // 1. Reine Ankunft
-            arrJourney.id = crypto.randomUUID();
-            arrJourney.ankunft = true;
-            arrJourney.platform = aPlan;
-            arrJourney.ezGleis = aEz;
-            arrJourney.stops = arrJourney.stops.slice(0, idx + 1);
-            if (arrJourney.stops.length > 0) {
-                arrJourney.stops[arrJourney.stops.length - 1].departure = null;
-                arrJourney.destination = arrJourney.stops[0]?.name || '';
-            }
-
-            // 2. Reine Abfahrt
-            depJourney.id = crypto.randomUUID();
-            depJourney.ankunft = false;
-            depJourney.platform = dPlan;
-            depJourney.ezGleis = dEz;
-            depJourney.stops = depJourney.stops.slice(idx);
-            depJourney._currentStopIndex = 0;
-            if (depJourney.stops.length > 0) {
-                depJourney.stops[0].arrival = null;
-                depJourney.destination = depJourney.stops[depJourney.stops.length - 1]?.name || '';
-            }
-
-            this.journeys.push(arrJourney);
-            this.journeys.push(depJourney);
-            this.autoLinkJourneys();
-            return [arrJourney, depJourney];
-        }
-
-        this.journeys.push(journey);
+        const result = JourneyImportService.importJourney(data, this.stationContext.stationId, this.journeys);
         this.autoLinkJourneys();
-        return journey;
+        return result;
     }
 
     /**
@@ -876,50 +395,8 @@ export class JourneyStore {
         const journey = this.getJourney(journeyId);
         if (!journey) return;
         
-        const parsedData = FormationParser.parse(data);
-        journey.formation = new Formation(parsedData);
-        if (parsedData.uiDirection !== undefined) {
-            journey.direction = parsedData.uiDirection;
-        }
-
-        // Bahnsteigdaten speichern/aktualisieren, falls vorhanden
-        if (parsedData.platform && parsedData.platform.name) {
-            const platformName = parsedData.platform.name;
-            const newPlatform = new Platform(parsedData.platform);
-            
-            // Entweder es gibt den Bahnsteig noch nicht, oder der neue hat Sektoren (und der alte vllt nicht)
-            if (!this.platforms[platformName] || (newPlatform.sections && newPlatform.sections.length > 0)) {
-                this.platforms[platformName] = newPlatform;
-                
-                // Falls es der erste importierte Bahnsteig ist oder wir den aktuellen Bahnsteig aktualisieren, direkt anwenden
-                if (Object.keys(this.platforms).length === 1 || this.stationContext.platform.name === platformName) {
-                    this.stationContext.platform = newPlatform;
-                }
-            }
-        }
-        
-        // Nach Änderungen der Formation: Dynamische Texte updaten
+        JourneyImportService.importFormation(journey, data, this.platforms, this.stationContext);
         this.syncDynamicTexts();
-    }
-
-    /**
-     * Erkennt automatisch Flügelzüge: Gleiche Abfahrtszeit + gleiches Gleis.
-     * @private
-     */
-    _detectCouplings(journeys) {
-        const groups = {};
-        for (const j of journeys) {
-            const key = `${j.scheduledTime}_${j.platform}`;
-            if (!groups[key]) groups[key] = [];
-            groups[key].push(j);
-        }
-
-        for (const group of Object.values(groups)) {
-            if (group.length > 1) {
-                const groupId = crypto.randomUUID();
-                group.forEach(j => { j.couplingGroupId = groupId; });
-            }
-        }
     }
 
     // ==========================================
@@ -931,32 +408,11 @@ export class JourneyStore {
      * @returns {string[]} Sortierte Liste der Gleise
      */
     getAllTracks() {
-        const tracks = new Set();
-        let hasNoTrack = false;
-
-        for (const j of this.journeys) {
-            if (j.platform) tracks.add(j.platform.toString());
-            if (j.ezGleis) tracks.add(j.ezGleis.toString());
-            
-            if (!j.platform && !j.ezGleis) {
-                hasNoTrack = true;
-            }
-        }
-
-        const sortedTracks = Array.from(tracks).sort((a, b) => {
-            // Natürliche Sortierung (z.B. '2' vor '10')
-            return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
-        });
-
-        if (hasNoTrack) {
-            sortedTracks.push('Ohne Gleis');
-        }
-
-        return sortedTracks;
+        return JourneyFilterService.getAllTracks(this.journeys);
     }
 
     // ==========================================
-    // Export
+    // Export / Import
     // ==========================================
 
     /**
@@ -964,18 +420,7 @@ export class JourneyStore {
      * @returns {object}
      */
     exportAll() {
-        return {
-            stationContext: {
-                stationName: this.stationContext.stationName,
-                stationId: this.stationContext.stationId,
-                activePlatformName: this.stationContext.platform.name || 'default'
-            },
-            journeys: this.journeys,
-            nrwMode: this.nrwMode,
-            activeTracks: this.activeTracks,
-            platforms: this.platforms,
-            customStations: this.customStations
-        };
+        return JourneyStorageService.exportState(this);
     }
 
     /**
@@ -983,32 +428,7 @@ export class JourneyStore {
      * @param {object} data
      */
     importAll(data) {
-        this.nrwMode = data.nrwMode || false;
-        this.activeTracks = data.activeTracks || [];
-        this.customStations = data.customStations || [];
-
-        if (data.platforms) {
-            this.platforms = {};
-            for (const [key, platData] of Object.entries(data.platforms)) {
-                this.platforms[key] = new Platform(platData);
-            }
-        } else {
-            this.platforms = {};
-        }
-
-        if (data.stationContext) {
-            this.stationContext.stationName = data.stationContext.stationName || '';
-            this.stationContext.stationId = data.stationContext.stationId || '';
-            
-            const activeName = data.stationContext.activePlatformName;
-            if (activeName && this.platforms[activeName]) {
-                this.stationContext.platform = this.platforms[activeName];
-            } else {
-                this.stationContext.platform = new Platform();
-            }
-        }
-
-        this.journeys = (data.journeys || []).map(j => new Journey(j));
+        JourneyStorageService.importState(this, data);
     }
 
     // ==========================================
