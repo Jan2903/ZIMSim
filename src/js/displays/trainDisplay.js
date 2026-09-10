@@ -598,20 +598,6 @@ export class TrainDisplay {
      */
     _getVisibleJourneyGroups() {
         const options = { boardType: this.currentLayout.boardType || 'default' };
-        const visible = this.journeyStore.getVisibleJourneys(options);
-        const groups = [];
-        const seenCouplings = new Set();
-
-        for (const j of visible) {
-            if (j.couplingGroupId) {
-                if (seenCouplings.has(j.couplingGroupId)) continue;
-                seenCouplings.add(j.couplingGroupId);
-                groups.push(this.journeyStore._expandCoupling(j));
-            } else {
-                groups.push([j]);
-            }
-        }
-
-        return groups;
+        return this.journeyStore.getVisibleJourneyGroups(options);
     }
 }

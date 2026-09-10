@@ -1,10 +1,8 @@
 <script>
     import { uiState } from '../js/core/state/uiState.svelte.js';
     import { journeyStore, trainDisplay } from '../js/core/state/stores.js';
-    import { getMotForCategory } from '../js/features/station/motManager.js';
     import { formatDisplayName } from '../js/features/journey/trainNumberFormatter.js';
     import JourneyDetails from './JourneyDetails.svelte';
-    import { moveItemUp, moveItemDown } from '../js/core/utils/arrayUtils.js';
 
     let { journey = $bindable() } = $props();
 
@@ -24,40 +22,20 @@
     }
     
     function moveUp() {
-        const idx = journeyStore.journeys.indexOf(journey);
-        if (moveItemUp(journeyStore.journeys, idx)) {
+        if (journeyStore.moveJourneyGroupUp(journey.id)) {
             trainDisplay.updateAll();
         }
     }
     
     function moveDown() {
-        const idx = journeyStore.journeys.indexOf(journey);
-        if (moveItemDown(journeyStore.journeys, idx)) {
+        if (journeyStore.moveJourneyGroupDown(journey.id)) {
             trainDisplay.updateAll();
         }
     }
 
-    let isHidden = $derived.by(() => {
-        const mot = getMotForCategory(journey.produktGattung || journey.name);
-        if (mot && !journeyStore.activeMots.includes(mot)) return true;
-        
-        if (journeyStore.activeTracks.length > 0) {
-            const hasPlatform = journey.platform && journeyStore.activeTracks.includes(journey.platform.toString());
-            const hasEzGleis = journey.ezGleis && journeyStore.activeTracks.includes(journey.ezGleis.toString());
-            const hasNoTrackCondition = (!journey.platform && !journey.ezGleis && journeyStore.activeTracks.includes('Ohne Gleis'));
-            
-            if (!hasPlatform && !hasEzGleis && !hasNoTrackCondition) return true;
-        }
-
-        if (uiState.hideLinkedArrivals && journey.ankunft && !isExpanded) {
-            const linkedDep = journeyStore.journeys.find(j => !j.ankunft && j.linkedArrivalJourneyId === journey.id);
-            if (linkedDep && linkedDep.name === journey.name) {
-                return true;
-            }
-        }
-        
-        return false;
-    });
+    let isHidden = $derived(
+        journeyStore.isJourneyHidden(journey, uiState.hideLinkedArrivals, isExpanded)
+    );
 
     let couplingClass = $derived.by(() => {
         if (!journey.couplingGroupId) return '';
