@@ -289,7 +289,8 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
         for (let i = 0; i < drawableCoaches.length; i++) {
             const item = drawableCoaches[i];
             const { coachData, x, pixelLength, isFirstInGroup, isLastInGroup, destination, trainNumber } = item;
-            const drawableCoach = new Coach({ ...coachData, length: pixelLength });
+            const plain = (coachData && typeof coachData.toJSON === 'function') ? coachData.toJSON() : coachData;
+            const drawableCoach = new Coach({ ...plain, length: pixelLength });
 
             // Wagen-Shape zeichnen
             if (coachData.type === 'locomotive' && fullScreen) {
@@ -350,12 +351,17 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
         // Layout-basierte Features für Vollbild und Kompakt
         ctx.save();
         ctx.globalAlpha = featureAlpha;
-        const scaledCoaches = drawableCoaches.map(dc => ({
-            ...dc.coachData,
-            start: dc.x,
-            length: dc.pixelLength,
-            coach_type: mapCoachType(dc)
-        }));
+        const scaledCoaches = drawableCoaches.map(dc => {
+            const c = dc.coachData;
+            const plain = (c && typeof c.toJSON === 'function') ? c.toJSON() : c;
+            return {
+                ...plain,
+                amenities: (plain && plain.amenities) || [],
+                start: dc.x,
+                length: dc.pixelLength,
+                coach_type: mapCoachType(dc)
+            };
+        });
         
         if (fullScreen) {
             if (activeFeature === "klasse") drawFullscreenClassLabels(ctx, scaledCoaches, y);

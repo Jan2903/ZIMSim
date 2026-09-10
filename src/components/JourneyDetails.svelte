@@ -3,6 +3,7 @@
     import { uiState } from '../js/core/state/uiState.svelte.js';
     import InfoTextEditor from './InfoTextEditor.svelte';
     import StopEditor from './StopEditor.svelte';
+    import FormationEditor from './FormationEditor.svelte';
     import StationPicker from './StationPicker.svelte';
     import { portalDropdown } from '../js/core/utils/portal.js';
     import { RisTextService } from '../js/core/services/risTextService.js';
@@ -380,17 +381,7 @@
     </div>
     
     <div class="detail-section" style="margin-top: 25px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
-            <h4>Wagenreihung</h4>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <button class="btn-secondary">📥 Import</button>
-                <button class="btn-secondary">📤 Export</button>
-                <button class="btn-secondary" title="Dreht die Reihenfolge aller Gruppen und Wagen um">🔁 Komplett drehen</button>
-                <button class="btn-secondary">+ Neue Gruppe</button>
-            </div>
-        </div>
-        <!-- FormationEditor placeholder -->
-        <div style="color: #888; font-style: italic; padding: 10px; border: 1px dashed #555;">Wagenreihungs-Editor (coming soon)</div>
+        <FormationEditor bind:journey />
     </div>
 
     <div class="details-actions" style="margin-top: 20px; flex-wrap: wrap;">
@@ -416,9 +407,5 @@
 .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 900px) { .details-grid { grid-template-columns: 1fr; } }
 .detail-section h4 { margin: 0 0 8px 0; color: var(--text-muted); font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.05em; }
-.detail-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; align-items: center; }
-.detail-row label { display: flex; align-items: center; gap: 4px; font-size: 0.9em; color: var(--text-muted); }
-.detail-row input[type="text"], .detail-row input[type="number"] { background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 4px 8px; border-radius: 4px; font-family: inherit; font-size: 0.9em; }
-.detail-row .short-input { width: 70px; }
 .details-actions { display: flex; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
 </style>
