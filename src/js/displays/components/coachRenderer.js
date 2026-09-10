@@ -398,9 +398,11 @@ export function drawCompactAmenityIcons(ctx, scaledCoaches, y) {
     if (!scaledCoaches || scaledCoaches.length === 0) return;
     
     const arraysAreEqual = (a, b) => {
-        if (a.length !== b.length) return false;
-        const sortedA = [...a].sort();
-        const sortedB = [...b].sort();
+        const arrA = Array.isArray(a) ? a : [];
+        const arrB = Array.isArray(b) ? b : [];
+        if (arrA.length !== arrB.length) return false;
+        const sortedA = [...arrA].sort();
+        const sortedB = [...arrB].sort();
         return sortedA.every((val, index) => val === sortedB[index]);
     };
 
@@ -410,7 +412,7 @@ export function drawCompactAmenityIcons(ctx, scaledCoaches, y) {
         let currentGroup = [];
         
         const processGroup = (group) => {
-            if (group.length === 0 || group[0].amenities.length === 0) return;
+            if (group.length === 0 || !group[0].amenities || group[0].amenities.length === 0) return;
             const firstCoach = group[0];
             const lastCoach = group[group.length - 1];
             const center = (firstCoach.start + lastCoach.start + lastCoach.length) / 2;
@@ -433,10 +435,11 @@ export function drawCompactAmenityIcons(ctx, scaledCoaches, y) {
         };
 
         for (const coach of part) {
+            const coachAmenities = coach.amenities || [];
             if (coach.open === false) {
                 processGroup(currentGroup);
                 currentGroup = [];
-            } else if (currentGroup.length > 0 && arraysAreEqual(coach.amenities, currentGroup[0].amenities)) {
+            } else if (currentGroup.length > 0 && arraysAreEqual(coachAmenities, currentGroup[0].amenities || [])) {
                 currentGroup.push(coach);
             } else {
                 processGroup(currentGroup);
