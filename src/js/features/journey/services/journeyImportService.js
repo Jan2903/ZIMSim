@@ -5,11 +5,170 @@ import { Formation } from '../../formation/formationModel.js';
 import { FormationParser } from '../../formation/formationParser.js';
 import { ansagenStore } from '../../../audio/ansagenStore.svelte.js';
 import { JourneyCouplingService } from './journeyCouplingService.js';
+import { parseTrainName } from '../trainNumberFormatter.js';
+import { RisTextService } from '../../../core/services/risTextService.js';
+import { StationService } from '../../station/stationService.js';
 
 /**
  * Service für Daten-Import und Ingestion (HAFAS Abfahrtstafeln, Zugläufe, Wagenreihung und IRIS).
  */
 export class JourneyImportService {
+    /**
+     * Extrahiert Verspätungsgründe (RIS R-Presets) und Infotexte aus rohen Meldungen.
+     * @private
+     */
+    static _extractDelayReasonAndInfoTexts(rawMeldungen, checkAusfall = false) {
+        const infoTexts = [];
+        let delayReason = '';
+        let ausfall = false;
+        const rPresets = RisTextService.getPresetsByType('R');
+
+        rawMeldungen.forEach(m => {
+            if (checkAusfall && (m.type === 'HALT_AUSFALL' || m.text === 'Halt entfällt')) {
+                ausfall = true;
+                return;
+            }
+
+            if (rPresets.some(p => p.text === m.text)) {
+                if (!delayReason) delayReason = m.text;
+            } else {
+                infoTexts.push({
+                    id: crypto.randomUUID(),
+                    text: (m.text || '').replace(/^Information:\s*/i, '').trim(),
+                    visible: true,
+                    type: 'Q'
+                });
+            }
+        });
+
+        return { infoTexts, delayReason, ausfall };
+    }
+
+    /**
+     * Erstellt eine Journey aus einem DB-API Abfahrtstafel-Eintrag.
+     * @param {object} entry - Ein Eintrag aus dem entries[]-Array
+     * @param {boolean} [isArrival=false] - true, wenn der Eintrag von einer Ankunftstafel stammt
+     * @returns {Journey}
+     */
+    static fromDepartureEntry(entry, isArrival = false) {
+        const vm = entry.verkehrmittel || {};
+        const parsedName = parseTrainName(vm.name, vm.linienNummer, vm.langText);
+
+        const rawMeldungen = entry.meldungen || [];
+        const { infoTexts, delayReason, ausfall } = this._extractDelayReasonAndInfoTexts(rawMeldungen, true);
+
+        let viasArray = entry.vias || entry.zuglauf || entry.route || entry.ueber || [];
+        const fallbackDestination = viasArray.length > 0 ? viasArray[viasArray.length - 1] : '';
+        const finalDest = entry.terminus || fallbackDestination;
+
+        let destLang = finalDest;
+        let destKurz = finalDest;
+
+        if (StationService.isLoaded) {
+            const destStation = StationService.getStationByIdOrName(null, finalDest);
+            if (destStation) {
+                destLang = destStation.name;
+                destKurz = destStation.nameKurz;
+            }
+        }
+
+        // Ansatz A: Bei Abfahrten steht der aktuelle Bahnhof als erstes Element in den Vias.
+        // Das Ziel stand früher als letztes Element drin und wurde weggeschnitten.
+        // Wir behalten das Ziel nun als letzten "Halt" in der Liste, damit es als ausfallend markiert werden kann.
+        if (!isArrival && viasArray.length > 0) {
+            viasArray = viasArray.slice(1);
+        }
+
+        const journey = new Journey({
+            journeyId: entry.journeyId || '',
+            name: parsedName,
+            produktGattung: vm.produktGattung || '',
+            operator: vm.kurzText || '',
+            destination: finalDest,
+            destinationLang: destLang,
+            destinationKurz: destKurz,
+            scheduledTime: Stop.formatTime(entry.zeit),
+            expectedTime: Stop.formatTime(entry.ezZeit),
+            platform: entry.gleis || '',
+            ezGleis: entry.ezGleis || '',
+            ausfall: ausfall,
+            vias: viasArray,
+            messages: rawMeldungen.map(m => ({
+                priority: m.prioritaet,
+                text: m.text
+            })),
+            infoTexts: infoTexts,
+            delayReason: delayReason
+        });
+
+        // Wenn durch Migration Dummy-Stops aus den Vias erzeugt wurden, reichern wir sie an
+        journey.stops.forEach(s => s.enrichWithStationData());
+
+        return journey;
+    }
+
+    /**
+     * Erstellt eine Journey aus einem DB-API Journey/Zuglauf-Objekt.
+     * @param {object} data - Das Zuglauf-Objekt
+     * @param {string} [stationId] - Optionale Station-ID für Auto-Sync
+     * @returns {Journey}
+     */
+    static fromJourneyData(data, stationId) {
+        const vm = data.verkehrmittel || {};
+        const parsedName = parseTrainName(vm.name, vm.linienNummer, vm.langText);
+
+        const rawMeldungen = data.priorisierteMeldungen || [];
+        const { infoTexts, delayReason } = this._extractDelayReasonAndInfoTexts(rawMeldungen, false);
+
+        const journey = new Journey({
+            name: parsedName,
+            produktGattung: vm.produktGattung || '',
+            operator: vm.kurzText || '',
+            journeyId: data.journeyId || '',
+            destination: data.ziel || '',
+            scheduledTime: '', // Wird durch syncFromCurrentStop berechnet
+            expectedTime: '',  // Wird durch syncFromCurrentStop berechnet
+            platform: '',      // Wird durch syncFromCurrentStop berechnet
+            ezGleis: '',       // Wird durch syncFromCurrentStop berechnet
+            ausfall: data.cancelled || false,
+            zugattribute: data.zugattribute || [],
+            messages: rawMeldungen.map(m => ({
+                priority: m.prioritaet,
+                text: m.text
+            })),
+            infoTexts: infoTexts,
+            delayReason: delayReason,
+            stops: (data.halte || []).map(halt => new Stop({
+                name: halt.name,
+                extId: halt.extId,
+                departure: halt.abfahrt || null,
+                arrival: halt.ankunft || null,
+                platform: halt.gleis || '',
+                ezGleis: halt.ezGleis || '',
+                cancelled: halt.priorisierteMeldungen?.some(m => m.type === 'HALT_AUSFALL') || false,
+                category: halt.kategorie || '',
+                number: halt.nummer || '',
+                routeIndex: halt.routeIdx,
+                messages: halt.priorisierteMeldungen || [],
+                risNotizen: halt.risNotizen || []
+            }))
+        });
+
+        // Stationen anreichern
+        journey.stops.forEach(s => s.enrichWithStationData());
+
+        // Auto-Generate Vias für den importierten Zuglauf
+        journey.autoGenerateVias();
+        journey.autoGenerateAudioVias(ansagenStore.maxVias, ansagenStore.viaSortMode);
+
+        // Auto-sync wenn Station-ID bekannt
+        if (stationId) {
+            journey.syncFromCurrentStop(stationId);
+        }
+
+        return journey;
+    }
+
     /**
      * Importiert eine Liste von Abfahrten oder Ankünften aus einem DB-API JSON.
      * @param {object} data - { entries: [...] }
@@ -22,7 +181,7 @@ export class JourneyImportService {
         const created = [];
 
         for (const entry of entries) {
-            const journey = Journey.fromDepartureEntry(entry, isArrival);
+            const journey = this.fromDepartureEntry(entry, isArrival);
             journey.ankunft = isArrival;
             
             // Audio-Vias für importierte IRIS Journeys generieren (Display Vias werden von der DB API geliefert)
@@ -60,7 +219,7 @@ export class JourneyImportService {
      */
     static importJourney(data, stationId, journeys) {
         // Initial als eine Journey parsen, um Gleise am aktuellen Halt zu prüfen
-        const journey = Journey.fromJourneyData(data, stationId);
+        const journey = this.fromJourneyData(data, stationId);
         
         let splitNeeded = false;
         let aPlan, aEz, dPlan, dEz;
@@ -85,8 +244,8 @@ export class JourneyImportService {
 
         if (splitNeeded) {
             // Wir splitten die Journey in getrennte Ankunft und Abfahrt!
-            const arrJourney = Journey.fromJourneyData(data, stationId);
-            const depJourney = Journey.fromJourneyData(data, stationId);
+            const arrJourney = this.fromJourneyData(data, stationId);
+            const depJourney = this.fromJourneyData(data, stationId);
             
             // 1. Reine Ankunft
             arrJourney.id = crypto.randomUUID();

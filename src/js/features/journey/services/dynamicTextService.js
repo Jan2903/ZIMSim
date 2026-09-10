@@ -8,6 +8,64 @@ import { JourneyCouplingService } from './journeyCouplingService.js';
  */
 export class DynamicTextService {
     /**
+     * Generiert den Text "Ankunft [Zeit] (heute ca. [Zeit]) als [Linie] von [Start]".
+     * @param {object} departureJourney - Die ausgehende Abfahrt
+     * @param {object} arrivalJourney - Die verknüpfte Ankunfts-Fahrt
+     * @returns {string} Der generierte Präfix
+     */
+    static generateArrivalContextText(departureJourney, arrivalJourney) {
+        if (!arrivalJourney || !departureJourney) return '';
+
+        // Bei echten Durchfahrten (gleiche HAFAS journeyId) generieren wir keinen "Kommt aus..." Text
+        if (departureJourney.journeyId && arrivalJourney.journeyId && departureJourney.journeyId === arrivalJourney.journeyId) {
+            return '';
+        }
+
+        let text = `Ankunft ${arrivalJourney.scheduledTime}`;
+
+        // Verspätung berechnen & auf volle 5 Minuten abrunden
+        if (arrivalJourney.expectedTime && arrivalJourney.expectedTime !== arrivalJourney.scheduledTime) {
+            const planTimeStr = arrivalJourney.scheduledTime;
+            const expectedTimeStr = arrivalJourney.expectedTime;
+
+            const [pHe, pMe] = planTimeStr.split(':').map(Number);
+            const [eHe, eMe] = expectedTimeStr.split(':').map(Number);
+            if (!isNaN(pHe) && !isNaN(eHe)) {
+                let planMin = pHe * 60 + pMe;
+                let expMin = eHe * 60 + eMe;
+                // Tageswechsel-Handling (z.B. Plan 23:55, Erwartet 00:05)
+                if (expMin < planMin && planMin > 23 * 60) expMin += 24 * 60;
+
+                const delay = expMin - planMin;
+                if (delay >= 5) {
+                    const roundedDelay = Math.floor(delay / 5) * 5;
+                    const newExpMin = planMin + roundedDelay;
+                    const rH = Math.floor(newExpMin / 60) % 24;
+                    const rM = newExpMin % 60;
+                    const roundedExpectedTime = `${String(rH).padStart(2, '0')}:${String(rM).padStart(2, '0')}`;
+                    text += ` (heute ca. ${roundedExpectedTime})`;
+                }
+            }
+        }
+
+        // Liniennummer vergleichen (mittels formatDisplayName für NRW-Modus / Linienfilterung)
+        const arrivalLine = formatDisplayName(arrivalJourney.effectiveDisplayName, true);
+        const depLine = formatDisplayName(departureJourney.effectiveDisplayName, true);
+
+        if (arrivalLine && arrivalLine !== depLine) {
+            text += ` als ${arrivalLine}`;
+        }
+
+        // Herkunft (destination bei Ankunft ist "von")
+        const origin = arrivalJourney.destinationKurz || arrivalJourney.destination;
+        if (origin) {
+            text += ` von ${origin}`;
+        }
+
+        return text;
+    }
+
+    /**
      * Synchronisiert dynamisch generierte Infotexte (Ankunftstext, Zugteilung)
      * als verwaltbare Bausteine im infoTexts-Array der jeweiligen Journey.
      * @param {Array} journeys - Alle Journeys
@@ -38,7 +96,7 @@ export class DynamicTextService {
             if (!journey.ankunft && journey.linkedArrivalJourneyId) {
                 const arrival = journeys.find(j => j.id === journey.linkedArrivalJourneyId);
                 if (arrival) {
-                    arrivalText = journey.generateArrivalContextText(arrival);
+                    arrivalText = this.generateArrivalContextText(journey, arrival);
                 }
             }
             upsertText('arrival-context', arrivalText);
@@ -49,20 +107,20 @@ export class DynamicTextService {
                 const group = JourneyCouplingService.expandCoupling(journeys, journey);
                 const primaryDest = (journey.destination || "").trim();
                 const primaryDestLang = journey.destinationLang || journey.destination;
-                
+
                 if (group.length === 1 && journey.formation && journey.formation.groups && journey.formation.groups.length > 1) {
                     const { allCoaches } = calculateCoachPositions(group);
-                    
+
                     let texts = [];
                     for (let i = 0; i < journey.formation.groups.length; i++) {
                         const formationGroup = journey.formation.groups[i];
                         const groupDest = (formationGroup.destination || "").trim();
-                        
+
                         if (groupDest && groupDest !== primaryDest && groupDest !== primaryDestLang) {
                             const nrwName = formatDisplayName(formationGroup.trainNumber || journey.name, true);
                             const targetCoaches = allCoaches.filter(item => item.group === formationGroup);
                             const sectors = getSectorsForCoaches(targetCoaches, platform);
-                            
+
                             if (sectors) {
                                 const sectorParts = sectors.split('-');
                                 const firstSection = sectorParts[0];

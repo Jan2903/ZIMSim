@@ -231,3 +231,41 @@ export function drawTextInRectangle(ctx, text, x, y, font, textAlign, textHeight
         }
     }
 }
+
+let _measuringCtx = null;
+
+/**
+ * Berechnet, wie viele Zeilen ein gegebener Text bei einer maximalen Breite einnimmt.
+ * Nutzt einen gecachten Canvas-Kontext für optimale Performance ohne Garbage-Collection-Overhead.
+ * @param {string} text - Der zu messende Text
+ * @param {number} maxWidth - Maximale Breite in Pixeln
+ * @param {string} font - Font-Definition (z.B. FONTS.regular(75))
+ * @returns {number} Anzahl der Zeilen
+ */
+export function measureTextLines(text, maxWidth, font = 'normal 75px "Open Sans Condensed", sans-serif') {
+    if (!text) return 0;
+    if (typeof document === 'undefined') return 1;
+
+    if (!_measuringCtx) {
+        const canvas = document.createElement('canvas');
+        _measuringCtx = canvas.getContext('2d');
+    }
+
+    _measuringCtx.font = font;
+    const words = text.split(' ');
+    let lines = 1;
+    let currentLine = '';
+
+    for (let i = 0; i < words.length; i++) {
+        const testLine = currentLine + words[i] + ' ';
+        const testWidth = _measuringCtx.measureText(testLine).width;
+
+        if (testWidth > maxWidth && i > 0) {
+            lines++;
+            currentLine = words[i] + ' ';
+        } else {
+            currentLine = testLine;
+        }
+    }
+    return lines;
+}
