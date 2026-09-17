@@ -290,6 +290,20 @@ function getAmenityIconProps(amenities) {
     return { iconKey: null, size: 0 };
 }
 
+/**
+ * Zeichnet ein Ausstattungs-Icon zentriert an Position (finalX, y).
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} finalX - X-Position (Mitte des Icons)
+ * @param {number} y - COACH_Y_OFFSET
+ * @param {string} iconKey - Schlüssel in ICONS
+ * @param {number} size - Icon-Größe
+ */
+export function drawAmenityIcon(ctx, finalX, y, iconKey, size) {
+    drawInNormalizedBox(ctx, finalX - size / 2, y + 42 - size / 2, size, (context) => {
+        drawIcon(context, iconKey, COLORS.WHITE);
+    });
+}
+
 export function drawFullscreenAmenityIcons(ctx, scaledCoaches, y) {
     const parts = getTrainParts(scaledCoaches);
     for (const part of parts) {
@@ -302,13 +316,7 @@ export function drawFullscreenAmenityIcons(ctx, scaledCoaches, y) {
                 items.push({
                     x: coach.start + coach.length / 2,
                     width: size,
-                    drawFn: (finalX) => {
-                        ctx.fillStyle = COLORS.NAVY;
-                        // drawInNormalizedBox expects top-left x,y, so we adjust by size/2
-                        drawInNormalizedBox(ctx, finalX - size / 2, y + 42 - size / 2, size, (context) => {
-                            drawIcon(context, iconKey, COLORS.NAVY);
-                        });
-                    }
+                    drawFn: (finalX) => drawAmenityIcon(ctx, finalX, y, iconKey, size)
                 });
             }
         }
@@ -429,12 +437,7 @@ export function drawCompactAmenityIcons(ctx, scaledCoaches, y) {
                 items.push({
                     x: center,
                     width: size,
-                    drawFn: (finalX) => {
-                        ctx.fillStyle = COLORS.NAVY;
-                        drawInNormalizedBox(ctx, finalX - size / 2, y + 42 - size / 2, size, (context) => {
-                            drawIcon(context, iconKey, COLORS.NAVY);
-                        });
-                    }
+                    drawFn: (finalX) => drawAmenityIcon(ctx, finalX, y, iconKey, size)
                 });
             }
         };
