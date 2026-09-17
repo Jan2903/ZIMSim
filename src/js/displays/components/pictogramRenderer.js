@@ -45,7 +45,7 @@ const PICTOGRAM_RULES = [
             ctx.strokeStyle = COLORS.WHITE;
             ctx.strokeRect(2, 2, 96, 96);
             ctx.fillStyle = COLORS.WHITE;
-            ctx.font = "48px 'DB Screen Sans', sans-serif"; 
+            ctx.font = FONTS.regular(48);
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText("R", 50, 50);
@@ -59,6 +59,7 @@ const PICTOGRAM_RULES = [
             ctx.strokeRect(2, 2, 96, 96);
             
             ctx.save();
+            ctx.save();
             ctx.translate(50, 66);
             ctx.scale(0.40, 0.40);
             ctx.translate(-50, -50);
@@ -66,7 +67,7 @@ const PICTOGRAM_RULES = [
             ctx.restore();
 
             ctx.fillStyle = COLORS.WHITE;
-            ctx.font = "48px 'DB Screen Sans', sans-serif";
+            ctx.font = FONTS.regular(48);
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText("R", 75, 28);
@@ -78,11 +79,11 @@ const PICTOGRAM_RULES = [
             ctx.fillStyle = COLORS.WHITE;
             ctx.fillRect(0, 0, 100, 100);
             ctx.fillStyle = COLORS.NAVY;
-            ctx.font = "bold 68px 'DB Screen Sans', sans-serif";
+            ctx.font = FONTS.bold(68);
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText("H", 30, 60);
-            ctx.font = "bold 64px 'DB Screen Sans', sans-serif";
+            ctx.font = FONTS.bold(64);
             ctx.fillText("+", 65, 48);
         }
     },
@@ -92,11 +93,11 @@ const PICTOGRAM_RULES = [
             ctx.fillStyle = COLORS.WHITE;
             ctx.fillRect(0, 0, 100, 100);
             ctx.fillStyle = COLORS.NAVY;
-            ctx.font = "bold 68px 'DB Screen Sans', sans-serif";
+            ctx.font = FONTS.bold(68);
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText("H", 30, 60);
-            ctx.font = "bold 64px 'DB Screen Sans', sans-serif";
+            ctx.font = FONTS.bold(64);
             ctx.fillText("-", 60, 36);
         }
     },
@@ -143,7 +144,7 @@ const PICTOGRAM_RULES = [
             ctx.restore();
 
             ctx.fillStyle = COLORS.NAVY;
-            ctx.font = "48px 'DB Screen Sans', sans-serif";
+            ctx.font = FONTS.regular(48);
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText("WC", 66, 75);
@@ -169,7 +170,7 @@ const PICTOGRAM_RULES = [
             ctx.restore();
 
             ctx.fillStyle = COLORS.NAVY;
-            ctx.font = "bold 56px 'DB Screen Sans', sans-serif";
+            ctx.font = FONTS.bold(56);
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText("!", 80, 36);
@@ -189,7 +190,7 @@ const PICTOGRAM_RULES = [
             ctx.restore();
 
             ctx.fillStyle = COLORS.NAVY;
-            ctx.font = "bold 56px 'DB Screen Sans', sans-serif";
+            ctx.font = FONTS.bold(56);
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText("!", 80, 36);
@@ -209,7 +210,7 @@ const PICTOGRAM_RULES = [
             ctx.restore();
 
             ctx.fillStyle = COLORS.NAVY;
-            ctx.font = "bold 56px 'DB Screen Sans', sans-serif";
+            ctx.font = FONTS.bold(56);
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText("!", 80, 36);

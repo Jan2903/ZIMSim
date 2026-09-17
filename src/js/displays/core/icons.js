@@ -35,18 +35,39 @@ export const ICONS = {
         { d: "M24 14.5a1 1 0 0 1 1 1V22h-1.001L24 23a.25.25 0 0 1-.25.25h-3.5A.25.25 0 0 1 20 23l-.001-1h-8L12 23a.25.25 0 0 1-.25.25h-3.5A.25.25 0 0 1 8 23l-.001-1H7v-6.5a1 1 0 0 1 1-1zM22.75 16H9.25a.25.25 0 0 0-.25.25v2.5c0 .138.112.25.25.25h13.5a.25.25 0 0 0 .25-.25v-2.5a.25.25 0 0 0-.25-.25m2.5-5.5H18V8.75h7.25z", fill: "currentColor" }
     ]),
 
-    // 100x100 Platzhalter (wurden manuell auf 100x100 gebaut)
-    rollstuhl: createIcon(100, [
-        { d: "M 35 55 A 25 25 0 1 0 35 100 A 25 25 0 1 0 35 55 Z M 35 55 L 65 55 L 65 85 M 65 55 L 65 40 L 45 40 L 45 25 M 55 15 A 10 10 0 1 0 55 35 A 10 10 0 1 0 55 15 Z", fill: "currentColor" }
+    rollstuhl: createIcon(24, [
+        { d: "M 12 2 a 2 2 0 1 0 0.001 0 Z M 19 13 v -2 c -1.54 0.02 -3.09 -0.75 -4.07 -1.83 l -1.29 -1.43 c -0.17 -0.19 -0.38 -0.34 -0.61 -0.45 c -0.01 0 -0.01 -0.01 -0.02 -0.01 H 13 c -0.35 -0.2 -0.75 -0.3 -1.19 -0.26 C 10.76 7.11 10 8.04 10 9.09 V 15 c 0 1.1 0.9 2 2 2 h 5 v 5 h 2 v -5.5 c 0 -1.1 -0.9 -2 -2 -2 h -3 v -3.45 c 1.29 1.07 3.25 1.94 5 1.95 z m -6.17 5 c -0.41 1.16 -1.52 2 -2.83 2 c -1.66 0 -3 -1.34 -3 -3 c 0 -1.31 0.84 -2.41 2 -2.83 V 12.1 c -2.28 0.46 -4 2.48 -4 4.9 c 0 2.76 2.24 5 5 5 c 2.42 0 4.44 -1.72 4.9 -4 h -2.07 z", fill: "currentColor" }
     ]),
-    mehrzweck: createIcon(100, [
-        { d: "M 20 35 L 80 35 L 80 85 L 20 85 Z M 35 35 L 35 20 L 65 20 L 65 35 L 55 35 L 55 25 L 45 25 L 45 35 Z", fill: "currentColor" }
-    ]),
+    mehrzweck: {
+        draw: (ctx, tintColor) => {
+            // Fahrrad links (50x50 skaliert auf linke Hälfte)
+            ctx.save();
+            ctx.translate(0, 24);
+            ctx.scale(0.5, 0.5);
+            drawIcon(ctx, 'fahrrad', tintColor);
+            ctx.restore();
+
+            // Rollstuhl rechts (50x50 skaliert auf rechte Hälfte)
+            ctx.save();
+            ctx.translate(50, 24);
+            ctx.scale(0.5, 0.5);
+            drawIcon(ctx, 'rollstuhl', tintColor);
+            ctx.restore();
+        }
+    },
     schlafwagen: createIcon(100, [
-        { d: "M 10 70 L 90 70 L 90 85 L 80 85 L 80 75 L 20 75 L 20 85 L 10 85 Z M 10 70 L 10 30 L 20 30 L 20 70 Z M 90 70 L 90 50 L 50 50 L 50 70 Z M 25 65 A 12 12 0 1 0 25 41 A 12 12 0 1 0 25 65 Z", fill: "currentColor" }
+        // Bett (Matratze mit Kopf- und Fußteil)
+        { d: "M 10 34 V 66 H 18 V 57 H 82 V 66 H 90 V 34 H 82 V 49 H 18 V 34 Z", fill: "currentColor" },
+        // Kopfkissen (links)
+        { d: "M 21 46 V 31 H 27 C 33 31, 36 38, 36 46 Z", fill: "currentColor" },
+        // Decke / Person (rechts)
+        { d: "M 39 46 V 31 H 68 C 75 31, 79 38, 79 46 Z", fill: "currentColor" }
     ]),
     liegewagen: createIcon(100, [
-        { d: "M 10 70 L 90 70 L 90 85 L 80 85 L 80 75 L 20 75 L 20 85 L 10 85 Z M 10 70 L 10 40 L 20 40 L 20 70 Z M 90 70 L 90 55 L 50 55 L 50 70 Z M 25 65 A 10 10 0 1 0 25 45 A 10 10 0 1 0 25 65 Z", fill: "currentColor" }
+        // Kopfkissen
+        { d: "M 10 33 H 22 C 30 33, 35 38, 35 48 H 10 Z", fill: "currentColor" },
+        // Bett (Matratze und Beine)
+        { d: "M 10 51 H 90 V 68 H 82 V 59 H 18 V 68 H 10 Z", fill: "currentColor" }
     ])
 };
 
@@ -64,14 +85,18 @@ export function drawIcon(ctx, iconKey, tintColor) {
     if (!icon) return;
     
     ctx.save();
-    // Skaliere die native ViewBox auf 100x100.
-    // Ein Icon mit viewBox 24 wird hier um den Faktor 100/24 (ca 4.16x) vergrößert.
-    const scale = 100 / icon.viewBox;
-    ctx.scale(scale, scale);
-    
-    for (const el of icon.elements) {
-        ctx.fillStyle = el.fill === "currentColor" ? tintColor : el.fill;
-        ctx.fill(el.path);
+    if (typeof icon.draw === 'function') {
+        icon.draw(ctx, tintColor);
+    } else {
+        // Skaliere die native ViewBox auf 100x100.
+        // Ein Icon mit viewBox 24 wird hier um den Faktor 100/24 (ca 4.16x) vergrößert.
+        const scale = 100 / icon.viewBox;
+        ctx.scale(scale, scale);
+        
+        for (const el of icon.elements) {
+            ctx.fillStyle = el.fill === "currentColor" ? tintColor : el.fill;
+            ctx.fill(el.path);
+        }
     }
     
     ctx.restore();
