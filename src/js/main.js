@@ -1,6 +1,6 @@
 // js/main.js
 import { journeyStore, trainDisplay } from './core/state/stores.js';
-import { preloadImages } from './core/utils/utils.js';
+
 import { StationService } from './features/station/stationService.js';
 import { RisTextService } from './core/services/risTextService.js';
 
@@ -124,10 +124,8 @@ document.addEventListener('DOMContentLoaded', () => {
     StationService.loadStations(); // Asynchrones Laden im Hintergrund starten
     RisTextService.load(); // Lade RIS-Texte
     
-    preloadImages().then(() => {
-        document.fonts.ready.then(() => {
-            trainDisplay.updateAll();
-        });
+    document.fonts.ready.then(() => {
+        trainDisplay.updateAll();
     });
 
     mount(App, {

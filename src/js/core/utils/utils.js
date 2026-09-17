@@ -2,39 +2,7 @@
 import { config } from './config.js';
 import { journeyStore, trainDisplay } from '../state/stores.js';
 
-export const images = {};
-export const pictogramFiles = {
-    'wagen_fehlen': 'png',
-    'wagenreihung_fahrrad': 'svg',
-    'wagenreihung_gastronomie': 'png',
-    'wagenreihung_bistro': 'png',
-    'wagenreihung_mehrzweck': 'png',
-    'wagenreihung_rollstuhl': 'png',
-    'wagenreihung_schlafwagen': 'svg',
-    'wagenreihung_liegewagen': 'svg'
-};
 
-export function preloadImages() {
-    const promises = Object.entries(pictogramFiles).map(([name, ext]) => {
-        return new Promise((resolve) => {
-            images[name] = new Image();
-            
-            images[name].onload = () => {
-                images[name].isLoaded = true;
-                resolve();
-            };
-            
-            images[name].onerror = () => {
-                console.warn(`Failed to load image: images/icons/${name}.${ext}`);
-                images[name].isBroken = true;
-                resolve();
-            };
-
-            images[name].src = `images/icons/${name}.${ext}`;
-        });
-    });
-    return Promise.all(promises);
-}
 
 /**
  * Startet die Rotation für den rotierenden Monitor (Slot 3).

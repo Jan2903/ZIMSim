@@ -1,6 +1,7 @@
 // js/displays/coachRenderer.js
 import { COLORS, FONTS, FORMATION, COUPLING } from '../core/constants.js';
-import { images } from '../../core/utils/utils.js';
+import { ICONS, drawIcon } from '../core/icons.js';
+import { drawInNormalizedBox } from './pictogramRenderer.js';
 
 /**
  * Berechnet die sichere x-Koordinate für ein Feature.
@@ -273,17 +274,20 @@ export function drawFullscreenClassLabels(ctx, scaledCoaches, y) {
 }
 
 function getAmenityIconProps(amenities) {
-    if (!amenities) return { imgKey: null, scale: 1 };
+    if (!amenities) return { iconKey: null, size: 0 };
     
-    if (amenities.includes('BOARD_RESTAURANT') || amenities.includes('DINING')) return { imgKey: 'wagenreihung_gastronomie', scale: 0.32 };
-    if (amenities.includes('BISTRO')) return { imgKey: 'wagenreihung_bistro', scale: 0.32 };
-    if (amenities.includes('SLEEPER')) return { imgKey: 'wagenreihung_schlafwagen', scale: 0.08 };
-    if (amenities.includes('COUCHETTE')) return { imgKey: 'wagenreihung_liegewagen', scale: 0.08 };
-    if ((amenities.includes('BIKE_SPACE') || amenities.includes('ZONE_MULTI_PURPOSE')) && amenities.includes('WHEELCHAIR_SPACE')) return { imgKey: 'wagenreihung_mehrzweck', scale: 0.28 };
-    if (amenities.includes('BIKE_SPACE')) return { imgKey: 'wagenreihung_fahrrad', scale: 0.06 };
-    if (amenities.includes('WHEELCHAIR_SPACE') || amenities.includes('TOILET_WHEELCHAIR')) return { imgKey: 'wagenreihung_rollstuhl', scale: 0.24 };
+    // Wir setzen eine Basisgröße von 60px für alle Icons im 100x100 Format
+    const defaultSize = 60;
     
-    return { imgKey: null, scale: 1 };
+    if (amenities.includes('BOARD_RESTAURANT') || amenities.includes('DINING')) return { iconKey: 'gastronomie', size: defaultSize };
+    if (amenities.includes('BISTRO')) return { iconKey: 'bistro', size: defaultSize };
+    if (amenities.includes('SLEEPER')) return { iconKey: 'schlafwagen', size: defaultSize };
+    if (amenities.includes('COUCHETTE')) return { iconKey: 'liegewagen', size: defaultSize };
+    if ((amenities.includes('BIKE_SPACE') || amenities.includes('ZONE_MULTI_PURPOSE')) && amenities.includes('WHEELCHAIR_SPACE')) return { iconKey: 'mehrzweck', size: defaultSize };
+    if (amenities.includes('BIKE_SPACE')) return { iconKey: 'fahrrad', size: defaultSize };
+    if (amenities.includes('WHEELCHAIR_SPACE') || amenities.includes('TOILET_WHEELCHAIR')) return { iconKey: 'rollstuhl', size: defaultSize };
+    
+    return { iconKey: null, size: 0 };
 }
 
 export function drawFullscreenAmenityIcons(ctx, scaledCoaches, y) {
@@ -292,17 +296,18 @@ export function drawFullscreenAmenityIcons(ctx, scaledCoaches, y) {
         const items = [];
         for (const coach of part) {
             if (!coach.open) continue;
-            const { imgKey, scale } = getAmenityIconProps(coach.amenities);
+            const { iconKey, size } = getAmenityIconProps(coach.amenities);
             
-            const img = imgKey ? images[imgKey] : null;
-            if (img && img.isLoaded && !img.isBroken) {
+            if (iconKey && ICONS[iconKey]) {
                 items.push({
                     x: coach.start + coach.length / 2,
-                    width: img.width * scale,
+                    width: size,
                     drawFn: (finalX) => {
-                        try {
-                            ctx.drawImage(img, finalX - (img.width * scale / 2), y + 42 - (img.height * scale / 2), img.width * scale, img.height * scale);
-                        } catch (err) {}
+                        ctx.fillStyle = COLORS.NAVY;
+                        // drawInNormalizedBox expects top-left x,y, so we adjust by size/2
+                        drawInNormalizedBox(ctx, finalX - size / 2, y + 42 - size / 2, size, (context) => {
+                            drawIcon(context, iconKey, COLORS.NAVY);
+                        });
                     }
                 });
             }
@@ -418,17 +423,17 @@ export function drawCompactAmenityIcons(ctx, scaledCoaches, y) {
             const center = (firstCoach.start + lastCoach.start + lastCoach.length) / 2;
             const amenities = firstCoach.amenities;
             
-            const { imgKey, scale } = getAmenityIconProps(amenities);
+            const { iconKey, size } = getAmenityIconProps(amenities);
             
-            const img = imgKey ? images[imgKey] : null;
-            if (img && img.isLoaded && !img.isBroken) {
+            if (iconKey && ICONS[iconKey]) {
                 items.push({
                     x: center,
-                    width: img.width * scale,
+                    width: size,
                     drawFn: (finalX) => {
-                        try {
-                            ctx.drawImage(img, finalX - (img.width * scale / 2), y + 42 - (img.height * scale / 2), img.width * scale, img.height * scale);
-                        } catch (err) {}
+                        ctx.fillStyle = COLORS.NAVY;
+                        drawInNormalizedBox(ctx, finalX - size / 2, y + 42 - size / 2, size, (context) => {
+                            drawIcon(context, iconKey, COLORS.NAVY);
+                        });
                     }
                 });
             }
