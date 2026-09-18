@@ -26,6 +26,14 @@ export function drawInNormalizedBox(ctx, x, y, size, drawFn) {
  */
 const PICTOGRAM_RULES = [
     {
+        match: (info) => info.includes("Ersatzverkehr mit Bus ist eingerichtet") || info.includes("Ersatzverkehr"),
+        draw: (ctx) => {
+            ctx.fillStyle = COLORS.WHITE;
+            ctx.fillRect(0, 0, 100, 100);
+            drawIcon(ctx, 'ersatzverkehr');
+        }
+    },
+    {
         match: (info) => info.includes("Zug fällt heute aus") || info.includes("Keine Weiterfahrt nach"),
         draw: (ctx) => {
             ctx.fillStyle = COLORS.WHITE;
