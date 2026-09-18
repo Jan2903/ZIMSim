@@ -179,28 +179,28 @@
             <!-- Zeit & Gleis in einer Box zusammengefasst -->
             <div class="settings-box form-row-responsive align-stretch" style="margin-bottom: 20px;">
                 <!-- Zeit Block -->
-                <div class="form-group" style="flex-direction: row; gap: 10px; flex-wrap: wrap;">
-                    <div class="form-group">
+                <div class="form-group" style="flex-direction: row; gap: 10px; flex-wrap: nowrap; flex: 1 1 160px; min-width: 0;">
+                    <div class="form-group" style="min-width: 0;">
                         <span class="form-group-label center">Zeit (Plan)</span>
-                        <input type="text" class="jfield" bind:value={journey.scheduledTime} oninput={triggerUpdate} placeholder="z.B. 14:30" style="width: 100%; text-align: center;">
+                        <input type="text" class="jfield" bind:value={journey.scheduledTime} oninput={triggerUpdate} placeholder="z.B. 14:30" style="width: 100%; min-width: 0; text-align: center;">
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" style="min-width: 0;">
                         <span class="form-group-label center">Echtzeit</span>
-                        <input type="text" class="jfield" bind:value={journey.expectedTime} oninput={triggerUpdate} placeholder="optional" style="width: 100%; text-align: center; color: var(--error-color, #ff6b6b); font-weight: bold;">
+                        <input type="text" class="jfield" bind:value={journey.expectedTime} oninput={triggerUpdate} placeholder="optional" style="width: 100%; min-width: 0; text-align: center; color: var(--error-color, #ff6b6b); font-weight: bold;">
                     </div>
                 </div>
                 
                 <div class="settings-divider"></div>
                 
                 <!-- Gleis Block -->
-                <div class="form-group" style="flex-direction: row; gap: 10px; flex-wrap: wrap;">
-                    <div class="form-group">
+                <div class="form-group" style="flex-direction: row; gap: 10px; flex-wrap: nowrap; flex: 1 1 160px; min-width: 0;">
+                    <div class="form-group" style="min-width: 0;">
                         <span class="form-group-label center">Gleis/Plattf.</span>
-                        <input type="text" class="jfield" bind:value={journey.platform} oninput={triggerUpdate} placeholder="z.B. 4" style="width: 100%; text-align: center;">
+                        <input type="text" class="jfield" bind:value={journey.platform} oninput={triggerUpdate} placeholder="z.B. 4" style="width: 100%; min-width: 0; text-align: center;">
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" style="min-width: 0;">
                         <span class="form-group-label center">Echtzeit</span>
-                        <input type="text" class="jfield" bind:value={journey.ezGleis} oninput={triggerUpdate} placeholder="optional" style="width: 100%; text-align: center; color: var(--error-color, #ff6b6b); font-weight: bold;">
+                        <input type="text" class="jfield" bind:value={journey.ezGleis} oninput={triggerUpdate} placeholder="optional" style="width: 100%; min-width: 0; text-align: center; color: var(--error-color, #ff6b6b); font-weight: bold;">
                     </div>
                 </div>
             </div>
@@ -304,9 +304,9 @@
             <!-- Row 1: Status & Modus (Ankunft/Abfahrt, Ausfall, Infoscreen) -->
             <div class="settings-box form-row-responsive align-stretch" style="margin-bottom: 20px;">
                 <!-- Ankunft/Abfahrt Segment-Switch (Touch-Fläche) -->
-                <div class="form-group" style="min-width: 140px; justify-content: center;">
+                <div class="form-group" style="min-width: 140px; flex: 1 1 auto; justify-content: center;">
                     <span class="form-group-label" style="margin-bottom: 6px;">Modus</span>
-                    <div class="segment-switch">
+                    <div class="segment-switch" style="width: 100%;">
                         <label>
                             <input 
                                 type="radio" 
@@ -341,15 +341,15 @@
                 <div class="settings-divider"></div>
                 
                 <!-- Ausfall & Infoscreen -->
-                <div class="form-group" style="justify-content: center; gap: 12px;">
+                <div class="form-group" style="justify-content: center; gap: 10px; min-width: 140px; flex: 1 1 auto;">
                     <label class="checkbox-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin: 0;">
                         <input type="checkbox" bind:checked={journey.ausfall} onchange={triggerUpdate} style="width: 18px; height: 18px; cursor: pointer;">
-                        <span style="font-size: 1.05em; {journey.ausfall ? 'color: #ff6b6b; font-weight: bold;' : ''}">Ausfall</span>
+                        <span style="font-size: 0.95em; {journey.ausfall ? 'color: #ff6b6b; font-weight: bold;' : ''}">Ausfall</span>
                     </label>
                     
                     <label class="checkbox-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin: 0;">
                         <input type="checkbox" bind:checked={journey.infoscreen} onchange={triggerUpdate} style="width: 18px; height: 18px; cursor: pointer;">
-                        <span style="font-size: 1.05em;">Infoscreen (Lauftext/ Sonderanzeige)</span>
+                        <span style="font-size: 0.9em; word-break: break-word;">Infoscreen (Lauftext/ Sonderanzeige)</span>
                     </label>
                 </div>
             </div>
@@ -382,9 +382,9 @@
             <!-- Row 4: Wagenreihung Display Settings -->
             <div class="settings-box form-row-responsive align-stretch" style="margin-bottom: 20px;">
                 <!-- Richtung Segment-Switch (Touch-Fläche) -->
-                <div class="form-group" style="min-width: 140px; justify-content: center;">
+                <div class="form-group" style="min-width: 130px; flex: 1 1 auto; justify-content: center;">
                     <span class="form-group-label" style="margin-bottom: 6px;">Fahrtrichtung</span>
-                    <div class="segment-switch">
+                    <div class="segment-switch" style="width: 100%;">
                         <label>
                             <input 
                                 type="radio" 
@@ -421,23 +421,23 @@
                 <div class="settings-divider"></div>
 
                 <!-- Startmeter -->
-                <div class="form-group" style="justify-content: center; flex: 0 0 80px;">
+                <div class="form-group" style="justify-content: center; min-width: 70px; flex: 1 1 70px;">
                     <span class="form-group-label center">Startmeter</span>
-                    <input type="number" class="jfield" bind:value={journey.startMeter} oninput={triggerUpdate} style="width: 100%; text-align: center;" placeholder="z.B. 50">
+                    <input type="number" class="jfield" bind:value={journey.startMeter} oninput={triggerUpdate} style="width: 100%; min-width: 0; text-align: center;" placeholder="z.B. 50">
                 </div>
 
                 <div class="settings-divider"></div>
 
                 <!-- Skalierung -->
-                <div class="form-group" style="justify-content: center;">
+                <div class="form-group" style="justify-content: center; min-width: 120px; flex: 1 1 auto;">
                     <span class="form-group-label">Skalierung (Zoom)</span>
-                    <div style="display: flex; align-items: center; gap: 15px;">
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                         <label class="checkbox-label" style="margin: 0; min-height: 24px;">
                             <input type="checkbox" bind:checked={journey.skalieren} onchange={triggerUpdate}>
                             Aktiv
                         </label>
                         {#if journey.skalieren}
-                            <input type="number" step="0.01" class="jfield" bind:value={journey.scaleFactor} oninput={triggerUpdate} style="width: 70px; text-align: center;" placeholder="1.0">
+                            <input type="number" step="0.01" class="jfield" bind:value={journey.scaleFactor} oninput={triggerUpdate} style="width: 60px; min-width: 45px; text-align: center;" placeholder="1.0">
                         {/if}
                     </div>
                 </div>
@@ -484,7 +484,7 @@
 
 <style>
 .journey-details { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
-.details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.details-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px; }
 @media (max-width: 900px) { .details-grid { grid-template-columns: 1fr; } }
 .detail-section h4 { margin: 0 0 8px 0; color: var(--text-muted); font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.05em; }
 .details-actions { display: flex; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
