@@ -604,43 +604,9 @@
     .variant-label {
         font-size: 0.9em;
     }
-    .segment-switch {
-        display: flex;
-        background: rgba(0, 0, 0, 0.3);
-        border-radius: 6px;
-        overflow: hidden;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-    .segment-switch label {
-        cursor: pointer;
-        margin: 0;
-    }
-    .segment-switch input[type="radio"] {
-        display: none;
-    }
-    .segment-switch span {
-        display: block;
-        padding: 4px 12px;
-        font-size: 0.85em;
-        transition: background 0.2s, color 0.2s;
-        text-align: center;
-        min-width: 50px;
-    }
-    .segment-switch input[type="radio"]:checked + span {
-        background: var(--accent, #e2001a);
-        color: white;
-        font-weight: bold;
-    }
     @media (max-width: 768px) {
         :global(.mobile-hidden) {
             display: none !important;
-        }
-        .segment-switch span {
-            padding: 10px 12px;
-            min-height: 44px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
     }
 </style>

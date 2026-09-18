@@ -65,7 +65,52 @@
 .amenity-checks label { cursor: pointer; }
 .remove-coach-btn { color: #ef4444 !important; font-weight: bold; }
 
+/* Segmented Switch (Touch-optimierte Segment-Umschalter) */
+.segment-switch {
+    display: inline-flex;
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: var(--radius-md, 6px);
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    user-select: none;
+}
+.segment-switch label {
+    cursor: pointer;
+    margin: 0;
+    flex: 1;
+    display: flex;
+}
+.segment-switch input[type="radio"] {
+    display: none;
+}
+.segment-switch span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 14px;
+    font-size: 0.85em;
+    transition: background 0.2s ease, color 0.2s ease;
+    text-align: center;
+    min-width: 60px;
+    width: 100%;
+    color: var(--text-muted, #aaa);
+}
+.segment-switch input[type="radio"]:checked + span {
+    background: var(--accent, #e2001a);
+    color: white;
+    font-weight: 600;
+}
+.segment-switch label:not(:last-child) span {
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
 @media (max-width: 768px) {
     .mot-summary { min-height: 44px; padding: 12px; }
     .mot-presets .mot-preset-btn { min-height: 44px; }
+    .segment-switch span {
+        padding: 10px 14px;
+        min-height: 44px;
+        font-size: 0.9em;
+    }
 }
+
