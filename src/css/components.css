@@ -9,7 +9,7 @@
 .mot-details { background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; margin-top: 15px; overflow: hidden; }
 .mot-summary { padding: 10px 12px; cursor: pointer; font-size: 0.9em; font-weight: 500; color: var(--text-main); background: var(--bg-input); user-select: none; outline: none; display: flex; align-items: center; }
 .mot-summary::-webkit-details-marker { display: none; }
-.mot-summary::before { content: '▸'; display: inline-block; width: 16px; font-weight: bold; color: var(--accent); transition: transform 0.2s; }
+.mot-summary::before { content: ''; display: inline-block; width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 6px solid var(--accent); margin-right: 8px; transition: transform 0.2s ease; }
 .mot-details[open] .mot-summary::before { transform: rotate(90deg); }
 .mot-content { padding: 12px; border-top: 1px solid var(--border); }
 .mot-presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }

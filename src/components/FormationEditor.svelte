@@ -8,6 +8,7 @@
     import { FormationService } from '../js/features/formation/formationService.js';
     import CoachEditorRow from './CoachEditorRow.svelte';
     import StationPicker from './StationPicker.svelte';
+    import ZimIcon from './ZimIcon.svelte';
 
     let { journey = $bindable() } = $props();
 
@@ -180,8 +181,9 @@
     <div class="formation-header-actions">
         <h4>Wagenreihung</h4>
         <div class="actions-buttons-wrap">
-            <button type="button" class="btn-secondary btn-sm" onclick={triggerFileInput} title="Wagenreihung aus JSON importieren">
-                📥 Import
+            <button type="button" class="btn-secondary btn-sm" onclick={triggerFileInput} title="Wagenreihung aus JSON importieren" style="display: inline-flex; align-items: center; gap: 6px;">
+                <ZimIcon name="import" size={14} />
+                <span>Import</span>
             </button>
             <input 
                 type="file" 
@@ -190,23 +192,31 @@
                 accept=".json" 
                 onchange={handleFileImport}
             >
-            <button type="button" class="btn-secondary btn-sm" onclick={exportEntireFormation} title="Gesamte Formation als JSON herunterladen">
-                📤 Export
+            <button type="button" class="btn-secondary btn-sm" onclick={exportEntireFormation} title="Gesamte Formation als JSON herunterladen" style="display: inline-flex; align-items: center; gap: 6px;">
+                <ZimIcon name="export" size={14} />
+                <span>Export</span>
             </button>
-            <button type="button" class="btn-secondary btn-sm" onclick={reverseEntireFormation} title="Dreht die Reihenfolge aller Gruppen und Wagen um">
-                🔁 Komplett drehen
+            <button type="button" class="btn-secondary btn-sm" onclick={reverseEntireFormation} title="Dreht die Reihenfolge aller Gruppen und Wagen um" style="display: inline-flex; align-items: center; gap: 6px;">
+                <ZimIcon name="rotate" size={14} />
+                <span>Komplett drehen</span>
             </button>
-            <button type="button" class="btn-primary btn-sm" onclick={addGroup} title="Neuen Zugteil / Gruppe anlegen">
-                + Neue Gruppe
+            <button type="button" class="btn-primary btn-sm" onclick={addGroup} title="Neuen Zugteil / Gruppe anlegen" style="display: inline-flex; align-items: center; gap: 6px;">
+                <ZimIcon name="plus" size={14} />
+                <span>Neue Gruppe</span>
             </button>
         </div>
     </div>
 
     {#if !journey.formation || journey.formation.groups.length === 0}
         <div class="formation-empty-card">
-            <div class="empty-icon">🚆</div>
+            <div class="empty-icon">
+                <ZimIcon name="train" size={48} color="var(--text-muted)" />
+            </div>
             <p>Keine Wagenreihung für diese Fahrt vorhanden.</p>
-            <button type="button" class="btn-secondary" onclick={addGroup}>+ Erste Gruppe anlegen</button>
+            <button type="button" class="btn-secondary" onclick={addGroup} style="display: inline-flex; align-items: center; gap: 6px;">
+                <ZimIcon name="plus" size={14} />
+                <span>Erste Gruppe anlegen</span>
+            </button>
         </div>
     {:else}
         <!-- Gruppen-Liste mit dndzone (Gruppe gegen Gruppe verschiebbar) -->
@@ -229,11 +239,15 @@
                         <div class="group-header-left">
                             <div class="group-reorder">
                                 {#if uiState.enableDragAndDrop}
-                                    <span class="group-drag-handle" title="Gruppe verschieben">⠿</span>
+                                    <span class="group-drag-handle" title="Gruppe verschieben"><ZimIcon name="drag_handle" size={14} /></span>
                                 {/if}
                                 <div class="group-arrows">
-                                    <button type="button" class="btn-icon arrow-btn" onclick={() => moveGroupUp(group)} title="Gruppe nach oben verschieben">↑</button>
-                                    <button type="button" class="btn-icon arrow-btn" onclick={() => moveGroupDown(group)} title="Gruppe nach unten verschieben">↓</button>
+                                    <button type="button" class="btn-icon arrow-btn" onclick={() => moveGroupUp(group)} title="Gruppe nach oben verschieben">
+                                        <ZimIcon name="arrow_up" size={12} />
+                                    </button>
+                                    <button type="button" class="btn-icon arrow-btn" onclick={() => moveGroupDown(group)} title="Gruppe nach unten verschieben">
+                                        <ZimIcon name="arrow_down" size={12} />
+                                    </button>
                                 </div>
                             </div>
 
@@ -243,7 +257,7 @@
                                 onclick={() => toggleGroupExpand(group.id)}
                                 title={expanded ? 'Zugteil einklappen' : 'Zugteil ausklappen'}
                             >
-                                {expanded ? '▾' : '▸'}
+                                <ZimIcon name={expanded ? 'chevron_down' : 'chevron_right'} size={16} />
                             </button>
 
                             <span class="group-badge">Zugteil {gIdx + 1}</span>
@@ -287,16 +301,17 @@
                         <!-- Gruppen-Aktionen -->
                         <div class="group-header-right">
                             <button type="button" class="btn-icon action-btn" onclick={() => reverseGroup(group)} title="Reihenfolge der Wagen in diesem Zugteil umkehren">
-                                🔁
+                                <ZimIcon name="rotate" size={15} />
                             </button>
                             <button type="button" class="btn-icon action-btn" onclick={() => exportGroup(group)} title="Diesen Zugteil als JSON exportieren">
-                                📤
+                                <ZimIcon name="export" size={15} />
                             </button>
-                            <button type="button" class="btn-secondary btn-sm" onclick={() => addCoachToGroup(group)} title="Wagen hinzufügen">
-                                + Wagen
+                            <button type="button" class="btn-secondary btn-sm" onclick={() => addCoachToGroup(group)} title="Wagen hinzufügen" style="display: inline-flex; align-items: center; gap: 4px;">
+                                <ZimIcon name="plus" size={13} />
+                                <span>Wagen</span>
                             </button>
                             <button type="button" class="btn-icon remove-group-btn" onclick={() => removeGroup(group)} title="Diesen Zugteil löschen">
-                                🗑️
+                                <ZimIcon name="trash" size={15} />
                             </button>
                         </div>
                     </div>
@@ -307,7 +322,10 @@
                             {#if group.coaches.length === 0}
                                 <div class="empty-coaches">
                                     <span>Keine Wagen vorhanden.</span>
-                                    <button type="button" class="btn-secondary btn-sm" onclick={() => addCoachToGroup(group)}>+ Wagen hinzufügen</button>
+                                    <button type="button" class="btn-secondary btn-sm" onclick={() => addCoachToGroup(group)} style="display: inline-flex; align-items: center; gap: 4px;">
+                                        <ZimIcon name="plus" size={13} />
+                                        <span>Wagen hinzufügen</span>
+                                    </button>
                                 </div>
                             {:else}
                                 <div 

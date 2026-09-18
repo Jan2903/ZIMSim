@@ -1,5 +1,6 @@
 <script>
     import { slide } from 'svelte/transition';
+    import ZimIcon from './ZimIcon.svelte';
 
     /**
      * @param {string} title - Die Überschrift der Sektion
@@ -26,7 +27,7 @@
 <div class="collapsible-wrapper" class:is-frame={isFrame}>
     <button type="button" class="collapsible-header" onclick={toggle} aria-expanded={open}>
         <div class="collapsible-title">
-            <span class="chevron" class:open>▸</span>
+            <span class="chevron" class:open><ZimIcon name="chevron_right" size={16} /></span>
             <h3>{title}</h3>
         </div>
         {#if headerActions}
@@ -124,11 +125,11 @@
     }
 
     .chevron {
-        display: inline-block;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         transition: transform 0.2s ease;
         color: var(--accent, #e2001a);
-        font-weight: bold;
-        font-size: 1.2rem;
         line-height: 1;
     }
     .chevron.open {

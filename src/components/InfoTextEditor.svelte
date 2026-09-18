@@ -5,6 +5,7 @@
     import { RisTextService } from '../js/core/services/risTextService.js';
     import { dndzone } from 'svelte-dnd-action';
     import { safeFlip as flip } from '../js/core/utils/animationUtils.js';
+    import ZimIcon from './ZimIcon.svelte';
 
     let { journey } = $props();
     
@@ -100,16 +101,24 @@
                 <div animate:flip={{duration: flipDurationMs}} class="info-editor-row" style="display: flex; gap: 5px; align-items: center; margin-bottom: 5px; padding: 5px; background: var(--bg-input); border-radius: 5px; border: 1px solid var(--border);">
                     <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 24px;">
                         {#if uiState.enableDragAndDrop}
-                            <span class="drag-handle" style="cursor: move; font-size: 14px; margin-bottom: 2px;">⠿</span>
+                            <span class="drag-handle" style="cursor: move; margin-bottom: 2px;">
+                                <ZimIcon name="drag_handle" size={14} />
+                            </span>
                         {/if}
-                        <button class="btn-icon" style="padding: 0; font-size: 0.7em;" onclick={() => moveUp(info)} title="Hoch">↑</button>
-                        <button class="btn-icon" style="padding: 0; font-size: 0.7em;" onclick={() => moveDown(info)} title="Runter">↓</button>
+                        <button class="btn-icon" style="padding: 0;" onclick={() => moveUp(info)} title="Hoch">
+                            <ZimIcon name="arrow_up" size={11} />
+                        </button>
+                        <button class="btn-icon" style="padding: 0;" onclick={() => moveDown(info)} title="Runter">
+                            <ZimIcon name="arrow_down" size={11} />
+                        </button>
                     </div>
-                    <button class="btn-icon" title={info.visible ? 'Sichtbar im Lauftext' : 'Versteckt'} onclick={() => toggleVisible(info)}>
-                        {info.visible ? '👁' : '○'}
+                    <button class="btn-icon" title={info.visible ? 'Sichtbar im Lauftext' : 'Versteckt'} onclick={() => toggleVisible(info)} style="display: flex; align-items: center; justify-content: center;">
+                        <ZimIcon name={info.visible ? 'eye' : 'eye_off'} size={16} color={info.visible ? 'var(--text-main)' : 'var(--text-muted)'} />
                     </button>
                     <input type="text" class="jfield info-text-input" bind:value={info.text} oninput={triggerUpdate} style="flex: 1; margin: 0;" placeholder="Text">
-                    <button class="btn-icon" title="Entfernen" onclick={() => removeText(info)}>✕</button>
+                    <button class="btn-icon" title="Entfernen" onclick={() => removeText(info)} style="display: flex; align-items: center; justify-content: center;">
+                        <ZimIcon name="close" size={14} />
+                    </button>
                 </div>
             {/each}
         </div>
@@ -124,13 +133,13 @@
                    onfocus={() => showDropdown = true}
                    onblur={() => setTimeout(() => showDropdown = false, 200)}
                    onkeydown={(e) => { if(e.key === 'Enter') { e.preventDefault(); addText(); } }}>
-            <button class="btn-icon" style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%); cursor: pointer; background: none; border: none; font-size: 12px; color: var(--text-muted);" 
+            <button class="btn-icon" style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%); cursor: pointer; background: none; border: none; color: var(--text-muted); display: flex; align-items: center;" 
                     onmousedown={(e) => { 
                         e.preventDefault(); 
                         if (showDropdown) { showDropdown = false; } 
                         else { showDropdown = true; inputRef?.focus(); }
                     }} tabindex="-1">
-                ▼
+                <ZimIcon name="chevron_down" size={14} />
             </button>
         </div>
         <button class="btn-secondary btn-sm" onclick={addText}>Hinzufügen</button>

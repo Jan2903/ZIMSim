@@ -9,6 +9,7 @@
     import { RisTextService } from '../js/core/services/risTextService.js';
     import { ansagenGenerator } from '../js/audio/ansagenGenerator.js';
     import { ansagenPlayer } from '../js/audio/ansagenPlayer.svelte.js';
+    import ZimIcon from './ZimIcon.svelte';
 
     let { journey = $bindable() } = $props();
     
@@ -277,10 +278,22 @@
             </div>
             
             <div class="audio-action-bar">
-                <button class="btn-secondary btn-sm" onclick={() => playAnsage('Einfahrt')} title="Ansage Einfahrt generieren">🔊 Einfahrt</button>
-                <button class="btn-secondary btn-sm" onclick={() => playAnsage('Steht')} title="Ansage Steht generieren">🔊 Steht</button>
-                <button class="btn-secondary btn-sm" onclick={() => playAnsage('Information')} title="Ansage Information generieren">🔊 Info</button>
-                <button class="btn-secondary btn-sm" onclick={() => playAnsage('Anschluesse')} title="Ansage Anschlüsse generieren">🔊 Anschlüsse</button>
+                <button class="btn-secondary btn-sm" onclick={() => playAnsage('Einfahrt')} title="Ansage Einfahrt generieren" style="display: inline-flex; align-items: center; gap: 6px;">
+                    <ZimIcon name="volume_high" size={14} />
+                    <span>Einfahrt</span>
+                </button>
+                <button class="btn-secondary btn-sm" onclick={() => playAnsage('Steht')} title="Ansage Steht generieren" style="display: inline-flex; align-items: center; gap: 6px;">
+                    <ZimIcon name="volume_high" size={14} />
+                    <span>Steht</span>
+                </button>
+                <button class="btn-secondary btn-sm" onclick={() => playAnsage('Information')} title="Ansage Information generieren" style="display: inline-flex; align-items: center; gap: 6px;">
+                    <ZimIcon name="volume_high" size={14} />
+                    <span>Info</span>
+                </button>
+                <button class="btn-secondary btn-sm" onclick={() => playAnsage('Anschluesse')} title="Ansage Anschlüsse generieren" style="display: inline-flex; align-items: center; gap: 6px;">
+                    <ZimIcon name="volume_high" size={14} />
+                    <span>Anschlüsse</span>
+                </button>
             </div>
         </div>
         
@@ -335,7 +348,9 @@
                         />
                     </div>
                     {#if journey.verkehrtAb && journey.verkehrtAb !== '0'}
-                        <button class="btn-icon" onclick={() => { journey.verkehrtAb = '0'; triggerUpdate(); }} title="Zurücksetzen (Deaktivieren)" style="width: 32px; height: 32px; border-radius: 4px; background: rgba(255, 107, 107, 0.1); color: #ff6b6b; border: 1px solid rgba(255, 107, 107, 0.3);">✕</button>
+                        <button class="btn-icon" onclick={() => { journey.verkehrtAb = '0'; triggerUpdate(); }} title="Zurücksetzen (Deaktivieren)" style="width: 32px; height: 32px; border-radius: 4px; background: rgba(255, 107, 107, 0.1); color: #ff6b6b; border: 1px solid rgba(255, 107, 107, 0.3); display: flex; align-items: center; justify-content: center;">
+                            <ZimIcon name="close" size={14} />
+                        </button>
                     {/if}
                 </div>
             </div>
@@ -385,17 +400,32 @@
     </div>
 
     <div class="details-actions" style="margin-top: 20px; flex-wrap: wrap;">
-        <button class="btn-secondary" onclick={toggleCoupling}>{journey.couplingGroupId ? '🔗 Entkoppeln' : '🔗 Koppeln'}</button>
-        <button class="btn-danger" onclick={deleteJourney}>🗑️ Löschen</button>
+        <button class="btn-secondary" onclick={toggleCoupling} style="display: inline-flex; align-items: center; gap: 6px;">
+            <ZimIcon name={journey.couplingGroupId ? 'unlink' : 'link'} size={16} />
+            <span>{journey.couplingGroupId ? 'Entkoppeln' : 'Koppeln'}</span>
+        </button>
+        <button class="btn-danger" onclick={deleteJourney} style="display: inline-flex; align-items: center; gap: 6px;">
+            <ZimIcon name="trash" size={16} />
+            <span>Löschen</span>
+        </button>
     </div>
     
     <div class="detail-section" style="margin-top: 15px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
             <h4>Zuglauf (Halte)</h4>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <button class="btn-secondary" onclick={toggleAllStops}>👁️ Alle umschalten</button>
-                <button class="btn-secondary" onclick={autoGenVias}>⚡ Auto-Vias</button>
-                <button class="btn-secondary" onclick={addStop}>+ Halt hinzufügen</button>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button class="btn-secondary" onclick={toggleAllStops} style="display: inline-flex; align-items: center; gap: 6px;">
+                    <ZimIcon name="eye" size={15} />
+                    <span>Alle umschalten</span>
+                </button>
+                <button class="btn-secondary" onclick={autoGenVias} style="display: inline-flex; align-items: center; gap: 6px;">
+                    <ZimIcon name="bolt" size={15} />
+                    <span>Auto-Vias</span>
+                </button>
+                <button class="btn-secondary" onclick={addStop} style="display: inline-flex; align-items: center; gap: 6px;">
+                    <ZimIcon name="plus" size={14} />
+                    <span>Halt hinzufügen</span>
+                </button>
             </div>
         </div>
         <StopEditor bind:journey />

@@ -3,6 +3,7 @@
     import { journeyStore, trainDisplay } from '../js/core/state/stores.js';
     import { formatDisplayName } from '../js/features/journey/trainNumberFormatter.js';
     import JourneyDetails from './JourneyDetails.svelte';
+    import ZimIcon from './ZimIcon.svelte';
 
     let { journey = $bindable() } = $props();
 
@@ -59,16 +60,20 @@
     <div class="journey-row-content">
         <div class="journey-col-reorder">
             {#if uiState.enableDragAndDrop}
-                <span class="journey-drag-handle" title="Drag & Drop">⠿</span>
+                <span class="journey-drag-handle" title="Drag & Drop"><ZimIcon name="drag_handle" size={14} /></span>
             {/if}
             <div class="move-arrows">
-                <button class="btn-icon arrow-btn" onclick={moveUp} title="Nach oben verschieben">↑</button>
-                <button class="btn-icon arrow-btn" onclick={moveDown} title="Nach unten verschieben">↓</button>
+                <button class="btn-icon arrow-btn" onclick={moveUp} title="Nach oben verschieben">
+                    <ZimIcon name="arrow_up" size={12} />
+                </button>
+                <button class="btn-icon arrow-btn" onclick={moveDown} title="Nach unten verschieben">
+                    <ZimIcon name="arrow_down" size={12} />
+                </button>
             </div>
         </div>
         <div class="journey-col-visibility">
             <button class="btn-icon visibility-toggle" onclick={toggleVisibility} onpointerdown={(e) => e.stopPropagation()} title="Sichtbarkeit umschalten">
-                {journey.visible ? '👁' : '○'}
+                <ZimIcon name={journey.visible ? 'eye' : 'eye_off'} size={18} color={journey.visible ? 'var(--text-main)' : 'var(--text-muted)'} />
             </button>
         </div>
         <div class="journey-col-coupling {couplingClass}">
@@ -125,11 +130,16 @@
                                   if (el) el.scrollIntoView({behavior: 'smooth', block: 'center'});
                               }, 50);
                           }}>
-                        🔗 {journey.ankunft ? 'Wird zu' : 'Kommt aus'} {linkedJourney.effectiveDisplayName} ({linkedJourney.scheduledTime})
+                        <span style="display: inline-flex; align-items: center; gap: 4px;">
+                            <ZimIcon name="link" size={13} />
+                            <span>{journey.ankunft ? 'Wird zu' : 'Kommt aus'} {linkedJourney.effectiveDisplayName} ({linkedJourney.scheduledTime})</span>
+                        </span>
                     </span>
                 {/if}
                 
-                <button class="btn-icon expand-toggle">{isExpanded ? '▾' : '▸'}</button>
+                <button class="btn-icon expand-toggle" title={isExpanded ? 'Einklappen' : 'Ausklappen'}>
+                    <ZimIcon name={isExpanded ? 'chevron_down' : 'chevron_right'} size={16} />
+                </button>
             </div>
         </div>
     </div>
@@ -181,4 +191,15 @@
 .badge-departure { background: #334155; color: #f8fafc; }
 .badge-info { background: transparent; color: var(--text-muted); font-size: 1.2em; padding: 0 4px; border: 1px solid var(--border); }
 .expand-toggle { margin-left: auto; }
+
+@media (max-width: 768px) {
+    .journey-col-reorder { width: 30px; }
+    .arrow-btn { min-height: 24px; padding: 2px 4px; }
+    .journey-col-visibility { min-width: 38px; padding: 8px 2px; }
+    .journey-col-main { padding: 6px 8px; }
+    .journey-summary { gap: 6px; }
+    .journey-name { font-size: 0.95em; }
+    .journey-destination { font-size: 0.9em; min-width: 60px; }
+    .expand-toggle { min-height: 36px; min-width: 32px; display: flex; align-items: center; justify-content: center; }
+}
 </style>

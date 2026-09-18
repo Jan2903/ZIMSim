@@ -1,6 +1,11 @@
 <script>
     import { ansagenPlayer } from '../js/audio/ansagenPlayer.svelte.js';
+    import ZimIcon from './ZimIcon.svelte';
 
+    /**
+     * Startet die Wiedergabe der aktuellen Playlist erneut.
+     * @returns {void}
+     */
     function handleReplay() {
         if (ansagenPlayer.playlist.length > 0) {
             ansagenPlayer.play(ansagenPlayer.playlist);
@@ -12,11 +17,9 @@
     <div class="player-overlay">
         <div class="player-content">
             <div class="player-status">
-                {#if ansagenPlayer.isPlaying}
-                    <span class="playing-icon">🔊</span>
-                {:else}
-                    <span class="playing-icon">⏹</span>
-                {/if}
+                <span class="playing-icon">
+                    <ZimIcon name={ansagenPlayer.isPlaying ? 'volume_high' : 'stop'} size={16} color={ansagenPlayer.isPlaying ? '#4dabf7' : '#aaa'} />
+                </span>
                 <span class="progress">{ansagenPlayer.progressText}</span>
                 {#if ansagenPlayer.currentFile}
                 <span class="filename" title={ansagenPlayer.currentFile}>
@@ -30,17 +33,20 @@
             </div>
 
             <div class="player-controls">
-                <button class="btn-primary btn-sm" onclick={handleReplay} title="Neu starten">
-                    {ansagenPlayer.isPlaying ? '↻ Neustart' : '▶ Play'}
+                <button class="btn-primary btn-sm" onclick={handleReplay} title="Neu starten" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                    <ZimIcon name={ansagenPlayer.isPlaying ? 'restart' : 'play'} size={14} />
+                    <span>{ansagenPlayer.isPlaying ? 'Neustart' : 'Play'}</span>
                 </button>
-                <button class="btn-secondary btn-sm" onclick={() => ansagenPlayer.stop()} disabled={!ansagenPlayer.isPlaying}>
-                    ⏹ Stop
+                <button class="btn-secondary btn-sm" onclick={() => ansagenPlayer.stop()} disabled={!ansagenPlayer.isPlaying} style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                    <ZimIcon name="stop" size={14} />
+                    <span>Stop</span>
                 </button>
-                <button class="btn-secondary btn-sm" onclick={() => ansagenPlayer.exportWav()} title="Als WAV Datei speichern">
-                    💾 WAV Export
+                <button class="btn-secondary btn-sm" onclick={() => ansagenPlayer.exportWav()} title="Als WAV Datei speichern" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                    <ZimIcon name="save" size={14} />
+                    <span>WAV Export</span>
                 </button>
-                <button class="btn-secondary btn-sm" onclick={() => { ansagenPlayer.stop(); ansagenPlayer.playlist = []; }} title="Player schließen">
-                    ✕
+                <button class="btn-secondary btn-sm" onclick={() => { ansagenPlayer.stop(); ansagenPlayer.playlist = []; }} title="Player schließen" style="display: inline-flex; align-items: center; justify-content: center; width: 34px; padding: 0;">
+                    <ZimIcon name="close" size={14} />
                 </button>
             </div>
         </div>
@@ -60,7 +66,9 @@
         z-index: 9999;
         box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         color: white;
-        min-width: 400px;
+        width: calc(100% - 32px);
+        max-width: 520px;
+        box-sizing: border-box;
         text-align: center;
         backdrop-filter: blur(10px);
     }
@@ -76,7 +84,8 @@
     }
     
     .playing-icon {
-        color: #4dabf7;
+        display: flex;
+        align-items: center;
     }
     
     .filename {
@@ -91,7 +100,7 @@
     }
     
     .subtitle-text {
-        font-size: 1.4em;
+        font-size: 1.3em;
         font-weight: bold;
         margin-bottom: 15px;
         min-height: 1.5em;
@@ -101,6 +110,28 @@
     .player-controls {
         display: flex;
         justify-content: center;
-        gap: 10px;
+        gap: 8px;
+    }
+
+    @media (max-width: 600px) {
+        .player-overlay {
+            bottom: 10px;
+            padding: 12px 14px;
+        }
+        .subtitle-text {
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+        .player-controls {
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .player-controls button {
+            flex: 1 1 calc(50% - 6px);
+            min-height: 40px;
+        }
+        .player-controls button:last-child {
+            flex: 0 0 36px;
+        }
     }
 </style>

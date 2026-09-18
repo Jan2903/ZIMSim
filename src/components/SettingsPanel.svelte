@@ -12,8 +12,12 @@
     import { MOT_PRESETS, getSmartHeaderString, MOT_ALL_KEYS } from '../js/features/station/motManager.js';
     import { ansagenStore } from '../js/audio/ansagenStore.svelte.js';
     import { open } from '@tauri-apps/plugin-dialog';
+    import ZimIcon from './ZimIcon.svelte';
     
     let { modalsComp } = $props();
+
+    // Mobiler Tab-State: 'fahrten' | 'monitor' | 'tools'
+    let activeMobileTab = $state('fahrten');
 
     // Derived values for the UI
     let entry_station_search = $state('');
@@ -232,13 +236,53 @@
 </script>
 
 <div class="settings-container">
+    <!-- Mobile Navigation Tabs (< 768px) -->
+    <div class="mobile-nav-tabs" role="tablist">
+        <button 
+            type="button" 
+            class="mobile-tab-btn" 
+            class:active={activeMobileTab === 'fahrten'}
+            onclick={() => activeMobileTab = 'fahrten'}
+            role="tab"
+            aria-selected={activeMobileTab === 'fahrten'}
+        >
+            <ZimIcon name="train" size={16} />
+            <span>Fahrten ({journeyStore.journeys.length})</span>
+        </button>
+        <button 
+            type="button" 
+            class="mobile-tab-btn" 
+            class:active={activeMobileTab === 'monitor'}
+            onclick={() => activeMobileTab = 'monitor'}
+            role="tab"
+            aria-selected={activeMobileTab === 'monitor'}
+        >
+            <ZimIcon name="zoom_fit" size={16} />
+            <span>Monitor</span>
+        </button>
+        <button 
+            type="button" 
+            class="mobile-tab-btn" 
+            class:active={activeMobileTab === 'tools'}
+            onclick={() => activeMobileTab = 'tools'}
+            role="tab"
+            aria-selected={activeMobileTab === 'tools'}
+        >
+            <ZimIcon name="save" size={16} />
+            <span>Tools & Audio</span>
+        </button>
+    </div>
+
     <div class="dashboard-grid">
-        <div class="main-controls">
+        <div class="main-controls" class:mobile-hidden={activeMobileTab !== 'fahrten'}>
             {#snippet journeyActions()}
                 <button class="btn-secondary btn-sm" onclick={fetchIrisData} disabled={isFetchingIris}>
                     {isFetchingIris ? 'Lädt...' : 'IRIS API Suche'}
                 </button>
-                <button id="add_journey_btn" class="btn-primary btn-sm" onclick={addManualJourney}>+ Fahrt hinzufügen</button>
+                <button id="add_journey_btn" class="btn-primary btn-sm" onclick={addManualJourney} style="display: inline-flex; align-items: center; gap: 6px;">
+                    <ZimIcon name="plus" size={14} />
+                    <span>Fahrt hinzufügen</span>
+                </button>
             {/snippet}
 
             <div id="journey_list_frame">
@@ -250,17 +294,18 @@
             </div>
         </div>
 
-        <div class="side-controls">
+        <div class="side-controls" class:mobile-hidden={activeMobileTab === 'fahrten'}>
             <div class="settings-frame" id="frame_links_oben" style="padding-top: 10px;">
                 
-                <CollapsibleSection title="Anzeige Wagenreihung" isOpen={true} isFrame={false}>
-                    <div class="options-grid">
-                        <label class="radio-card"><input type="radio" name="wahl" value="rotierend" onchange={onFeatureChange}> Rotierend</label>
-                        <label class="radio-card"><input type="radio" name="wahl" value="wagennummern" checked onchange={onFeatureChange}> Nummern</label>
-                        <label class="radio-card"><input type="radio" name="wahl" value="ausstattung" onchange={onFeatureChange}> Ausstattung</label>
-                        <label class="radio-card"><input type="radio" name="wahl" value="klasse" onchange={onFeatureChange}> Klasse</label>
-                    </div>
-                </CollapsibleSection>
+                <div class="panel-group-monitor" class:mobile-hidden={activeMobileTab !== 'monitor'}>
+                    <CollapsibleSection title="Anzeige Wagenreihung" isOpen={true} isFrame={false}>
+                        <div class="options-grid">
+                            <label class="radio-card"><input type="radio" name="wahl" value="rotierend" onchange={onFeatureChange}> Rotierend</label>
+                            <label class="radio-card"><input type="radio" name="wahl" value="wagennummern" checked onchange={onFeatureChange}> Nummern</label>
+                            <label class="radio-card"><input type="radio" name="wahl" value="ausstattung" onchange={onFeatureChange}> Ausstattung</label>
+                            <label class="radio-card"><input type="radio" name="wahl" value="klasse" onchange={onFeatureChange}> Klasse</label>
+                        </div>
+                    </CollapsibleSection>
 
                 <CollapsibleSection title="Layout" isOpen={true} isFrame={false}>
                     <div class="options-grid">
@@ -320,7 +365,7 @@
                                 <div class="mot-presets" style="display: flex; gap: 5px; margin-bottom: 10px;">
                                     <button class="btn-secondary btn-sm" id="btn_invert_tracks" onclick={invertTracks}>Auswahl invertieren</button>
                                     <input type="text" id="manual_track_input" class="short-input" placeholder="Gl." style="width: 50px; margin: 0;" bind:value={manualTrackInput} onkeydown={(e) => { if (e.key === 'Enter') addManualTrack(); }}>
-                                    <button class="btn-secondary btn-sm" id="btn_add_manual_track" onclick={addManualTrack}>+</button>
+                                    <button class="btn-secondary btn-sm" id="btn_add_manual_track" onclick={addManualTrack} title="Gleis hinzufügen" style="display: inline-flex; align-items: center; justify-content: center; padding: 4px 8px;"><ZimIcon name="plus" size={14} /></button>
                                 </div>
                                 <div class="checkbox-group mot-checkboxes" id="track_checkbox_container">
                                     {#each allAvailableTracks as track}
@@ -355,7 +400,9 @@
                         <label>Standort (m): <input type="number" id="platform_location" class="short-input" bind:value={journeyStore.stationContext.platform.currentLocation} oninput={() => trainDisplay.updateAll()}></label>
                     </div>
                 </CollapsibleSection>
+                </div>
 
+                <div class="panel-group-tools" class:mobile-hidden={activeMobileTab !== 'tools'}>
                 <CollapsibleSection title="DB IRIS Live-Daten" isOpen={true} isFrame={false}>
                     <div class="form-row column-layout" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px;">
                         <label style="display: block; margin-bottom: 5px;">
@@ -482,12 +529,18 @@
                         
                         <div style="margin-bottom: 10px; font-size: 0.9em;">
                             {#if ansagenStore.status === 'loaded'}
-                                <span style="color: #4CAF50;">✓ ZIP verknüpft:</span> {ansagenStore.fileName}
+                                <span style="color: #4CAF50; display: inline-flex; align-items: center; gap: 6px;">
+                                    <ZimIcon name="check" size={16} />
+                                    <span>ZIP verknüpft:</span>
+                                </span> {ansagenStore.fileName}
                                 <div style="margin-top: 5px;">
                                     <button class="btn-secondary btn-sm" onclick={() => ansagenStore.clearFileRef()}>Verknüpfung aufheben</button>
                                 </div>
                             {:else}
-                                <span style="color: #ff9800;">⚠ Keine ZIP verknüpft</span>
+                                <span style="color: #ff9800; display: inline-flex; align-items: center; gap: 6px;">
+                                    <ZimIcon name="warning" size={16} />
+                                    <span>Keine ZIP verknüpft</span>
+                                </span>
                                 <div style="font-size: 0.85em; opacity: 0.8; margin-top: 5px;">
                                     Lade die Audio-Daten (ZIP), um Ansagen abzuspielen.
                                 </div>
@@ -512,10 +565,20 @@
                 </CollapsibleSection>
 
                 <div class="button-group-vertical" style="margin-top: 15px;">
-                    <button id="export_all_btn" class="btn-secondary" onclick={exportConfig}>📤 Exportieren</button>
-                    <button id="import_all_btn" class="btn-secondary" onclick={() => fileInput.click()}>📥 Importieren</button>
+                    <button id="export_all_btn" class="btn-secondary" onclick={exportConfig} style="display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
+                        <ZimIcon name="export" size={16} />
+                        <span>Exportieren</span>
+                    </button>
+                    <button id="import_all_btn" class="btn-secondary" onclick={() => fileInput.click()} style="display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
+                        <ZimIcon name="import" size={16} />
+                        <span>Importieren</span>
+                    </button>
                     <input type="file" bind:this={fileInput} style="display: none;" accept=".json" onchange={handleFileImport}>
-                    <button id="import_db_btn" class="btn-secondary" onclick={() => modalsComp?.openDbImport()}>🚄 DB-Daten importieren</button>
+                    <button id="import_db_btn" class="btn-secondary" onclick={() => modalsComp?.openDbImport()} style="display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
+                        <ZimIcon name="train_fast" size={18} />
+                        <span>DB-Daten importieren</span>
+                    </button>
+                </div>
                 </div>
                 
             </div>
@@ -569,6 +632,9 @@
         font-weight: bold;
     }
     @media (max-width: 768px) {
+        :global(.mobile-hidden) {
+            display: none !important;
+        }
         .segment-switch span {
             padding: 10px 12px;
             min-height: 44px;
