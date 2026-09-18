@@ -19,6 +19,19 @@
     // Mobiler Tab-State: 'fahrten' | 'monitor' | 'tools'
     let activeMobileTab = $state('fahrten');
 
+    // Desktop-Ansichtsmodus: 'split' (zweispaltig) oder 'tabs' (dreigeteilt in Reiter)
+    let desktopViewMode = $state(localStorage.getItem('zimsim_view_mode') || 'split');
+
+    /**
+     * Schaltet den Desktop-Ansichtsmodus zwischen geteilter Ansicht und Reiter-Fokusmodus um.
+     * @param {'split'|'tabs'} mode - Gewählter Ansichtsmodus
+     * @returns {void}
+     */
+    function setDesktopViewMode(mode) {
+        desktopViewMode = mode;
+        localStorage.setItem('zimsim_view_mode', mode);
+    }
+
     // Derived values for the UI
     let entry_station_search = $state('');
     let isPerformanceMode = $state(config.performance_mode);
@@ -235,46 +248,73 @@
     }
 </script>
 
-<div class="settings-container">
-    <!-- Mobile Navigation Tabs (< 768px) -->
-    <div class="mobile-nav-tabs" role="tablist">
-        <button 
-            type="button" 
-            class="mobile-tab-btn" 
-            class:active={activeMobileTab === 'fahrten'}
-            onclick={() => activeMobileTab = 'fahrten'}
-            role="tab"
-            aria-selected={activeMobileTab === 'fahrten'}
-        >
-            <ZimIcon name="train" size={16} />
-            <span>Fahrten ({journeyStore.journeys.length})</span>
-        </button>
-        <button 
-            type="button" 
-            class="mobile-tab-btn" 
-            class:active={activeMobileTab === 'monitor'}
-            onclick={() => activeMobileTab = 'monitor'}
-            role="tab"
-            aria-selected={activeMobileTab === 'monitor'}
-        >
-            <ZimIcon name="zoom_fit" size={16} />
-            <span>Monitor</span>
-        </button>
-        <button 
-            type="button" 
-            class="mobile-tab-btn" 
-            class:active={activeMobileTab === 'tools'}
-            onclick={() => activeMobileTab = 'tools'}
-            role="tab"
-            aria-selected={activeMobileTab === 'tools'}
-        >
-            <ZimIcon name="save" size={16} />
-            <span>Tools & Audio</span>
-        </button>
+<div class="settings-container {desktopViewMode === 'tabs' ? 'view-mode-tabs' : 'view-mode-split'}">
+    <!-- Dashboard Top Bar: Segment Navigation & View Mode Switcher -->
+    <div class="dashboard-top-bar">
+        <div class="dashboard-nav-tabs" role="tablist">
+            <button 
+                type="button" 
+                class="dashboard-tab-btn" 
+                class:active={activeMobileTab === 'fahrten'}
+                onclick={() => activeMobileTab = 'fahrten'}
+                role="tab"
+                aria-selected={activeMobileTab === 'fahrten'}
+            >
+                <ZimIcon name="train" size={16} />
+                <span>Fahrten ({journeyStore.journeys.length})</span>
+            </button>
+            <button 
+                type="button" 
+                class="dashboard-tab-btn" 
+                class:active={activeMobileTab === 'monitor'}
+                onclick={() => activeMobileTab = 'monitor'}
+                role="tab"
+                aria-selected={activeMobileTab === 'monitor'}
+            >
+                <ZimIcon name="zoom_fit" size={16} />
+                <span>Monitor</span>
+            </button>
+            <button 
+                type="button" 
+                class="dashboard-tab-btn" 
+                class:active={activeMobileTab === 'tools'}
+                onclick={() => activeMobileTab = 'tools'}
+                role="tab"
+                aria-selected={activeMobileTab === 'tools'}
+            >
+                <ZimIcon name="save" size={16} />
+                <span>Tools & Audio</span>
+            </button>
+        </div>
+
+        <!-- Desktop Ansichts-Umschalter (nur auf Desktop sichtbar) -->
+        <div class="desktop-view-switcher" title="Dashboard-Ansichtsmodus wählen">
+            <span class="switcher-label">Ansicht:</span>
+            <div class="segment-switch">
+                <label>
+                    <input 
+                        type="radio" 
+                        name="desktop-view-mode" 
+                        checked={desktopViewMode === 'split'} 
+                        onchange={() => setDesktopViewMode('split')}
+                    >
+                    <span>Geteilt</span>
+                </label>
+                <label>
+                    <input 
+                        type="radio" 
+                        name="desktop-view-mode" 
+                        checked={desktopViewMode === 'tabs'} 
+                        onchange={() => setDesktopViewMode('tabs')}
+                    >
+                    <span>Reiter</span>
+                </label>
+            </div>
+        </div>
     </div>
 
     <div class="dashboard-grid">
-        <div class="main-controls" class:mobile-hidden={activeMobileTab !== 'fahrten'}>
+        <div class="main-controls" class:tab-content-hidden={desktopViewMode === 'tabs' && activeMobileTab !== 'fahrten'} class:mobile-hidden={activeMobileTab !== 'fahrten'}>
             {#snippet journeyActions()}
                 <button class="btn-secondary btn-sm" onclick={fetchIrisData} disabled={isFetchingIris}>
                     {isFetchingIris ? 'Lädt...' : 'IRIS API Suche'}
@@ -294,10 +334,10 @@
             </div>
         </div>
 
-        <div class="side-controls" class:mobile-hidden={activeMobileTab === 'fahrten'}>
+        <div class="side-controls" class:tab-content-hidden={desktopViewMode === 'tabs' && activeMobileTab === 'fahrten'} class:mobile-hidden={activeMobileTab === 'fahrten'}>
             <div class="settings-frame" id="frame_links_oben" style="padding-top: 10px;">
                 
-                <div class="panel-group-monitor" class:mobile-hidden={activeMobileTab !== 'monitor'}>
+                <div class="panel-group-monitor" class:tab-content-hidden={desktopViewMode === 'tabs' && activeMobileTab !== 'monitor'} class:mobile-hidden={activeMobileTab !== 'monitor'}>
                     <CollapsibleSection title="Anzeige Wagenreihung" isOpen={true} isFrame={false}>
                         <div class="options-grid">
                             <label class="radio-card"><input type="radio" name="wahl" value="rotierend" onchange={onFeatureChange}> Rotierend</label>
@@ -402,7 +442,7 @@
                 </CollapsibleSection>
                 </div>
 
-                <div class="panel-group-tools" class:mobile-hidden={activeMobileTab !== 'tools'}>
+                <div class="panel-group-tools" class:tab-content-hidden={desktopViewMode === 'tabs' && activeMobileTab !== 'tools'} class:mobile-hidden={activeMobileTab !== 'tools'}>
                 <CollapsibleSection title="DB IRIS Live-Daten" isOpen={true} isFrame={false}>
                     <div class="form-row column-layout" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px;">
                         <label style="display: block; margin-bottom: 5px;">
