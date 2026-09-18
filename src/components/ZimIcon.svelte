@@ -18,45 +18,22 @@
     let icon = $derived(ICONS[name]);
 </script>
 
-{#if icon}
-    {#if icon.elements}
-        <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            viewBox="0 0 {icon.viewBox} {icon.viewBox}" 
-            width={size} 
-            height={size}
-            class="zim-icon {className}"
-            aria-hidden="true"
-            style="display: inline-block; vertical-align: middle; flex-shrink: 0;"
-        >
-            {#each icon.elements as el}
-                <path 
-                    d={el.d} 
-                    fill={el.fill === 'currentColor' ? color : el.fill}
-                    fill-rule={el.fillRule || 'nonzero'} 
-                />
-            {/each}
-        </svg>
-    {:else if name === 'mehrzweck'}
-        <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            viewBox="0 0 100 100" 
-            width={size} 
-            height={size}
-            class="zim-icon {className}"
-            aria-hidden="true"
-            style="display: inline-block; vertical-align: middle; flex-shrink: 0;"
-        >
-            <g transform="translate(0, 24) scale(2.0833)">
-                {#each ICONS.fahrrad.elements as el}
-                    <path d={el.d} fill={el.fill === 'currentColor' ? color : el.fill} />
-                {/each}
-            </g>
-            <g transform="translate(50, 24) scale(2.0833)">
-                {#each ICONS.rollstuhl.elements as el}
-                    <path d={el.d} fill={el.fill === 'currentColor' ? color : el.fill} />
-                {/each}
-            </g>
-        </svg>
-    {/if}
+{#if icon && icon.elements}
+    <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        viewBox="0 0 {icon.viewBox} {icon.viewBox}" 
+        width={size} 
+        height={size}
+        class="zim-icon {className}"
+        aria-hidden="true"
+        style="display: inline-block; vertical-align: middle; flex-shrink: 0;"
+    >
+        {#each icon.elements as el}
+            <path 
+                d={el.d} 
+                fill={el.fill === 'currentColor' ? color : el.fill}
+                fill-rule={el.fillRule || 'nonzero'} 
+            />
+        {/each}
+    </svg>
 {/if}
