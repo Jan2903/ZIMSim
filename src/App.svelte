@@ -27,6 +27,21 @@
         setTimeout(handleResize, 20);
     }
 
+    /**
+     * Erstellt einen PNG-Download des aktuellen Canvas-Zustands.
+     * @returns {void}
+     */
+    function downloadScreenshot() {
+        const canvas = document.getElementById('zimCanvas');
+        if (canvas) {
+            const dataUrl = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.download = `zim_screenshot_${new Date().getTime()}.png`;
+            link.href = dataUrl;
+            link.click();
+        }
+    }
+
     // Reactive effect to trigger canvas re-renders when journeyStore state changes
     $effect(() => {
         // Deeply accessing some store values to trigger reactivity
@@ -98,17 +113,37 @@
         </div>
     </div>
     
-    <!-- Diskreter Umschalter für Display-Skalierungsmodus -->
-    <button 
-        type="button" 
-        class="scale-mode-toggle"
-        onclick={toggleScaleMode}
-        title={displayScaleMode === 'fit' ? 'Zur scrollbaren Detailansicht (1:1) wechseln' : 'An Bildschirmbreite anpassen (Fit)'}
-        aria-label="Display-Skalierung umschalten"
-    >
-        <ZimIcon name={displayScaleMode === 'fit' ? 'zoom_scroll' : 'zoom_fit'} size={15} />
-        <span>{displayScaleMode === 'fit' ? 'Fit' : 'Scroll'}</span>
-    </button>
+</div>
+
+<!-- Schlanke Display-Steuerungsleiste direkt unter dem Monitor (0% Überdeckung der Bildfläche) -->
+<div class="display-toolbar">
+    <div class="display-toolbar-info">
+        <span class="display-toolbar-status">
+            Display: <strong>{displayScaleMode === 'fit' ? 'Fit (angepasst)' : '1:1 (scrollbar)'}</strong>
+        </span>
+    </div>
+    <div class="display-toolbar-actions">
+        <button 
+            type="button" 
+            class="display-toolbar-btn"
+            onclick={downloadScreenshot}
+            title="Screenshot des Monitors herunterladen"
+            aria-label="Screenshot herunterladen"
+        >
+            <ZimIcon name="camera" size={14} />
+            <span>Screenshot</span>
+        </button>
+        <button 
+            type="button" 
+            class="display-toolbar-btn"
+            onclick={toggleScaleMode}
+            title={displayScaleMode === 'fit' ? 'Zur scrollbaren Detailansicht (1:1) wechseln' : 'An Bildschirmbreite anpassen (Fit)'}
+            aria-label="Display-Skalierung umschalten"
+        >
+            <ZimIcon name={displayScaleMode === 'fit' ? 'zoom_scroll' : 'zoom_fit'} size={14} />
+            <span>{displayScaleMode === 'fit' ? 'Fit' : '1:1'}</span>
+        </button>
+    </div>
 </div>
 
 <SettingsPanel {modalsComp} />
@@ -120,29 +155,53 @@
 <StatusOverlay />
 
 <style>
-    .scale-mode-toggle {
-        position: absolute;
-        bottom: 8px;
-        right: 8px;
-        z-index: 30;
-        background: rgba(20, 20, 25, 0.85);
+    .display-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: rgba(18, 18, 22, 0.95);
+        border-bottom: 1px solid var(--border);
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        padding: 6px 16px;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        box-sizing: border-box;
+    }
+    .display-toolbar-status strong {
+        color: var(--text-main);
+        font-weight: 600;
+    }
+    .display-toolbar-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .display-toolbar-btn {
+        background: rgba(30, 30, 38, 0.9);
         color: var(--text-main);
         border: 1px solid var(--border);
         border-radius: var(--radius-sm, 4px);
-        padding: 4px 8px;
+        padding: 4px 10px;
         font-size: 0.75rem;
         cursor: pointer;
-        display: flex;
+        display: inline-flex;
         align-items: center;
-        gap: 5px;
-        backdrop-filter: blur(6px);
+        gap: 6px;
         transition: all 0.2s ease;
-        opacity: 0.75;
     }
-    .scale-mode-toggle:hover {
-        opacity: 1;
-        background: rgba(30, 30, 40, 0.95);
+    .display-toolbar-btn:hover {
+        background: rgba(45, 45, 55, 1);
         border-color: var(--accent);
+        color: white;
+    }
+    @media (max-width: 768px) {
+        .display-toolbar {
+            padding: 8px 12px;
+        }
+        .display-toolbar-btn {
+            padding: 6px 10px;
+            min-height: 38px;
+        }
     }
 </style>
 

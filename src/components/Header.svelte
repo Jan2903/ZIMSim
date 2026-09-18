@@ -20,7 +20,7 @@
 <header class="page-header">
     <h2>ZugInfoMonitor</h2>
     <div class="header-actions">
-        <button id="download-btn" onclick={downloadScreenshot} style="display: inline-flex; align-items: center; gap: 8px;">
+        <button id="download-btn" onclick={downloadScreenshot} title="Screenshot downloaden" aria-label="Screenshot downloaden" style="display: inline-flex; align-items: center; gap: 8px;">
             <ZimIcon name="camera" size={18} />
             <span>Screenshot downloaden</span>
         </button>

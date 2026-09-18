@@ -303,15 +303,39 @@
             
             <!-- Row 1: Status & Modus (Ankunft/Abfahrt, Ausfall, Infoscreen) -->
             <div class="settings-box form-row-responsive align-stretch" style="margin-bottom: 20px;">
-                <!-- Ankunft/Abfahrt Toggle -->
-                <!-- svelte-ignore a11y_click_events_have_key_events -->
-                <!-- svelte-ignore a11y_no_static_element_interactions -->
-                <div class="form-group" style="align-items: center; justify-content: center; cursor: pointer; flex: 0 0 80px;" onclick={() => { journeyStore.toggleJourneyMode(journey.id); triggerUpdate(); }}>
-                    <div style="font-size: 0.85em; opacity: 0.8; margin-bottom: 8px;">Modus</div>
-                    <div style="width: 44px; height: 22px; background: var(--bg-panel, #1a1a1a); border-radius: 11px; position: relative; border: 2px solid var(--border-color, #555); box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);">
-                        <div style="width: 16px; height: 16px; background: {journey.ankunft ? '#ff6b6b' : '#4dabf7'}; border-radius: 50%; position: absolute; top: 1px; transition: 0.2s; {journey.ankunft ? 'right: 1px;' : 'left: 1px;'} box-shadow: 0 1px 3px rgba(0,0,0,0.4);"></div>
+                <!-- Ankunft/Abfahrt Segment-Switch (Touch-Fläche) -->
+                <div class="form-group" style="min-width: 140px; justify-content: center;">
+                    <span class="form-group-label" style="margin-bottom: 6px;">Modus</span>
+                    <div class="segment-switch">
+                        <label>
+                            <input 
+                                type="radio" 
+                                name="journey-mode-{journey.id}" 
+                                checked={!journey.ankunft} 
+                                onchange={() => {
+                                    if (journey.ankunft) {
+                                        journeyStore.toggleJourneyMode(journey.id);
+                                        triggerUpdate();
+                                    }
+                                }}
+                            >
+                            <span>Abfahrt</span>
+                        </label>
+                        <label>
+                            <input 
+                                type="radio" 
+                                name="journey-mode-{journey.id}" 
+                                checked={journey.ankunft} 
+                                onchange={() => {
+                                    if (!journey.ankunft) {
+                                        journeyStore.toggleJourneyMode(journey.id);
+                                        triggerUpdate();
+                                    }
+                                }}
+                            >
+                            <span>Ankunft</span>
+                        </label>
                     </div>
-                    <div style="font-size: 0.85em; margin-top: 8px; font-weight: bold; color: {journey.ankunft ? '#ff6b6b' : '#4dabf7'};">{journey.ankunft ? 'Ankunft' : 'Abfahrt'}</div>
                 </div>
                 
                 <div class="settings-divider"></div>
@@ -357,15 +381,41 @@
 
             <!-- Row 4: Wagenreihung Display Settings -->
             <div class="settings-box form-row-responsive align-stretch" style="margin-bottom: 20px;">
-                <!-- Richtung Toggle -->
-                <!-- svelte-ignore a11y_click_events_have_key_events -->
-                <!-- svelte-ignore a11y_no_static_element_interactions -->
-                <div class="form-group" style="align-items: center; justify-content: center; cursor: pointer; flex: 0 0 80px;" onclick={() => { journey.direction = journey.direction === 1 ? 0 : 1; triggerUpdate(); }}>
-                    <div style="font-size: 0.85em; opacity: 0.8; margin-bottom: 8px;">Fahrtrichtung</div>
-                    <div style="width: 44px; height: 22px; background: var(--bg-panel, #1a1a1a); border-radius: 11px; position: relative; border: 2px solid var(--border-color, #555); box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);">
-                        <div style="width: 16px; height: 16px; background: #4dabf7; border-radius: 50%; position: absolute; top: 1px; transition: 0.2s; {journey.direction === 1 ? 'right: 1px;' : 'left: 1px;'} box-shadow: 0 1px 3px rgba(0,0,0,0.4);"></div>
+                <!-- Richtung Segment-Switch (Touch-Fläche) -->
+                <div class="form-group" style="min-width: 140px; justify-content: center;">
+                    <span class="form-group-label" style="margin-bottom: 6px;">Fahrtrichtung</span>
+                    <div class="segment-switch">
+                        <label>
+                            <input 
+                                type="radio" 
+                                name="journey-direction-{journey.id}" 
+                                checked={journey.direction === 0} 
+                                onchange={() => {
+                                    journey.direction = 0;
+                                    triggerUpdate();
+                                }}
+                            >
+                            <span style="display: inline-flex; align-items: center; gap: 4px; justify-content: center;">
+                                <ZimIcon name="arrow_left" size={12} />
+                                <span>Links</span>
+                            </span>
+                        </label>
+                        <label>
+                            <input 
+                                type="radio" 
+                                name="journey-direction-{journey.id}" 
+                                checked={journey.direction === 1} 
+                                onchange={() => {
+                                    journey.direction = 1;
+                                    triggerUpdate();
+                                }}
+                            >
+                            <span style="display: inline-flex; align-items: center; gap: 4px; justify-content: center;">
+                                <span>Rechts</span>
+                                <ZimIcon name="arrow_right" size={12} />
+                            </span>
+                        </label>
                     </div>
-                    <div style="font-size: 0.85em; margin-top: 8px; font-weight: bold;">{journey.direction === 1 ? 'Rechts' : 'Links'}</div>
                 </div>
 
                 <div class="settings-divider"></div>
