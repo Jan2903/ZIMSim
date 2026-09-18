@@ -1,6 +1,7 @@
 <script>
     import { uiState } from '../js/core/state/uiState.svelte.js';
     import { trainDisplay } from '../js/core/state/stores.js';
+    import ZimIcon from './ZimIcon.svelte';
 
     /**
      * @typedef {Object} Props
@@ -19,12 +20,12 @@
     } = $props();
 
     const AVAILABLE_AMENITIES = [
-        { key: 'BIKE_SPACE', label: '🚲', title: 'Fahrradstellplätze' },
-        { key: 'WHEELCHAIR_SPACE', label: '♿', title: 'Rollstuhlplätze' },
-        { key: 'BOARD_RESTAURANT', label: '🍽️', title: 'Bordrestaurant' },
-        { key: 'BISTRO', label: '☕', title: 'Bordbistro' },
-        { key: 'SLEEPER', label: '🛏️', title: 'Schlafwagen' },
-        { key: 'COUCHETTE', label: '🛋️', title: 'Liegewagen' }
+        { key: 'BIKE_SPACE', iconKey: 'fahrrad', title: 'Fahrradstellplätze' },
+        { key: 'WHEELCHAIR_SPACE', iconKey: 'rollstuhl', title: 'Rollstuhlplätze' },
+        { key: 'BOARD_RESTAURANT', iconKey: 'gastronomie', title: 'Bordrestaurant' },
+        { key: 'BISTRO', iconKey: 'bistro', title: 'Bordbistro' },
+        { key: 'SLEEPER', iconKey: 'schlafwagen', title: 'Schlafwagen' },
+        { key: 'COUCHETTE', iconKey: 'liegewagen', title: 'Liegewagen' }
     ];
 
     function triggerUpdate() {
@@ -140,7 +141,7 @@
                     onclick={() => toggleAmenity(amenity.key)}
                     title="{amenity.title} ({isActive ? 'aktiviert' : 'deaktiviert'})"
                 >
-                    {amenity.label}
+                    <ZimIcon name={amenity.iconKey} size={18} />
                 </button>
             {/each}
         </div>
@@ -290,22 +291,24 @@
         background: transparent;
         border: 1px solid transparent;
         border-radius: 4px;
-        padding: 2px 5px;
-        font-size: 1rem;
+        padding: 3px 5px;
+        color: var(--text-muted, #aaa);
         cursor: pointer;
         transition: all 0.15s ease;
-        opacity: 0.35;
+        opacity: 0.4;
         line-height: 1;
         display: inline-flex;
         align-items: center;
         justify-content: center;
     }
     .amenity-chip:hover {
-        opacity: 0.75;
+        opacity: 0.8;
+        color: var(--text-main, #fff);
         background: rgba(255, 255, 255, 0.1);
     }
     .amenity-chip.active {
         opacity: 1;
+        color: #fff;
         background: rgba(226, 0, 26, 0.2);
         border-color: var(--accent, #e2001a);
     }
