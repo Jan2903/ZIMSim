@@ -6,6 +6,7 @@
     import { safeFlip as flip } from '../js/core/utils/animationUtils.js';
     import { Stop } from '../js/features/station/stop.svelte.js';
     import StationPicker from './StationPicker.svelte';
+    import ZimIcon from './ZimIcon.svelte';
 
     let { journey = $bindable() } = $props();
 
@@ -74,24 +75,30 @@
                     <div class="stop-editor-row-main" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                         <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 24px;">
                             {#if uiState.enableDragAndDrop}
-                                <span class="stop-drag-handle" title="Drag & Drop" style="cursor: move; font-size: 14px; margin-bottom: 2px;">⠿</span>
+                                <span class="stop-drag-handle" title="Drag & Drop" style="cursor: move; margin-bottom: 2px;">
+                                    <ZimIcon name="drag_handle" size={14} />
+                                </span>
                             {/if}
-                            <button class="btn-icon" style="padding: 0; font-size: 0.7em;" onclick={() => moveUp(stop)} title="Hoch">↑</button>
-                            <button class="btn-icon" style="padding: 0; font-size: 0.7em;" onclick={() => moveDown(stop)} title="Runter">↓</button>
+                            <button class="btn-icon" style="padding: 0;" onclick={() => moveUp(stop)} title="Hoch">
+                                <ZimIcon name="arrow_up" size={11} />
+                            </button>
+                            <button class="btn-icon" style="padding: 0;" onclick={() => moveDown(stop)} title="Runter">
+                                <ZimIcon name="arrow_down" size={11} />
+                            </button>
                         </div>
                         
-                        <button class="btn-icon" title={stop.showAsVia ? 'Als Anzeige-Via markiert' : 'Nicht als Anzeige-Via markiert'} onclick={() => toggleVia(stop)}>
-                            {stop.showAsVia ? '👁' : '○'}
+                        <button class="btn-icon" title={stop.showAsVia ? 'Als Anzeige-Via markiert' : 'Nicht als Anzeige-Via markiert'} onclick={() => toggleVia(stop)} style="display: flex; align-items: center; justify-content: center;">
+                            <ZimIcon name={stop.showAsVia ? 'eye' : 'eye_off'} size={16} color={stop.showAsVia ? 'var(--text-main)' : 'var(--text-muted)'} />
                         </button>
 
-                        <button class="btn-icon" title={stop.audioVia ? 'Als Audio-Via markiert' : 'Nicht als Audio-Via markiert'} onclick={() => toggleAudioVia(stop)}>
-                            {stop.audioVia ? '🔊' : '🔈'}
+                        <button class="btn-icon" title={stop.audioVia ? 'Als Audio-Via markiert' : 'Nicht als Audio-Via markiert'} onclick={() => toggleAudioVia(stop)} style="display: flex; align-items: center; justify-content: center;">
+                            <ZimIcon name={stop.audioVia ? 'volume_high' : 'volume_mute'} size={16} color={stop.audioVia ? 'var(--text-main)' : 'var(--text-muted)'} />
                         </button>
                         
                         <div style="flex: 2; min-width: 120px; position: relative;">
                             <StationPicker 
                                 bind:value={stop.name} 
-                                placeholder="Name"
+                                placeholder="Name" 
                                 cssClass="s-prop short-input" 
                                 onSelect={(station) => onStopStationSelect(stop, station)} 
                             />
@@ -108,10 +115,13 @@
                         </select>
                         
                         <label title="Ausfall" style="display: flex; align-items: center; gap: 4px; cursor: pointer; margin-left: 4px;">
-                            <input type="checkbox" class="s-prop" bind:checked={stop.cancelled} onchange={triggerUpdate}> ⛔
+                            <input type="checkbox" class="s-prop" bind:checked={stop.cancelled} onchange={triggerUpdate}>
+                            <ZimIcon name="cancelled" size={14} color={stop.cancelled ? '#ff6b6b' : 'var(--text-muted)'} />
                         </label>
                         
-                        <button class="btn-icon" title="Halt entfernen" onclick={() => removeStop(stop)}>✕</button>
+                        <button class="btn-icon" title="Halt entfernen" onclick={() => removeStop(stop)} style="display: flex; align-items: center; justify-content: center;">
+                            <ZimIcon name="close" size={14} />
+                        </button>
                     </div>
                 </div>
             {/each}

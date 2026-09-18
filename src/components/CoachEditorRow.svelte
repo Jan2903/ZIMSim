@@ -86,11 +86,15 @@
     <div class="coach-main-controls">
         <div class="reorder-controls">
             {#if uiState.enableDragAndDrop}
-                <span class="coach-drag-handle" title="Drag & Drop">⠿</span>
+                <span class="coach-drag-handle" title="Drag & Drop"><ZimIcon name="drag_handle" size={14} /></span>
             {/if}
             <div class="arrow-buttons">
-                <button type="button" class="btn-icon arrow-btn" onclick={onMoveUp} title="Wagen nach links / oben verschieben">↑</button>
-                <button type="button" class="btn-icon arrow-btn" onclick={onMoveDown} title="Wagen nach rechts / unten verschieben">↓</button>
+                <button type="button" class="btn-icon arrow-btn" onclick={onMoveUp} title="Wagen nach links / oben verschieben">
+                    <ZimIcon name="arrow_up" size={12} />
+                </button>
+                <button type="button" class="btn-icon arrow-btn" onclick={onMoveDown} title="Wagen nach rechts / unten verschieben">
+                    <ZimIcon name="arrow_down" size={12} />
+                </button>
             </div>
         </div>
 
@@ -131,7 +135,7 @@
 
     <!-- Rechter Bereich: Amenities, Offen-Status, Löschen -->
     <div class="coach-feature-controls">
-        <div class="amenity-badges" title="Ausstattung (Mehrzweckbereich ergibt sich automatisch aus 🚲 + ♿)">
+        <div class="amenity-badges" title="Ausstattung (Mehrzweckbereich ergibt sich automatisch aus Fahrrad + Rollstuhl)">
             {#each AVAILABLE_AMENITIES as amenity}
                 {@const isActive = coach.amenities && (coach.amenities.includes(amenity.key) || (amenity.key === 'BOARD_RESTAURANT' && coach.amenities.includes('DINING')))}
                 <button
@@ -152,8 +156,10 @@
             class:is-open={coach.open} 
             onclick={toggleOpen}
             title={coach.open ? 'Wagen ist offen für Fahrgäste' : 'Wagen ist gesperrt / geschlossen (X auf Monitor)'}
+            style="display: inline-flex; align-items: center; gap: 4px;"
         >
-            {coach.open ? '✓ Offen' : '✕ Zu'}
+            <ZimIcon name={coach.open ? 'check' : 'close'} size={12} />
+            <span>{coach.open ? 'Offen' : 'Zu'}</span>
         </button>
 
         <button 
@@ -161,8 +167,9 @@
             class="btn-icon remove-coach-btn" 
             onclick={onRemove} 
             title="Wagen entfernen"
+            style="display: inline-flex; align-items: center; justify-content: center;"
         >
-            ✕
+            <ZimIcon name="close" size={14} />
         </button>
     </div>
 </div>

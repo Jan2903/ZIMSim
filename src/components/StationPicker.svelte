@@ -2,6 +2,7 @@
     import { StationService } from '../js/features/station/stationService.js';
     import { journeyStore } from '../js/core/state/stores.js';
     import { portalDropdown } from '../js/core/utils/portal.js';
+    import ZimIcon from './ZimIcon.svelte';
 
     let { value = $bindable(), onSelect = null, onInput = null, placeholder = "Station suchen", cssClass = "jfield" } = $props();
 
@@ -83,8 +84,9 @@
                 if (showDropdown) { showDropdown = false; }
                 else { showDropdown = true; inputRef?.focus(); }
             }}
-            style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%); cursor: pointer; background: none; border: none; font-size: 12px; color: var(--text-muted);">
-        ▼
+            style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%); cursor: pointer; background: none; border: none; color: var(--text-muted); display: flex; align-items: center;"
+            title="Bahnhofsliste öffnen">
+        <ZimIcon name="chevron_down" size={14} />
     </button>
 
     {#if showDropdown && searchText.length >= 2}

@@ -1,5 +1,6 @@
 <script>
     import { irisPollingService, irisConfig } from '../js/core/services/irisPollingService.svelte.js';
+    import ZimIcon from './ZimIcon.svelte';
 
     let isMinimized = $state(false);
     let isHidden = $state(false); // Neu: Komplett ausblenden
@@ -33,10 +34,10 @@
             </div>
             <div class="overlay-actions">
                 <button class="action-btn" onclick={() => isMinimized = !isMinimized} title={isMinimized ? 'Maximieren' : 'Minimieren'}>
-                    {isMinimized ? '▲' : '▼'}
+                    <ZimIcon name={isMinimized ? 'chevron_up' : 'chevron_down'} size={14} />
                 </button>
                 <button class="action-btn close-btn" onclick={() => isHidden = true} title="Schließen">
-                    ✕
+                    <ZimIcon name="close" size={14} />
                 </button>
             </div>
         </div>
@@ -260,5 +261,19 @@
     
     .empty.warning {
         color: #ff9800;
+    }
+
+    @media (max-width: 600px) {
+        .status-overlay {
+            right: 12px;
+            left: 12px;
+            width: auto;
+            bottom: 12px;
+        }
+        .status-overlay.minimized {
+            left: auto;
+            right: 12px;
+            width: 220px;
+        }
     }
 </style>
