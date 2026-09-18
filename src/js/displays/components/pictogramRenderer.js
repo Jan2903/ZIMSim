@@ -28,7 +28,7 @@ const PICTOGRAM_RULES = [
     {
         match: (info) => info.includes("Ersatzverkehr mit Bus ist eingerichtet") || info.includes("Ersatzverkehr"),
         draw: (ctx) => {
-            ctx.fillStyle = COLORS.WHITE;
+            ctx.fillStyle = "#B21C6D";
             ctx.fillRect(0, 0, 100, 100);
             drawIcon(ctx, 'ersatzverkehr');
         }
