@@ -6,7 +6,6 @@ import { drawDBLogo } from '../core/sharedRenderers.js';
 
 /**
  * Renderer für den Digitalen Wagenreihungsplan der DB.
- * Exakt nach Vorlage des DB ZIM Standards (media_1789984220426.png).
  *
  * Struktur:
  * - Kopfzeile: Uhrzeit, "Abfahrt Departure", Sektoren [A] bis [G], "Gleis", DB-Logo

@@ -4,7 +4,6 @@ import { getSimulatedTime } from '../../core/utils/config.js';
 
 /**
  * Renderer für die DB-Ankunftstafel (Nur Ankünfte).
- * Exakt nach Vorlage des DB ZIM Standards (media_1789984220412.png).
  *
  * Spalten:
  * 1. Geplant / Planned (Ankunftszeit)

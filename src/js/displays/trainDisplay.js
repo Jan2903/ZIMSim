@@ -11,6 +11,7 @@ import { drawListeRow, drawVoranzeigerBoard } from './components/listeRenderer.j
 import { drawVitrine32Wagenstand } from './components/vitrineRenderer.js';
 import { drawAnkunftBoard } from './components/ankunftRenderer.js';
 import { drawWagenreihungPlan } from './components/wagenreihungPlanRenderer.js';
+import { drawAnschlusstafelZoomBoard } from './components/anschlusstafelZoomRenderer.js';
 import { displayConfigStore } from './core/displayConfigStore.svelte.js';
 import { ScreenSyncService } from '../core/services/screenSyncService.js';
 
@@ -290,8 +291,8 @@ export class TrainDisplay {
                 }
             }
 
-            // 3. Voranzeiger Pagination & Ticker Loop (nur aktiv wenn Layout einen Voranzeiger-Screen hat)
-            const hasVoranzeiger = this.currentLayout && this.currentLayout.screens && this.currentLayout.screens.some(s => s.type === 'voranzeiger');
+            // 3. Voranzeiger Pagination & Ticker Loop (aktiv wenn Layout einen Abfahrts-/Voranzeiger-Screen hat)
+            const hasVoranzeiger = this.currentLayout && this.currentLayout.screens && this.currentLayout.screens.some(s => s.type === 'voranzeiger' || s.type === 'abfahrt' || s.type === 'abfahrt_zoom' || s.type === 'abfahrt_portrait');
             if (hasVoranzeiger) {
                 // Ticker kontinuierlich scrollen
                 this.tickerOffset += 1.8;
@@ -533,6 +534,8 @@ export class TrainDisplay {
                                 });
                                 ctx.restore();
                             }
+                        } else if (screen.type === 'abfahrt_zoom') {
+                            drawAnschlusstafelZoomBoard(ctx, journeys, width, height, renderCtx, screen);
                         } else if (screen.type === 'abfahrt' || screen.type === 'abfahrt_portrait' || screen.type === 'voranzeiger') {
                             drawVoranzeigerBoard(ctx, journeys, width, height, renderCtx, screen);
                         } else if (screen.type === 'ankunft' || screen.type === 'ankunft_portrait') {
@@ -582,7 +585,7 @@ export class TrainDisplay {
         const screens = layout?.screens || [];
 
         const hasAnkunft = screens.some(s => s.type === 'ankunft' || s.type === 'ankunft_portrait');
-        const hasAbfahrt = screens.some(s => s.type === 'abfahrt' || s.type === 'abfahrt_portrait' || s.type === 'voranzeiger');
+        const hasAbfahrt = screens.some(s => s.type === 'abfahrt' || s.type === 'abfahrt_portrait' || s.type === 'voranzeiger' || s.type === 'abfahrt_zoom');
         const hasWagenreihungPlan = screens.some(s => s.type === 'wagenreihung_plan');
 
         if (hasAnkunft) {
@@ -742,7 +745,7 @@ export class TrainDisplay {
         const allVisibleJourneys = this.journeyStore.journeys.filter(j => j.visible);
 
         for (const screen of this.currentLayout.screens) {
-            if (screen.type === 'voranzeiger' || screen.type === 'abfahrt' || screen.type === 'abfahrt_portrait') {
+            if (screen.type === 'voranzeiger' || screen.type === 'abfahrt' || screen.type === 'abfahrt_portrait' || screen.type === 'abfahrt_zoom') {
                 assignments.set(screen.id, {
                     journeys: allVisibleJourneys,
                     zugID: 1,

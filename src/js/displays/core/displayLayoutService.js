@@ -99,7 +99,7 @@ export function generateActiveLayout(monitorId = 'zim2x32', layoutType = 'zuganz
                 { id: 'nebenmonitor_2', type: 'neben_rotierend', x: 2880, y: 0, w: 960, h: 1080 }
             ];
         } else if (prof.id === 'zimvitrine65h') {
-            // Stele Hochkant: Zeigt Wagenreihungsplan mit Reihung & Sektoren (wie media_1789984220426.png)
+            // Stele Hochkant: Zeigt Wagenreihungsplan mit Reihung & Sektoren
             layout.screens = [
                 { id: 'stele_zuganzeiger', type: 'wagenreihung_plan', x: 0, y: 0, w: 1080, h: 1920, planOffset: 0 }
             ];
@@ -116,7 +116,7 @@ export function generateActiveLayout(monitorId = 'zim2x32', layoutType = 'zuganz
     // ========================================================
     else if (layoutType === 'anschlusstafel') {
         if (prof.id === 'zim2x32') {
-            // 2 Spalten nebeneinander (wie media_1789984220415.png)
+            // 2 Spalten nebeneinander
             const slot2X = withBezel ? 1970 : 1920;
             layout.screens = [
                 { id: 'abfahrt_col1', type: 'abfahrt', x: 0, y: 0, w: 1920, h: 1080, colIndex: 0, maxCols: 2 },
@@ -186,7 +186,7 @@ export function generateActiveLayout(monitorId = 'zim2x32', layoutType = 'zuganz
                 { id: 'ankunft_col2', type: 'ankunft', x: colW, y: 0, w: colW, h: 1080, colIndex: 1, maxCols: 2 }
             ];
         } else if (prof.id === 'zimvitrine65h') {
-            // 20 Zeilen AnkÃ¼nfte untereinander (1:1 wie media_1789984220412.png!)
+            // 20 Zeilen AnkÃ¼nfte untereinander
             layout.screens = [
                 { id: 'ankunft_stele', type: 'ankunft_portrait', x: 0, y: 0, w: 1080, h: 1920, maxRows: 20 }
             ];
@@ -216,7 +216,7 @@ export function generateActiveLayout(monitorId = 'zim2x32', layoutType = 'zuganz
                 { id: 'plan_col3', type: 'wagenreihung_plan', x: slot3X, y: 0, w: 1920, h: 1080, planOffset: 8 }
             ];
         } else {
-            // Einzelbildschirm / Vitrine 32 / Stele 65h (wie media_1789984220426.png)
+            // Einzelbildschirm / Vitrine 32 / Stele 65h
             layout.screens = [
                 { id: 'plan_main', type: 'wagenreihung_plan', x: 0, y: 0, w: width, h: height, planOffset: 0 }
             ];
@@ -263,17 +263,17 @@ export function generateActiveLayout(monitorId = 'zim2x32', layoutType = 'zuganz
             // 2 Spalten nebeneinander – je 4 große Abfahrtszeilen pro Bildschirm
             const slot2X = withBezel ? 1970 : 1920;
             layout.screens = [
-                { id: 'abfahrt_zoom_col1', type: 'abfahrt', x: 0, y: 0, w: 1920, h: 1080, colIndex: 0, maxCols: 2, maxRows: 4 },
-                { id: 'abfahrt_zoom_col2', type: 'abfahrt', x: slot2X, y: 0, w: 1920, h: 1080, colIndex: 1, maxCols: 2, maxRows: 4 }
+                { id: 'abfahrt_zoom_col1', type: 'abfahrt_zoom', x: 0, y: 0, w: 1920, h: 1080, colIndex: 0, maxCols: 2, maxRows: 4 },
+                { id: 'abfahrt_zoom_col2', type: 'abfahrt_zoom', x: slot2X, y: 0, w: 1920, h: 1080, colIndex: 1, maxCols: 2, maxRows: 4 }
             ];
         } else if (prof.id === 'zim3x32') {
             // 3 Spalten nebeneinander – je 4 große Abfahrtszeilen pro Bildschirm
             const slot2X = withBezel ? 1970 : 1920;
             const slot3X = withBezel ? 3940 : 3840;
             layout.screens = [
-                { id: 'abfahrt_zoom_col1', type: 'abfahrt', x: 0, y: 0, w: 1920, h: 1080, colIndex: 0, maxCols: 3, maxRows: 4 },
-                { id: 'abfahrt_zoom_col2', type: 'abfahrt', x: slot2X, y: 0, w: 1920, h: 1080, colIndex: 1, maxCols: 3, maxRows: 4 },
-                { id: 'abfahrt_zoom_col3', type: 'abfahrt', x: slot3X, y: 0, w: 1920, h: 1080, colIndex: 2, maxCols: 3, maxRows: 4 }
+                { id: 'abfahrt_zoom_col1', type: 'abfahrt_zoom', x: 0, y: 0, w: 1920, h: 1080, colIndex: 0, maxCols: 3, maxRows: 4 },
+                { id: 'abfahrt_zoom_col2', type: 'abfahrt_zoom', x: slot2X, y: 0, w: 1920, h: 1080, colIndex: 1, maxCols: 3, maxRows: 4 },
+                { id: 'abfahrt_zoom_col3', type: 'abfahrt_zoom', x: slot3X, y: 0, w: 1920, h: 1080, colIndex: 2, maxCols: 3, maxRows: 4 }
             ];
         } else if (prof.id === 'zimvitrine65h') {
             // Stele Hochkant: 8 große Zeilen (entspricht 4 auf FullHD-Verhältnis)
@@ -283,7 +283,7 @@ export function generateActiveLayout(monitorId = 'zim2x32', layoutType = 'zuganz
         } else {
             // Einzelmonitor (zim32_single, zimvitrine32, zimwide, zimultrawide)
             layout.screens = [
-                { id: 'abfahrt_zoom_single', type: 'abfahrt', x: 0, y: 0, w: width, h: 1080, colIndex: 0, maxCols: 1, maxRows: 4 }
+                { id: 'abfahrt_zoom_single', type: 'abfahrt_zoom', x: 0, y: 0, w: width, h: 1080, colIndex: 0, maxCols: 1, maxRows: 4 }
             ];
         }
     }
@@ -355,7 +355,7 @@ export function generateTargetScreenLayout(layoutType = 'zuganzeiger', targetScr
     else if (layoutType === 'anschlusstafel_zoom') {
         const colIdx = Math.max(0, screenNum - 1);
         layout.screens = [
-            { id: `abfahrt_zoom_col${screenNum}`, type: 'abfahrt', x: 0, y: 0, w: sWidth, h: sHeight, colIndex: colIdx, maxCols: 3, maxRows: 4 }
+            { id: `abfahrt_zoom_col${screenNum}`, type: 'abfahrt_zoom', x: 0, y: 0, w: sWidth, h: sHeight, colIndex: colIdx, maxCols: 3, maxRows: 4 }
         ];
     }
     // 3. ANKUNFTSTAFEL (AnkÃ¼nfte)
