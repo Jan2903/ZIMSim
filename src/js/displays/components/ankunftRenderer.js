@@ -1,5 +1,5 @@
-// js/displays/components/ankunftRenderer.js
 import { COLORS, FONTS } from '../core/constants.js';
+import { truncateWithEllipsis } from '../core/textUtils.js';
 import { getSimulatedTime } from '../../core/utils/config.js';
 
 /**
@@ -200,7 +200,7 @@ function drawAnkunftRow(ctx, train, x, y, width, height, isAlt, isPortrait) {
 
     // 3. Zug / Linie (Farbiger Badge)
     const trainX = isPortrait ? 225 : 310;
-    const trainName = train.effectiveDisplayName || train.name || 'Zug';
+    const trainName = train.displayTitle;
     const badgeW = isPortrait ? 115 : 140;
     const badgeH = height * 0.72;
     const badgeY = y + (height * 0.14);
@@ -238,12 +238,7 @@ function drawAnkunftRow(ctx, train, x, y, width, height, isAlt, isPortrait) {
     let hasAirport = originStation.includes('Flughafen') || originStation.includes('BER');
 
     const maxOriginW = isPortrait ? (width - originX - 160) : (width - originX - 300);
-    if (ctx.measureText(originStation).width > maxOriginW) {
-        while (originStation.length > 0 && ctx.measureText(originStation + '...').width > maxOriginW) {
-            originStation = originStation.slice(0, -1);
-        }
-        originStation += '...';
-    }
+    originStation = truncateWithEllipsis(ctx, originStation, maxOriginW);
 
     ctx.fillText(originStation, originX, textY);
 

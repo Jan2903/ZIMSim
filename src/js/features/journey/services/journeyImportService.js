@@ -1,7 +1,7 @@
 import { Journey } from '../journey.svelte.js';
 import { Stop } from '../../station/stop.svelte.js';
 import { Platform } from '../../station/platform.svelte.js';
-import { Formation } from '../../formation/formationModel.js';
+import { Formation } from '../../formation/formationModel.svelte.js';
 import { FormationParser } from '../../formation/formationParser.js';
 import { ansagenStore } from '../../../audio/ansagenStore.svelte.js';
 import { JourneyCouplingService } from './journeyCouplingService.js';

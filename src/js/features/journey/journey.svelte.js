@@ -1,5 +1,5 @@
 import { Stop } from '../station/stop.svelte.js';
-import { Formation } from '../formation/formationModel.js';
+import { Formation } from '../formation/formationModel.svelte.js';
 import { JourneyViaService } from './services/journeyViaService.js';
 import { DynamicTextService } from './services/dynamicTextService.js';
 import { JourneyImportService } from './services/journeyImportService.js';
@@ -237,9 +237,19 @@ export class Journey {
         return this.displayNameOverride || this.name;
     }
 
+    /** Sicherer Anzeigename für Render-Komponenten (Fallback: 'Zug') */
+    get displayTitle() {
+        return this.displayNameOverride || this.displayName || this.name || 'Zug';
+    }
+
     /** Effektives Ziel: Override oder auto-generiert */
     get effectiveDestination() {
         return this.destinationOverride || this.destinationLang || this.destination;
+    }
+
+    /** Sicheres Anzeigen-Ziel für Render-Komponenten (Fallback: 'Ziel') */
+    get displayDestination() {
+        return this.destinationOverride || this.destinationLang || this.destination || 'Ziel';
     }
 
     /** Effektives Kurz-Ziel (für Lauftext / Platzmangel): Override oder auto-generiert */

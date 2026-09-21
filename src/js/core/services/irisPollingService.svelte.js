@@ -3,6 +3,8 @@ import { IrisDataMapper } from './irisDataMapper.js';
 import { journeyStore, trainDisplay } from '../state/stores.js';
 import { getSimulatedTime } from '../utils/config.js';
 import { ansagenStore } from '../../audio/ansagenStore.svelte.js';
+import { ansagenPlayer } from '../../audio/ansagenPlayer.svelte.js';
+import { AnsagenGenerator } from '../../audio/ansagenGenerator.js';
 
 export const irisConfig = $state({
     autoUpdateInterval: 0,
@@ -10,8 +12,6 @@ export const irisConfig = $state({
     autoAnnouncements: false,
     autoSort: true,
 });
-import { ansagenPlayer } from '../../audio/ansagenPlayer.svelte.js';
-import { AnsagenGenerator } from '../../audio/ansagenGenerator.js';
 
 class IrisPollingService {
     lastPollTime = $state(null);

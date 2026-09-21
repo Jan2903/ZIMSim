@@ -56,6 +56,24 @@ export function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight, font, tex
 }
 
 /**
+ * Kürzt einen Text mit Ellipsis (...), falls er die maximale Breite überschreitet.
+ * @param {CanvasRenderingContext2D} ctx - Der Canvas-Kontext (mit gesetzter Schriftart)
+ * @param {string} text - Der ursprüngliche Text
+ * @param {number} maxWidth - Die maximal erlaubte Breite in Pixeln
+ * @returns {string} Der gekürzte Text (oder das Original)
+ */
+export function truncateWithEllipsis(ctx, text, maxWidth) {
+    if (!text || ctx.measureText(text).width <= maxWidth) {
+        return text;
+    }
+    let truncated = text;
+    while (truncated.length > 0 && ctx.measureText(truncated + '...').width > maxWidth) {
+        truncated = truncated.slice(0, -1);
+    }
+    return truncated ? (truncated + '...') : '';
+}
+
+/**
  * Zeichnet den farbigen Info-Header für Störungsmeldungen (z.B. "Gleisänderung / Track change").
  */
 export function drawInfoTopText(ctx, backgroundColor, textColor, infoText1, infoText2, x1, x2) {

@@ -3,6 +3,7 @@ import { COLORS, FONTS, FORMATION } from '../core/constants.js';
 import { getSimulatedTime } from '../../core/utils/config.js';
 import { drawFormation, drawSectors } from './formationRenderer.js';
 import { drawDBLogo } from '../core/sharedRenderers.js';
+import { truncateWithEllipsis } from '../core/textUtils.js';
 
 /**
  * Renderer für den Digitalen Wagenreihungsplan der DB.
@@ -159,7 +160,7 @@ function drawPlanRow(ctx, trainGroup, platform, x, y, width, height, sectorStart
     const col1X = isPortrait ? 20 : 30;
 
     // 1. Zugname / Gattung (z.B. "ICE 1638")
-    const trainName = primary.effectiveDisplayName || primary.name || 'Zug';
+    const trainName = primary.displayTitle;
     ctx.font = FONTS.bold(isPortrait ? 22 : 26);
     ctx.fillStyle = '#cbd5e1';
     ctx.textAlign = 'left';
@@ -225,7 +226,7 @@ function drawPlanRow(ctx, trainGroup, platform, x, y, width, height, sectorStart
     ctx.textAlign = 'left';
     ctx.font = FONTS.bold(isPortrait ? 34 : 42);
     ctx.fillStyle = isAusfall ? '#94a3b8' : COLORS.WHITE;
-    const destText = primary.destinationLang || primary.destination || 'Ziel';
+    const destText = primary.displayDestination;
     ctx.fillText(destText, col2X, y + (height * 0.28));
 
     // 2. Zwischenhalte / Vias
@@ -235,12 +236,7 @@ function drawPlanRow(ctx, trainGroup, platform, x, y, width, height, sectorStart
         ctx.fillStyle = '#94a3b8';
         let viaDisplay = vias;
         const maxViaW = sectorUsableWidth;
-        if (ctx.measureText(viaDisplay).width > maxViaW) {
-            while (viaDisplay.length > 0 && ctx.measureText(viaDisplay + '...').width > maxViaW) {
-                viaDisplay = viaDisplay.slice(0, -1);
-            }
-            viaDisplay += '...';
-        }
+        viaDisplay = truncateWithEllipsis(ctx, viaDisplay, maxViaW);
         ctx.fillText(viaDisplay, col2X, y + (height * 0.44));
     }
 

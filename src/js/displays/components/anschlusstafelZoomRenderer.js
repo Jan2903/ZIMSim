@@ -1,5 +1,5 @@
-// js/displays/components/anschlusstafelZoomRenderer.js
 import { COLORS, FONTS } from '../core/constants.js';
+import { truncateWithEllipsis } from '../core/textUtils.js';
 
 /**
  * Dedizierter Renderer für die DB-Anschlusstafel im Zoom-Layout (4 Zeilen Vollbild).
@@ -141,7 +141,7 @@ function drawZoomRow(ctx, train, x, y, width, height) {
     }
 
     // 1.3 Zugnummer / Linie direkt unter der Abfahrtszeit (kein Badge-Hintergrund)
-    const displayName = train.effectiveDisplayName || train.displayName || train.name || 'Zug';
+    const displayName = train.displayTitle;
     ctx.font = FONTS.bold(38);
     ctx.fillStyle = COLORS.WHITE;
     ctx.textAlign = 'left';
@@ -208,7 +208,7 @@ function drawZoomRow(ctx, train, x, y, width, height) {
     const availableDestWidth = width - destX - trackReservedWidth - 30;
 
     // 2.1 Zielbahnhof
-    let destText = train.destinationLang || train.destination || 'Ziel';
+    let destText = train.displayDestination;
     const isAirport = destText.includes('Flughafen') || destText.includes('BER');
     if (isAirport && !destText.includes('✈')) {
         destText += ' ✈';
@@ -226,13 +226,7 @@ function drawZoomRow(ctx, train, x, y, width, height) {
     }
 
     // Falls selbst mit minimaler Schriftgröße zu lang: Kürzen mit Ellipsis
-    if (ctx.measureText(destText).width > availableDestWidth) {
-        while (destText.length > 0 && ctx.measureText(destText + '...').width > availableDestWidth) {
-            destText = destText.slice(0, -1);
-        }
-        destText += '...';
-    }
-
+    destText = truncateWithEllipsis(ctx, destText, availableDestWidth);
     ctx.fillText(destText, destX, upperY);
 
     // 2.2 Via-Haltestellenkette mit ' - ' Trenner
@@ -249,13 +243,7 @@ function drawZoomRow(ctx, train, x, y, width, height) {
         ctx.fillStyle = '#cbd5e1';
 
         // Kürzung mit Ellipsis bei Überlänge
-        if (ctx.measureText(viaStr).width > availableDestWidth) {
-            while (viaStr.length > 0 && ctx.measureText(viaStr + '...').width > availableDestWidth) {
-                viaStr = viaStr.slice(0, -1);
-            }
-            viaStr += '...';
-        }
-
+        viaStr = truncateWithEllipsis(ctx, viaStr, availableDestWidth);
         ctx.fillText(viaStr, destX, lowerY);
     }
 }

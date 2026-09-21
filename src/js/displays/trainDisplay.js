@@ -1,7 +1,6 @@
 // js/displays/trainDisplay.js
 // Orchestrator — delegiert an spezialisierte Renderer-Module
 import { config } from '../core/utils/config.js';
-import { LAYOUTS } from './core/layouts.js';
 import { COLORS } from './core/constants.js';
 import { Journey } from '../features/journey/journey.svelte.js';
 import { ScrollManager } from './core/scrollManager.js';
@@ -189,8 +188,6 @@ export class TrainDisplay {
         } else if (['zim2x32', 'zim3x32', 'zim32_single', 'zimvitrine32', 'zimvitrine65h', 'zimwide', 'zimultrawide'].includes(layoutName)) {
             displayConfigStore.setMonitorId(layoutName);
             this._customLayout = null;
-        } else if (LAYOUTS[layoutName]) {
-            this._customLayout = LAYOUTS[layoutName];
         }
 
         // Canvas-Größe anpassen
@@ -238,8 +235,7 @@ export class TrainDisplay {
         const loop = () => {
             const isVitrine = this.currentLayout?.layoutType === 'wagenstand_gleis' || 
                               this.currentLayout?.screens?.some(s => s.type === 'vitrine32') ||
-                              this.currentLayout?.layoutType === 'wagenreihungsplan' || 
-                              this.currentLayout === LAYOUTS.zimvitrine32wagenstand;
+                              this.currentLayout?.layoutType === 'wagenreihungsplan';
             const now = Date.now();
             let needsRender = false;
             

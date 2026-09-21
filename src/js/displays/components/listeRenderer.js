@@ -1,6 +1,6 @@
 // js/displays/components/listeRenderer.js
 import { COLORS, FONTS } from '../core/constants.js';
-import { drawText, drawWrappedText } from '../core/textUtils.js';
+import { drawText, drawWrappedText, truncateWithEllipsis } from '../core/textUtils.js';
 import { getSimulatedTime } from '../../core/utils/config.js';
 
 /**
@@ -231,7 +231,7 @@ function drawTrainRow(ctx, train, x, y, width, height, isAlt, isPortrait = false
 
     // 2. Spalte: Zug / Gattung
     const trainX = isPortrait ? 140 : 180;
-    const displayName = train.effectiveDisplayName || train.displayName || train.name || 'Zug';
+    const displayName = train.displayTitle;
     const trainBoxW = isPortrait ? 120 : 160;
     const trainBoxH = isPortrait ? 38 : 46;
     const trainBoxY = timeY - (isPortrait ? 28 : 34);
@@ -255,7 +255,7 @@ function drawTrainRow(ctx, train, x, y, width, height, isAlt, isPortrait = false
     ctx.textAlign = 'left';
     ctx.font = FONTS.bold(destFontSize);
     ctx.fillStyle = isAusfall ? '#94a3b8' : COLORS.WHITE;
-    const destText = train.destinationLang || train.destination || 'Ziel';
+    const destText = train.displayDestination;
     ctx.fillText(destText, destX, timeY);
 
     // Vias / Haltestellenkette
@@ -270,12 +270,7 @@ function drawTrainRow(ctx, train, x, y, width, height, isAlt, isPortrait = false
     // Abschneiden bei Überlänge mit Auslassungspunkten
     const rightMargin = isPortrait ? 180 : 320;
     const maxViaWidth = width - destX - rightMargin;
-    if (ctx.measureText(viaStr).width > maxViaWidth) {
-        while (viaStr.length > 0 && ctx.measureText(viaStr + '...').width > maxViaWidth) {
-            viaStr = viaStr.slice(0, -1);
-        }
-        viaStr += '...';
-    }
+    viaStr = truncateWithEllipsis(ctx, viaStr, maxViaWidth);
     ctx.fillText(viaStr, destX, viaY);
 
     // 4. Spalte: Gleis

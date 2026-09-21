@@ -1,6 +1,7 @@
 // js/main.js
+import { mount } from 'svelte';
+import App from '../App.svelte';
 import { journeyStore, trainDisplay } from './core/state/stores.js';
-
 import { StationService } from './features/station/stationService.js';
 import { RisTextService } from './core/services/risTextService.js';
 
@@ -114,9 +115,6 @@ function createDemoData() {
         }
     });
 }
-
-import { mount } from 'svelte';
-import App from '../App.svelte';
 
 // Warten, bis das DOM vollständig geladen ist
 document.addEventListener('DOMContentLoaded', () => {
