@@ -11,11 +11,11 @@ export class JourneyStorageService {
      * @returns {object}
      */
     static exportState(store) {
-        return {
+        const rawState = {
             stationContext: {
                 stationName: store.stationContext.stationName,
                 stationId: store.stationContext.stationId,
-                activePlatformName: store.stationContext.platform.name || 'default'
+                activePlatformName: store.stationContext?.platform?.name || 'default'
             },
             journeys: store.journeys,
             nrwMode: store.nrwMode,
@@ -23,6 +23,13 @@ export class JourneyStorageService {
             platforms: store.platforms,
             customStations: store.customStations
         };
+
+        try {
+            // Svelte 5 Proxies dereferenzieren, um fehlerfreies Klonen / postMessage zu garantieren
+            return JSON.parse(JSON.stringify(rawState));
+        } catch {
+            return rawState;
+        }
     }
 
     /**

@@ -3,8 +3,8 @@
      * @fileoverview HardwareBezel.svelte
      * Prozedurales, vektorbasiertes DB-Gehäuse für ZIM-Displays.
      * Erzeugt das authentische Gehäuse in DB-Nachtblau (RAL 5022) mit 
-     * symmetrischen Rändern (270px links/rechts, 260px oben/unten),
-     * Deckenhalterungen und 50px-Mittelstegen. 100% ohne Bitmap-Bilder.
+     * vollständig symmetrischen Rändern (270px links/rechts, 260px oben/unten)
+     * und 50px-Mittelstegen. 100% ohne Bitmap-Bilder.
      */
 
     /**
@@ -22,10 +22,6 @@
         paddingY = 260,
         layout = {}
     } = $props();
-
-    // Berechnung der Positionen für die Deckenabhänger (Stahlrohrhalterungen)
-    let hanger1X = $derived(Math.round(width * 0.28));
-    let hanger2X = $derived(Math.round(width * 0.72));
 
     // Berechnung der X-Positionen der 50px-Mittelstege relativ zum Gehäuse
     let gapXPositions = $derived.by(() => {
@@ -52,29 +48,22 @@
         preserveAspectRatio="none"
     >
         <defs>
-            <!-- Haupt-Gehäusefarbverlauf DB-Nachtblau RAL 5022 -->
+            <!-- Haupt-Gehäusefarbverlauf DB-Nachtblau RAL 5022 (symmetrisch oben/unten) -->
             <linearGradient id="bezel-bg-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#0b1e3e" />
-                <stop offset="15%" stop-color="#091833" />
-                <stop offset="85%" stop-color="#071328" />
-                <stop offset="100%" stop-color="#040b17" />
+                <stop offset="0%" stop-color="#091833" />
+                <stop offset="10%" stop-color="#071328" />
+                <stop offset="50%" stop-color="#050e1c" />
+                <stop offset="90%" stop-color="#071328" />
+                <stop offset="100%" stop-color="#091833" />
             </linearGradient>
 
-            <!-- Metallischer Glanzverlauf für den horizontalen Querträger -->
+            <!-- Metallischer Glanzverlauf für den Mittelsteg (100% harmonisiert mit trainDisplay.js) -->
             <linearGradient id="metal-accent" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="#061224" />
-                <stop offset="20%" stop-color="#0c234a" />
-                <stop offset="50%" stop-color="#143670" />
-                <stop offset="80%" stop-color="#0c234a" />
-                <stop offset="100%" stop-color="#061224" />
-            </linearGradient>
-
-            <!-- Deckenabhängung Rohr-Farbverlauf -->
-            <linearGradient id="hanger-rod" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="#18181c" />
-                <stop offset="30%" stop-color="#3c3f4a" />
-                <stop offset="70%" stop-color="#2a2c34" />
-                <stop offset="100%" stop-color="#121316" />
+                <stop offset="0%" stop-color="#040b17" />
+                <stop offset="15%" stop-color="#091833" />
+                <stop offset="50%" stop-color="#102a57" />
+                <stop offset="85%" stop-color="#091833" />
+                <stop offset="100%" stop-color="#040b17" />
             </linearGradient>
 
             <!-- Weicher Display-Einbauschatten -->
@@ -83,43 +72,35 @@
             </filter>
         </defs>
 
-        <!-- 1. Deckenabhängungs-Rohre oben (ragen zur Decke) -->
-        <!-- Linker Deckenhänger -->
-        <rect x="{hanger1X - 22}" y="0" width="44" height="{paddingY - 40}" fill="url(#hanger-rod)" />
-        <rect x="{hanger1X - 32}" y="{paddingY - 50}" width="64" height="16" rx="3" fill="#1e2026" stroke="#2c303a" stroke-width="2" />
-        <circle cx="{hanger1X - 20}" cy="{paddingY - 42}" r="3.5" fill="#444854" />
-        <circle cx="{hanger1X + 20}" cy="{paddingY - 42}" r="3.5" fill="#444854" />
-
-        <!-- Rechter Deckenhänger -->
-        <rect x="{hanger2X - 22}" y="0" width="44" height="{paddingY - 40}" fill="url(#hanger-rod)" />
-        <rect x="{hanger2X - 32}" y="{paddingY - 50}" width="64" height="16" rx="3" fill="#1e2026" stroke="#2c303a" stroke-width="2" />
-        <circle cx="{hanger2X - 20}" cy="{paddingY - 42}" r="3.5" fill="#444854" />
-        <circle cx="{hanger2X + 20}" cy="{paddingY - 42}" r="3.5" fill="#444854" />
-
-        <!-- 2. Hauptgehäuse-Körper (Symmetrischer dunkelblauer Kasten RAL 5022) -->
+        <!-- 1. Hauptgehäuse-Körper (Symmetrischer dunkelblauer Kasten RAL 5022, 260px oben & 260px unten) -->
         <rect 
             x="0" 
-            y="{paddingY - 40}" 
+            y="0" 
             width="{width}" 
-            height="{height - (paddingY - 40)}" 
-            rx="12" 
+            height="{height}" 
+            rx="16" 
             fill="url(#bezel-bg-grad)" 
             stroke="#0e2852" 
             stroke-width="2"
         />
 
-        <!-- Oberer Zierstreifen / Deckenkante mit subtilem Glanz -->
+        <!-- 2. Obere Gehäuseblende (Spiegelbildlich zur unteren Blende mit Dehnungsfuge) -->
         <rect 
-            x="10" 
-            y="{paddingY - 34}" 
-            width="{width - 20}" 
-            height="8" 
-            rx="2" 
-            fill="rgba(255, 255, 255, 0.14)" 
+            x="20" 
+            y="20" 
+            width="{width - 40}" 
+            height="3" 
+            fill="rgba(0, 0, 0, 0.8)" 
+        />
+        <rect 
+            x="20" 
+            y="23" 
+            width="{width - 40}" 
+            height="1" 
+            fill="rgba(255, 255, 255, 0.12)" 
         />
 
         <!-- 3. Aussparung für die Monitore (Bildschirmbereich) -->
-        <!-- Der Hintergrund hinter dem Display wird dunkles Marineblau (#000080 / MidnightBlue) -->
         <rect 
             x="{paddingX}" 
             y="{paddingY}" 
@@ -129,32 +110,38 @@
             filter="url(#screen-shadow)"
         />
 
-        <!-- 4. Innere Gehäusefasen um das Display (Tiefe & Schatten) -->
-        <!-- Oberer Innenschatten -->
+        <!-- 4. Innere Gehäusefasen um das Display (Symmetrische Tiefe & Schatten) -->
         <rect x="{paddingX}" y="{paddingY}" width="{width - (paddingX * 2)}" height="6" fill="rgba(0, 0, 0, 0.8)" />
-        <!-- Linker Innenschatten -->
         <rect x="{paddingX}" y="{paddingY}" width="6" height="1080" fill="rgba(0, 0, 0, 0.8)" />
-        <!-- Untere Innenlichtkante -->
-        <rect x="{paddingX}" y="{paddingY + 1076}" width="{width - (paddingX * 2)}" height="4" fill="rgba(255, 255, 255, 0.08)" />
-        <!-- Rechte Innenlichtkante -->
-        <rect x="{paddingX + width - (paddingX * 2) - 4}" y="{paddingY}" width="4" height="1080" fill="rgba(255, 255, 255, 0.08)" />
+        <rect x="{paddingX}" y="{paddingY + 1074}" width="{width - (paddingX * 2)}" height="6" fill="rgba(0, 0, 0, 0.8)" />
+        <rect x="{paddingX + width - (paddingX * 2) - 6}" y="{paddingY}" width="6" height="1080" fill="rgba(0, 0, 0, 0.8)" />
+        <!-- Subtile Innenlichtkanten -->
+        <rect x="{paddingX}" y="{paddingY + 1078}" width="{width - (paddingX * 2)}" height="2" fill="rgba(255, 255, 255, 0.08)" />
+        <rect x="{paddingX + width - (paddingX * 2) - 2}" y="{paddingY}" width="2" height="1080" fill="rgba(255, 255, 255, 0.08)" />
 
-        <!-- 5. Vertikale 50px-Trennstege zwischen den Monitoren -->
+        <!-- 5. Vertikale 50px-Trennstege zwischen den Monitoren (Verankerung oben & unten) -->
         {#each gapXPositions as gapX}
             <g class="bezel-post">
                 <!-- Steg-Körper in DB-Dunkelblau mit metallischem 3D-Verlauf -->
-                <rect x="{gapX}" y="{paddingY - 10}" width="50" height="1100" fill="url(#metal-accent)" />
+                <rect x="{gapX}" y="{paddingY - 12}" width="50" height="1104" fill="url(#metal-accent)" />
                 <!-- Linker Steg-Schatten -->
-                <rect x="{gapX}" y="{paddingY}" width="4" height="1080" fill="rgba(0, 0, 0, 0.7)" />
+                <rect x="{gapX}" y="{paddingY - 12}" width="4" height="1104" fill="rgba(0, 0, 0, 0.7)" />
                 <!-- Rechter Steg-Schatten -->
-                <rect x="{gapX + 46}" y="{paddingY}" width="4" height="1080" fill="rgba(0, 0, 0, 0.7)" />
+                <rect x="{gapX + 46}" y="{paddingY - 12}" width="4" height="1104" fill="rgba(0, 0, 0, 0.7)" />
                 <!-- Zentrierte 2px-Montagefuge mit Lichtreflex -->
-                <rect x="{gapX + 24}" y="{paddingY - 6}" width="2" height="1092" fill="rgba(0, 0, 0, 0.9)" />
-                <rect x="{gapX + 26}" y="{paddingY - 6}" width="1" height="1092" fill="rgba(255, 255, 255, 0.16)" />
+                <rect x="{gapX + 24}" y="{paddingY - 12}" width="2" height="1104" fill="rgba(0, 0, 0, 0.9)" />
+                <rect x="{gapX + 26}" y="{paddingY - 12}" width="1" height="1104" fill="rgba(255, 255, 255, 0.16)" />
             </g>
         {/each}
 
-        <!-- 6. Untere Gehäuseblende mit Dehnungsfugen & Logo-Bereich -->
+        <!-- 6. Untere Gehäuseblende mit Dehnungsfugen -->
+        <rect 
+            x="20" 
+            y="{height - 23}" 
+            width="{width - 40}" 
+            height="1" 
+            fill="rgba(255, 255, 255, 0.12)" 
+        />
         <rect 
             x="20" 
             y="{height - 20}" 

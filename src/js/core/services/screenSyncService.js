@@ -92,7 +92,9 @@ export class ScreenSyncService {
         if (!ch || !this.isMaster) return;
 
         try {
-            const payload = store.exportAll();
+            const raw = store.exportAll();
+            // Strikte JSON-Serialisierung gegen DOMException: Proxy object could not be cloned
+            const payload = JSON.parse(JSON.stringify(raw));
             ch.postMessage({
                 type: 'SYNC_STATE',
                 payload,
@@ -110,11 +112,17 @@ export class ScreenSyncService {
     static broadcastDisplayConfig(displayConfig) {
         const ch = this.getChannel();
         if (!ch || !this.isMaster) return;
-        ch.postMessage({
-            type: 'SYNC_DISPLAY',
-            payload: displayConfig,
-            timestamp: Date.now()
-        });
+
+        try {
+            const payload = JSON.parse(JSON.stringify(displayConfig));
+            ch.postMessage({
+                type: 'SYNC_DISPLAY',
+                payload,
+                timestamp: Date.now()
+            });
+        } catch (err) {
+            console.error('[ScreenSyncService] Fehler beim Senden des Display-Broadcasts:', err);
+        }
     }
 
     /**
