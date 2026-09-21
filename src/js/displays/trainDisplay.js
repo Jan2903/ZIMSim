@@ -9,6 +9,7 @@ import { drawFormation } from './components/formationRenderer.js';
 import { drawTrainInfo, shouldRenderFormation } from './components/trainInfoRenderer.js';
 import { drawListeRow } from './components/listeRenderer.js';
 import { drawVitrine32Wagenstand } from './components/vitrineRenderer.js';
+import { ScreenSyncService } from '../core/services/screenSyncService.js';
 
 export class TrainDisplay {
     constructor(journeyStore) {
@@ -70,13 +71,45 @@ export class TrainDisplay {
     }
 
     /**
-     * Füllt den gesamten Canvas-Hintergrund mit der Standardfarbe (bezel-free, performant).
+     * Füllt den gesamten Canvas-Hintergrund mit der Standardfarbe.
+     * Bei Layouts mit hasBezelGap (z.B. Standard mit 50px Gehäusesteg)
+     * wird der 50px Steg in DB-Dunkelblau (RAL 5022 Nachtblau) gerendert.
      */
     drawFullBackground() {
         if (!this.ctx || !this.currentLayout) return;
         const canvas = this.ctx.canvas;
         this.ctx.fillStyle = COLORS.MIDNIGHT_BLUE;
         this.ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Trennsteg(e) in authentischem DB-Dunkelblau zeichnen, falls im Layout definiert
+        if (this.currentLayout.hasBezelGap && this.currentLayout.gapWidth) {
+            const gapW = this.currentLayout.gapWidth;
+            const gaps = this.currentLayout.width >= 5800
+                ? [1920, 1920 + gapW + 1920]
+                : [this.currentLayout.gapX !== undefined ? this.currentLayout.gapX : 1920];
+
+            for (const gapX of gaps) {
+                // DB Dunkelblau Grundfläche für den Steg (RAL 5022 Nachtblau / #08152b)
+                this.ctx.fillStyle = '#08152b';
+                this.ctx.fillRect(gapX, 0, gapW, canvas.height);
+
+                // Subtiler metallischer 3D-Verlauf
+                const grad = this.ctx.createLinearGradient(gapX, 0, gapX + gapW, 0);
+                grad.addColorStop(0, '#040b17');
+                grad.addColorStop(0.15, '#091833');
+                grad.addColorStop(0.5, '#102a57');
+                grad.addColorStop(0.85, '#091833');
+                grad.addColorStop(1, '#040b17');
+                this.ctx.fillStyle = grad;
+                this.ctx.fillRect(gapX, 0, gapW, canvas.height);
+
+                // Vertikale Akzentfuge im Steg
+                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                this.ctx.fillRect(gapX + 24, 0, 2, canvas.height);
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.16)';
+                this.ctx.fillRect(gapX + 26, 0, 1, canvas.height);
+            }
+        }
     }
 
     // ==========================================
@@ -112,17 +145,22 @@ export class TrainDisplay {
      * Setzt einen spezifischen Zielmonitor für Multi-Monitor / Kiosk-Modus.
      * @param {string|number|null} screenNumber - '1', '2', '3' oder null für Gesamtansicht
      * @param {boolean} [is4k=false] - Ob 4K-Auflösung aktiviert werden soll
+     * @param {boolean} [withBezel=false] - Ob Gehäuse-Modus gewünscht ist
      */
-    setTargetScreen(screenNumber, is4k = false) {
+    setTargetScreen(screenNumber, is4k = false, withBezel = false) {
         if (!screenNumber || screenNumber === 'all') {
-            this.switchLayout(is4k ? 'standard_4k' : 'standard');
+            if (is4k) {
+                this.switchLayout('standard_4k');
+            } else {
+                this.switchLayout(withBezel ? 'standard' : 'standard_frameless');
+            }
             return;
         }
         const layoutKey = is4k ? `standard_4k_screen${screenNumber}` : `standard_screen${screenNumber}`;
         if (LAYOUTS[layoutKey]) {
             this.switchLayout(layoutKey);
         } else {
-            this.switchLayout(is4k ? 'standard_4k' : 'standard');
+            this.switchLayout(is4k ? 'standard_4k' : (withBezel ? 'standard' : 'standard_frameless'));
         }
     }
 
@@ -212,6 +250,7 @@ export class TrainDisplay {
             this.featureAlpha = 1.0;
             this.updateAll();
         }
+        ScreenSyncService.broadcastDisplayConfig({ activeFeature: this.activeFeature });
     }
 
     /**
@@ -428,7 +467,7 @@ export class TrainDisplay {
         const assignments = new Map();
         const layout = this.currentLayout;
 
-        if (layout === LAYOUTS.standard) {
+        if (layout.family === 'standard' || layout === LAYOUTS.standard || (layout.screens && layout.screens.some(s => s.type === 'haupt' || s.type === 'neben' || s.type === 'neben_rotierend'))) {
             this._assignStandard(assignments);
         } else if (layout === LAYOUTS.voranzeiger) {
             this._assignVoranzeiger(assignments);
@@ -443,10 +482,12 @@ export class TrainDisplay {
     }
 
     /**
-     * Standard-Layout (2×32" Doppelmonitor):
-     * - Hauptmonitor: Erste nicht-gestörte Journey-Gruppe
-     * - Nebenmonitor 1: Zweite nicht-gestörte Journey-Gruppe
-     * - Nebenmonitor 2 (rotierend): Gestörte Journeys (Vorrang), sonst dritte Gruppe
+     * Standard-Layout (2×32" Doppelmonitor, Einzelschirme oder 4K):
+     * - Hauptmonitor: Erste normale Journey-Gruppe
+     * - Nebenmonitor(e): Weitere normale Journey-Gruppen
+     * - Nebenmonitor (rotierend): Gestörte Journeys (Vorrang), sonst nachfolgende Gruppen
+     *
+     * @param {Map<string, {journeys: Journey[], zugID: number}>} assignments
      */
     _assignStandard(assignments) {
         const groups = this._getVisibleJourneyGroups();
@@ -457,28 +498,38 @@ export class TrainDisplay {
 
         const screens = this.currentLayout.screens;
         const haupt = screens.find(s => s.type === 'haupt');
-        const neben = screens.find(s => s.type === 'neben');
+        const nebens = screens.filter(s => s.type === 'neben');
         const rotierend = screens.find(s => s.type === 'neben_rotierend');
 
-        // Hauptmonitor: 1. normale Gruppe
+        // Hauptmonitor
         if (haupt) {
+            const hIndex = haupt.trainIndex !== undefined ? haupt.trainIndex : 0;
             assignments.set(haupt.id, {
-                journeys: normal[0] || [],
-                zugID: 1,
+                journeys: normal[hIndex] || [],
+                zugID: hIndex + 1,
             });
         }
 
-        // Nebenmonitor 1: 2. normale Gruppe
-        if (neben) {
+        // Feste Nebenmonitore
+        nebens.forEach(neben => {
+            const nIndex = neben.trainIndex !== undefined ? neben.trainIndex : 1;
             assignments.set(neben.id, {
-                journeys: normal[1] || [],
-                zugID: 2,
+                journeys: normal[nIndex] || [],
+                zugID: nIndex + 1,
             });
-        }
+        });
 
-        // Nebenmonitor 2 (rotierend): Gestörte Journeys + normale ab Index 2
+        // Nebenmonitor 2 (rotierend): Gestörte Journeys + normale ab normalStartIndex
         if (rotierend) {
-            const groupsToRotate = [...disrupted, ...normal.slice(2)];
+            let normalStartIndex = 2;
+            if (!haupt && nebens.length > 0) {
+                const maxIndex = Math.max(...nebens.map(s => (s.trainIndex !== undefined ? s.trainIndex : 1)));
+                normalStartIndex = maxIndex + 1;
+            } else if (!haupt && nebens.length === 0) {
+                normalStartIndex = 0;
+            }
+
+            const groupsToRotate = [...disrupted, ...normal.slice(normalStartIndex)];
             this.rotatingPages = [];
             
             for (const group of groupsToRotate) {
@@ -539,9 +590,13 @@ export class TrainDisplay {
                 currentJourneys = this.rotatingPages[this.activePageIndex].journeys;
             }
 
+            const rotZugId = nebens.length > 0
+                ? (Math.max(...nebens.map(s => (s.trainIndex !== undefined ? s.trainIndex : 1))) + 2)
+                : (haupt ? 3 : 1);
+
             assignments.set(rotierend.id, {
                 journeys: currentJourneys,
-                zugID: 3,
+                zugID: rotZugId,
             });
         } else {
             this.rotatingPages = [];

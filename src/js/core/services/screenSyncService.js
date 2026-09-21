@@ -67,6 +67,11 @@ export class ScreenSyncService {
                 } catch (err) {
                     console.error('[ScreenSyncService] Fehler beim Importieren des Slave-Zustands:', err);
                 }
+            } else if (event.data.type === 'SYNC_DISPLAY' && event.data.payload) {
+                if (event.data.payload.activeFeature && display.activeFeature !== event.data.payload.activeFeature) {
+                    display.activeFeature = event.data.payload.activeFeature;
+                    display.updateAll();
+                }
             } else if (event.data.type === 'UPDATE_ALL') {
                 display.updateAll();
             }
@@ -96,6 +101,20 @@ export class ScreenSyncService {
         } catch (err) {
             console.error('[ScreenSyncService] Fehler beim Senden des Broadcasts:', err);
         }
+    }
+
+    /**
+     * Überträgt Display-Einstellungen (z.B. Wagenreihung-Feature) an alle Slaves.
+     * @param {object} displayConfig
+     */
+    static broadcastDisplayConfig(displayConfig) {
+        const ch = this.getChannel();
+        if (!ch || !this.isMaster) return;
+        ch.postMessage({
+            type: 'SYNC_DISPLAY',
+            payload: displayConfig,
+            timestamp: Date.now()
+        });
     }
 
     /**

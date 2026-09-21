@@ -9,6 +9,7 @@
     import PlayerOverlay from './components/PlayerOverlay.svelte';
     import StatusOverlay from './components/StatusOverlay.svelte';
     import ZimIcon from './components/ZimIcon.svelte';
+    import HardwareBezel from './components/HardwareBezel.svelte';
 
     let modalsComp = $state();
     let canvasElement = $state();
@@ -38,13 +39,59 @@
     // Dropdown-Zustand für Multi-Monitor Menü
     let monitorMenuOpen = $state(false);
 
+    // Gehäuse-Zustand & dynamische Abmessungen für Gehäuse vs. Reines Display
+    let isCasingActive = $derived(
+        showBezel && 
+        !isFullscreen && 
+        !isKiosk && 
+        Boolean(trainDisplay.currentLayout?.casingWidth)
+    );
+
+    let wrapperWidth = $derived(
+        isCasingActive 
+            ? trainDisplay.currentLayout.casingWidth 
+            : trainDisplay.currentLayout.width
+    );
+
+    let wrapperHeight = $derived(
+        isCasingActive 
+            ? trainDisplay.currentLayout.casingHeight 
+            : trainDisplay.currentLayout.height
+    );
+
+    let canvasOffsetX = $derived(
+        isCasingActive 
+            ? (trainDisplay.currentLayout.casingOffsetX || 270) 
+            : 0
+    );
+
+    let canvasOffsetY = $derived(
+        isCasingActive 
+            ? (trainDisplay.currentLayout.casingOffsetY || 260) 
+            : 0
+    );
+
     /**
      * Schaltet das Gehäuse-Overlay (Rahmen & Steg) um.
+     * Wechselt dynamisch zwischen dem Standard-Layout mit 50px Steg und dem randlosen Profil.
      * @returns {void}
      */
     function toggleBezel() {
         showBezel = !showBezel;
         localStorage.setItem('zimsim_show_bezel', String(showBezel));
+        
+        // Wenn kein Einzelschirm-Profil aktiv ist, zwischen Gehäuse-Layout (mit 50px Steg) und randlosem Layout wechseln
+        if (!targetScreen && trainDisplay.currentLayout && trainDisplay.currentLayout.family === 'standard' && !is4k) {
+            const is3Screen = trainDisplay.currentLayout.width >= 5700;
+            if (is3Screen) {
+                trainDisplay.switchLayout(showBezel ? 'standard_3screen' : 'standard_3screen_frameless');
+            } else {
+                trainDisplay.switchLayout(showBezel ? 'standard' : 'standard_frameless');
+            }
+        } else {
+            trainDisplay.updateAll();
+        }
+        setTimeout(handleResize, 30);
     }
 
     /**
@@ -118,15 +165,91 @@
     }
 
     /**
-     * Erstellt einen PNG-Download des aktuellen Canvas-Zustands.
+     * Erstellt einen PNG-Download des aktuellen Monitors.
+     * Arbeitet kontextsensitiv und dynamisch:
+     * - Bei sichtbarem Gehäuse: Komponierter High-Res-Screenshot mit Vektor-Gehäuse (z.B. 4430×1600 bei 2 Screens, 6400×1600 bei 3 Screens)
+     * - Ohne Gehäuse oder im Vollbild/Kiosk: Reines, randloses Display-Canvas (z.B. 3840×1080 oder 3890×1080)
      * @returns {void}
      */
     function downloadScreenshot() {
         const canvas = document.getElementById('zimCanvas');
-        if (canvas) {
+        if (!canvas) return;
+
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `zim_screenshot_${timestamp}.png`;
+
+        if (!isCasingActive) {
+            // Reiner nativer Canvas-Export ohne Gehäuse
             const dataUrl = canvas.toDataURL('image/png');
             const link = document.createElement('a');
-            link.download = `zim_screenshot_${new Date().getTime()}.png`;
+            link.download = filename;
+            link.href = dataUrl;
+            link.click();
+            return;
+        }
+
+        // Gehäuse ist aktiv: Composed Screenshot (Gehäuse + Displays)
+        const svgElement = document.querySelector('.hardware-bezel-svg');
+        if (!svgElement) {
+            const dataUrl = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = dataUrl;
+            link.click();
+            return;
+        }
+
+        try {
+            const svgString = new XMLSerializer().serializeToString(svgElement);
+            const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(svgBlob);
+            const img = new Image();
+
+            img.onload = () => {
+                try {
+                    const offCanvas = document.createElement('canvas');
+                    offCanvas.width = wrapperWidth;
+                    offCanvas.height = wrapperHeight;
+                    const offCtx = offCanvas.getContext('2d');
+
+                    // 1. Vektor-Gehäuse zeichnen
+                    offCtx.drawImage(img, 0, 0, wrapperWidth, wrapperHeight);
+                    URL.revokeObjectURL(url);
+
+                    // 2. Display-Canvas an exakter Offset-Position einbetten
+                    offCtx.drawImage(canvas, canvasOffsetX, canvasOffsetY);
+
+                    // 3. Download anstoßen
+                    const dataUrl = offCanvas.toDataURL('image/png');
+                    const link = document.createElement('a');
+                    link.download = filename;
+                    link.href = dataUrl;
+                    link.click();
+                } catch (err) {
+                    console.warn('[Screenshot] Fehler beim Composing mit Gehäuse, Fallback:', err);
+                    const fallbackUrl = canvas.toDataURL('image/png');
+                    const link = document.createElement('a');
+                    link.download = filename;
+                    link.href = fallbackUrl;
+                    link.click();
+                }
+            };
+
+            img.onerror = () => {
+                URL.revokeObjectURL(url);
+                const dataUrl = canvas.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.download = filename;
+                link.href = dataUrl;
+                link.click();
+            };
+
+            img.src = url;
+        } catch (e) {
+            console.warn('[Screenshot] Fehler:', e);
+            const dataUrl = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.download = filename;
             link.href = dataUrl;
             link.click();
         }
@@ -149,28 +272,36 @@
         }
     });
 
+    // Reaktiver Effekt für dynamische Größenanpassung bei Gehäuse-Wechsel
+    $effect(() => {
+        const _w = wrapperWidth;
+        const _h = wrapperHeight;
+        const _c = isCasingActive;
+        handleResize();
+    });
+
     /**
-     * Berechnet die Skalierung des ZIM-Canvas anhand des Viewports bzw. Containers.
+     * Berechnet die Skalierung des ZIM-Canvas bzw. Gehäuses anhand des Viewports bzw. Containers.
      * @returns {void}
      */
     function handleResize() {
         if (!scaleWrapper || !outerContainer) return;
 
-        const layoutWidth = trainDisplay.currentLayout.width;
-        const layoutHeight = trainDisplay.currentLayout.height;
+        const targetW = wrapperWidth;
+        const targetH = wrapperHeight;
 
         if (isFullscreen || isKiosk) {
             const winW = window.innerWidth;
             const winH = window.innerHeight;
-            const scale = Math.min(winW / layoutWidth, winH / layoutHeight);
-            const offsetX = (winW - layoutWidth * scale) / 2;
-            const offsetY = (winH - layoutHeight * scale) / 2;
+            const scale = Math.min(winW / targetW, winH / targetH);
+            const offsetX = (winW - targetW * scale) / 2;
+            const offsetY = (winH - targetH * scale) / 2;
 
             scaleWrapper.style.transform = `scale(${scale})`;
             scaleWrapper.style.left = `${offsetX}px`;
             scaleWrapper.style.top = `${offsetY}px`;
-            scaleWrapper.style.width = `${layoutWidth}px`;
-            scaleWrapper.style.height = `${layoutHeight}px`;
+            scaleWrapper.style.width = `${targetW}px`;
+            scaleWrapper.style.height = `${targetH}px`;
 
             outerContainer.style.width = `${winW}px`;
             outerContainer.style.height = `${winH}px`;
@@ -183,21 +314,32 @@
         const containerWidth = outerContainer.clientWidth;
         if (containerWidth === 0) return;
 
-        const scale = containerWidth / layoutWidth;
-        const scaledHeight = layoutHeight * scale;
+        const scale = containerWidth / targetW;
+        const scaledHeight = targetH * scale;
 
         scaleWrapper.style.transform = `scale(${scale})`;
         outerContainer.style.height = `${scaledHeight}px`;
         outerContainer.style.width = '100%';
         
-        scaleWrapper.style.width = `${layoutWidth}px`;
-        scaleWrapper.style.height = `${layoutHeight}px`;
+        scaleWrapper.style.width = `${targetW}px`;
+        scaleWrapper.style.height = `${targetH}px`;
     }
 
     function onFullscreenChange() {
         isFullscreen = Boolean(document.fullscreenElement);
         if (isFullscreen) {
             handleUserActivity();
+            // Im Vollbildmodus randloses Layout aktivieren
+            if (!targetScreen && trainDisplay.currentLayout && trainDisplay.currentLayout.family === 'standard' && trainDisplay.currentLayout.hasBezelGap && !is4k) {
+                const is3Screen = trainDisplay.currentLayout.width >= 5700;
+                trainDisplay.switchLayout(is3Screen ? 'standard_3screen_frameless' : 'standard_frameless');
+            }
+        } else {
+            // Nach Beenden des Vollbildmodus Gehäuse-Layout (mit 50px Steg) wiederherstellen falls Gehäuse aktiv
+            if (!targetScreen && showBezel && trainDisplay.currentLayout && trainDisplay.currentLayout.family === 'standard' && !trainDisplay.currentLayout.hasBezelGap && !isKiosk && !is4k) {
+                const is3Screen = trainDisplay.currentLayout.width >= 5700;
+                trainDisplay.switchLayout(is3Screen ? 'standard_3screen' : 'standard');
+            }
         }
         setTimeout(handleResize, 50);
     }
@@ -220,12 +362,18 @@
     onMount(() => {
         // Multi-Screen / Kiosk Setup
         if (targetScreen) {
-            trainDisplay.setTargetScreen(targetScreen, is4k);
+            trainDisplay.setTargetScreen(targetScreen, is4k, false);
             if (isKiosk || targetScreen !== '1') {
                 ansagenStore.muted = true; // Sekundäre Monitore stumm schalten
             }
             ScreenSyncService.initSlave(journeyStore, trainDisplay);
         } else {
+            // Initiales Layout festlegen: Im Kiosk randlos, ansonsten nach Gehäuse-Einstellung
+            if (isKiosk) {
+                trainDisplay.switchLayout(is4k ? 'standard_4k' : 'standard_frameless');
+            } else {
+                trainDisplay.switchLayout(is4k ? 'standard_4k' : (showBezel ? 'standard' : 'standard_frameless'));
+            }
             ScreenSyncService.initMaster(journeyStore);
             trainDisplay.updateAll();
         }
@@ -264,6 +412,8 @@
     bind:this={displayWrapper} 
     class="display-wrapper {isKiosk ? 'kiosk-active' : ''} {isFullscreen ? 'fullscreen-active' : ''}" 
     onmousemove={handleUserActivity}
+    ontouchstart={handleUserActivity}
+    onpointerdown={handleUserActivity}
     style="width: 100%; position: relative; {isFullscreen || isKiosk ? 'height: 100vh; overflow: hidden; background: #000;' : 'overflow-x: auto; overflow-y: hidden;'}"
 >
     <!-- Schwebendes Exit-HUD im Vollbild / Kiosk-Modus -->
@@ -289,17 +439,21 @@
         <div 
             bind:this={scaleWrapper} 
             class="scale-wrapper" 
-            style="position: absolute; top: 0; left: 0; width: {trainDisplay.currentLayout.width}px; height: {trainDisplay.currentLayout.height}px; transform-origin: top left; background-color: var(--db-dark); overflow: hidden;"
+            style="position: absolute; top: 0; left: 0; width: {wrapperWidth}px; height: {wrapperHeight}px; transform-origin: top left; background-color: transparent; overflow: visible;"
         >
-            <!-- Optionales Gehäuse (Rahmen & vertikaler Trenner zwischen Monitoren) in der Web-Vorschau -->
-            {#if showBezel && !isFullscreen && !isKiosk}
-                <div id="hardware-bezel" class="hardware-bezel-frame"></div>
-                {#if trainDisplay.currentLayout.width >= 3840}
-                    <!-- Vertikaler Gehäusetrenner zwischen Haupt- und Nebenmonitor (wie im Original DB-Doppel-ZIM) -->
-                    <div class="bezel-vertical-divider" title="Hardware-Gehäusetrenner">
-                        <div class="bezel-divider-accent"></div>
-                    </div>
-                {/if}
+            <!-- Optionales Gehäuse (Rahmen in authentischem DB-Nachtblau RAL 5022) in der Web-Vorschau -->
+            {#if isCasingActive}
+                <HardwareBezel 
+                    width={wrapperWidth} 
+                    height={wrapperHeight} 
+                    paddingX={canvasOffsetX} 
+                    paddingY={canvasOffsetY} 
+                    layout={trainDisplay.currentLayout} 
+                />
+                <div 
+                    class="display-bezel-lip" 
+                    style="left: {canvasOffsetX}px; top: {canvasOffsetY}px; width: {trainDisplay.currentLayout.width}px; height: {trainDisplay.currentLayout.height}px;"
+                ></div>
             {/if}
 
             <canvas 
@@ -307,7 +461,7 @@
                 id="zimCanvas" 
                 width={trainDisplay.currentLayout.width} 
                 height={trainDisplay.currentLayout.height} 
-                style="position: absolute; top: 0; left: 0; z-index: 10;"
+                style="position: absolute; top: {canvasOffsetY}px; left: {canvasOffsetX}px; z-index: 10;"
             ></canvas>
         </div>
     </div>
@@ -374,8 +528,8 @@
             <span>Vollbild</span>
         </button>
 
-        <!-- Multi-Monitor Pop-Out Dropdown -->
-        <div class="display-toolbar-dropdown-container">
+        <!-- Multi-Monitor Pop-Out Dropdown (nur Desktop) -->
+        <div class="display-toolbar-dropdown-container desktop-only">
             <button 
                 type="button" 
                 class="display-toolbar-btn"
@@ -539,37 +693,14 @@
         margin: 4px 0;
     }
 
-    /* Hardware Bezel Simulation (Rahmen & vertikaler Trennsteg) */
-    .hardware-bezel-frame {
+    /* Subtiler Innenrahmen/Fase um die Bildschirme (Display-Einbau) */
+    .display-bezel-lip {
         position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
         pointer-events: none;
-        z-index: 20;
+        z-index: 15;
         box-sizing: border-box;
-        border: 14px solid #1c1d22;
-        box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8), 0 4px 20px rgba(0, 0, 0, 0.5);
-    }
-    .bezel-vertical-divider {
-        position: absolute;
-        top: 0;
-        left: 50%;
-        width: 24px;
-        height: 100%;
-        transform: translateX(-50%);
-        background: linear-gradient(to right, #16171b, #2c2e36 40%, #2c2e36 60%, #16171b);
-        box-shadow: -2px 0 6px rgba(0, 0, 0, 0.5), 2px 0 6px rgba(0, 0, 0, 0.5);
-        z-index: 22;
-        pointer-events: none;
-        box-sizing: border-box;
-    }
-    .bezel-divider-accent {
-        width: 2px;
-        height: 100%;
-        margin: 0 auto;
-        background: rgba(255, 255, 255, 0.08);
+        border: 2px solid rgba(0, 0, 0, 0.7);
+        box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8), 0 0 4px rgba(0, 0, 0, 0.5);
     }
 
     /* Schwebendes Fullscreen HUD */
@@ -610,14 +741,21 @@
     }
 
     @media (max-width: 768px) {
+        .desktop-only {
+            display: none !important;
+        }
         .display-toolbar {
-            padding: 8px 12px;
+            padding: 6px 10px;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: 6px;
         }
         .display-toolbar-btn {
-            padding: 6px 10px;
-            min-height: 38px;
+            padding: 5px 8px;
+            font-size: 0.72rem;
+            min-height: 34px;
+        }
+        .display-toolbar-status {
+            font-size: 0.75rem;
         }
     }
 </style>
