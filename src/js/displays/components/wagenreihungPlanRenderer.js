@@ -138,8 +138,8 @@ function drawPlanHeader(ctx, width, height, sectorStartX, sectorUsableWidth, pla
  * Zeichnet eine einzelne Zeile im Wagenreihungsplan.
  */
 function drawPlanRow(ctx, trainGroup, platform, x, y, width, height, sectorStartX, sectorUsableWidth, isAlt, isPortrait) {
-    // Zeilenhintergrund
-    ctx.fillStyle = isAlt ? COLORS.MIDNIGHT_BLUE_ALT : COLORS.MIDNIGHT_BLUE;
+    // Zeilenhintergrund: Einheitliches DB-Blau (kein Zebra-Muster)
+    ctx.fillStyle = COLORS.MIDNIGHT_BLUE;
     ctx.fillRect(x, y, width, height);
 
     // Trennlinie nach unten

@@ -182,7 +182,7 @@ export class TrainDisplay {
         } else if (layoutName === 'zimultrawide') {
             displayConfigStore.setMonitorId('zimultrawide');
             this._customLayout = null;
-        } else if (['zuganzeiger', 'anschlusstafel', 'ankunftstafel', 'wagenreihungsplan', 'wagenstand_gleis'].includes(layoutName)) {
+        } else if (['zuganzeiger', 'anschlusstafel', 'anschlusstafel_zoom', 'ankunftstafel', 'wagenreihungsplan', 'wagenstand_gleis'].includes(layoutName)) {
             displayConfigStore.setLayoutType(layoutName);
             this._customLayout = null;
         } else if (['zim2x32', 'zim3x32', 'zim32_single', 'zimvitrine32', 'zimvitrine65h', 'zimwide', 'zimultrawide'].includes(layoutName)) {

@@ -160,7 +160,7 @@ function drawSubHeader(ctx, width, topY, height, isPortrait) {
  * Zeichnet eine einzelne Zeile der Ankunftstafel.
  */
 function drawAnkunftRow(ctx, train, x, y, width, height, isAlt, isPortrait) {
-    ctx.fillStyle = isAlt ? COLORS.MIDNIGHT_BLUE_ALT : COLORS.MIDNIGHT_BLUE;
+    ctx.fillStyle = COLORS.MIDNIGHT_BLUE;
     ctx.fillRect(x, y, width, height);
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
@@ -263,7 +263,7 @@ function drawAnkunftRow(ctx, train, x, y, width, height, isAlt, isPortrait) {
 }
 
 function drawEmptyAnkunftRow(ctx, x, y, width, height, isAlt) {
-    ctx.fillStyle = isAlt ? COLORS.MIDNIGHT_BLUE_ALT : COLORS.MIDNIGHT_BLUE;
+    ctx.fillStyle = COLORS.MIDNIGHT_BLUE;
     ctx.fillRect(x, y, width, height);
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';

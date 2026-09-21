@@ -186,8 +186,8 @@ function drawHeader(ctx, width, height, renderCtx, isPortrait) {
  * Zeichnet eine einzelne Abfahrtszeile im Voranzeiger.
  */
 function drawTrainRow(ctx, train, x, y, width, height, isAlt, isPortrait = false) {
-    // Zeilenhintergrund: Subtil abgestimmt auf das Standard DB-Blau
-    ctx.fillStyle = isAlt ? COLORS.MIDNIGHT_BLUE_ALT : COLORS.MIDNIGHT_BLUE;
+    // Zeilenhintergrund: Einheitliches DB-Blau (kein Zebra-Muster)
+    ctx.fillStyle = COLORS.MIDNIGHT_BLUE;
     ctx.fillRect(x, y, width, height);
 
     // Feine Trennlinie nach oben
@@ -313,7 +313,7 @@ function drawTrainRow(ctx, train, x, y, width, height, isAlt, isPortrait = false
  * Zeichnet eine saubere leere Zeile bei unvollständiger Belegung.
  */
 function drawEmptyRow(ctx, x, y, width, height, isAlt) {
-    ctx.fillStyle = isAlt ? COLORS.MIDNIGHT_BLUE_ALT : COLORS.MIDNIGHT_BLUE;
+    ctx.fillStyle = COLORS.MIDNIGHT_BLUE;
     ctx.fillRect(x, y, width, height);
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
