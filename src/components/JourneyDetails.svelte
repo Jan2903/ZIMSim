@@ -353,6 +353,38 @@
                     </label>
                 </div>
             </div>
+
+            {#if journey.infoscreen}
+                <div class="infoscreen-settings-card" style="margin-bottom: 20px; padding: 12px 16px; background: rgba(30, 60, 110, 0.18); border: 1px solid rgba(59, 130, 246, 0.35); border-radius: 8px;">
+                    <div style="font-size: 0.85em; font-weight: 600; color: #93c5fd; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Infoscreen / Störungsanzeige Einstellungen</div>
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: center;">
+                        <div>
+                            <span style="font-size: 0.85em; color: #cbd5e1; display: block; margin-bottom: 4px;">Darstellung (Voranzeiger):</span>
+                            <div style="display: flex; gap: 12px; align-items: center;">
+                                <label style="display: flex; align-items: center; gap: 6px; font-size: 0.9em; cursor: pointer;">
+                                    <input type="radio" name="infoscreen_mode_{journey.id}" value="static" bind:group={journey.infoscreenMode} onchange={triggerUpdate}>
+                                    <span>Statisch (Zeilen)</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 6px; font-size: 0.9em; cursor: pointer;">
+                                    <input type="radio" name="infoscreen_mode_{journey.id}" value="ticker" bind:group={journey.infoscreenMode} onchange={triggerUpdate}>
+                                    <span>Lauftext (Ticker)</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        {#if journey.infoscreenMode === 'static'}
+                            <div>
+                                <span style="font-size: 0.85em; color: #cbd5e1; display: block; margin-bottom: 4px;">Zeilenbedarf:</span>
+                                <select bind:value={journey.infoscreenRows} onchange={triggerUpdate} style="background: #1e293b; color: #f8fafc; border: 1px solid #475569; border-radius: 4px; padding: 4px 8px; font-size: 0.88em; cursor: pointer;">
+                                    <option value={1}>1 Zeile (Standard, 165px)</option>
+                                    <option value={2}>2 Zeilen (Großstörung, 330px)</option>
+                                    <option value={3}>3 Zeilen (Maximal, 495px)</option>
+                                </select>
+                            </div>
+                        {/if}
+                    </div>
+                </div>
+            {/if}
             
             <!-- Row 2: InfoTexte -->
             <div style="margin-bottom: 20px;">

@@ -148,29 +148,97 @@ export const LAYOUTS = {
         ]
     },
 
-    // Voranzeiger (Nativ 1080p, 6 Zeilen je 180px)
+    // Voranzeiger (Nativ 1080p, dynamische Abfahrtstafel)
     voranzeiger: {
+        family: 'voranzeiger',
         width: 1920,
         height: 1080,
+        casingWidth: 2460,
+        casingHeight: 1600,
+        casingOffsetX: 270,
+        casingOffsetY: 260,
         boardType: 'default',
         screens: [
-            // 6 Listen-Zeilen untereinander, jeweils 180px hoch
-            { id: 'row1', type: 'liste', x: 0, y: 0, w: 1920, h: 180, trainIndex: 0 },
-            { id: 'row2', type: 'liste', x: 0, y: 180, w: 1920, h: 180, trainIndex: 1 },
-            { id: 'row3', type: 'liste', x: 0, y: 360, w: 1920, h: 180, trainIndex: 2 },
-            { id: 'row4', type: 'liste', x: 0, y: 540, w: 1920, h: 180, trainIndex: 3 },
-            { id: 'row5', type: 'liste', x: 0, y: 720, w: 1920, h: 180, trainIndex: 4 },
-            { id: 'row6', type: 'liste', x: 0, y: 900, w: 1920, h: 180, trainIndex: 5 }
+            { id: 'voranzeiger_main', type: 'voranzeiger', x: 0, y: 0, w: 1920, h: 1080 }
+        ]
+    },
+
+    // Voranzeiger Links + Wagenstand Rechts (Doppelmonitor Kombi)
+    voranzeiger_and_formation: {
+        family: 'standard',
+        width: 3890,
+        height: 1080,
+        hasBezelGap: true,
+        gapWidth: 50,
+        gapX: 1920,
+        casingWidth: 4430,
+        casingHeight: 1600,
+        casingOffsetX: 270,
+        casingOffsetY: 260,
+        boardType: 'default',
+        screens: [
+            { id: 'voranzeiger_left', type: 'voranzeiger', x: 0, y: 0, w: 1920, h: 1080 },
+            { id: 'vitrine_right', type: 'vitrine32', x: 1970, y: 0, w: 1920, h: 1080, trainIndex: 0 }
         ]
     },
 
     // ZIM-Vitrine 32" Wagenstandsanzeiger (Nativ 1080p)
     zimvitrine32wagenstand: {
+        family: 'vitrine',
         width: 1920,
         height: 1080,
+        casingWidth: 2120,
+        casingHeight: 1380,
+        casingOffsetX: 100,
+        casingOffsetY: 100,
         boardType: 'default',
         screens: [
             { id: 'vitrine_main', type: 'vitrine32', x: 0, y: 0, w: 1920, h: 1080, trainIndex: 0 }
+        ]
+    },
+
+    // ZIMwide (2560×1080 gestreckter Bar-Type)
+    zimwide: {
+        family: 'stretched',
+        width: 2560,
+        height: 1080,
+        casingWidth: 2760,
+        casingHeight: 1260,
+        casingOffsetX: 100,
+        casingOffsetY: 90,
+        boardType: 'default',
+        screens: [
+            { id: 'wide_main', type: 'voranzeiger', x: 0, y: 0, w: 2560, h: 1080 }
+        ]
+    },
+
+    // ZIMultrawide (3840×1080 nahtloses 32:9 Panel)
+    zimultrawide: {
+        family: 'stretched',
+        width: 3840,
+        height: 1080,
+        casingWidth: 4040,
+        casingHeight: 1260,
+        casingOffsetX: 100,
+        casingOffsetY: 90,
+        boardType: 'default',
+        screens: [
+            { id: 'ultrawide_main', type: 'voranzeiger', x: 0, y: 0, w: 3840, h: 1080 }
+        ]
+    },
+
+    // ZIMvitrine 65h (1080×1920 Portrait Aushangstele)
+    zimvitrine65h: {
+        family: 'stele',
+        width: 1080,
+        height: 1920,
+        casingWidth: 1240,
+        casingHeight: 2220,
+        casingOffsetX: 80,
+        casingOffsetY: 100,
+        boardType: 'default',
+        screens: [
+            { id: 'stele_main', type: 'voranzeiger', x: 0, y: 0, w: 1080, h: 1920 }
         ]
     }
 };

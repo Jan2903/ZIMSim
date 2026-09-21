@@ -54,6 +54,8 @@ export class Journey {
     ezGleis = $state('');
     verkehrtAb = $state('0');
     infoscreen = $state(false);
+    infoscreenMode = $state('static'); // 'static' | 'ticker'
+    infoscreenRows = $state(1); // 1, 2, 3
     ausfall = $state(false);
     ankunft = $state(false);
     visible = $state(true);
@@ -118,6 +120,8 @@ export class Journey {
         this.ezGleis = data.ezGleis || '';
         this.verkehrtAb = data.verkehrtAb || '0';
         this.infoscreen = data.infoscreen || false;
+        this.infoscreenMode = data.infoscreenMode || 'static';
+        this.infoscreenRows = data.infoscreenRows !== undefined ? parseInt(data.infoscreenRows, 10) : 1;
         this.ausfall = data.ausfall || false;
         this.ankunft = data.ankunft || false;
 
@@ -191,6 +195,8 @@ export class Journey {
             ezGleis: this.ezGleis,
             verkehrtAb: this.verkehrtAb,
             infoscreen: this.infoscreen,
+            infoscreenMode: this.infoscreenMode,
+            infoscreenRows: this.infoscreenRows,
             ausfall: this.ausfall,
             ankunft: this.ankunft,
             visible: this.visible,

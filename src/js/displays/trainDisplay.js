@@ -2,12 +2,14 @@
 // Orchestrator — delegiert an spezialisierte Renderer-Module
 import { config } from '../core/utils/config.js';
 import { LAYOUTS } from './core/layouts.js';
+import { HARDWARE_PROFILES, getHardwareProfile } from './core/hardwareProfiles.js';
+import { CONTENT_MODES, getContentMode } from './core/contentModes.js';
 import { COLORS } from './core/constants.js';
 import { Journey } from '../features/journey/journey.svelte.js';
 import { ScrollManager } from './core/scrollManager.js';
 import { drawFormation } from './components/formationRenderer.js';
 import { drawTrainInfo, shouldRenderFormation } from './components/trainInfoRenderer.js';
-import { drawListeRow } from './components/listeRenderer.js';
+import { drawListeRow, drawVoranzeigerBoard } from './components/listeRenderer.js';
 import { drawVitrine32Wagenstand } from './components/vitrineRenderer.js';
 import { ScreenSyncService } from '../core/services/screenSyncService.js';
 
@@ -27,6 +29,14 @@ export class TrainDisplay {
         this.rotatingPages = [];
         this.activePageIndex = 0;
         this.pageAlpha = 1.0;
+
+        // Voranzeiger Paginierungs- & Ticker-State
+        this.departurePageIndex = 0;
+        this.departurePageAlpha = 1.0;
+        this.disruptionPageIndex = 0;
+        this.disruptionPageAlpha = 1.0;
+        this.tickerOffset = 0;
+
         this._startAnimationLoop();
     }
 
@@ -218,6 +228,37 @@ export class TrainDisplay {
                     needsRender = true;
                 }
             }
+
+            // 3. Voranzeiger Pagination & Ticker Loop (nur aktiv wenn Layout einen Voranzeiger-Screen hat)
+            const hasVoranzeiger = this.currentLayout && this.currentLayout.screens && this.currentLayout.screens.some(s => s.type === 'voranzeiger');
+            if (hasVoranzeiger) {
+                // Ticker kontinuierlich scrollen
+                this.tickerOffset += 1.8;
+
+                // Störungs-Pagination (6 Sekunden Verweildauer)
+                const dCycle = now % 6000;
+                this.disruptionPageIndex = Math.floor(now / 6000);
+                if (dCycle < 500) {
+                    this.disruptionPageAlpha = dCycle / 500;
+                } else if (dCycle > 5500) {
+                    this.disruptionPageAlpha = 1.0 - ((dCycle - 5500) / 500);
+                } else {
+                    this.disruptionPageAlpha = 1.0;
+                }
+
+                // Abfahrts-Pagination (10 Sekunden Verweildauer)
+                const depCycle = now % 10000;
+                this.departurePageIndex = Math.floor(now / 10000);
+                if (depCycle < 800) {
+                    this.departurePageAlpha = depCycle / 800;
+                } else if (depCycle > 9200) {
+                    this.departurePageAlpha = 1.0 - ((depCycle - 9200) / 800);
+                } else {
+                    this.departurePageAlpha = 1.0;
+                }
+
+                needsRender = true;
+            }
             
             if (needsRender) {
                 if (config.performance_mode) {
@@ -278,6 +319,11 @@ export class TrainDisplay {
             cssScale,
             platform: this.journeyStore.platform,
             journeyStore: this.journeyStore,
+            departurePageIndex: this.departurePageIndex,
+            departurePageAlpha: this.departurePageAlpha,
+            disruptionPageIndex: this.disruptionPageIndex,
+            disruptionPageAlpha: this.disruptionPageAlpha,
+            tickerOffset: this.tickerOffset,
         };
     }
 
@@ -426,6 +472,8 @@ export class TrainDisplay {
                                 });
                                 ctx.restore();
                             }
+                        } else if (screen.type === 'voranzeiger') {
+                            drawVoranzeigerBoard(ctx, journeys, width, height, renderCtx);
                         } else if (screen.type === 'liste') {
                             if (layer === 'all' || layer === 'static') {
                                 drawListeRow(ctx, journeys[0], width, height);
@@ -467,11 +515,11 @@ export class TrainDisplay {
         const assignments = new Map();
         const layout = this.currentLayout;
 
-        if (layout.family === 'standard' || layout === LAYOUTS.standard || (layout.screens && layout.screens.some(s => s.type === 'haupt' || s.type === 'neben' || s.type === 'neben_rotierend'))) {
-            this._assignStandard(assignments);
-        } else if (layout === LAYOUTS.voranzeiger) {
+        if (layout.screens && layout.screens.some(s => s.type === 'voranzeiger')) {
             this._assignVoranzeiger(assignments);
-        } else if (layout === LAYOUTS.zimvitrine32wagenstand) {
+        } else if (layout.family === 'standard' || layout === LAYOUTS.standard || (layout.screens && layout.screens.some(s => s.type === 'haupt' || s.type === 'neben' || s.type === 'neben_rotierend'))) {
+            this._assignStandard(assignments);
+        } else if (layout === LAYOUTS.zimvitrine32wagenstand || (layout.screens && layout.screens.every(s => s.type === 'vitrine32'))) {
             this._assignVitrine(assignments);
         } else {
             // Fallback: einfache Slot-basierte Zuweisung
@@ -604,17 +652,32 @@ export class TrainDisplay {
     }
 
     /**
-     * Voranzeiger-Layout (Listen-Zeilen):
-     * Einfache Reihung, jede Zeile bekommt die n-te Gruppe.
+     * Voranzeiger-Layout (Dynamische Abfahrtstafel):
+     * Bildschirme vom Typ 'voranzeiger' erhalten alle sichtbaren Journeys für
+     * dynamische Berechnung von Abfahrten, Störungsbox unten und Pagination.
      */
     _assignVoranzeiger(assignments) {
         const groups = this._getVisibleJourneyGroups();
+        const allVisibleJourneys = this.journeyStore.journeys.filter(j => j.visible);
+
         for (const screen of this.currentLayout.screens) {
-            const index = screen.trainIndex || 0;
-            assignments.set(screen.id, {
-                journeys: groups[index] || [],
-                zugID: index + 1,
-            });
+            if (screen.type === 'voranzeiger') {
+                assignments.set(screen.id, {
+                    journeys: allVisibleJourneys,
+                    zugID: 1,
+                });
+            } else if (screen.type === 'vitrine32') {
+                assignments.set(screen.id, {
+                    journeyGroups: groups.slice(0, 3),
+                    zugID: 1,
+                });
+            } else {
+                const index = screen.trainIndex || 0;
+                assignments.set(screen.id, {
+                    journeys: groups[index] || [],
+                    zugID: index + 1,
+                });
+            }
         }
     }
 

@@ -1,17 +1,404 @@
-// js/displays/listeRenderer.js
+// js/displays/components/listeRenderer.js
+import { COLORS, FONTS } from '../core/constants.js';
+import { drawText, drawWrappedText } from '../core/textUtils.js';
+import { getSimulatedTime } from '../../core/utils/config.js';
 
 /**
- * Renderer für den Voranzeiger-Listenmodus.
- * Zeichnet eine einzelne Abfahrtszeile im kompakten Listenformat.
+ * Vollständiger dynamischer Renderer für Voranzeiger und Abfahrtstafeln.
  *
- * TODO: Implementierung ausstehend — wird in einem zukünftigen Feature umgesetzt.
- *
- * @param {CanvasRenderingContext2D} ctx - Der Canvas-Kontext.
- * @param {import('../../models/journey.js').Journey} journey - Die Fahrt-Daten.
- * @param {number} width - Die verfügbare Breite.
- * @param {number} height - Die verfügbare Höhe.
+ * Eigenschaften:
+ * - Dynamische Kopfzeile ("Abfahrt Departure", Station, Live-Uhrzeit)
+ * - Flexible Abfahrtszeilen mit Echtzeit-Status, Verspätungen, Ausfällen, Vias und Gleiswechsel-Inverskästen
+ * - Platzierung von Störungen/Infoscreens IMMER GANZ UNTEN (als statische Zeile(n) oder Ticker-Lauftext)
+ * - Automatisches Abfahrts-Paging (10s) und Störungs-Paging (6s)
  */
-export function drawListeRow(ctx, journey, width, height) {
-    // Platzhalter — wird in einem zukünftigen Schritt implementiert
+
+/**
+ * Zeichnet das gesamte Voranzeiger-Board auf den Canvas.
+ * @param {CanvasRenderingContext2D} ctx - Der Canvas-Kontext.
+ * @param {import('../../features/journey/journey.svelte.js').Journey[]} journeys - Alle Fahrten.
+ * @param {number} width - Verfügbare Breite (z.B. 1920 oder 2560).
+ * @param {number} height - Verfügbare Höhe (z.B. 1080 oder 1920).
+ * @param {object} renderCtx - Render-Kontext mit Pagination- und Scroll-Daten.
+ */
+export function drawVoranzeigerBoard(ctx, journeys = [], width = 1920, height = 1080, renderCtx = {}) {
+    const HEADER_HEIGHT = 90;
+    const isPortrait = height > width; // z.B. Stele 1080×1920
+
+    // 1. Hintergrund füllen (DB-Nachtblau)
+    ctx.fillStyle = '#08152b';
+    ctx.fillRect(0, 0, width, height);
+
+    // 2. Kopfzeile zeichnen
+    drawHeader(ctx, width, HEADER_HEIGHT, renderCtx, isPortrait);
+
+    // 3. Fahrten filtern: Reguläre Züge vs. Infoscreens
+    const allJourneys = journeys || [];
+    const trains = allJourneys.filter(j => !j.infoscreen);
+    const infos = allJourneys.filter(j => j.infoscreen);
+
+    // 4. Störungszone unten analysieren
+    let disruptionRows = 0;
+    let isTickerMode = false;
+    let activeInfo = null;
+    let activeInfoIndex = 0;
+
+    if (infos.length > 0) {
+        activeInfoIndex = (renderCtx.disruptionPageIndex || 0) % infos.length;
+        activeInfo = infos[activeInfoIndex];
+
+        if (activeInfo.infoscreenMode === 'ticker') {
+            isTickerMode = true;
+        } else {
+            // Statische Zeilen: 1, 2 oder 3 Zeilen (clamped)
+            disruptionRows = Math.min(Math.max(1, activeInfo.infoscreenRows || 1), 3);
+        }
+    }
+
+    // 5. Zeilenraster berechnen
+    const baseTotalRows = isPortrait ? 10 : 6;
+    let availableTrainRows = baseTotalRows;
+    let disruptionBoxHeight = 0;
+
+    if (isTickerMode) {
+        disruptionBoxHeight = 75;
+    } else if (disruptionRows > 0) {
+        availableTrainRows = Math.max(1, baseTotalRows - disruptionRows);
+    }
+
+    const usableTrainHeight = height - HEADER_HEIGHT - disruptionBoxHeight;
+    const trainRowHeight = usableTrainHeight / availableTrainRows;
+
+    // 6. Abfahrts-Pagination berechnen
+    const totalTrainPages = Math.max(1, Math.ceil(trains.length / availableTrainRows));
+    const activeTrainPage = (renderCtx.departurePageIndex || 0) % totalTrainPages;
+    const pageOffset = activeTrainPage * availableTrainRows;
+    const visibleTrains = trains.slice(pageOffset, pageOffset + availableTrainRows);
+
+    // 7. Züge rendern
+    ctx.save();
+    // Sanfte Überblendung für Abfahrts-Paging
+    if (renderCtx.departurePageAlpha !== undefined && totalTrainPages > 1) {
+        ctx.globalAlpha = renderCtx.departurePageAlpha;
+    }
+
+    for (let i = 0; i < availableTrainRows; i++) {
+        const rowY = HEADER_HEIGHT + (i * trainRowHeight);
+        const train = visibleTrains[i];
+
+        if (train) {
+            drawTrainRow(ctx, train, 0, rowY, width, trainRowHeight, i % 2 === 1);
+        } else {
+            // Leere Zeile bei dünnem Fahrplan (dezenter Hintergrund ohne Artefakte)
+            drawEmptyRow(ctx, 0, rowY, width, trainRowHeight, i % 2 === 1);
+        }
+    }
+    ctx.restore();
+
+    // 8. Störungsbereich ganz unten rendern
+    if (infos.length > 0 && activeInfo) {
+        const disruptionY = height - (isTickerMode ? disruptionBoxHeight : (disruptionRows * trainRowHeight));
+        const disruptionH = isTickerMode ? disruptionBoxHeight : (disruptionRows * trainRowHeight);
+
+        ctx.save();
+        if (renderCtx.disruptionPageAlpha !== undefined && infos.length > 1) {
+            ctx.globalAlpha = renderCtx.disruptionPageAlpha;
+        }
+
+        if (isTickerMode) {
+            drawTickerBottom(ctx, activeInfo, 0, disruptionY, width, disruptionH, renderCtx);
+        } else {
+            drawStaticDisruptionBottom(ctx, activeInfo, activeInfoIndex + 1, infos.length, 0, disruptionY, width, disruptionH);
+        }
+        ctx.restore();
+    }
 }
 
+/**
+ * Zeichnet die Kopfzeile der Abfahrtstafel.
+ */
+function drawHeader(ctx, width, height, renderCtx, isPortrait) {
+    // Header-Hintergrund
+    ctx.fillStyle = '#061124';
+    ctx.fillRect(0, 0, width, height);
+
+    // Akzent-Linie unten
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+    ctx.fillRect(0, height - 2, width, 2);
+
+    // Links: "Abfahrt Departure"
+    ctx.fillStyle = COLORS.WHITE;
+    ctx.font = FONTS.bold(44);
+    ctx.textAlign = 'left';
+    ctx.fillText('Abfahrt', 40, 58);
+
+    ctx.font = FONTS.italic(30);
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText('Departure', 195, 58);
+
+    // Mitte: Bahnhofsname
+    const stationName = renderCtx.journeyStore?.stationContext?.stationName || 'Abfahrten';
+    ctx.fillStyle = COLORS.WHITE;
+    ctx.font = FONTS.bold(40);
+    ctx.textAlign = 'center';
+    ctx.fillText(stationName, width / 2, 58);
+
+    // Rechts: Live-Uhrzeit (HH:MM:SS)
+    const simTime = getSimulatedTime();
+    const timeStr = simTime.toTimeString().split(' ')[0]; // "14:35:10"
+    ctx.fillStyle = COLORS.WHITE;
+    ctx.font = FONTS.bold(46);
+    ctx.textAlign = 'right';
+    ctx.fillText(timeStr, width - 40, 58);
+
+    // Optionaler Seitenindikator bei Pagination
+    if (renderCtx.totalTrainPages && renderCtx.totalTrainPages > 1) {
+        ctx.font = FONTS.regular(28);
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillText(`Seite ${(renderCtx.activeTrainPage || 0) + 1}/${renderCtx.totalTrainPages}`, width - 260, 58);
+    }
+}
+
+/**
+ * Zeichnet eine einzelne Abfahrtszeile im Voranzeiger.
+ */
+function drawTrainRow(ctx, train, x, y, width, height, isAlt) {
+    // Zeilenhintergrund
+    ctx.fillStyle = isAlt ? '#061126' : '#08152b';
+    ctx.fillRect(x, y, width, height);
+
+    // Feine Trennlinie nach oben
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+    ctx.fillRect(x, y, width, 1);
+
+    const isAusfall = !!train.ausfall;
+    const hasTrackChange = !!train.hasTrackChange;
+
+    // 1. Spalte: Zeit (x: 40)
+    const timeY = y + (height * 0.44);
+    ctx.font = FONTS.bold(48);
+    ctx.textAlign = 'left';
+    ctx.fillStyle = isAusfall ? '#ef4444' : COLORS.WHITE;
+    ctx.fillText(train.scheduledTime || '--:--', 40, timeY);
+
+    if (isAusfall) {
+        // Zeit durchstreichen
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(35, timeY - 14);
+        ctx.lineTo(155, timeY - 14);
+        ctx.stroke();
+
+        // Roter Hinweis darunter
+        ctx.font = FONTS.bold(26);
+        ctx.fillStyle = '#ef4444';
+        ctx.fillText('Fällt aus', 40, timeY + 36);
+    } else if (train.expectedTime && train.expectedTime !== train.scheduledTime) {
+        // Verspätungshinweis
+        ctx.font = FONTS.bold(28);
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillText(`ca. ${train.expectedTime}`, 40, timeY + 36);
+    }
+
+    // 2. Spalte: Zug / Gattung (x: 180)
+    const displayName = train.effectiveDisplayName || train.displayName || train.name || 'Zug';
+    const trainBoxW = 160;
+    const trainBoxH = 46;
+    const trainBoxY = timeY - 34;
+
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath();
+    ctx.roundRect(180, trainBoxY, trainBoxW, trainBoxH, 6);
+    ctx.fill();
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.font = FONTS.bold(34);
+    ctx.fillStyle = COLORS.WHITE;
+    ctx.textAlign = 'center';
+    ctx.fillText(displayName, 180 + (trainBoxW / 2), trainBoxY + 33);
+
+    // 3. Spalte: Ziel & Vias (x: 380)
+    const destX = 380;
+    ctx.textAlign = 'left';
+    ctx.font = FONTS.bold(48);
+    ctx.fillStyle = isAusfall ? '#94a3b8' : COLORS.WHITE;
+    const destText = train.destinationLang || train.destination || 'Ziel';
+    ctx.fillText(destText, destX, timeY);
+
+    // Vias / Haltestellenkette
+    const viaY = timeY + 38;
+    ctx.font = FONTS.regular(28);
+    ctx.fillStyle = '#94a3b8';
+    let viaStr = (train.vias && train.vias.length > 0) ? train.vias.join(' • ') : '';
+    if (train.verkehrtAb && train.verkehrtAb !== '0') {
+        viaStr = `Verkehrt ab ${train.verkehrtAb} • ${viaStr}`;
+    }
+    
+    // Abschneiden bei Überlänge mit Auslassungspunkten
+    const maxViaWidth = width - destX - 320;
+    if (ctx.measureText(viaStr).width > maxViaWidth) {
+        while (viaStr.length > 0 && ctx.measureText(viaStr + '...').width > maxViaWidth) {
+            viaStr = viaStr.slice(0, -1);
+        }
+        viaStr += '...';
+    }
+    ctx.fillText(viaStr, destX, viaY);
+
+    // 4. Spalte: Gleis (x: width - 260)
+    const gleisX = width - 260;
+    const gleisNum = train.platform || '-';
+
+    if (hasTrackChange) {
+        // Gleiswechsel-Inverskasten (Weißer Kasten mit dunkelblauem Text)
+        const boxW = 200;
+        const boxH = 56;
+        const boxY = timeY - 38;
+
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.roundRect(gleisX, boxY, boxW, boxH, 6);
+        ctx.fill();
+
+        ctx.font = FONTS.bold(36);
+        ctx.fillStyle = '#08152b';
+        ctx.textAlign = 'center';
+        ctx.fillText(`Gl. ${train.ezGleis || gleisNum}`, gleisX + (boxW / 2), boxY + 39);
+
+        // Kleiner Zusatz: statt X
+        ctx.font = FONTS.regular(22);
+        ctx.fillStyle = '#ef4444';
+        ctx.fillText(`statt ${gleisNum}`, gleisX + (boxW / 2), boxY + 76);
+    } else {
+        ctx.font = FONTS.bold(44);
+        ctx.fillStyle = COLORS.WHITE;
+        ctx.textAlign = 'left';
+        ctx.fillText(`Gl. ${gleisNum}`, gleisX, timeY);
+    }
+}
+
+/**
+ * Zeichnet eine saubere leere Zeile bei unvollständiger Belegung.
+ */
+function drawEmptyRow(ctx, x, y, width, height, isAlt) {
+    ctx.fillStyle = isAlt ? '#061126' : '#08152b';
+    ctx.fillRect(x, y, width, height);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.fillRect(x, y, width, 1);
+}
+
+/**
+ * Zeichnet eine prominente statische Störungsbox am unteren Bildschirmrand.
+ */
+function drawStaticDisruptionBottom(ctx, infoJourney, pageNum, totalPages, x, y, width, height) {
+    // 1. Box-Hintergrund (Warnendes Nachtblau mit solidem Rand)
+    ctx.fillStyle = '#0b1d3a';
+    ctx.fillRect(x + 16, y + 8, width - 32, height - 16);
+
+    // Rand in Signal-Orange/Rot
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(x + 16, y + 8, width - 32, height - 16);
+
+    // 2. Warn-Icon und Header-Badge
+    const badgeX = x + 36;
+    const badgeY = y + 26;
+    
+    // Warndreieck
+    ctx.font = FONTS.bold(42);
+    ctx.fillStyle = '#f59e0b';
+    ctx.textAlign = 'left';
+    ctx.fillText('⚠', badgeX, badgeY + 32);
+
+    // Badge-Text
+    ctx.font = FONTS.bold(32);
+    ctx.fillStyle = '#f59e0b';
+    const title = infoJourney.displayNameOverride || 'GROSSSTÖRUNG / INFORMATION';
+    ctx.fillText(title, badgeX + 48, badgeY + 28);
+
+    // Mehrfach-Meldungen Indikator (z.B. Meldung 1/2)
+    if (totalPages > 1) {
+        ctx.font = FONTS.regular(24);
+        ctx.fillStyle = '#cbd5e1';
+        ctx.textAlign = 'right';
+        ctx.fillText(`Meldung ${pageNum}/${totalPages}`, width - 40, badgeY + 28);
+    }
+
+    // 3. Störungstext(e) darstellen
+    const textX = badgeX + 48;
+    const textY = badgeY + 68;
+    const maxTextWidth = width - textX - 60;
+
+    let messageText = '';
+    if (infoJourney.infoTexts && infoJourney.infoTexts.length > 0) {
+        messageText = infoJourney.infoTexts
+            .filter(t => t.visible)
+            .map(t => t.text)
+            .join(' ');
+    } else if (infoJourney.scrollText) {
+        messageText = infoJourney.scrollText;
+    }
+
+    if (!messageText) {
+        messageText = 'Bitte beachten Sie die Lautsprecheransagen und Aushänge am Bahnsteig.';
+    }
+
+    drawWrappedText(ctx, messageText, textX, textY, maxTextWidth, 42, FONTS.regular(34), COLORS.WHITE, 'left', 3);
+}
+
+/**
+ * Zeichnet einen schlanken Lauftext-Ticker am unteren Bildschirmrand.
+ */
+function drawTickerBottom(ctx, infoJourney, x, y, width, height, renderCtx) {
+    ctx.fillStyle = '#050d1a';
+    ctx.fillRect(x, y, width, height);
+
+    ctx.fillStyle = '#f59e0b';
+    ctx.fillRect(x, y, width, 2);
+
+    // Statischer Warn-Badge links
+    const badgeW = 200;
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(x, y + 2, badgeW, height - 2);
+
+    ctx.font = FONTS.bold(28);
+    ctx.fillStyle = '#f59e0b';
+    ctx.textAlign = 'center';
+    ctx.fillText('⚠ INFORMATION', x + (badgeW / 2), y + 46);
+
+    // Lauftext rechts
+    let tickerText = infoJourney.scrollText || '';
+    if (!tickerText && infoJourney.infoTexts) {
+        tickerText = infoJourney.infoTexts.filter(t => t.visible).map(t => t.text).join(' +++ ');
+    }
+    if (!tickerText) tickerText = 'Aktuelle Fahrplanänderungen vorbehalten.';
+
+    const fullTicker = `+++ ${tickerText} +++ ${tickerText} +++`;
+
+    // Clipping für den Tickerbereich
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(x + badgeW + 10, y, width - badgeW - 20, height);
+    ctx.clip();
+
+    ctx.font = FONTS.regular(34);
+    ctx.fillStyle = COLORS.WHITE;
+    ctx.textAlign = 'left';
+
+    const textWidth = ctx.measureText(fullTicker).width;
+    const offset = ((renderCtx.tickerOffset || 0) % (textWidth / 2));
+    ctx.fillText(fullTicker, x + badgeW + 20 - offset, y + 47);
+    ctx.restore();
+}
+
+/**
+ * Exportierte Platzhalter-Funktion für Kompatibilität mit dem bisherigen Import in TrainDisplay.
+ */
+export function drawListeRow(ctx, journey, width, height) {
+    if (!journey) return;
+    drawTrainRow(ctx, journey, 0, 0, width, height, false);
+}
