@@ -48,8 +48,7 @@ export class TrainDisplay {
         if (clearBackground) {
             ctx.clearRect(screen.x, screen.y, screen.w, screen.h);
 
-            // Bereich des Monitors mit der Standard-Canvas-Farbe (navy) füllen,
-            // damit das Hintergrundbild nur außerhalb der Displays sichtbar bleibt
+            // Bereich des Monitors mit der Standard-Canvas-Farbe (navy) füllen
             ctx.fillStyle = COLORS.MIDNIGHT_BLUE;
             ctx.fillRect(screen.x, screen.y, screen.w, screen.h);
         }
@@ -58,40 +57,26 @@ export class TrainDisplay {
         ctx.beginPath();
         ctx.rect(0, 0, screen.w, screen.h);
         ctx.clip();
-        drawFunction(ctx, screen.w, screen.h);
+
+        // HiDPI / 4K Vektor-Skalierung falls im Layout definiert
+        const scaleFactor = this.currentLayout.scaleFactor || 1;
+        if (scaleFactor !== 1) {
+            ctx.scale(scaleFactor, scaleFactor);
+            drawFunction(ctx, screen.w / scaleFactor, screen.h / scaleFactor);
+        } else {
+            drawFunction(ctx, screen.w, screen.h);
+        }
         ctx.restore();
     }
 
     /**
-     * Zeichnet das Hintergrundbild (z.B. die Hardware-Einfassung) auf das gesamte Canvas.
+     * Füllt den gesamten Canvas-Hintergrund mit der Standardfarbe (bezel-free, performant).
      */
     drawFullBackground() {
         if (!this.ctx || !this.currentLayout) return;
         const canvas = this.ctx.canvas;
-
-        if (this.currentLayout.backgroundUrl) {
-            if (!this.currentLayout.bgImageObj) {
-                const img = new Image();
-                img.src = this.currentLayout.backgroundUrl;
-                img.onload = () => {
-                    this.currentLayout.bgImageLoaded = true;
-                    // Verzögerter Re-Render statt sofortigem rekursiven Aufruf
-                    requestAnimationFrame(() => this.updateAll());
-                };
-                img.onerror = () => {
-                    this.currentLayout.bgImageBroken = true;
-                };
-                this.currentLayout.bgImageObj = img;
-            }
-
-            if (this.currentLayout.bgImageLoaded) {
-                this.ctx.drawImage(this.currentLayout.bgImageObj, 0, 0, canvas.width, canvas.height);
-            } else {
-                this.ctx.clearRect(0, 0, canvas.width, canvas.height);
-            }
-        } else {
-            this.ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
+        this.ctx.fillStyle = COLORS.MIDNIGHT_BLUE;
+        this.ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
     // ==========================================
@@ -100,6 +85,7 @@ export class TrainDisplay {
 
     /**
      * Wechselt das Layout (z.B. Standard ↔ Voranzeiger).
+     * @param {string} layoutName
      */
     switchLayout(layoutName) {
         if (!LAYOUTS[layoutName]) return;
@@ -120,6 +106,24 @@ export class TrainDisplay {
 
         // Skalierung neu triggern, damit sich die Anzeige visuell anpasst
         window.dispatchEvent(new Event('resize'));
+    }
+
+    /**
+     * Setzt einen spezifischen Zielmonitor für Multi-Monitor / Kiosk-Modus.
+     * @param {string|number|null} screenNumber - '1', '2', '3' oder null für Gesamtansicht
+     * @param {boolean} [is4k=false] - Ob 4K-Auflösung aktiviert werden soll
+     */
+    setTargetScreen(screenNumber, is4k = false) {
+        if (!screenNumber || screenNumber === 'all') {
+            this.switchLayout(is4k ? 'standard_4k' : 'standard');
+            return;
+        }
+        const layoutKey = is4k ? `standard_4k_screen${screenNumber}` : `standard_screen${screenNumber}`;
+        if (LAYOUTS[layoutKey]) {
+            this.switchLayout(layoutKey);
+        } else {
+            this.switchLayout(is4k ? 'standard_4k' : 'standard');
+        }
     }
 
     _startAnimationLoop() {

@@ -1,4 +1,5 @@
 import { IrisCacheService } from './irisCacheService.js';
+import { safeApiFetch } from './apiClient.js';
 
 export class IrisApiService {
     static BASE_URL = 'https://iris.noncd.db.de/iris-tts/timetable';
@@ -19,7 +20,7 @@ export class IrisApiService {
             if (options.signal && options.signal.aborted) {
                 throw new DOMException('Aborted', 'AbortError');
             }
-            return fetch(url, options);
+            return safeApiFetch(url, options, false);
         };
 
         const chained = this._queuePromise.then(async () => {
