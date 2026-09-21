@@ -11,6 +11,9 @@ import { drawFormation } from './components/formationRenderer.js';
 import { drawTrainInfo, shouldRenderFormation } from './components/trainInfoRenderer.js';
 import { drawListeRow, drawVoranzeigerBoard } from './components/listeRenderer.js';
 import { drawVitrine32Wagenstand } from './components/vitrineRenderer.js';
+import { drawAnkunftBoard } from './components/ankunftRenderer.js';
+import { drawWagenreihungPlan } from './components/wagenreihungPlanRenderer.js';
+import { displayConfigStore } from './core/displayConfigStore.svelte.js';
 import { ScreenSyncService } from '../core/services/screenSyncService.js';
 
 export class TrainDisplay {
@@ -21,7 +24,7 @@ export class TrainDisplay {
         this.rotationIndex = 0;
         this.rotating = false;
         this.scrollManager = new ScrollManager();
-        this.currentLayout = LAYOUTS.standard;
+        this._customLayout = null;
         this._isRendering = false; // Re-entrance Guard
         this.featureAlpha = 1.0;
         this.vitrineProgress = 0.0;
@@ -30,7 +33,6 @@ export class TrainDisplay {
         this.activePageIndex = 0;
         this.pageAlpha = 1.0;
 
-        // Voranzeiger Paginierungs- & Ticker-State
         this.departurePageIndex = 0;
         this.departurePageAlpha = 1.0;
         this.disruptionPageIndex = 0;
@@ -38,6 +40,14 @@ export class TrainDisplay {
         this.tickerOffset = 0;
 
         this._startAnimationLoop();
+    }
+
+    get currentLayout() {
+        return this._customLayout || displayConfigStore.currentLayout;
+    }
+
+    set currentLayout(val) {
+        this._customLayout = val;
     }
 
     // ==========================================
@@ -131,9 +141,52 @@ export class TrainDisplay {
      * @param {string} layoutName
      */
     switchLayout(layoutName) {
-        if (!LAYOUTS[layoutName]) return;
+        if (!layoutName) return;
 
-        this.currentLayout = LAYOUTS[layoutName];
+        // Legacy & Named Layout / Monitor Mapping
+        if (layoutName === 'standard') {
+            displayConfigStore.setMonitorId('zim2x32');
+            displayConfigStore.setLayoutType('zuganzeiger');
+            this._customLayout = null;
+        } else if (layoutName === 'standard_frameless') {
+            displayConfigStore.setMonitorId('zim2x32');
+            displayConfigStore.setLayoutType('zuganzeiger');
+            displayConfigStore.showBezel = false;
+            this._customLayout = null;
+        } else if (layoutName === 'standard_3screen') {
+            displayConfigStore.setMonitorId('zim3x32');
+            displayConfigStore.setLayoutType('zuganzeiger');
+            this._customLayout = null;
+        } else if (layoutName === 'standard_3screen_frameless') {
+            displayConfigStore.setMonitorId('zim3x32');
+            displayConfigStore.setLayoutType('zuganzeiger');
+            displayConfigStore.showBezel = false;
+            this._customLayout = null;
+        } else if (layoutName === 'voranzeiger' || layoutName === 'voranzeiger_and_formation') {
+            displayConfigStore.setLayoutType('anschlusstafel');
+            this._customLayout = null;
+        } else if (layoutName === 'zimvitrine32wagenstand') {
+            displayConfigStore.setMonitorId('zimvitrine32');
+            displayConfigStore.setLayoutType('wagenreihungsplan');
+            this._customLayout = null;
+        } else if (layoutName === 'zimvitrine65h') {
+            displayConfigStore.setMonitorId('zimvitrine65h');
+            this._customLayout = null;
+        } else if (layoutName === 'zimwide') {
+            displayConfigStore.setMonitorId('zimwide');
+            this._customLayout = null;
+        } else if (layoutName === 'zimultrawide') {
+            displayConfigStore.setMonitorId('zimultrawide');
+            this._customLayout = null;
+        } else if (['zuganzeiger', 'anschlusstafel', 'ankunftstafel', 'wagenreihungsplan'].includes(layoutName)) {
+            displayConfigStore.setLayoutType(layoutName);
+            this._customLayout = null;
+        } else if (['zim2x32', 'zim3x32', 'zim32_single', 'zimvitrine32', 'zimvitrine65h', 'zimwide', 'zimultrawide'].includes(layoutName)) {
+            displayConfigStore.setMonitorId(layoutName);
+            this._customLayout = null;
+        } else if (LAYOUTS[layoutName]) {
+            this._customLayout = LAYOUTS[layoutName];
+        }
 
         // Canvas-Größe anpassen
         const canvas = document.getElementById('zimCanvas');
@@ -177,7 +230,7 @@ export class TrainDisplay {
     _startAnimationLoop() {
         if (this._animId) return;
         const loop = () => {
-            const isVitrine = this.currentLayout === LAYOUTS.zimvitrine32wagenstand;
+            const isVitrine = this.currentLayout?.layoutType === 'wagenreihungsplan' || this.currentLayout === LAYOUTS.zimvitrine32wagenstand;
             const now = Date.now();
             let needsRender = false;
             
@@ -454,7 +507,7 @@ export class TrainDisplay {
 
                     const clearBg = (layer === 'all' || layer === 'static' || isDynamicRotierend);
                     this.drawOnScreen(screen, (ctx, width, height) => {
-                        if (screen.type === 'haupt' || screen.type === 'neben' || screen.type === 'neben_rotierend') {
+                        if (screen.type === 'haupt' || screen.type === 'neben' || screen.type === 'neben_rotierend' || screen.type === 'zuganzeiger_portrait') {
                             if (layer === 'all' || layer === 'static' || isDynamicRotierend) {
                                 drawTrainInfo(ctx, journeys, width, height, renderCtx);
                             }
@@ -472,8 +525,12 @@ export class TrainDisplay {
                                 });
                                 ctx.restore();
                             }
-                        } else if (screen.type === 'voranzeiger') {
-                            drawVoranzeigerBoard(ctx, journeys, width, height, renderCtx);
+                        } else if (screen.type === 'abfahrt' || screen.type === 'abfahrt_portrait' || screen.type === 'voranzeiger') {
+                            drawVoranzeigerBoard(ctx, journeys, width, height, renderCtx, screen);
+                        } else if (screen.type === 'ankunft' || screen.type === 'ankunft_portrait') {
+                            drawAnkunftBoard(ctx, journeys, width, height, renderCtx, screen);
+                        } else if (screen.type === 'wagenreihung_plan') {
+                            drawWagenreihungPlan(ctx, journeyGroups || [], this.journeyStore.platform, width, height, renderCtx, screen);
                         } else if (screen.type === 'liste') {
                             if (layer === 'all' || layer === 'static') {
                                 drawListeRow(ctx, journeys[0], width, height);
@@ -514,16 +571,23 @@ export class TrainDisplay {
     _buildScreenAssignments() {
         const assignments = new Map();
         const layout = this.currentLayout;
+        const screens = layout?.screens || [];
 
-        if (layout.screens && layout.screens.some(s => s.type === 'voranzeiger')) {
+        const hasAnkunft = screens.some(s => s.type === 'ankunft' || s.type === 'ankunft_portrait');
+        const hasAbfahrt = screens.some(s => s.type === 'abfahrt' || s.type === 'abfahrt_portrait' || s.type === 'voranzeiger');
+        const hasWagenreihungPlan = screens.some(s => s.type === 'wagenreihung_plan');
+        const hasVitrine = screens.some(s => s.type === 'vitrine32');
+
+        if (hasAnkunft) {
+            this._assignAnkunft(assignments);
+        } else if (hasAbfahrt) {
             this._assignVoranzeiger(assignments);
-        } else if (layout.family === 'standard' || layout === LAYOUTS.standard || (layout.screens && layout.screens.some(s => s.type === 'haupt' || s.type === 'neben' || s.type === 'neben_rotierend'))) {
-            this._assignStandard(assignments);
-        } else if (layout === LAYOUTS.zimvitrine32wagenstand || (layout.screens && layout.screens.every(s => s.type === 'vitrine32'))) {
+        } else if (hasWagenreihungPlan) {
+            this._assignWagenreihungPlan(assignments);
+        } else if (hasVitrine) {
             this._assignVitrine(assignments);
         } else {
-            // Fallback: einfache Slot-basierte Zuweisung
-            this._assignGeneric(assignments);
+            this._assignStandard(assignments);
         }
 
         return assignments;
@@ -661,7 +725,7 @@ export class TrainDisplay {
         const allVisibleJourneys = this.journeyStore.journeys.filter(j => j.visible);
 
         for (const screen of this.currentLayout.screens) {
-            if (screen.type === 'voranzeiger') {
+            if (screen.type === 'voranzeiger' || screen.type === 'abfahrt' || screen.type === 'abfahrt_portrait') {
                 assignments.set(screen.id, {
                     journeys: allVisibleJourneys,
                     zugID: 1,
@@ -678,6 +742,26 @@ export class TrainDisplay {
                     zugID: index + 1,
                 });
             }
+        }
+    }
+
+    _assignAnkunft(assignments) {
+        const allVisibleJourneys = this.journeyStore.journeys.filter(j => j.visible);
+        for (const screen of this.currentLayout.screens) {
+            assignments.set(screen.id, {
+                journeys: allVisibleJourneys,
+                zugID: 1,
+            });
+        }
+    }
+
+    _assignWagenreihungPlan(assignments) {
+        const groups = this._getVisibleJourneyGroups();
+        for (const screen of this.currentLayout.screens) {
+            assignments.set(screen.id, {
+                journeyGroups: groups,
+                zugID: 1,
+            });
         }
     }
 

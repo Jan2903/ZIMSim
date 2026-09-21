@@ -13,20 +13,13 @@
     import { ansagenStore } from '../js/audio/ansagenStore.svelte.js';
     import { open } from '@tauri-apps/plugin-dialog';
     import ZimIcon from './ZimIcon.svelte';
-    import { LAYOUTS } from '../js/displays/core/layouts.js';
+    import { displayConfigStore } from '../js/displays/core/displayConfigStore.svelte.js';
+    import { MONITOR_PROFILES, LAYOUT_TYPES } from '../js/displays/core/displayLayoutService.js';
     
     let { modalsComp } = $props();
 
     // Mobiler Tab-State: 'fahrten' | 'monitor' | 'tools'
     let activeMobileTab = $state('fahrten');
-
-    let currentLayoutKey = $derived.by(() => {
-        if (!trainDisplay.currentLayout) return 'standard';
-        for (const [key, l] of Object.entries(LAYOUTS)) {
-            if (l === trainDisplay.currentLayout) return key;
-        }
-        return 'standard';
-    });
 
     // Desktop-Ansichtsmodus: 'split' (zweispaltig) oder 'tabs' (dreigeteilt in Reiter)
     let desktopViewMode = $state(localStorage.getItem('zimsim_view_mode') || 'split');
@@ -107,9 +100,16 @@
         }
     }
     
-    function onLayoutChange(event) {
-        const layout = event.target.value;
-        trainDisplay.switchLayout(layout);
+    function onMonitorChange(id) {
+        displayConfigStore.setMonitorId(id);
+        trainDisplay.updateAll();
+        window.dispatchEvent(new Event('resize'));
+    }
+
+    function onLayoutTypeChange(type) {
+        displayConfigStore.setLayoutType(type);
+        trainDisplay.updateAll();
+        window.dispatchEvent(new Event('resize'));
     }
     
     function onFeatureChange(event) {
@@ -357,18 +357,39 @@
                     </CollapsibleSection>
 
                 <CollapsibleSection title="Monitor & Layout" isOpen={true} isFrame={false}>
-                    <div style="font-size: 0.82em; font-weight: 600; color: #94a3b8; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Monitortyp & Hardware:</div>
-                    <div class="options-grid" style="grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px;">
-                        <label class="radio-card"><input type="radio" name="layout_select" value="standard" checked={currentLayoutKey === 'standard'} onchange={onLayoutChange}> ZIM 2×32" Doppel</label>
-                        <label class="radio-card"><input type="radio" name="layout_select" value="voranzeiger" checked={currentLayoutKey === 'voranzeiger'} onchange={onLayoutChange}> Voranzeiger 16:9</label>
-                        <label class="radio-card"><input type="radio" name="layout_select" value="voranzeiger_and_formation" checked={currentLayoutKey === 'voranzeiger_and_formation'} onchange={onLayoutChange}> Voranz. + Wagenst.</label>
-                        <label class="radio-card"><input type="radio" name="layout_select" value="zimvitrine32wagenstand" checked={currentLayoutKey === 'zimvitrine32wagenstand'} onchange={onLayoutChange}> Vitrine 32" Stand</label>
-                        <label class="radio-card"><input type="radio" name="layout_select" value="zimvitrine65h" checked={currentLayoutKey === 'zimvitrine65h'} onchange={onLayoutChange}> Stele 65h (9:16)</label>
-                        <label class="radio-card"><input type="radio" name="layout_select" value="zimwide" checked={currentLayoutKey === 'zimwide'} onchange={onLayoutChange}> ZIMwide (21:9)</label>
-                        <label class="radio-card"><input type="radio" name="layout_select" value="zimultrawide" checked={currentLayoutKey === 'zimultrawide'} onchange={onLayoutChange}> ZIMultrawide (32:9)</label>
-                        <label class="radio-card"><input type="radio" name="layout_select" value="standard_3screen" checked={currentLayoutKey === 'standard_3screen'} onchange={onLayoutChange}> ZIM 3-Screen</label>
+                    <div style="font-size: 0.82em; font-weight: 700; color: #94a3b8; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">1. Monitortyp & Hardware:</div>
+                    <div class="options-grid" style="grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; margin-bottom: 16px;">
+                        {#each MONITOR_PROFILES as prof}
+                            <label class="radio-card">
+                                <input 
+                                    type="radio" 
+                                    name="monitor_select" 
+                                    value={prof.id} 
+                                    checked={displayConfigStore.monitorId === prof.id} 
+                                    onchange={() => onMonitorChange(prof.id)}
+                                >
+                                <span>{prof.name}</span>
+                            </label>
+                        {/each}
                     </div>
-                    <div class="checkbox-group" style="margin-top: 12px;">
+
+                    <div style="font-size: 0.82em; font-weight: 700; color: #94a3b8; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">2. DB-Anzeigetyp (Inhalte):</div>
+                    <div class="options-grid" style="grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px;">
+                        {#each LAYOUT_TYPES as lt}
+                            <label class="radio-card">
+                                <input 
+                                    type="radio" 
+                                    name="layout_type_select" 
+                                    value={lt.id} 
+                                    checked={displayConfigStore.layoutType === lt.id} 
+                                    onchange={() => onLayoutTypeChange(lt.id)}
+                                >
+                                <span>{lt.name}</span>
+                            </label>
+                        {/each}
+                    </div>
+
+                    <div class="checkbox-group" style="margin-top: 14px;">
                         <label class="checkbox-label"><input type="checkbox" id="nrw_mode_checkbox" bind:checked={journeyStore.nrwMode} onchange={() => trainDisplay.updateAll()}> Nur Liniennummern (NRW)</label>
                     </div>
                 </CollapsibleSection>

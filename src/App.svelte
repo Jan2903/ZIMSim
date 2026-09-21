@@ -10,6 +10,7 @@
     import StatusOverlay from './components/StatusOverlay.svelte';
     import ZimIcon from './components/ZimIcon.svelte';
     import HardwareBezel from './components/HardwareBezel.svelte';
+    import { displayConfigStore } from './js/displays/core/displayConfigStore.svelte.js';
 
     let modalsComp = $state();
     let canvasElement = $state();
@@ -26,9 +27,6 @@
     // Hybrid-Modus für Mobile/Desktop: 'fit' (an Bildschirm anpassen) oder 'scroll' (Mindestbreite mit Scrollbalken)
     let displayScaleMode = $state(localStorage.getItem('zimsim_scale_mode') || 'fit');
 
-    // Optionales Gehäuse (Rahmen & vertikaler Trenner zwischen Monitoren) in der Web-Vorschau
-    let showBezel = $state(localStorage.getItem('zimsim_show_bezel') !== 'false');
-
     // Vollbild-Zustand (Fullscreen API)
     let isFullscreen = $state(false);
 
@@ -39,58 +37,19 @@
     // Dropdown-Zustand für Multi-Monitor Menü
     let monitorMenuOpen = $state(false);
 
-    // Gehäuse-Zustand & dynamische Abmessungen für Gehäuse vs. Reines Display
-    let isCasingActive = $derived(
-        showBezel && 
-        !isFullscreen && 
-        !isKiosk && 
-        Boolean(trainDisplay.currentLayout?.casingWidth)
-    );
-
-    let wrapperWidth = $derived(
-        isCasingActive 
-            ? trainDisplay.currentLayout.casingWidth 
-            : trainDisplay.currentLayout.width
-    );
-
-    let wrapperHeight = $derived(
-        isCasingActive 
-            ? trainDisplay.currentLayout.casingHeight 
-            : trainDisplay.currentLayout.height
-    );
-
-    let canvasOffsetX = $derived(
-        isCasingActive 
-            ? (trainDisplay.currentLayout.casingOffsetX || 270) 
-            : 0
-    );
-
-    let canvasOffsetY = $derived(
-        isCasingActive 
-            ? (trainDisplay.currentLayout.casingOffsetY || 260) 
-            : 0
-    );
+    // Gehäuse-Zustand & dynamische Abmessungen für Gehäuse vs. Reines Display via Store
+    let isCasingActive = $derived(displayConfigStore.isCasingActive);
+    let wrapperWidth = $derived(displayConfigStore.wrapperWidth);
+    let wrapperHeight = $derived(displayConfigStore.wrapperHeight);
+    let canvasOffsetX = $derived(displayConfigStore.canvasOffsetX);
+    let canvasOffsetY = $derived(displayConfigStore.canvasOffsetY);
 
     /**
      * Schaltet das Gehäuse-Overlay (Rahmen & Steg) um.
-     * Wechselt dynamisch zwischen dem Standard-Layout mit 50px Steg und dem randlosen Profil.
      * @returns {void}
      */
     function toggleBezel() {
-        showBezel = !showBezel;
-        localStorage.setItem('zimsim_show_bezel', String(showBezel));
-        
-        // Wenn kein Einzelschirm-Profil aktiv ist, zwischen Gehäuse-Layout (mit 50px Steg) und randlosem Layout wechseln
-        if (!targetScreen && trainDisplay.currentLayout && trainDisplay.currentLayout.family === 'standard' && !is4k) {
-            const is3Screen = trainDisplay.currentLayout.width >= 5700;
-            if (is3Screen) {
-                trainDisplay.switchLayout(showBezel ? 'standard_3screen' : 'standard_3screen_frameless');
-            } else {
-                trainDisplay.switchLayout(showBezel ? 'standard' : 'standard_frameless');
-            }
-        } else {
-            trainDisplay.updateAll();
-        }
+        displayConfigStore.toggleBezel();
         setTimeout(() => {
             handleResize();
             trainDisplay.updateAll();
@@ -337,19 +296,9 @@
 
     function onFullscreenChange() {
         isFullscreen = Boolean(document.fullscreenElement);
+        displayConfigStore.isFullscreen = isFullscreen;
         if (isFullscreen) {
             handleUserActivity();
-            // Im Vollbildmodus randloses Layout aktivieren
-            if (!targetScreen && trainDisplay.currentLayout && trainDisplay.currentLayout.family === 'standard' && trainDisplay.currentLayout.hasBezelGap && !is4k) {
-                const is3Screen = trainDisplay.currentLayout.width >= 5700;
-                trainDisplay.switchLayout(is3Screen ? 'standard_3screen_frameless' : 'standard_frameless');
-            }
-        } else {
-            // Nach Beenden des Vollbildmodus Gehäuse-Layout (mit 50px Steg) wiederherstellen falls Gehäuse aktiv
-            if (!targetScreen && showBezel && trainDisplay.currentLayout && trainDisplay.currentLayout.family === 'standard' && !trainDisplay.currentLayout.hasBezelGap && !isKiosk && !is4k) {
-                const is3Screen = trainDisplay.currentLayout.width >= 5700;
-                trainDisplay.switchLayout(is3Screen ? 'standard_3screen' : 'standard');
-            }
         }
         setTimeout(handleResize, 50);
     }
@@ -378,11 +327,9 @@
             }
             ScreenSyncService.initSlave(journeyStore, trainDisplay);
         } else {
-            // Initiales Layout festlegen: Im Kiosk randlos, ansonsten nach Gehäuse-Einstellung
-            if (isKiosk) {
-                trainDisplay.switchLayout(is4k ? 'standard_4k' : 'standard_frameless');
-            } else {
-                trainDisplay.switchLayout(is4k ? 'standard_4k' : (showBezel ? 'standard' : 'standard_frameless'));
+            displayConfigStore.isKiosk = isKiosk;
+            if (is4k) {
+                trainDisplay.switchLayout('standard_4k');
             }
             ScreenSyncService.initMaster(journeyStore);
             trainDisplay.updateAll();
@@ -491,13 +438,13 @@
         <button 
             type="button" 
             class="display-toolbar-btn"
-            class:active-btn={showBezel}
+            class:active-btn={displayConfigStore.showBezel}
             onclick={toggleBezel}
-            title={showBezel ? 'Gehäuse-Simulation ausblenden (Reiner Canvas)' : 'Gehäuse-Simulation einblenden'}
+            title={displayConfigStore.showBezel ? 'Gehäuse-Simulation ausblenden (Reiner Canvas)' : 'Gehäuse-Simulation einblenden'}
             aria-label="Gehäuse umschalten"
         >
             <ZimIcon name="eye" size={14} />
-            <span>Gehäuse: {showBezel ? 'An' : 'Aus'}</span>
+            <span>Gehäuse: {displayConfigStore.showBezel ? 'An' : 'Aus'}</span>
         </button>
 
         <!-- Screenshot Download -->

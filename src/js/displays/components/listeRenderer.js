@@ -21,9 +21,9 @@ import { getSimulatedTime } from '../../core/utils/config.js';
  * @param {number} height - Verfügbare Höhe (z.B. 1080 oder 1920).
  * @param {object} renderCtx - Render-Kontext mit Pagination- und Scroll-Daten.
  */
-export function drawVoranzeigerBoard(ctx, journeys = [], width = 1920, height = 1080, renderCtx = {}) {
-    const HEADER_HEIGHT = 90;
+export function drawVoranzeigerBoard(ctx, journeys = [], width = 1920, height = 1080, renderCtx = {}, screenOptions = {}) {
     const isPortrait = height > width; // z.B. Stele 1080×1920
+    const HEADER_HEIGHT = isPortrait ? 100 : 90;
 
     // 1. Hintergrund füllen (DB-Nachtblau)
     ctx.fillStyle = '#08152b';
@@ -43,7 +43,12 @@ export function drawVoranzeigerBoard(ctx, journeys = [], width = 1920, height = 
     let activeInfo = null;
     let activeInfoIndex = 0;
 
-    if (infos.length > 0) {
+    // Störungsbereich auf der letzten Spalte oder Einzelmonitor anzeigen
+    const colIndex = screenOptions.colIndex || 0;
+    const maxCols = screenOptions.maxCols || 1;
+    const showDisruptionOnThisScreen = (maxCols === 1 || colIndex === maxCols - 1);
+
+    if (infos.length > 0 && showDisruptionOnThisScreen) {
         activeInfoIndex = (renderCtx.disruptionPageIndex || 0) % infos.length;
         activeInfo = infos[activeInfoIndex];
 
@@ -56,12 +61,12 @@ export function drawVoranzeigerBoard(ctx, journeys = [], width = 1920, height = 
     }
 
     // 5. Zeilenraster berechnen
-    const baseTotalRows = isPortrait ? 10 : 6;
+    const baseTotalRows = screenOptions.maxRows || (isPortrait ? 16 : 6);
     let availableTrainRows = baseTotalRows;
     let disruptionBoxHeight = 0;
 
     if (isTickerMode) {
-        disruptionBoxHeight = 75;
+        disruptionBoxHeight = isPortrait ? 90 : 75;
     } else if (disruptionRows > 0) {
         availableTrainRows = Math.max(1, baseTotalRows - disruptionRows);
     }
@@ -69,10 +74,11 @@ export function drawVoranzeigerBoard(ctx, journeys = [], width = 1920, height = 
     const usableTrainHeight = height - HEADER_HEIGHT - disruptionBoxHeight;
     const trainRowHeight = usableTrainHeight / availableTrainRows;
 
-    // 6. Abfahrts-Pagination berechnen
-    const totalTrainPages = Math.max(1, Math.ceil(trains.length / availableTrainRows));
+    // 6. Abfahrts-Pagination berechnen (über alle Spalten hinweg)
+    const trainsPerPage = availableTrainRows * maxCols;
+    const totalTrainPages = Math.max(1, Math.ceil(trains.length / trainsPerPage));
     const activeTrainPage = (renderCtx.departurePageIndex || 0) % totalTrainPages;
-    const pageOffset = activeTrainPage * availableTrainRows;
+    const pageOffset = (activeTrainPage * trainsPerPage) + (colIndex * availableTrainRows);
     const visibleTrains = trains.slice(pageOffset, pageOffset + availableTrainRows);
 
     // 7. Züge rendern
@@ -87,7 +93,7 @@ export function drawVoranzeigerBoard(ctx, journeys = [], width = 1920, height = 
         const train = visibleTrains[i];
 
         if (train) {
-            drawTrainRow(ctx, train, 0, rowY, width, trainRowHeight, i % 2 === 1);
+            drawTrainRow(ctx, train, 0, rowY, width, trainRowHeight, i % 2 === 1, isPortrait);
         } else {
             // Leere Zeile bei dünnem Fahrplan (dezenter Hintergrund ohne Artefakte)
             drawEmptyRow(ctx, 0, rowY, width, trainRowHeight, i % 2 === 1);
@@ -96,7 +102,7 @@ export function drawVoranzeigerBoard(ctx, journeys = [], width = 1920, height = 
     ctx.restore();
 
     // 8. Störungsbereich ganz unten rendern
-    if (infos.length > 0 && activeInfo) {
+    if (infos.length > 0 && activeInfo && showDisruptionOnThisScreen) {
         const disruptionY = height - (isTickerMode ? disruptionBoxHeight : (disruptionRows * trainRowHeight));
         const disruptionH = isTickerMode ? disruptionBoxHeight : (disruptionRows * trainRowHeight);
 
@@ -162,7 +168,7 @@ function drawHeader(ctx, width, height, renderCtx, isPortrait) {
 /**
  * Zeichnet eine einzelne Abfahrtszeile im Voranzeiger.
  */
-function drawTrainRow(ctx, train, x, y, width, height, isAlt) {
+function drawTrainRow(ctx, train, x, y, width, height, isAlt, isPortrait = false) {
     // Zeilenhintergrund
     ctx.fillStyle = isAlt ? '#061126' : '#08152b';
     ctx.fillRect(x, y, width, height);
@@ -174,64 +180,70 @@ function drawTrainRow(ctx, train, x, y, width, height, isAlt) {
     const isAusfall = !!train.ausfall;
     const hasTrackChange = !!train.hasTrackChange;
 
-    // 1. Spalte: Zeit (x: 40)
-    const timeY = y + (height * 0.44);
-    ctx.font = FONTS.bold(48);
+    const timeFontSize = isPortrait ? 36 : 48;
+    const destFontSize = isPortrait ? 34 : 48;
+    const viaFontSize = isPortrait ? 22 : 28;
+
+    // 1. Spalte: Zeit
+    const timeX = isPortrait ? 24 : 40;
+    const timeY = y + (height * (isPortrait ? 0.48 : 0.44));
+    ctx.font = FONTS.bold(timeFontSize);
     ctx.textAlign = 'left';
     ctx.fillStyle = isAusfall ? '#ef4444' : COLORS.WHITE;
-    ctx.fillText(train.scheduledTime || '--:--', 40, timeY);
+    ctx.fillText(train.scheduledTime || '--:--', timeX, timeY);
 
     if (isAusfall) {
         // Zeit durchstreichen
         ctx.strokeStyle = '#ef4444';
-        ctx.lineWidth = 4;
+        ctx.lineWidth = isPortrait ? 3 : 4;
         ctx.beginPath();
-        ctx.moveTo(35, timeY - 14);
-        ctx.lineTo(155, timeY - 14);
+        ctx.moveTo(timeX - 4, timeY - (isPortrait ? 11 : 14));
+        ctx.lineTo(timeX + (isPortrait ? 95 : 120), timeY - (isPortrait ? 11 : 14));
         ctx.stroke();
 
         // Roter Hinweis darunter
-        ctx.font = FONTS.bold(26);
+        ctx.font = FONTS.bold(isPortrait ? 20 : 26);
         ctx.fillStyle = '#ef4444';
-        ctx.fillText('Fällt aus', 40, timeY + 36);
+        ctx.fillText('Fällt aus', timeX, timeY + (isPortrait ? 28 : 36));
     } else if (train.expectedTime && train.expectedTime !== train.scheduledTime) {
         // Verspätungshinweis
-        ctx.font = FONTS.bold(28);
+        ctx.font = FONTS.bold(isPortrait ? 22 : 28);
         ctx.fillStyle = '#38bdf8';
-        ctx.fillText(`ca. ${train.expectedTime}`, 40, timeY + 36);
+        ctx.fillText(`ca. ${train.expectedTime}`, timeX, timeY + (isPortrait ? 28 : 36));
     }
 
-    // 2. Spalte: Zug / Gattung (x: 180)
+    // 2. Spalte: Zug / Gattung
+    const trainX = isPortrait ? 140 : 180;
     const displayName = train.effectiveDisplayName || train.displayName || train.name || 'Zug';
-    const trainBoxW = 160;
-    const trainBoxH = 46;
-    const trainBoxY = timeY - 34;
+    const trainBoxW = isPortrait ? 120 : 160;
+    const trainBoxH = isPortrait ? 38 : 46;
+    const trainBoxY = timeY - (isPortrait ? 28 : 34);
 
     ctx.fillStyle = '#1e293b';
     ctx.beginPath();
-    ctx.roundRect(180, trainBoxY, trainBoxW, trainBoxH, 6);
+    ctx.roundRect(trainX, trainBoxY, trainBoxW, trainBoxH, 6);
     ctx.fill();
 
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    ctx.font = FONTS.bold(34);
+    ctx.font = FONTS.bold(isPortrait ? 24 : 34);
     ctx.fillStyle = COLORS.WHITE;
     ctx.textAlign = 'center';
-    ctx.fillText(displayName, 180 + (trainBoxW / 2), trainBoxY + 33);
+    ctx.fillText(displayName, trainX + (trainBoxW / 2), trainBoxY + (isPortrait ? 27 : 33));
 
-    // 3. Spalte: Ziel & Vias (x: 380)
-    const destX = 380;
+    // 3. Spalte: Ziel & Vias
+    const destX = isPortrait ? 280 : 380;
     ctx.textAlign = 'left';
-    ctx.font = FONTS.bold(48);
+    ctx.font = FONTS.bold(destFontSize);
     ctx.fillStyle = isAusfall ? '#94a3b8' : COLORS.WHITE;
     const destText = train.destinationLang || train.destination || 'Ziel';
     ctx.fillText(destText, destX, timeY);
 
     // Vias / Haltestellenkette
-    const viaY = timeY + 38;
-    ctx.font = FONTS.regular(28);
+    const viaY = timeY + (isPortrait ? 30 : 38);
+    ctx.font = FONTS.regular(viaFontSize);
     ctx.fillStyle = '#94a3b8';
     let viaStr = (train.vias && train.vias.length > 0) ? train.vias.join(' • ') : '';
     if (train.verkehrtAb && train.verkehrtAb !== '0') {
@@ -239,7 +251,8 @@ function drawTrainRow(ctx, train, x, y, width, height, isAlt) {
     }
     
     // Abschneiden bei Überlänge mit Auslassungspunkten
-    const maxViaWidth = width - destX - 320;
+    const rightMargin = isPortrait ? 180 : 320;
+    const maxViaWidth = width - destX - rightMargin;
     if (ctx.measureText(viaStr).width > maxViaWidth) {
         while (viaStr.length > 0 && ctx.measureText(viaStr + '...').width > maxViaWidth) {
             viaStr = viaStr.slice(0, -1);
@@ -248,32 +261,31 @@ function drawTrainRow(ctx, train, x, y, width, height, isAlt) {
     }
     ctx.fillText(viaStr, destX, viaY);
 
-    // 4. Spalte: Gleis (x: width - 260)
-    const gleisX = width - 260;
+    // 4. Spalte: Gleis
+    const gleisX = width - (isPortrait ? 160 : 260);
     const gleisNum = train.platform || '-';
 
     if (hasTrackChange) {
-        // Gleiswechsel-Inverskasten (Weißer Kasten mit dunkelblauem Text)
-        const boxW = 200;
-        const boxH = 56;
-        const boxY = timeY - 38;
+        // Gleiswechsel-Inverskasten
+        const boxW = isPortrait ? 140 : 200;
+        const boxH = isPortrait ? 44 : 56;
+        const boxY = timeY - (isPortrait ? 30 : 38);
 
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
         ctx.roundRect(gleisX, boxY, boxW, boxH, 6);
         ctx.fill();
 
-        ctx.font = FONTS.bold(36);
+        ctx.font = FONTS.bold(isPortrait ? 28 : 36);
         ctx.fillStyle = '#08152b';
         ctx.textAlign = 'center';
-        ctx.fillText(`Gl. ${train.ezGleis || gleisNum}`, gleisX + (boxW / 2), boxY + 39);
+        ctx.fillText(`Gl. ${train.ezGleis || gleisNum}`, gleisX + (boxW / 2), boxY + (isPortrait ? 31 : 39));
 
-        // Kleiner Zusatz: statt X
-        ctx.font = FONTS.regular(22);
+        ctx.font = FONTS.regular(isPortrait ? 18 : 22);
         ctx.fillStyle = '#ef4444';
-        ctx.fillText(`statt ${gleisNum}`, gleisX + (boxW / 2), boxY + 76);
+        ctx.fillText(`statt ${gleisNum}`, gleisX + (boxW / 2), boxY + (isPortrait ? 60 : 76));
     } else {
-        ctx.font = FONTS.bold(44);
+        ctx.font = FONTS.bold(isPortrait ? 36 : 44);
         ctx.fillStyle = COLORS.WHITE;
         ctx.textAlign = 'left';
         ctx.fillText(`Gl. ${gleisNum}`, gleisX, timeY);
