@@ -91,7 +91,10 @@
         } else {
             trainDisplay.updateAll();
         }
-        setTimeout(handleResize, 30);
+        setTimeout(() => {
+            handleResize();
+            trainDisplay.updateAll();
+        }, 50);
     }
 
     /**
@@ -272,12 +275,19 @@
         }
     });
 
-    // Reaktiver Effekt für dynamische Größenanpassung bei Gehäuse-Wechsel
+    // Reaktiver Effekt für dynamische Größenanpassung und Re-Render bei Gehäuse- oder Layout-Wechsel
     $effect(() => {
+        const _b = showBezel;
         const _w = wrapperWidth;
         const _h = wrapperHeight;
         const _c = isCasingActive;
+
         handleResize();
+
+        // Nach Abschluss aller Svelte-DOM-Updates Canvas zuverlässig neu zeichnen
+        requestAnimationFrame(() => {
+            trainDisplay.updateAll();
+        });
     });
 
     /**
@@ -405,7 +415,7 @@
 </script>
 
 {#if !isKiosk}
-    <Header />
+    <Header onScreenshot={downloadScreenshot} />
 {/if}
 
 <div 
@@ -459,8 +469,6 @@
             <canvas 
                 bind:this={canvasElement} 
                 id="zimCanvas" 
-                width={trainDisplay.currentLayout.width} 
-                height={trainDisplay.currentLayout.height} 
                 style="position: absolute; top: {canvasOffsetY}px; left: {canvasOffsetX}px; z-index: 10;"
             ></canvas>
         </div>

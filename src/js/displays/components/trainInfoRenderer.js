@@ -81,9 +81,12 @@ function getPlatformSectors(targetJourney, allJourneys, platform) {
  * @param {import('../core/textUtils.js').RenderContext} renderCtx - Render-Kontext.
  */
 export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
-    const { fullScreen, screen, scrollManager, zugID, canvas, cssScale = 1 } = renderCtx;
+    const { fullScreen, screen, scrollManager, zugID, canvas } = renderCtx;
     const pAlpha = renderCtx.pageAlpha !== undefined ? renderCtx.pageAlpha : 1.0;
     ctx.globalAlpha = pAlpha;
+
+    const offX = canvas ? canvas.offsetLeft : 0;
+    const offY = canvas ? canvas.offsetTop : 0;
 
     const primary = journeys[0];
 
@@ -153,15 +156,15 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
         if (infoToScroll !== "") ctx.fillRect(x, 0, width - x, INFO.HEADER_HEIGHT);
     }
 
-    // Scrollenden Info-Text erstellen/aktualisieren
+    // Scrollenden Info-Text erstellen/aktualisieren (Offset an Gehäuse-Position des Canvas anpassen)
     scrollManager.createOrUpdate(
         canvas, zugID, "info", infoToScroll,
-        `${(screen.x + x + 5) * cssScale}px`,
-        `${screen.y * cssScale}px`,
-        `${(screen.w - x - 5) * cssScale}px`,
-        `${100 * cssScale}px`,
+        `${offX + screen.x + x + 5}px`,
+        `${offY + screen.y}px`,
+        `${screen.w - x - 5}px`,
+        `100px`,
         COLORS.NAVY,
-        `${Math.round(67 * cssScale)}px "Open Sans Condensed"`,
+        `67px "Open Sans Condensed"`,
         pAlpha
     );
 
@@ -269,19 +272,19 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
                 // Bei Störung: Ein kombinierter Scrolltext weiter oben
                 drawText(ctx, 'von / from ' + fromDestination, 50, 520, FONTS.regular(75), textColor, 'left');
                 scrollManager.createOrUpdate(canvas, zugID, 'ankunft', "Bitte nicht einsteigen Please do not board",
-                    `${(screen.x + 50) * cssScale}px`, `${(screen.y + 300) * cssScale}px`,
-                    `${(screen.w - 50) * cssScale}px`, `${128 * cssScale}px`, textColor, `${Math.round(128 * cssScale)}px "Open Sans Condensed"`, pAlpha);
+                    `${offX + screen.x + 50}px`, `${offY + screen.y + 300}px`,
+                    `${screen.w - 50}px`, `128px`, textColor, `128px "Open Sans Condensed"`, pAlpha);
                 // Den separaten arrival Scrolltext löschen
                 scrollManager.createOrUpdate(canvas, zugID, 'arrival', "", "", "", "", "", "", "", pAlpha);
             } else {
                 // Normales Layout
                 drawText(ctx, 'von / from ' + fromDestination, 50, 670, FONTS.regular(75), textColor, 'left');
                 scrollManager.createOrUpdate(canvas, zugID, 'ankunft', "Bitte nicht einsteigen",
-                    `${(screen.x + 50) * cssScale}px`, `${(screen.y + 280) * cssScale}px`,
-                    `${(screen.w - 50) * cssScale}px`, `${120 * cssScale}px`, textColor, `${Math.round(120 * cssScale)}px "Open Sans Condensed"`, pAlpha);
+                    `${offX + screen.x + 50}px`, `${offY + screen.y + 280}px`,
+                    `${screen.w - 50}px`, `120px`, textColor, `120px "Open Sans Condensed"`, pAlpha);
                 scrollManager.createOrUpdate(canvas, zugID, 'arrival', "Please do not board",
-                    `${(screen.x + 50) * cssScale}px`, `${(screen.y + 430) * cssScale}px`,
-                    `${(screen.w - 50) * cssScale}px`, `${120 * cssScale}px`, textColor, `italic ${Math.round(120 * cssScale)}px "Open Sans Condensed"`, pAlpha);
+                    `${offX + screen.x + 50}px`, `${offY + screen.y + 430}px`,
+                    `${screen.w - 50}px`, `120px`, textColor, `italic 120px "Open Sans Condensed"`, pAlpha);
             }
         } else if (isMerged) {
             let yPos = 360;
