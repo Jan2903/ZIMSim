@@ -354,17 +354,36 @@ export class JourneyImportService {
                     existing.stops = jData.stops.map(s => {
                         const prevStop = existing.stops.find(old => old.name === s.name);
                         const data = { ...s };
-                        if (prevStop) data.id = prevStop.id;
-                        else data.id = crypto.randomUUID();
+                        if (prevStop) {
+                            data.id = prevStop.id;
+                            data.audioVia = prevStop.audioVia;
+                            data.showAsVia = prevStop.showAsVia;
+                        } else {
+                            data.id = crypto.randomUUID();
+                        }
                         return new Stop(data);
                     });
+                }
+
+                // Automatische Vias sicherstellen, falls noch keine aktiv sind
+                if (!existing.ankunft && existing.stops && existing.stops.length > 0) {
+                    if (!existing.stops.some(s => s.audioVia)) {
+                        existing.autoGenerateAudioVias(ansagenStore.maxVias, ansagenStore.viaSortMode);
+                    }
+                    if (!existing.stops.some(s => s.showAsVia)) {
+                        existing.autoGenerateVias();
+                    }
                 }
                 
                 if (JSON.stringify(existing.qosMessages) !== JSON.stringify(jData.qosMessages)) {
                     existing.qosMessages = jData.qosMessages;
                 }
             } else {
-                onAddJourney(jData);
+                const newJourney = onAddJourney(jData);
+                if (newJourney && !newJourney.ankunft && newJourney.stops && newJourney.stops.length > 0) {
+                    newJourney.autoGenerateVias();
+                    newJourney.autoGenerateAudioVias(ansagenStore.maxVias, ansagenStore.viaSortMode);
+                }
             }
         }
     }

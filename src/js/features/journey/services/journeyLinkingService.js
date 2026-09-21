@@ -57,11 +57,21 @@ export class JourneyLinkingService {
         journeys.forEach(j => {
             if (!j.ankunft && j.linkedArrivalJourneyId === arrival.id && j.id !== departure.id) {
                 j.linkedArrivalJourneyId = null;
+                j.isThroughTrain = false;
+                j.arrivalEffectiveTimeMs = null;
             }
         });
 
         // 2. Abfahrt mit der Ankunft verknüpfen
         departure.linkedArrivalJourneyId = arrival.id;
+        const isThrough = Boolean(
+            departure.journeyId && arrival.journeyId && departure.journeyId === arrival.journeyId
+        );
+        departure.isThroughTrain = isThrough;
+        arrival.isThroughTrain = isThrough;
+        if (arrival._effectiveTimeMs) {
+            departure.arrivalEffectiveTimeMs = arrival._effectiveTimeMs;
+        }
 
         // Sicherstellen, dass auf der Ankunft selbst kein verwaister linkedArrivalJourneyId liegt
         arrival.linkedArrivalJourneyId = null;
@@ -84,10 +94,19 @@ export class JourneyLinkingService {
             journeys.forEach(j => {
                 if (j.linkedArrivalJourneyId === id) {
                     j.linkedArrivalJourneyId = null;
+                    j.isThroughTrain = false;
+                    j.arrivalEffectiveTimeMs = null;
                 }
             });
+            journey.isThroughTrain = false;
         } else {
+            const arr = journey.linkedArrivalJourneyId ? journeys.find(a => a.id === journey.linkedArrivalJourneyId) : null;
+            if (arr) {
+                arr.isThroughTrain = false;
+            }
             journey.linkedArrivalJourneyId = null;
+            journey.isThroughTrain = false;
+            journey.arrivalEffectiveTimeMs = null;
         }
         return true;
     }
@@ -104,6 +123,8 @@ export class JourneyLinkingService {
         if (!journey) return false;
         this.unlink(journeys, id);
         journey.ankunft = !journey.ankunft;
+        journey.isThroughTrain = false;
+        journey.arrivalEffectiveTimeMs = null;
         return true;
     }
 
@@ -114,30 +135,50 @@ export class JourneyLinkingService {
      * @param {Array} journeys - Liste aller Journeys
      */
     static autoLink(journeys) {
-        // Phase 1: Reset aller heuristischen Verknüpfungen
+        // Phase 1: Reset aller heuristischen Verknüpfungen (Durchfahrten schützen)
         journeys.forEach(j => {
             if (!j.ankunft && j.linkedArrivalJourneyId) {
-                const arr = journeys.find(a => a.id === j.linkedArrivalJourneyId);
-                // Wenn es keine exakte Durchfahrt ist (journeyId identisch), Link entfernen
-                if (!arr || !j.journeyId || !arr.journeyId || j.journeyId !== arr.journeyId) {
-                    j.linkedArrivalJourneyId = null;
+                if (j.isThroughTrain) {
+                    const arr = journeys.find(a => a.id === j.linkedArrivalJourneyId);
+                    if (arr) {
+                        arr.isThroughTrain = true;
+                        if (arr._effectiveTimeMs) j.arrivalEffectiveTimeMs = arr._effectiveTimeMs;
+                    }
+                    return; // Durchfahrten niemals auflösen
                 }
+                const arr = journeys.find(a => a.id === j.linkedArrivalJourneyId);
+                const isThrough = arr && (j.journeyId && arr.journeyId && j.journeyId === arr.journeyId);
+                if (isThrough) {
+                    j.isThroughTrain = true;
+                    arr.isThroughTrain = true;
+                    if (arr._effectiveTimeMs) j.arrivalEffectiveTimeMs = arr._effectiveTimeMs;
+                    return;
+                }
+                j.linkedArrivalJourneyId = null; // Heuristische Wende zur Neuberechnung freigeben
+                j.isThroughTrain = false;
+                j.arrivalEffectiveTimeMs = null;
+                if (arr) arr.isThroughTrain = false;
             }
         });
 
-        const arrivals = journeys.filter(j => j.ankunft && !j.ausfall);
-        const departures = journeys.filter(j => !j.ankunft && !j.ausfall);
-        
-        // Echte Durchfahrten (gleiche journeyId) sicherstellen (falls neue Imports dazu kamen)
-        for (const dep of departures) {
+        // Echte Durchfahrten (gleiche journeyId) IMMER sicherstellen (auch bei Ausfall!)
+        for (const dep of journeys.filter(j => !j.ankunft)) {
             if (dep.linkedArrivalJourneyId) continue;
             if (dep.journeyId) {
-                const exactMatch = arrivals.find(a => a.journeyId === dep.journeyId);
+                const exactMatch = journeys.find(a => a.ankunft && a.journeyId === dep.journeyId);
                 if (exactMatch) {
                     dep.linkedArrivalJourneyId = exactMatch.id;
+                    dep.isThroughTrain = true;
+                    exactMatch.isThroughTrain = true;
+                    if (exactMatch._effectiveTimeMs) {
+                        dep.arrivalEffectiveTimeMs = exactMatch._effectiveTimeMs;
+                    }
                 }
             }
         }
+
+        const arrivals = journeys.filter(j => j.ankunft && !j.ausfall && !j.isThroughTrain);
+        const departures = journeys.filter(j => !j.ankunft && !j.ausfall && !j.isThroughTrain);
 
         const MAX_TURNAROUND = 180;
 
@@ -200,6 +241,11 @@ export class JourneyLinkingService {
                     if (operatorMatch && diffPlan <= MAX_TURNAROUND) {
                         // Treffer! Verknüpfen (strikte 1:1 Beziehung)
                         T.linkedArrivalJourneyId = A.id;
+                        T.isThroughTrain = false;
+                        A.isThroughTrain = false;
+                        if (A._effectiveTimeMs) {
+                            T.arrivalEffectiveTimeMs = A._effectiveTimeMs;
+                        }
                         break;
                     }
                 }

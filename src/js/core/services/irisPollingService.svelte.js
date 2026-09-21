@@ -2,9 +2,7 @@ import { IrisApiService } from './irisApiService.js';
 import { IrisDataMapper } from './irisDataMapper.js';
 import { journeyStore, trainDisplay } from '../state/stores.js';
 import { getSimulatedTime } from '../utils/config.js';
-import { ansagenStore } from '../../audio/ansagenStore.svelte.js';
-import { ansagenPlayer } from '../../audio/ansagenPlayer.svelte.js';
-import { AnsagenGenerator } from '../../audio/ansagenGenerator.js';
+import { irisAnnouncementService } from '../../audio/irisAnnouncementService.js';
 
 export const irisConfig = $state({
     autoUpdateInterval: 0,
@@ -22,8 +20,8 @@ class IrisPollingService {
     constructor() {
         this.pollingInterval = null;
         this.tickerInterval = null;
-        this.generator = new AnsagenGenerator();
         this._lastSimulatedHour = null;
+        this._lastEva = null;
         this.irisJourneysMap = new Map();
         this._mappedCache = new Map();
         
@@ -40,7 +38,7 @@ class IrisPollingService {
             this.nextPollSecs = irisConfig.autoUpdateInterval;
         }
         
-        // Ticker for Autoplay and Polling Countdown (runs every second)
+        // Ticker für Autoplay und Polling-Countdown (läuft sekündlich)
         this.tickerInterval = setInterval(() => this.tick(), 1000);
         this._lastSimulatedHour = getSimulatedTime().getHours();
         
@@ -68,6 +66,7 @@ class IrisPollingService {
         
         this.nextPollSecs = 0;
         this.upcomingAnnouncements = [];
+        this._lastEva = null;
     }
 
     restart() {
@@ -92,6 +91,12 @@ class IrisPollingService {
         if (!journeyStore.stationContext.stationId) return;
         const eva = journeyStore.stationContext.stationId;
         const currentSimTime = getSimulatedTime();
+
+        // Bahnhofswechsel erkennen -> Als Initial-Lauf behandeln
+        if (!this._lastEva || this._lastEva !== eva) {
+            this._lastEva = eva;
+            isInitial = true;
+        }
         
         // Laufende Anfragen abbrechen, falls ein neuer Bahnhof geladen wird
         if (this._abortController) {
@@ -101,7 +106,6 @@ class IrisPollingService {
         const signal = this._abortController.signal;
         
         try {
-
             // Check if hour changed or initial load, if so, load new base plan
             if (isInitial || currentSimTime.getHours() !== this._lastSimulatedHour) {
                 this._lastSimulatedHour = currentSimTime.getHours();
@@ -136,30 +140,15 @@ class IrisPollingService {
                 // Lazy loading of plans for delayed trains in fchg/rchg
                 await IrisApiService.loadMissingPlans(eva, realtimeXml, this.irisJourneysMap, currentSimTime, irisConfig.futureWindowHours, signal);
                 
-                // Keep track of old state for change announcements and performance
-                const oldHashes = new Map();
-                for (const [id, j] of this.irisJourneysMap.entries()) {
-                    oldHashes.set(id, this._hashJourney(j));
-                }
-                
-                // Merge realtime (this mutates this.irisJourneysMap)
+                // Merge realtime (mutates this.irisJourneysMap)
                 IrisApiService.mergeRealtime(this.irisJourneysMap, realtimeXml);
                 
                 // Garbage Collection: Alte Züge löschen um Memory Leak zu vermeiden
                 this._cleanupOldJourneys(currentSimTime);
 
-                // Performance-Optimization: Only map journeys that have changed
-                const dirtyJourneysMap = new Map();
-                for (const [id, raw] of this.irisJourneysMap.entries()) {
-                    const newHash = this._hashJourney(raw);
-                    if (isInitial || newHash !== oldHashes.get(id)) {
-                        dirtyJourneysMap.set(id, raw);
-                    }
-                }
-
-                // Update display models über den neuen Mapper
+                // Update display models über den Mapper
                 const dirtyJourneysData = IrisDataMapper.mapToZimsimFormat(
-                    dirtyJourneysMap, 
+                    this.irisJourneysMap, 
                     eva, 
                     currentSimTime,
                     irisConfig.futureWindowHours
@@ -195,9 +184,11 @@ class IrisPollingService {
                     journeyStore.sortJourneys();
                 }
 
-                // Check for changes and trigger announcements
-                if (irisConfig.autoAnnouncements) {
-                    this._checkForChanges(oldHashes);
+                // Fachliche Ansagenlogik ansprechen: Baseline bei Start, sonst Änderungsprüfung
+                if (isInitial) {
+                    irisAnnouncementService.initializeBaseline(journeyStore.journeys, currentSimTime.getTime());
+                } else {
+                    irisAnnouncementService.checkChanges(journeyStore.journeys, currentSimTime.getTime());
                 }
                 
                 this.lastPollTime = new Date();
@@ -225,52 +216,11 @@ class IrisPollingService {
         }
 
         if (!journeyStore.journeys) return;
-        const simTimeMs = getSimulatedTime().getTime();
-        const newUpcoming = [];
+        const currentSimTime = getSimulatedTime();
 
-        for (const journey of journeyStore.journeys) {
-            // Ansagen-Logik für Durchfahrten anpassen
-            if (journey.ankunft) {
-                const linkedDep = journeyStore.journeys.find(j => !j.ankunft && j.linkedArrivalJourneyId === journey.id);
-                if (linkedDep && linkedDep.name === journey.name) {
-                    continue; // Ankunft bei Durchfahrt überspringen, Abfahrt triggert die Ansage!
-                }
-            }
-
-            let effectiveTimeMs = journey._effectiveTimeMs;
-            
-            if (!journey.ankunft && journey.linkedArrivalJourneyId) {
-                const linkedArr = journeyStore.journeys.find(j => j.ankunft && j.id === journey.linkedArrivalJourneyId);
-                if (linkedArr && linkedArr.name === journey.name) {
-                    effectiveTimeMs = linkedArr._effectiveTimeMs; // Nutze Ankunftszeit für Countdown
-                }
-            }
-
-            if (!effectiveTimeMs) continue;
-            
-            const diffSecs = Math.floor((effectiveTimeMs - simTimeMs) / 1000);
-            
-            if (diffSecs > 0 && diffSecs <= 3600 && !journey._hasPlayedEinfahrt) {
-                // Collect for upcoming preview
-                newUpcoming.push({
-                    journeyId: journey.journeyId,
-                    name: journey.name,
-                    dest: journey.destinationKurz || journey.destination,
-                    countdown: diffSecs,
-                    type: 'Einfahrt'
-                });
-            }
-            
-            // Einfahrt: 60 Sekunden vorher
-            if (irisConfig.autoAnnouncements && diffSecs === 60 && !journey._hasPlayedEinfahrt) {
-                journey._hasPlayedEinfahrt = true;
-                this._playEinfahrt(journey);
-            }
-        }
-        
-        // Sort ascending by countdown and keep top 4
-        newUpcoming.sort((a, b) => a.countdown - b.countdown);
-        this.upcomingAnnouncements = newUpcoming.slice(0, 4);
+        // Delegation an den fachlichen Ansagenservice
+        irisAnnouncementService.tick(journeyStore.journeys, currentSimTime, irisConfig.autoAnnouncements);
+        this.upcomingAnnouncements = irisAnnouncementService.upcomingAnnouncements;
     }
 
     /**
@@ -290,43 +240,6 @@ class IrisPollingService {
             if (timeMs && (simTimeMs - timeMs > thresholdMs)) {
                 this.irisJourneysMap.delete(id);
             }
-        }
-    }
-
-    _hashJourney(j) {
-        const ar = j.rt?.ar || {};
-        const dp = j.rt?.dp || {};
-        const msgs = j.rt?.messages ? j.rt.messages.map(m => m.id || m.c).join(',') : '';
-        return `${ar.ct || ''}_${ar.cp || ''}_${ar.cs || ''}_${ar.cpth || ''}_${dp.ct || ''}_${dp.cp || ''}_${dp.cs || ''}_${dp.cpth || ''}_${msgs}`;
-    }
-
-    _checkForChanges(oldHashes) {
-        for (const journey of journeyStore.journeys) {
-            const raw = this.irisJourneysMap.get(journey.journeyId);
-            if (!raw) continue;
-            
-            const oldHash = oldHashes.get(journey.journeyId);
-            const newHash = this._hashJourney(raw);
-            
-            if (oldHash && oldHash !== newHash) {
-                if (journey._hasPlayedEinfahrt) {
-                    this._playInformation(journey);
-                }
-            }
-        }
-    }
-
-    _playEinfahrt(journey) {
-        const playlist = this.generator.generateEinfahrt(journey);
-        if (playlist && playlist.length > 0) {
-            ansagenPlayer.enqueue(playlist);
-        }
-    }
-
-    _playInformation(journey) {
-        const playlist = this.generator.generateInformation(journey);
-        if (playlist && playlist.length > 0) {
-            ansagenPlayer.enqueue(playlist);
         }
     }
 }

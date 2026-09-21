@@ -20,8 +20,19 @@ export class AnsagenPlayer {
     
     // Config for Look-ahead scheduling
     _preloadCount = 2;
+    onEnded = null;
 
     constructor() {}
+
+    _notifyEnded() {
+        if (typeof this.onEnded === 'function') {
+            try {
+                this.onEnded();
+            } catch (e) {
+                console.error('Error in AnsagenPlayer.onEnded:', e);
+            }
+        }
+    }
 
     _initAudioContext() {
         if (!this._audioContext) {
@@ -208,6 +219,7 @@ export class AnsagenPlayer {
                     this.isPlaying = false;
                     this._sourceNodes = [];
                     this._timeouts = [];
+                    this._notifyEnded();
                     break;
                 } else {
                     // Wait 200ms and check again (allows enqueue to append to playlist)
@@ -258,6 +270,7 @@ export class AnsagenPlayer {
             this.currentIndex = -1;
             this.currentText = '';
             this.currentFile = '';
+            this._notifyEnded();
         }
     }
 

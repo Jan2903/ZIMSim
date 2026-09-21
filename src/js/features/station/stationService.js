@@ -1,4 +1,5 @@
 import { journeyStore } from '../../core/state/stores.js';
+import { ansagenStore } from '../../audio/ansagenStore.svelte.js';
 
 export class StationService {
     static stations = [];
@@ -15,6 +16,23 @@ export class StationService {
             this.parseCSV(csvText);
             this.isLoaded = true;
             console.log(`[StationService] Erfolgreich ${this.stations.length} Stationen geladen.`);
+
+            // Nachträgliches Anreichern bereits existierender Züge (z.B. Demo-Daten oder Preset)
+            if (journeyStore && journeyStore.journeys) {
+                for (const j of journeyStore.journeys) {
+                    if (j.stops) {
+                        j.stops.forEach(s => s.enrichWithStationData());
+                    }
+                    if (!j.ankunft && j.stops && j.stops.length > 0) {
+                        if (!j.stops.some(s => s.audioVia)) {
+                            j.autoGenerateAudioVias(ansagenStore.maxVias, ansagenStore.viaSortMode);
+                        }
+                        if (!j.stops.some(s => s.showAsVia)) {
+                            j.autoGenerateVias();
+                        }
+                    }
+                }
+            }
         } catch (error) {
             console.error('[StationService] Fehler beim Laden der stations.csv:', error);
         }
@@ -96,13 +114,21 @@ export class StationService {
     static normalizeName(name) {
         if (!name) return '';
         return name.toLowerCase()
-            .replace(/[\s\(\)\-\.,]/g, '') // Leerzeichen und gängige Sonderzeichen entfernen
-            .replace(/straße|strasse/g, 'str')
-            .replace(/hauptbahnhof/g, 'hbf');
+            .replace(/straße|strasse/gi, 'str')
+            .replace(/hauptbahnhof/gi, 'hbf')
+            .replace(/fernbahnhof|fernbhf|fernbf/gi, 'fernbhf')
+            .replace(/regionalbahnhof|regiobhf|regiobf/gi, 'regiobf')
+            .replace(/\(m\)/gi, 'm')
+            .replace(/\(main\)/gi, 'm')
+            .replace(/am\s*main/gi, 'm')
+            .replace(/\(oder\)/gi, 'oder')
+            .replace(/am\s*oder/gi, 'oder')
+            .replace(/[\s\(\)\-\.,]/g, '');
     }
 
     /**
      * Sucht nach einer Station anhand von extId (IBNR) oder Namen (ignoriert Leerzeichen und Sonderzeichen).
+     * Bevorzugt bei Mehrfachtreffern automatisch wichtigere Stationen (niedrigste DB-Kategorie).
      * @param {string} extId 
      * @param {string} name 
      * @returns {object|null}
@@ -118,20 +144,37 @@ export class StationService {
         if (!found && name) {
             const normName = this.normalizeName(name);
             
-            // 1. Exakter Match auf dem normalisierten String
-            found = allStations.find(s => {
+            // 1. Exakter Match auf normalisierten Namen oder Aliase (niedrigste Kategorie zuerst)
+            const exactMatches = allStations.filter(s => {
                 const matchesAlias = (s.aliases || []).some(alias => this.normalizeName(alias) === normName);
-                return matchesAlias || this.normalizeName(s.nameKurz) === normName || this.normalizeName(s.name) === normName;
+                return matchesAlias || this.normalizeName(s.name) === normName;
             });
+            if (exactMatches.length > 0) {
+                exactMatches.sort((a, b) => a.kategorie - b.kategorie);
+                found = exactMatches[0];
+            }
 
-            // 2. Fallback: Substring Match (einer enthält den anderen), um z.B. "(tief)" abzufangen
+            // 2. Match auf nameKurz
+            if (!found) {
+                const kurzMatches = allStations.filter(s => this.normalizeName(s.nameKurz) === normName);
+                if (kurzMatches.length > 0) {
+                    kurzMatches.sort((a, b) => a.kategorie - b.kategorie);
+                    found = kurzMatches[0];
+                }
+            }
+
+            // 3. Fallback: Substring Match (z.B. für "Berlin Hbf (tief)" oder ähnliches)
             if (!found && normName.length > 3) {
-                found = allStations.find(s => {
+                const subMatches = allStations.filter(s => {
                     const normCsvName = this.normalizeName(s.name);
                     const normCsvKurz = this.normalizeName(s.nameKurz);
                     return (normName.includes(normCsvName) || normCsvName.includes(normName)) ||
                            (normCsvKurz && (normName.includes(normCsvKurz) || normCsvKurz.includes(normName)));
                 });
+                if (subMatches.length > 0) {
+                    subMatches.sort((a, b) => a.kategorie - b.kategorie);
+                    found = subMatches[0];
+                }
             }
         }
         return found;

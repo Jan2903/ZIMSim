@@ -128,6 +128,8 @@ export class JourneyViaService {
         }
 
         const selected = candidateStops.slice(0, limit);
+        // Halte auch bei priorisierter Auswahl in chronologischer Fahrt-Reihenfolge anordnen
+        selected.sort((a, b) => a.routeIndex - b.routeIndex);
         selected.forEach(s => { s.audioVia = true; });
     }
 }

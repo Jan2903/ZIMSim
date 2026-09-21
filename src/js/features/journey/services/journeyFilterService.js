@@ -31,11 +31,18 @@ export class JourneyFilterService {
             if (!hasPlatform && !hasEzGleis && !hasNoTrackCondition) return true;
         }
 
-        // 3. Check verknüpfte Ankünfte bei eingeklappter Ansicht
-        if (hideLinkedArrivals && journey.ankunft && !isExpanded) {
-            const linkedDep = journeys.find(j => !j.ankunft && j.linkedArrivalJourneyId === journey.id);
-            if (linkedDep && linkedDep.name === journey.name) {
+        // 3. Check Ankünfte
+        if (journey.ankunft) {
+            // Durchfahrt-Ankünfte immer ausblenden (auch bei Ausfall ist nur die Abfahrt relevant)
+            if (journey.isThroughTrain || (journey.journeyId && journeys.some(d => !d.ankunft && d.journeyId === journey.journeyId))) {
                 return true;
+            }
+            // Verknüpfte Wendezug-Ankünfte bei eingeklappter Ansicht ausblenden
+            if (hideLinkedArrivals && !isExpanded) {
+                const linkedDep = journeys.find(j => !j.ankunft && j.linkedArrivalJourneyId === journey.id);
+                if (linkedDep) {
+                    return true;
+                }
             }
         }
 
@@ -82,10 +89,16 @@ export class JourneyFilterService {
                 // Zeigt alles an (kein Filter nötig)
             } else {
                 // 'default': Zeige Abfahrten + ungebundene Ankünfte. 
-                // Ankünfte, die mit einer Abfahrt verknüpft sind, sollen nicht separat auf dem Monitor erscheinen.
+                // Durchfahrt-Ankünfte dürfen NIEMALS auf dem Monitor erscheinen (auch bei Ausfall nicht)!
                 if (j.ankunft) {
+                    if (j.isThroughTrain) {
+                        return false;
+                    }
                     const isLinkedToDeparture = journeys.some(
-                        dep => !dep.ankunft && dep.linkedArrivalJourneyId === j.id
+                        dep => !dep.ankunft && (
+                            dep.linkedArrivalJourneyId === j.id ||
+                            (dep.journeyId && j.journeyId && dep.journeyId === j.journeyId)
+                        )
                     );
                     if (isLinkedToDeparture) {
                         return false;

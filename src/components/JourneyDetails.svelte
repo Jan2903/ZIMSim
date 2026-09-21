@@ -135,10 +135,16 @@
 
     function playAnsage(mode) {
         let playlist = [];
-        if (mode === 'Einfahrt') playlist = ansagenGenerator.generateEinfahrt(journey);
-        else if (mode === 'Steht') playlist = ansagenGenerator.generateSteht(journey);
-        else if (mode === 'Information') playlist = ansagenGenerator.generateInformation(journey);
-        else if (mode === 'Anschluesse') playlist = ansagenGenerator.generateAnschluesse(journey);
+        if (mode === 'Einfahrt') {
+            const linked = journeyStore.getLinkedJourney(journey.id);
+            playlist = ansagenGenerator.generateEinfahrt(journey, linked);
+        } else if (mode === 'Steht') {
+            playlist = ansagenGenerator.generateSteht(journey);
+        } else if (mode === 'Information') {
+            playlist = ansagenGenerator.generateInformation(journey);
+        } else if (mode === 'Anschluesse') {
+            playlist = ansagenGenerator.generateAnschluesse(journey);
+        }
         
         ansagenPlayer.play(playlist);
     }

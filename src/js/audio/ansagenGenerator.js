@@ -8,9 +8,19 @@ export class AnsagenGenerator {
         this.lang = 'dt'; // Zwingender Name für den ZIP-Ordner
     }
 
-    _getIbnr(stationName) {
-        if (!stationName) return null;
-        const match = StationService.getStationByIdOrName(null, stationName);
+    _getIbnr(station) {
+        if (!station) return null;
+        if (typeof station === 'object') {
+            if (station.extId) {
+                const match = StationService.getStationByIdOrName(station.extId, station.name);
+                if (match && match.ibnr) return match.ibnr;
+                if (/^\d+$/.test(String(station.extId).trim())) {
+                    return String(station.extId).trim();
+                }
+            }
+            return this._getIbnr(station.name || station.nameKurz);
+        }
+        const match = StationService.getStationByIdOrName(null, station);
         return match ? match.ibnr : null;
     }
 
@@ -91,28 +101,39 @@ export class AnsagenGenerator {
     /**
      * Fügt das Ziel oder die Herkunft mit Zwischenhalten (Vias) hinzu.
      * @param {Array} playlist - Die Playlist
-     * @param {string} targetStr - Stationsname des Hauptziels
-     * @param {Array} vias - Liste der Vias
+     * @param {string|object} target - Stationsname des Hauptziels oder { name, extId }
+     * @param {Array} vias - Liste der Vias (Array von Strings oder { name, nameKurz, extId })
      * @param {boolean} isArrival - true = Herkunft, false = Abfahrtsziel
      */
-    _targetWithVia(playlist, targetStr, vias = [], isArrival = false) {
-        if (!targetStr) return;
+    _targetWithVia(playlist, target, vias = [], isArrival = false) {
+        if (!target) return;
         
-        const targetIbnr = this._getIbnr(targetStr);
+        const targetStr = typeof target === 'object' ? (target.name || '') : target;
+        if (!targetStr) return;
+
+        const targetIbnr = typeof target === 'object'
+            ? (target.extId || this._getIbnr(target))
+            : this._getIbnr(target);
         if (!targetIbnr) return;
 
         const mainVariant = isArrival ? ansagenStore.variantHerkunft : ansagenStore.variantZiel;
         const viaVariant = ansagenStore.variantVias;
 
-        let maxVias = ansagenStore.maxVias;
-        let activeVias = [];
-        if (maxVias === 6) {
-            activeVias = [...vias];
-        } else if (maxVias > 0) {
-            activeVias = vias.slice(0, maxVias);
+        // Nur Vias mit gültiger IBNR übernehmen (verhindert /null und leere Über-Ansagen)
+        const validVias = [];
+        for (const v of vias) {
+            if (!v) continue;
+            const viaName = typeof v === 'object' ? (v.nameKurz || v.name) : v;
+            const viaIbnr = typeof v === 'object' && v.extId ? v.extId : this._getIbnr(v);
+            if (viaIbnr) {
+                validVias.push({ name: viaName, ibnr: viaIbnr });
+            }
         }
 
-        if (activeVias && activeVias.length > 0) {
+        // Maximal 6 Zwischenhalte für die Ansage zulassen
+        const activeVias = validVias.slice(0, 6);
+
+        if (activeVias.length > 0) {
             playlist.push({
                 file: `${this.lang}/ziele/variante${mainVariant}/hoch/${targetIbnr}`,
                 text: targetStr
@@ -121,8 +142,7 @@ export class AnsagenGenerator {
             this._module(playlist, 'UEBER');
             
             for (let i = 0; i < activeVias.length; i++) {
-                const viaName = activeVias[i];
-                const viaIbnr = this._getIbnr(viaName);
+                const { name: viaName, ibnr: viaIbnr } = activeVias[i];
                 if (i === activeVias.length - 1) {
                     playlist.push({
                         file: `${this.lang}/ziele/variante${viaVariant}/tief/${viaIbnr}`,
@@ -232,12 +252,19 @@ export class AnsagenGenerator {
             }
 
             if (lastActiveIndex >= 0) {
-                nurBisStation = futureStops[lastActiveIndex].name;
+                nurBisStation = {
+                    name: futureStops[lastActiveIndex].name,
+                    extId: futureStops[lastActiveIndex].extId
+                };
             }
         }
 
-        let cancelledStops = futureStops.filter(s => s.cancelled).map(s => s.name);
-        let additionalStops = futureStops.filter(s => s.additional).map(s => s.name);
+        let cancelledStops = futureStops
+            .filter(s => s.cancelled)
+            .map(s => ({ name: s.name, extId: s.extId }));
+        let additionalStops = futureStops
+            .filter(s => s.additional)
+            .map(s => ({ name: s.name, extId: s.extId }));
 
         if (cancelledStops.length > 3) cancelledStops = cancelledStops.slice(0, 3);
         if (additionalStops.length > 3) additionalStops = additionalStops.slice(0, 3);
@@ -249,7 +276,7 @@ export class AnsagenGenerator {
                 const mainVariant = ansagenStore.variantZiel;
                 playlist.push({
                     file: `${this.lang}/ziele/variante${mainVariant}/tief/${ibnr}`,
-                    text: nurBisStation
+                    text: nurBisStation.name
                 });
             }
         }
@@ -265,10 +292,10 @@ export class AnsagenGenerator {
         }
     }
 
-    _addStationList(playlist, stationNames) {
-        const validStations = stationNames.map(name => ({
-            name: name,
-            ibnr: this._getIbnr(name)
+    _addStationList(playlist, stationList) {
+        const validStations = stationList.map(s => ({
+            name: typeof s === 'object' ? (s.nameKurz || s.name) : s,
+            ibnr: typeof s === 'object' && s.extId ? s.extId : this._getIbnr(s)
         })).filter(s => s.ibnr !== null);
 
         const viaVariant = ansagenStore.variantVias;
@@ -301,7 +328,7 @@ export class AnsagenGenerator {
     }
 
     _calculateDelay(journey) {
-        if (!journey.expectedTime || !journey.scheduledTime) return 0;
+        if (!journey || !journey.expectedTime || !journey.scheduledTime) return 0;
         
         const [sh, sm] = journey.scheduledTime.split(':').map(Number);
         const [eh, em] = journey.expectedTime.split(':').map(Number);
@@ -310,8 +337,29 @@ export class AnsagenGenerator {
         if (diff < -720) diff += 1440; 
         else if (diff > 720) diff -= 1440; 
         
-        if (diff > 0) return Math.floor(diff / 5) * 5;
-        return 0;
+        if (diff < 5) return 0;                             // 0-4 Min -> pünktlich / unterdrückt
+        if (diff <= 60) return Math.floor(diff / 5) * 5;    // 5-60 Min -> 5er-Schritte nach unten
+        if (diff <= 210) return Math.floor(diff / 10) * 10; // 61-210 Min -> 10er-Schritte nach unten
+        return 210;                                         // Obergrenze 210 Min
+    }
+
+    /**
+     * Prüft, ob für eine Fahrt Informationsbedarf (Ausfall, Verspätung, Gleiswechsel, Haltänderung) besteht.
+     */
+    hasInformationalContent(journey) {
+        if (!journey) return false;
+        if (journey.ausfall) return true;
+        if (this._calculateDelay(journey) >= 5) return true;
+        if (journey.ezGleis && journey.ezGleis !== journey.platform) return true;
+
+        if (journey.stops && journey.stops.length > 0) {
+            const startIndex = journey._currentStopIndex >= 0 ? journey._currentStopIndex + 1 : 0;
+            const futureStops = journey.stops.slice(startIndex);
+            if (futureStops.some(s => s.cancelled || s.isCancelled || s.additional || s.isAdditional)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // --- DRY Helpers ---
@@ -345,12 +393,17 @@ export class AnsagenGenerator {
     _appendRoute(playlist, journey) {
         this._train(playlist, journey.name);
         
-        if (journey.isArrival) {
+        const targetObj = {
+            name: journey.destination,
+            extId: journey.destinationIbnr
+        };
+
+        if (journey.ankunft) {
             this._module(playlist, 'VON');
-            this._targetWithVia(playlist, journey.destination, [], true);
+            this._targetWithVia(playlist, targetObj, [], true);
         } else {
             this._module(playlist, 'NACH');
-            this._targetWithVia(playlist, journey.destination, journey.audioVias, false);
+            this._targetWithVia(playlist, targetObj, journey.audioVias, false);
         }
     }
 
@@ -368,15 +421,54 @@ export class AnsagenGenerator {
 
     // --- MAIN MODES ---
 
-    generateEinfahrt(journey) {
+    generateEinfahrt(journey, linkedJourney = null) {
         const p = [];
         this._gong(p);
+
+        const isWende = Boolean(
+            linkedJourney &&
+            !journey.isThroughTrain &&
+            !linkedJourney.isThroughTrain &&
+            (journey.journeyId !== linkedJourney.journeyId || (!journey.journeyId && !linkedJourney.journeyId)) &&
+            ((journey.ankunft && !linkedJourney.ankunft) || (!journey.ankunft && linkedJourney.ankunft))
+        );
+
+        if (isWende) {
+            const arrival = journey.ankunft ? journey : linkedJourney;
+            const departure = journey.ankunft ? linkedJourney : journey;
+
+            // 1. Gleis
+            this._appendPlatform(p, arrival);
+
+            // 2. EINFAHRT
+            this._module(p, 'EINFAHRT');
+
+            // 3. Ankunftsteil: Zugname + VON + Herkunft + Ankunftszeit
+            this._train(p, arrival.name);
+            this._module(p, 'VON');
+            this._targetWithVia(p, { name: arrival.destination, extId: arrival.destinationIbnr }, [], true);
+
+            // 4. Modul WEITER_ALS
+            this._module(p, 'WEITER_ALS');
+
+            // 5. Abfahrtsteil: Zugname + NACH + Ziel + Vias + Abfahrtszeit
+            this._train(p, departure.name);
+            this._module(p, 'NACH');
+            this._targetWithVia(p, { name: departure.destination, extId: departure.destinationIbnr }, departure.audioVias, false);
+            this._appendTimeInfo(p, departure, 'ABFAHRT');
+
+            // 6. Abweichungen + VORSICHT_BEI_DER_EINFAHRT
+            this._generateDeviations(p, departure);
+            this._module(p, 'VORSICHT_BEI_DER_EINFAHRT');
+
+            return p;
+        }
+
+        // Reguläre Standardeinfahrt (Einzelfahrt oder Durchfahrt)
         this._appendPlatform(p, journey);
-        
         this._module(p, 'EINFAHRT');
         this._appendRoute(p, journey);
-        this._appendTimeInfo(p, journey, journey.isArrival ? 'ANKUNFT' : 'ABFAHRT');
-        
+        this._appendTimeInfo(p, journey, journey.ankunft ? 'ANKUNFT' : 'ABFAHRT');
         this._generateDeviations(p, journey);
         this._module(p, 'VORSICHT_BEI_DER_EINFAHRT');
 
@@ -391,8 +483,7 @@ export class AnsagenGenerator {
         this._module(p, 'STEHT');
         this._appendRoute(p, journey);
         
-        // Steht nutzt keine "_URSPRUENGLICH" Fallback Logik für die Zeit in der originalen Datei
-        this._module(p, journey.isArrival ? 'ANKUNFT' : 'ABFAHRT');
+        this._module(p, journey.ankunft ? 'ANKUNFT' : 'ABFAHRT');
         this._time(p, journey.scheduledTime);
         
         this._generateDeviations(p, journey);
@@ -406,10 +497,10 @@ export class AnsagenGenerator {
         this._module(p, 'INFORMATION_ZU');
         
         this._appendRoute(p, journey);
-        this._module(p, journey.isArrival ? 'ANKUNFT' : 'ABFAHRT');
+        this._module(p, journey.ankunft ? 'ANKUNFT' : 'ABFAHRT');
         this._time(p, journey.scheduledTime);
 
-        if (journey.isCancelled) {
+        if (journey.ausfall) {
             this._module(p, 'FAELLT_HEUTE_AUS');
             this._module(p, 'ENTSCHULDIGUNG');
             return p;

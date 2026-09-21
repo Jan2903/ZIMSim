@@ -13,13 +13,35 @@ function createDummyStopsFromVias(viaList, isDestinationStopFn) {
     const stops = viaList.filter(Boolean).map((v, i) => new Stop({
         name: typeof v === 'string' ? v : v.name || '',
         nameKurz: typeof v === 'string' ? v : v.nameKurz || v.name || '',
+        extId: typeof v === 'object' ? v.extId || '' : '',
         showAsVia: true,
+        audioVia: true,
         routeIndex: i
     }));
     stops.forEach(s => {
-        if (isDestinationStopFn(s)) s.showAsVia = false;
+        if (isDestinationStopFn(s)) {
+            s.showAsVia = false;
+            s.audioVia = false;
+        }
     });
     return stops;
+}
+
+/**
+ * Kapselt alle ansagenspezifischen Zustände einer Fahrt.
+ */
+export class JourneyAnnouncementState {
+    delay = 0;
+    platform = '';
+    cancelled = false;
+    hasPlayedAtScheduledTime = false;
+    hasPlayedEinfahrt = false;
+    deviationsHash = '';
+    lastAnnouncedSimTimeMs = 0;
+
+    constructor(initial = {}) {
+        Object.assign(this, initial);
+    }
 }
 
 /**
@@ -62,6 +84,10 @@ export class Journey {
     displaySlot = $state(null);
     couplingGroupId = $state(null);
     linkedArrivalJourneyId = $state(null);
+    _effectiveTimeMs = $state(null);
+    isThroughTrain = $state(false);
+    arrivalEffectiveTimeMs = $state(null);
+    announcementState = $state(new JourneyAnnouncementState());
     messages = $state([]);
     stops = $state([]);
     _currentStopIndex = $state(-1);
@@ -134,6 +160,12 @@ export class Journey {
 
         // === Linked Arrival Journey (Ankunft/Weiter als) ===
         this.linkedArrivalJourneyId = data.linkedArrivalJourneyId || null;
+        this._effectiveTimeMs = data._effectiveTimeMs !== undefined ? data._effectiveTimeMs : null;
+        this.isThroughTrain = data.isThroughTrain || false;
+        this.arrivalEffectiveTimeMs = data.arrivalEffectiveTimeMs !== undefined ? data.arrivalEffectiveTimeMs : null;
+        this.announcementState = data.announcementState instanceof JourneyAnnouncementState
+            ? data.announcementState
+            : new JourneyAnnouncementState(data.announcementState || {});
 
         // === Meldungen ===
         this.messages = (data.messages || []).map(m => ({
@@ -203,6 +235,9 @@ export class Journey {
             displaySlot: this.displaySlot,
             couplingGroupId: this.couplingGroupId,
             linkedArrivalJourneyId: this.linkedArrivalJourneyId,
+            _effectiveTimeMs: this._effectiveTimeMs,
+            isThroughTrain: this.isThroughTrain,
+            arrivalEffectiveTimeMs: this.arrivalEffectiveTimeMs,
             messages: this.messages,
             stops: this.stops,
             _currentStopIndex: this._currentStopIndex,
@@ -213,6 +248,19 @@ export class Journey {
     // ==========================================
     // Berechnete Properties
     // ==========================================
+
+    /** Effektive Countdown-Zeit (für Durchfahrten Ankunftszeit, sonst eigene Zeit) */
+    get countdownTimeMs() {
+        return this.arrivalEffectiveTimeMs || this._effectiveTimeMs || 0;
+    }
+
+    /** Eindeutiger Hash zur Erkennung von Haltabweichungen (Haltausfall / Zusatzhalt) */
+    getStopsHash() {
+        if (!this.stops || this.stops.length === 0) return '';
+        return this.stops
+            .map(s => `${s.name}:${s.cancelled || s.isCancelled ? 'c' : ''}${s.additional || s.isAdditional ? 'a' : ''}`)
+            .join('|');
+    }
 
     /** Dynamisch zusammengesetzter Lauftext aus sichtbaren Info-Bausteinen */
     get scrollText() {
@@ -299,9 +347,15 @@ export class Journey {
 
     /** Dynamisch berechnete Vias für die Ansagen */
     get audioVias() {
+        const startIdx = this._currentStopIndex >= 0 ? this._currentStopIndex + 1 : 0;
         return this.stops
-            .filter(s => s.audioVia && (!s.cancelled || this.isCancelled) && s.boardingType !== 'ein')
-            .map(s => s.nameKurz || s.name);
+            .slice(startIdx)
+            .filter(s => s.audioVia && (!s.cancelled || this.isCancelled) && s.boardingType !== 'ein' && !this._isDestinationStop(s))
+            .map(s => ({
+                name: s.name,
+                nameKurz: s.nameKurz || s.name,
+                extId: s.extId || ''
+            }));
     }
 
     /** Der aktuelle Halt (basierend auf _currentStopIndex) */
