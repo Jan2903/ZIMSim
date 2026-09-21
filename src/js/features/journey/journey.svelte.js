@@ -32,6 +32,7 @@ function createDummyStopsFromVias(viaList, isDestinationStopFn) {
  */
 export class JourneyAnnouncementState {
     delay = 0;
+    lastAnnouncedDelay = 0;
     platform = '';
     cancelled = false;
     hasPlayedAtScheduledTime = false;
@@ -254,12 +255,19 @@ export class Journey {
         return this.arrivalEffectiveTimeMs || this._effectiveTimeMs || 0;
     }
 
-    /** Eindeutiger Hash zur Erkennung von Haltabweichungen (Haltausfall / Zusatzhalt) */
+    /** Eindeutiger Hash zur Erkennung von Haltabweichungen (Haltausfall / Zusatzhalt) zukünftiger Halte */
     getStopsHash() {
         if (!this.stops || this.stops.length === 0) return '';
-        return this.stops
-            .map(s => `${s.name}:${s.cancelled || s.isCancelled ? 'c' : ''}${s.additional || s.isAdditional ? 'a' : ''}`)
-            .join('|');
+        const startIndex = this._currentStopIndex >= 0 ? this._currentStopIndex + 1 : 0;
+        const futureStops = this.stops.slice(startIndex);
+        const deviations = [];
+        for (const s of futureStops) {
+            const isC = s.cancelled || s.isCancelled;
+            const isA = s.additional || s.isAdditional;
+            if (isC) deviations.push(`${s.name}:c`);
+            if (isA) deviations.push(`${s.name}:a`);
+        }
+        return deviations.join('|');
     }
 
     /** Dynamisch zusammengesetzter Lauftext aus sichtbaren Info-Bausteinen */

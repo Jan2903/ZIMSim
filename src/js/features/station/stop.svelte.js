@@ -46,8 +46,8 @@ export class Stop {
         this.ezGleis = data.ezGleis || '';
 
         // Halt-Status
-        this.cancelled = data.cancelled || false;   // Halt entfällt
-        this.additional = data.additional || false;  // Zusatzhalt
+        this.cancelled = data.cancelled ?? data.isCancelled ?? false;   // Halt entfällt
+        this.additional = data.additional ?? data.isAdditional ?? false;  // Zusatzhalt
 
         // Halt-basierte Zugnummer (kann sich pro Halt ändern!)
         this.category = data.category || data.kategorie || '';
@@ -118,6 +118,12 @@ export class Stop {
 
     /** Hat dieser Halt eine Ankunft? */
     get hasArrival() { return this.arrival !== null; }
+
+    /** Ist dieser Halt ausgefallen? */
+    get isCancelled() { return this.cancelled; }
+
+    /** Ist dies ein Zusatzhalt? */
+    get isAdditional() { return this.additional; }
 
 
 

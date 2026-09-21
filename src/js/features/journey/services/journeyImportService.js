@@ -346,9 +346,9 @@ export class JourneyImportService {
                 if (existing.ausfall !== jData.ausfall) existing.ausfall = jData.ausfall;
                 if (existing._effectiveTimeMs !== jData._effectiveTimeMs) existing._effectiveTimeMs = jData._effectiveTimeMs;
                 
-                // Deep compare arrays to avoid Svelte reactivity spam
-                const currentStopsStr = JSON.stringify(existing.stops.map(s => ({...s, id: ''})));
-                const newStopsStr = JSON.stringify(jData.stops.map(s => ({...s, id: ''})));
+                // Semantic compare of stops to avoid Svelte reactivity spam
+                const currentStopsStr = existing.stops.map(s => `${s.name}:${s.cancelled ? 'c' : ''}:${s.additional ? 'a' : ''}:${s.platform || ''}`).join('|');
+                const newStopsStr = jData.stops.map(s => `${s.name}:${(s.cancelled || s.isCancelled) ? 'c' : ''}:${(s.additional || s.isAdditional) ? 'a' : ''}:${s.platform || ''}`).join('|');
                 
                 if (currentStopsStr !== newStopsStr) {
                     existing.stops = jData.stops.map(s => {

@@ -29,6 +29,7 @@ class IrisAnnouncementService {
 
             j.announcementState = new JourneyAnnouncementState({
                 delay: roundedDelay,
+                lastAnnouncedDelay: roundedDelay >= 5 ? roundedDelay : 0,
                 platform: currentPlatform,
                 cancelled: Boolean(j.ausfall),
                 hasPlayedAtScheduledTime: isPastPlan,
@@ -51,12 +52,12 @@ class IrisAnnouncementService {
         const maxPastMs = 3 * 60 * 1000;
 
         for (const j of journeys) {
-            // Durchfahrt-Ankünfte werden NIE separat angesagt (nur die Abfahrt kündigt an)
+            // Ankünfte, die zu einer Durchfahrt oder einem verknüpften Zug gehören, werden NIE separat angesagt (nur die Abfahrt kündigt an)
             if (j.ankunft && (
                 j.isThroughTrain || 
                 journeys.some(d => !d.ankunft && (
                     (d.journeyId && j.journeyId && d.journeyId === j.journeyId) ||
-                    (d.isThroughTrain && d.linkedArrivalJourneyId === j.id)
+                    (d.linkedArrivalJourneyId === j.id)
                 ))
             )) {
                 continue;
@@ -82,14 +83,16 @@ class IrisAnnouncementService {
                 state.cancelled = true;
                 state.lastAnnouncedSimTimeMs = simTimeMs;
                 const playlist = ansagenGenerator.generateInformation(j);
-                announcementQueueService.enqueue({
-                    journeyId: j.journeyId,
-                    trainName: j.name,
-                    type: ANNOUNCEMENT_TYPE.AUSFALL,
-                    playlist: playlist,
-                    label: `${j.name} Ausfall`,
-                    trainCountdownTimeMs: trainTime
-                });
+                if (playlist.length > 0) {
+                    announcementQueueService.enqueue({
+                        journeyId: j.journeyId,
+                        trainName: j.name,
+                        type: ANNOUNCEMENT_TYPE.AUSFALL,
+                        playlist: playlist,
+                        label: `${j.name} Ausfall`,
+                        trainCountdownTimeMs: trainTime
+                    });
+                }
                 continue; // Keine weiteren Folgeänderungen bei Ausfall
             }
 
@@ -99,70 +102,100 @@ class IrisAnnouncementService {
                 state.platform = currentPlatform;
                 state.lastAnnouncedSimTimeMs = simTimeMs;
                 const playlist = ansagenGenerator.generateInformation(j);
-                announcementQueueService.enqueue({
-                    journeyId: j.journeyId,
-                    trainName: j.name,
-                    type: ANNOUNCEMENT_TYPE.GLEISWECHSEL,
-                    playlist: playlist,
-                    label: `${j.name} Gleiswechsel (Gl. ${currentPlatform})`,
-                    trainCountdownTimeMs: trainTime
-                });
+                if (playlist.length > 0) {
+                    announcementQueueService.enqueue({
+                        journeyId: j.journeyId,
+                        trainName: j.name,
+                        type: ANNOUNCEMENT_TYPE.GLEISWECHSEL,
+                        playlist: playlist,
+                        label: `${j.name} Gleiswechsel (Gl. ${currentPlatform})`,
+                        trainCountdownTimeMs: trainTime
+                    });
+                }
             } else if (!state.platform && currentPlatform) {
                 state.platform = currentPlatform;
             }
 
             // 3. Verspätungsänderung (Priorität 50)
             const roundedDelay = ansagenGenerator._calculateDelay(j);
-            if (roundedDelay !== state.delay) {
-                if (roundedDelay >= 5) {
-                    state.delay = roundedDelay;
+            state.delay = roundedDelay; // aktuellen Zustand immer tracken
+
+            if (roundedDelay >= 5) {
+                // Änderung gegenüber der ZULETZT ANGESAGTEN Verspätung prüfen:
+                // Nur ansagen wenn sich der angesagte Wert um mind. 5 Minuten unterscheidet (z.B. 0 -> 5, 5 -> 10, 10 -> 5)
+                const delayDiff = Math.abs(roundedDelay - state.lastAnnouncedDelay);
+                const cooldownPassed = (simTimeMs - state.lastAnnouncedSimTimeMs) >= 2.5 * 60 * 1000; // 2.5 Min Cooldown
+                
+                if (delayDiff >= 5 && (state.lastAnnouncedDelay === 0 || cooldownPassed)) {
+                    state.lastAnnouncedDelay = roundedDelay;
                     state.lastAnnouncedSimTimeMs = simTimeMs;
                     const playlist = ansagenGenerator.generateInformation(j);
-                    announcementQueueService.enqueue({
-                        journeyId: j.journeyId,
-                        trainName: j.name,
-                        type: ANNOUNCEMENT_TYPE.VERSPAETUNG,
-                        playlist: playlist,
-                        label: `${j.name} Verspätung (+${roundedDelay}m)`,
-                        trainCountdownTimeMs: trainTime
-                    });
-                } else {
-                    // Stiller Rückfall in den Pünktlichkeitsbereich (< 5 Min)
-                    state.delay = 0;
+                    if (playlist.length > 0) {
+                        announcementQueueService.enqueue({
+                            journeyId: j.journeyId,
+                            trainName: j.name,
+                            type: ANNOUNCEMENT_TYPE.VERSPAETUNG,
+                            playlist: playlist,
+                            label: `${j.name} Verspätung (+${roundedDelay}m)`,
+                            trainCountdownTimeMs: trainTime
+                        });
+                    }
+                }
+            } else {
+                // Pünktlich / unter 5 Min:
+                // Stiller Rückfall, aber lastAnnouncedDelay erst nach 5 Min anhaltender Pünktlichkeit zurücksetzen,
+                // um Flattern zwischen 4 und 5 Min vollständig zu unterbinden.
+                if (state.lastAnnouncedDelay > 0 && (simTimeMs - state.lastAnnouncedSimTimeMs >= 5 * 60 * 1000)) {
+                    state.lastAnnouncedDelay = 0;
                 }
             }
 
             // 4. Fahrtänderung / Haltausfall / Zusatzhalt (Priorität 70)
-            const stopsHash = typeof j.getStopsHash === 'function' ? j.getStopsHash() : '';
-            if (state.deviationsHash && stopsHash && stopsHash !== state.deviationsHash) {
-                state.deviationsHash = stopsHash;
-                state.lastAnnouncedSimTimeMs = simTimeMs;
-                const playlist = ansagenGenerator.generateInformation(j);
-                announcementQueueService.enqueue({
-                    journeyId: j.journeyId,
-                    trainName: j.name,
-                    type: ANNOUNCEMENT_TYPE.FAHRTAENDERUNG,
-                    playlist: playlist,
-                    label: `${j.name} Fahrplanänderung`,
-                    trainCountdownTimeMs: trainTime
-                });
-            } else if (!state.deviationsHash && stopsHash) {
-                state.deviationsHash = stopsHash;
+            // Gilt NUR für Abfahrten (!j.ankunft), da Ankünfte am Endbahnhof keine zukünftigen Zwischenhalte mehr haben
+            if (!j.ankunft) {
+                const deviationsHash = typeof j.getStopsHash === 'function' ? j.getStopsHash() : '';
+                
+                if (state.deviationsHash === undefined || state.deviationsHash === '') {
+                    state.deviationsHash = deviationsHash;
+                } else if (state.deviationsHash !== deviationsHash) {
+                    state.deviationsHash = deviationsHash;
+                    
+                    // Nur ansagen wenn tatsächlich Abweichungen vorhanden sind (nicht beim stillen Entfallen aller Abweichungen)
+                    if (deviationsHash !== '') {
+                        const cooldownPassed = (simTimeMs - state.lastAnnouncedSimTimeMs) >= 2 * 60 * 1000;
+                        if (cooldownPassed) {
+                            state.lastAnnouncedSimTimeMs = simTimeMs;
+                            const playlist = ansagenGenerator.generateInformation(j);
+                            if (playlist.length > 0) {
+                                announcementQueueService.enqueue({
+                                    journeyId: j.journeyId,
+                                    trainName: j.name,
+                                    type: ANNOUNCEMENT_TYPE.FAHRTAENDERUNG,
+                                    playlist: playlist,
+                                    label: `${j.name} Fahrplanänderung`,
+                                    trainCountdownTimeMs: trainTime
+                                });
+                            }
+                        }
+                    }
+                }
             }
 
-            // Falls verknüpfter Zug (z.B. Durchfahrt) vorhanden, Zustand der Ankunft synchronisieren
-            const linkedArr = j.linkedArrivalJourneyId 
-                ? journeys.find(a => a.id === j.linkedArrivalJourneyId)
-                : (j.journeyId ? journeys.find(a => a.ankunft && a.journeyId === j.journeyId) : null);
-            if (linkedArr) {
-                if (!linkedArr.announcementState) {
-                    linkedArr.announcementState = new JourneyAnnouncementState();
+            // Falls verknüpfter Zug vorhanden und j eine Abfahrt ist, Zustand der Ankunft synchronisieren
+            if (!j.ankunft) {
+                const linkedArr = j.linkedArrivalJourneyId 
+                    ? journeys.find(a => a.id === j.linkedArrivalJourneyId)
+                    : (j.journeyId ? journeys.find(a => a.ankunft && a.journeyId === j.journeyId) : null);
+                if (linkedArr && linkedArr.id !== j.id) {
+                    if (!linkedArr.announcementState) {
+                        linkedArr.announcementState = new JourneyAnnouncementState();
+                    }
+                    linkedArr.announcementState.delay = state.delay;
+                    linkedArr.announcementState.lastAnnouncedDelay = state.lastAnnouncedDelay;
+                    linkedArr.announcementState.platform = state.platform;
+                    linkedArr.announcementState.cancelled = state.cancelled;
+                    linkedArr.announcementState.lastAnnouncedSimTimeMs = state.lastAnnouncedSimTimeMs;
                 }
-                linkedArr.announcementState.delay = state.delay;
-                linkedArr.announcementState.platform = state.platform;
-                linkedArr.announcementState.cancelled = state.cancelled;
-                linkedArr.announcementState.deviationsHash = state.deviationsHash;
-                linkedArr.announcementState.lastAnnouncedSimTimeMs = state.lastAnnouncedSimTimeMs;
             }
         }
     }

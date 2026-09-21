@@ -492,6 +492,10 @@ export class AnsagenGenerator {
     }
 
     generateInformation(journey) {
+        if (!this.hasInformationalContent(journey)) {
+            return [];
+        }
+
         const p = [];
         this._gong(p);
         this._module(p, 'INFORMATION_ZU');
