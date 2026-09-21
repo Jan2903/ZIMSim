@@ -38,6 +38,7 @@
     let monitorMenuOpen = $state(false);
 
     // Gehäuse-Zustand & dynamische Abmessungen für Gehäuse vs. Reines Display via Store
+    let showBezel = $derived(displayConfigStore.showBezel);
     let isCasingActive = $derived(displayConfigStore.isCasingActive);
     let wrapperWidth = $derived(displayConfigStore.wrapperWidth);
     let wrapperHeight = $derived(displayConfigStore.wrapperHeight);
