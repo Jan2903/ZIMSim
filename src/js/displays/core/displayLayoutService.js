@@ -223,7 +223,7 @@ export function generateActiveLayout(monitorId = 'zim2x32', layoutType = 'zuganz
     // ========================================================
     // 5. ANZEIGETYP: WAGENSTANDSANZEIGER (Gleis-Vitrine / Kombi)
     // ========================================================
-    else if (layoutType === 'wagenstand_gleis') {
+    } else if (layoutType === 'wagenstand_gleis') {
         if (prof.id === 'zim2x32') {
             // Klassische DB-Bahnsteigkombination: Links Zuganzeiger, Rechts 32" Wagenstandsanzeiger
             const slot2X = withBezel ? 1970 : 1920;
