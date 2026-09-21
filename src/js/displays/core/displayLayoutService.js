@@ -6,8 +6,8 @@
  */
 
 export const MONITOR_PROFILES = [
-    { id: 'zim2x32', name: 'ZIM 2Ã—32" / 2Ã—43" Doppel', defaultW: 3890, framelessW: 3840, h: 1080, casingW: 4430, casingH: 1600, offX: 270, offY: 260, hasBezelGap: true, gapWidth: 50, gapX: 1920, family: 'standard' },
-    { id: 'zim3x32', name: 'ZIM 3Ã—32" Triple', defaultW: 5860, framelessW: 5760, h: 1080, casingW: 6400, casingH: 1600, offX: 270, offY: 260, hasBezelGap: true, gapWidth: 50, gaps: [1920, 3940], family: 'standard' },
+    { id: 'zim2x32', name: 'ZIM 2×32" / 2×43" Doppel', defaultW: 3890, framelessW: 3840, h: 1080, casingW: 4430, casingH: 1600, offX: 270, offY: 260, hasBezelGap: true, gapWidth: 50, gapX: 1920, family: 'standard' },
+    { id: 'zim3x32', name: 'ZIM 3×32" Triple', defaultW: 5860, framelessW: 5760, h: 1080, casingW: 6400, casingH: 1600, offX: 270, offY: 260, hasBezelGap: true, gapWidth: 50, gaps: [1920, 3940], family: 'standard' },
     { id: 'zim32_single', name: 'ZIM 32" / 43" / 46" Einzel', defaultW: 1920, framelessW: 1920, h: 1080, casingW: 2460, casingH: 1600, offX: 270, offY: 260, hasBezelGap: false, family: 'standard' },
     { id: 'zimvitrine32', name: 'ZIMvitrine 32" Stand', defaultW: 1920, framelessW: 1920, h: 1080, casingW: 2120, casingH: 1380, offX: 100, offY: 100, hasBezelGap: false, family: 'vitrine' },
     { id: 'zimvitrine65h', name: 'ZIMvitrine 65h Stele (9:16)', defaultW: 1080, framelessW: 1080, h: 1920, casingW: 1240, casingH: 2220, offX: 80, offY: 100, hasBezelGap: false, family: 'stele' },
@@ -18,27 +18,27 @@ export const MONITOR_PROFILES = [
 export const LAYOUT_TYPES = [
     { id: 'zuganzeiger', name: 'Zuganzeiger (Bahnsteig / Gleis)' },
     { id: 'anschlusstafel', name: 'Anschlusstafel (Nur Abfahrten)' },
-    { id: 'ankunftstafel', name: 'Ankunftstafel (Nur AnkÃ¼nfte)' },
+    { id: 'ankunftstafel', name: 'Ankunftstafel (Nur Ankünfte)' },
     { id: 'wagenreihungsplan', name: 'Digitaler Wagenreihungsplan' },
     { id: 'wagenstand_gleis', name: 'Wagenstandsanzeiger (Gleis)' },
-    { id: 'anschlusstafel_zoom', name: 'Anschlusstafel Zoom 4Ã— (2Ã—32")' }
+    { id: 'anschlusstafel_zoom', name: 'Anschlusstafel Zoom 4× (2×32")' }
 ];
 
 /**
- * Erzeugt dynamisch das vollstÃ¤ndige Layout-Objekt fÃ¼r TrainDisplay und App.svelte.
- * UnterstÃ¼tzt Gesamtanzeigen, Multi-Monitor Pop-Outs (targetScreen) und 4K Ultra-HD.
+ * Erzeugt dynamisch das vollständige Layout-Objekt für TrainDisplay und App.svelte.
+ * Unterstützt Gesamtanzeigen, Multi-Monitor Pop-Outs (targetScreen) und 4K Ultra-HD.
  * 
- * @param {string} [monitorId='zim2x32'] - GewÃ¤hlter Monitor
- * @param {string} [layoutType='zuganzeiger'] - GewÃ¤hlter DB-Anzeigetyp
- * @param {boolean} [withBezel=true] - Ob GehÃ¤use aktiv ist
- * @param {string|number|null} [targetScreen=null] - Ziel-Einzelschirm ('1', '2', '3' oder null fÃ¼r Gesamtanzeige)
+ * @param {string} [monitorId='zim2x32'] - Gewählter Monitor
+ * @param {string} [layoutType='zuganzeiger'] - Gewählter DB-Anzeigetyp
+ * @param {boolean} [withBezel=true] - Ob Gehäuse aktiv ist
+ * @param {string|number|null} [targetScreen=null] - Ziel-Einzelschirm ('1', '2', '3' oder null für Gesamtanzeige)
  * @param {boolean} [is4k=false] - Ob 4K Ultra-HD Skalierung aktiv ist
  * @returns {object} Das konfigurierte Layout-Objekt
  */
 export function generateActiveLayout(monitorId = 'zim2x32', layoutType = 'zuganzeiger', withBezel = true, targetScreen = null, is4k = false) {
     // ----------------------------------------------------
     // Multi-Monitor Pop-Outs (?screen=1, ?screen=2, ?screen=3)
-    // Rendern exakt einen Einzelschirm in nativer AuflÃ¶sung ohne GehÃ¤userÃ¤nder
+    // Rendern exakt einen Einzelschirm in nativer Auflösung ohne Gehäuseränder
     // ----------------------------------------------------
     if (targetScreen) {
         return generateTargetScreenLayout(layoutType, targetScreen, is4k);
@@ -157,7 +157,7 @@ export function generateActiveLayout(monitorId = 'zim2x32', layoutType = 'zuganz
     }
 
     // ========================================================
-    // 3. ANZEIGETYP: ANKUNFTSTAFEL (Nur AnkÃ¼nfte)
+    // 3. ANZEIGETYP: ANKUNFTSTAFEL (Nur Ankünfte)
     // ========================================================
     else if (layoutType === 'ankunftstafel') {
         if (prof.id === 'zim2x32') {
@@ -186,7 +186,7 @@ export function generateActiveLayout(monitorId = 'zim2x32', layoutType = 'zuganz
                 { id: 'ankunft_col2', type: 'ankunft', x: colW, y: 0, w: colW, h: 1080, colIndex: 1, maxCols: 2 }
             ];
         } else if (prof.id === 'zimvitrine65h') {
-            // 20 Zeilen AnkÃ¼nfte untereinander
+            // 20 Zeilen Ankünfte untereinander
             layout.screens = [
                 { id: 'ankunft_stele', type: 'ankunft_portrait', x: 0, y: 0, w: 1080, h: 1920, maxRows: 20 }
             ];
@@ -292,13 +292,13 @@ export function generateActiveLayout(monitorId = 'zim2x32', layoutType = 'zuganz
 }
 
 /**
- * Erzeugt dynamisch das Layout fÃ¼r einen einzelnen Pop-Out-Monitor (?screen=1, ?screen=2, ?screen=3).
+ * Erzeugt dynamisch das Layout für einen einzelnen Pop-Out-Monitor (?screen=1, ?screen=2, ?screen=3).
  * Garantiert 100% randlose, exakt passende Darstellung in 1080p oder 4K Ultra-HD.
  * 
  * @param {string} [layoutType='zuganzeiger'] - 'zuganzeiger' | 'anschlusstafel' | 'anschlusstafel_zoom' | 'ankunftstafel' | 'wagenreihungsplan' | 'wagenstand_gleis'
  * @param {string|number} [targetScreen='1'] - '1', '2' oder '3'
  * @param {boolean} [is4k=false] - 4K Ultra-HD Skalierungs-Flag
- * @returns {object} Layout-Objekt fÃ¼r den Einzelschirm
+ * @returns {object} Layout-Objekt für den Einzelschirm
  */
 export function generateTargetScreenLayout(layoutType = 'zuganzeiger', targetScreen = '1', is4k = false) {
     const screenNum = parseInt(targetScreen, 10) || 1;
@@ -326,7 +326,7 @@ export function generateTargetScreenLayout(layoutType = 'zuganzeiger', targetScr
     // 1. ZUGANZEIGER (Bahnsteig / Gleis)
     if (layoutType === 'zuganzeiger') {
         if (screenNum === 1) {
-            // Screen 1: Hauptmonitor (groÃŸe Schrift, Ziel, Vias, Reihung)
+            // Screen 1: Hauptmonitor (große Schrift, Ziel, Vias, Reihung)
             layout.screens = [
                 { id: 'hauptmonitor', type: 'haupt', x: 0, y: 0, w: sWidth, h: sHeight, trainIndex: 0 }
             ];
@@ -358,7 +358,7 @@ export function generateTargetScreenLayout(layoutType = 'zuganzeiger', targetScr
             { id: `abfahrt_zoom_col${screenNum}`, type: 'abfahrt_zoom', x: 0, y: 0, w: sWidth, h: sHeight, colIndex: colIdx, maxCols: 3, maxRows: 4 }
         ];
     }
-    // 3. ANKUNFTSTAFEL (AnkÃ¼nfte)
+    // 3. ANKUNFTSTAFEL (Ankünfte)
     else if (layoutType === 'ankunftstafel') {
         const colIdx = Math.max(0, screenNum - 1);
         layout.screens = [
