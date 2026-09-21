@@ -2,8 +2,6 @@
 // Orchestrator — delegiert an spezialisierte Renderer-Module
 import { config } from '../core/utils/config.js';
 import { LAYOUTS } from './core/layouts.js';
-import { HARDWARE_PROFILES, getHardwareProfile } from './core/hardwareProfiles.js';
-import { CONTENT_MODES, getContentMode } from './core/contentModes.js';
 import { COLORS } from './core/constants.js';
 import { Journey } from '../features/journey/journey.svelte.js';
 import { ScrollManager } from './core/scrollManager.js';
@@ -147,6 +145,7 @@ export class TrainDisplay {
         if (layoutName === 'standard') {
             displayConfigStore.setMonitorId('zim2x32');
             displayConfigStore.setLayoutType('zuganzeiger');
+            displayConfigStore.showBezel = true;
             this._customLayout = null;
         } else if (layoutName === 'standard_frameless') {
             displayConfigStore.setMonitorId('zim2x32');
@@ -156,18 +155,23 @@ export class TrainDisplay {
         } else if (layoutName === 'standard_3screen') {
             displayConfigStore.setMonitorId('zim3x32');
             displayConfigStore.setLayoutType('zuganzeiger');
+            displayConfigStore.showBezel = true;
             this._customLayout = null;
         } else if (layoutName === 'standard_3screen_frameless') {
             displayConfigStore.setMonitorId('zim3x32');
             displayConfigStore.setLayoutType('zuganzeiger');
             displayConfigStore.showBezel = false;
             this._customLayout = null;
-        } else if (layoutName === 'voranzeiger' || layoutName === 'voranzeiger_and_formation') {
+        } else if (layoutName === 'voranzeiger') {
             displayConfigStore.setLayoutType('anschlusstafel');
+            this._customLayout = null;
+        } else if (layoutName === 'voranzeiger_and_formation') {
+            displayConfigStore.setMonitorId('zim2x32');
+            displayConfigStore.setLayoutType('wagenstand_gleis');
             this._customLayout = null;
         } else if (layoutName === 'zimvitrine32wagenstand') {
             displayConfigStore.setMonitorId('zimvitrine32');
-            displayConfigStore.setLayoutType('wagenreihungsplan');
+            displayConfigStore.setLayoutType('wagenstand_gleis');
             this._customLayout = null;
         } else if (layoutName === 'zimvitrine65h') {
             displayConfigStore.setMonitorId('zimvitrine65h');
@@ -178,7 +182,7 @@ export class TrainDisplay {
         } else if (layoutName === 'zimultrawide') {
             displayConfigStore.setMonitorId('zimultrawide');
             this._customLayout = null;
-        } else if (['zuganzeiger', 'anschlusstafel', 'ankunftstafel', 'wagenreihungsplan'].includes(layoutName)) {
+        } else if (['zuganzeiger', 'anschlusstafel', 'ankunftstafel', 'wagenreihungsplan', 'wagenstand_gleis'].includes(layoutName)) {
             displayConfigStore.setLayoutType(layoutName);
             this._customLayout = null;
         } else if (['zim2x32', 'zim3x32', 'zim32_single', 'zimvitrine32', 'zimvitrine65h', 'zimwide', 'zimultrawide'].includes(layoutName)) {
@@ -211,26 +215,30 @@ export class TrainDisplay {
      * @param {boolean} [withBezel=false] - Ob Gehäuse-Modus gewünscht ist
      */
     setTargetScreen(screenNumber, is4k = false, withBezel = false) {
-        if (!screenNumber || screenNumber === 'all') {
-            if (is4k) {
-                this.switchLayout('standard_4k');
-            } else {
-                this.switchLayout(withBezel ? 'standard' : 'standard_frameless');
-            }
-            return;
+        displayConfigStore.setTargetScreen(screenNumber === 'all' ? null : screenNumber, is4k);
+        if (withBezel !== undefined && (!screenNumber || screenNumber === 'all')) {
+            displayConfigStore.showBezel = withBezel;
         }
-        const layoutKey = is4k ? `standard_4k_screen${screenNumber}` : `standard_screen${screenNumber}`;
-        if (LAYOUTS[layoutKey]) {
-            this.switchLayout(layoutKey);
-        } else {
-            this.switchLayout(is4k ? 'standard_4k' : (withBezel ? 'standard' : 'standard_frameless'));
+        this._customLayout = null;
+
+        const canvas = document.getElementById('zimCanvas');
+        if (canvas) {
+            canvas.width = this.currentLayout.width;
+            canvas.height = this.currentLayout.height;
         }
+
+        this.scrollManager.clearAll();
+        this.updateAll();
+        window.dispatchEvent(new Event('resize'));
     }
 
     _startAnimationLoop() {
         if (this._animId) return;
         const loop = () => {
-            const isVitrine = this.currentLayout?.layoutType === 'wagenreihungsplan' || this.currentLayout === LAYOUTS.zimvitrine32wagenstand;
+            const isVitrine = this.currentLayout?.layoutType === 'wagenstand_gleis' || 
+                              this.currentLayout?.screens?.some(s => s.type === 'vitrine32') ||
+                              this.currentLayout?.layoutType === 'wagenreihungsplan' || 
+                              this.currentLayout === LAYOUTS.zimvitrine32wagenstand;
             const now = Date.now();
             let needsRender = false;
             
@@ -576,7 +584,6 @@ export class TrainDisplay {
         const hasAnkunft = screens.some(s => s.type === 'ankunft' || s.type === 'ankunft_portrait');
         const hasAbfahrt = screens.some(s => s.type === 'abfahrt' || s.type === 'abfahrt_portrait' || s.type === 'voranzeiger');
         const hasWagenreihungPlan = screens.some(s => s.type === 'wagenreihung_plan');
-        const hasVitrine = screens.some(s => s.type === 'vitrine32');
 
         if (hasAnkunft) {
             this._assignAnkunft(assignments);
@@ -584,10 +591,20 @@ export class TrainDisplay {
             this._assignVoranzeiger(assignments);
         } else if (hasWagenreihungPlan) {
             this._assignWagenreihungPlan(assignments);
-        } else if (hasVitrine) {
-            this._assignVitrine(assignments);
         } else {
             this._assignStandard(assignments);
+        }
+
+        // Falls vitrine32 Screens im Layout vorhanden sind (z.B. Wagenstandsanzeiger-Kombi), diese mit JourneyGroups versorgen
+        const vitrineScreens = screens.filter(s => s.type === 'vitrine32');
+        if (vitrineScreens.length > 0) {
+            const groups = this._getVisibleJourneyGroups();
+            vitrineScreens.forEach(screen => {
+                assignments.set(screen.id, {
+                    journeyGroups: groups.slice(0, 3),
+                    zugID: 1,
+                });
+            });
         }
 
         return assignments;

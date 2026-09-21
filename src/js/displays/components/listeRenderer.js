@@ -25,19 +25,16 @@ export function drawVoranzeigerBoard(ctx, journeys = [], width = 1920, height = 
     const isPortrait = height > width; // z.B. Stele 1080×1920
     const HEADER_HEIGHT = isPortrait ? 100 : 90;
 
-    // 1. Hintergrund füllen (DB-Nachtblau)
-    ctx.fillStyle = '#08152b';
+    // 1. Hintergrund füllen (Standard DB-Blau aus Default-Layout)
+    ctx.fillStyle = COLORS.MIDNIGHT_BLUE;
     ctx.fillRect(0, 0, width, height);
 
-    // 2. Kopfzeile zeichnen
-    drawHeader(ctx, width, HEADER_HEIGHT, renderCtx, isPortrait);
-
-    // 3. Fahrten filtern: Reguläre Züge vs. Infoscreens
+    // 2. Fahrten filtern: Ausschließlich reguläre Abfahrten vs. Infoscreens (Strikte Trennung)
     const allJourneys = journeys || [];
-    const trains = allJourneys.filter(j => !j.infoscreen);
+    const trains = allJourneys.filter(j => !j.infoscreen && !j.ankunft);
     const infos = allJourneys.filter(j => j.infoscreen);
 
-    // 4. Störungszone unten analysieren
+    // 3. Störungszone unten analysieren
     let disruptionRows = 0;
     let isTickerMode = false;
     let activeInfo = null;
@@ -60,7 +57,7 @@ export function drawVoranzeigerBoard(ctx, journeys = [], width = 1920, height = 
         }
     }
 
-    // 5. Zeilenraster berechnen
+    // 4. Zeilenraster berechnen
     const baseTotalRows = screenOptions.maxRows || (isPortrait ? 16 : 6);
     let availableTrainRows = baseTotalRows;
     let disruptionBoxHeight = 0;
@@ -74,12 +71,19 @@ export function drawVoranzeigerBoard(ctx, journeys = [], width = 1920, height = 
     const usableTrainHeight = height - HEADER_HEIGHT - disruptionBoxHeight;
     const trainRowHeight = usableTrainHeight / availableTrainRows;
 
-    // 6. Abfahrts-Pagination berechnen (über alle Spalten hinweg)
+    // 5. Abfahrts-Pagination berechnen (über alle Spalten hinweg)
     const trainsPerPage = availableTrainRows * maxCols;
     const totalTrainPages = Math.max(1, Math.ceil(trains.length / trainsPerPage));
     const activeTrainPage = (renderCtx.departurePageIndex || 0) % totalTrainPages;
     const pageOffset = (activeTrainPage * trainsPerPage) + (colIndex * availableTrainRows);
     const visibleTrains = trains.slice(pageOffset, pageOffset + availableTrainRows);
+
+    // Render-Kontext für Header-Seitenzähler ("Seite X/Y") anreichern
+    renderCtx.totalTrainPages = totalTrainPages;
+    renderCtx.activeTrainPage = activeTrainPage;
+
+    // 6. Kopfzeile zeichnen (nach Pagination-Berechnung, damit Seitenzahl verfügbar ist)
+    drawHeader(ctx, width, HEADER_HEIGHT, renderCtx, isPortrait);
 
     // 7. Züge rendern
     ctx.save();
@@ -88,15 +92,28 @@ export function drawVoranzeigerBoard(ctx, journeys = [], width = 1920, height = 
         ctx.globalAlpha = renderCtx.departurePageAlpha;
     }
 
-    for (let i = 0; i < availableTrainRows; i++) {
-        const rowY = HEADER_HEIGHT + (i * trainRowHeight);
-        const train = visibleTrains[i];
+    if (trains.length === 0) {
+        // Hinweis bei keinen Abfahrten
+        const centerY = HEADER_HEIGHT + (usableTrainHeight / 2);
+        ctx.textAlign = 'center';
+        ctx.font = FONTS.bold(isPortrait ? 30 : 38);
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('Keine Abfahrten im gewählten Zeitraum', width / 2, centerY - 15);
 
-        if (train) {
-            drawTrainRow(ctx, train, 0, rowY, width, trainRowHeight, i % 2 === 1, isPortrait);
-        } else {
-            // Leere Zeile bei dünnem Fahrplan (dezenter Hintergrund ohne Artefakte)
-            drawEmptyRow(ctx, 0, rowY, width, trainRowHeight, i % 2 === 1);
+        ctx.font = FONTS.italic(isPortrait ? 22 : 26);
+        ctx.fillStyle = '#64748b';
+        ctx.fillText('No departures scheduled in this time period', width / 2, centerY + 25);
+    } else {
+        for (let i = 0; i < availableTrainRows; i++) {
+            const rowY = HEADER_HEIGHT + (i * trainRowHeight);
+            const train = visibleTrains[i];
+
+            if (train) {
+                drawTrainRow(ctx, train, 0, rowY, width, trainRowHeight, i % 2 === 1, isPortrait);
+            } else {
+                // Leere Zeile bei dünnem Fahrplan (dezenter Hintergrund ohne Artefakte)
+                drawEmptyRow(ctx, 0, rowY, width, trainRowHeight, i % 2 === 1);
+            }
         }
     }
     ctx.restore();
@@ -125,7 +142,7 @@ export function drawVoranzeigerBoard(ctx, journeys = [], width = 1920, height = 
  */
 function drawHeader(ctx, width, height, renderCtx, isPortrait) {
     // Header-Hintergrund
-    ctx.fillStyle = '#061124';
+    ctx.fillStyle = COLORS.MIDNIGHT_BLUE_HEADER;
     ctx.fillRect(0, 0, width, height);
 
     // Akzent-Linie unten
@@ -169,8 +186,8 @@ function drawHeader(ctx, width, height, renderCtx, isPortrait) {
  * Zeichnet eine einzelne Abfahrtszeile im Voranzeiger.
  */
 function drawTrainRow(ctx, train, x, y, width, height, isAlt, isPortrait = false) {
-    // Zeilenhintergrund
-    ctx.fillStyle = isAlt ? '#061126' : '#08152b';
+    // Zeilenhintergrund: Subtil abgestimmt auf das Standard DB-Blau
+    ctx.fillStyle = isAlt ? COLORS.MIDNIGHT_BLUE_ALT : COLORS.MIDNIGHT_BLUE;
     ctx.fillRect(x, y, width, height);
 
     // Feine Trennlinie nach oben
@@ -277,7 +294,7 @@ function drawTrainRow(ctx, train, x, y, width, height, isAlt, isPortrait = false
         ctx.fill();
 
         ctx.font = FONTS.bold(isPortrait ? 28 : 36);
-        ctx.fillStyle = '#08152b';
+        ctx.fillStyle = COLORS.NAVY;
         ctx.textAlign = 'center';
         ctx.fillText(`Gl. ${train.ezGleis || gleisNum}`, gleisX + (boxW / 2), boxY + (isPortrait ? 31 : 39));
 
@@ -296,7 +313,7 @@ function drawTrainRow(ctx, train, x, y, width, height, isAlt, isPortrait = false
  * Zeichnet eine saubere leere Zeile bei unvollständiger Belegung.
  */
 function drawEmptyRow(ctx, x, y, width, height, isAlt) {
-    ctx.fillStyle = isAlt ? '#061126' : '#08152b';
+    ctx.fillStyle = isAlt ? COLORS.MIDNIGHT_BLUE_ALT : COLORS.MIDNIGHT_BLUE;
     ctx.fillRect(x, y, width, height);
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
@@ -308,7 +325,7 @@ function drawEmptyRow(ctx, x, y, width, height, isAlt) {
  */
 function drawStaticDisruptionBottom(ctx, infoJourney, pageNum, totalPages, x, y, width, height) {
     // 1. Box-Hintergrund (Warnendes Nachtblau mit solidem Rand)
-    ctx.fillStyle = '#0b1d3a';
+    ctx.fillStyle = '#101a3d';
     ctx.fillRect(x + 16, y + 8, width - 32, height - 16);
 
     // Rand in Signal-Orange/Rot
@@ -366,7 +383,7 @@ function drawStaticDisruptionBottom(ctx, infoJourney, pageNum, totalPages, x, y,
  * Zeichnet einen schlanken Lauftext-Ticker am unteren Bildschirmrand.
  */
 function drawTickerBottom(ctx, infoJourney, x, y, width, height, renderCtx) {
-    ctx.fillStyle = '#050d1a';
+    ctx.fillStyle = '#0e1738';
     ctx.fillRect(x, y, width, height);
 
     ctx.fillStyle = '#f59e0b';

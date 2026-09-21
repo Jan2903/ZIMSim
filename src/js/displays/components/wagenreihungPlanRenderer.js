@@ -20,8 +20,8 @@ export function drawWagenreihungPlan(ctx, journeyGroups = [], platform = {}, wid
     const isPortrait = height > width;
     const HEADER_HEIGHT = isPortrait ? 130 : 100;
 
-    // 1. Hintergrund (DB-Nachtblau RAL 5022)
-    ctx.fillStyle = '#08152b';
+    // 1. Hintergrund (Midnightblue – passend zum Standard-Zuganzeiger)
+    ctx.fillStyle = COLORS.MIDNIGHT_BLUE;
     ctx.fillRect(0, 0, width, height);
 
     // Sektor-Bereich berechnen (standardmäßig Sektoren A bis G)
@@ -64,7 +64,7 @@ export function drawWagenreihungPlan(ctx, journeyGroups = [], platform = {}, wid
  * Zeichnet die Kopfzeile mit Live-Uhrzeit, Titel, Sektor-Kästchen [A]..[G], Gleis-Label und DB-Logo.
  */
 function drawPlanHeader(ctx, width, height, sectorStartX, sectorUsableWidth, platform, isPortrait) {
-    ctx.fillStyle = '#061124';
+    ctx.fillStyle = COLORS.MIDNIGHT_BLUE_HEADER;
     ctx.fillRect(0, 0, width, height);
 
     // Feine Akzent-Linie unten
@@ -109,7 +109,7 @@ function drawPlanHeader(ctx, width, height, sectorStartX, sectorUsableWidth, pla
         const boxY = (height * 0.52) - (boxSize / 2);
 
         // Kasten [ A ]
-        ctx.fillStyle = '#061124';
+        ctx.fillStyle = COLORS.MIDNIGHT_BLUE_HEADER;
         ctx.fillRect(secX - (boxSize / 2), boxY, boxSize, boxSize);
 
         ctx.strokeStyle = COLORS.WHITE;
@@ -139,7 +139,7 @@ function drawPlanHeader(ctx, width, height, sectorStartX, sectorUsableWidth, pla
  */
 function drawPlanRow(ctx, trainGroup, platform, x, y, width, height, sectorStartX, sectorUsableWidth, isAlt, isPortrait) {
     // Zeilenhintergrund
-    ctx.fillStyle = isAlt ? '#061226' : '#08152b';
+    ctx.fillStyle = isAlt ? COLORS.MIDNIGHT_BLUE_ALT : COLORS.MIDNIGHT_BLUE;
     ctx.fillRect(x, y, width, height);
 
     // Trennlinie nach unten
@@ -197,7 +197,7 @@ function drawPlanRow(ctx, trainGroup, platform, x, y, width, height, sectorStart
         ctx.fill();
 
         ctx.font = FONTS.bold(isPortrait ? 22 : 26);
-        ctx.fillStyle = '#08152b';
+        ctx.fillStyle = COLORS.NAVY;
         ctx.textAlign = 'center';
         ctx.fillText(primary.expectedTime, delayX + (delayBoxW / 2), delayBoxY + (delayBoxH * 0.72));
     }
@@ -245,12 +245,20 @@ function drawPlanRow(ctx, trainGroup, platform, x, y, width, height, sectorStart
         ctx.fillText(viaDisplay, col2X, y + (height * 0.44));
     }
 
-    // 3. Wagenreihung maßstäblich zeichnen
+    // 3. Wagenreihung maßstäblich zeichnen (sauber skaliert, um Zeilenüberlauf zu verhindern)
     if (primary.formation && primary.formation.coaches && primary.formation.coaches.length > 0) {
         ctx.save();
-        // Wagenreihung im unteren Bereich der Zeile einbetten
+        // Verfügbare Höhe im unteren Zeilenbereich
+        const availableFormationHeight = height * 0.44;
+        const targetFormationHeight = 95; // Tatsächlich benötigte vertikale Ausdehnung (70 bis 165px)
+        const scaleY = Math.min(1.0, availableFormationHeight / targetFormationHeight);
+
+        // Vertikale Einbettung direkt unterhalb der Vias-Zeile
         const formationY = y + (height * 0.48);
         ctx.translate(0, formationY);
+        // COACH_Y_OFFSET (70px) nach oben kompensieren und vertikal stauchen
+        ctx.translate(0, -FORMATION.COACH_Y_OFFSET * scaleY);
+        ctx.scale(1.0, scaleY);
 
         drawFormation(ctx, trainGroup, platform, {
             fullScreen: true,

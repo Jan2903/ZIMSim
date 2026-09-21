@@ -19,34 +19,51 @@ export const LAYOUT_TYPES = [
     { id: 'zuganzeiger', name: 'Zuganzeiger (Bahnsteig / Gleis)' },
     { id: 'anschlusstafel', name: 'Anschlusstafel (Nur Abfahrten)' },
     { id: 'ankunftstafel', name: 'Ankunftstafel (Nur Ankünfte)' },
-    { id: 'wagenreihungsplan', name: 'Digitaler Wagenreihungsplan' }
+    { id: 'wagenreihungsplan', name: 'Digitaler Wagenreihungsplan' },
+    { id: 'wagenstand_gleis', name: 'Wagenstandsanzeiger (Gleis)' }
 ];
 
 /**
  * Erzeugt dynamisch das vollständige Layout-Objekt für TrainDisplay und App.svelte.
- * @param {string} monitorId - Gewählter Monitor
- * @param {string} layoutType - Gewählter DB-Anzeigetyp
- * @param {boolean} withBezel - Ob Gehäuse aktiv ist
+ * Unterstützt Gesamtanzeigen, Multi-Monitor Pop-Outs (targetScreen) und 4K Ultra-HD.
+ * 
+ * @param {string} [monitorId='zim2x32'] - Gewählter Monitor
+ * @param {string} [layoutType='zuganzeiger'] - Gewählter DB-Anzeigetyp
+ * @param {boolean} [withBezel=true] - Ob Gehäuse aktiv ist
+ * @param {string|number|null} [targetScreen=null] - Ziel-Einzelschirm ('1', '2', '3' oder null für Gesamtanzeige)
+ * @param {boolean} [is4k=false] - Ob 4K Ultra-HD Skalierung aktiv ist
  * @returns {object} Das konfigurierte Layout-Objekt
  */
-export function generateActiveLayout(monitorId = 'zim2x32', layoutType = 'zuganzeiger', withBezel = true) {
+export function generateActiveLayout(monitorId = 'zim2x32', layoutType = 'zuganzeiger', withBezel = true, targetScreen = null, is4k = false) {
+    // ----------------------------------------------------
+    // Multi-Monitor Pop-Outs (?screen=1, ?screen=2, ?screen=3)
+    // Rendern exakt einen Einzelschirm in nativer Auflösung ohne Gehäuseränder
+    // ----------------------------------------------------
+    if (targetScreen) {
+        return generateTargetScreenLayout(layoutType, targetScreen, is4k);
+    }
+
     const prof = MONITOR_PROFILES.find(p => p.id === monitorId) || MONITOR_PROFILES[0];
-    const width = withBezel ? prof.defaultW : prof.framelessW;
-    const height = prof.h;
+    const scaleFactor = is4k ? 2.0 : 1.0;
+    const baseW = withBezel ? prof.defaultW : prof.framelessW;
+    const baseH = prof.h;
+    const width = is4k ? baseW * 2 : baseW;
+    const height = is4k ? baseH * 2 : baseH;
 
     const layout = {
-        id: `${prof.id}_${layoutType}`,
+        id: `${prof.id}_${is4k ? '4k_' : ''}${layoutType}`,
         family: prof.family,
         width,
         height,
-        casingWidth: prof.casingW,
-        casingHeight: prof.casingH,
-        casingOffsetX: prof.offX,
-        casingOffsetY: prof.offY,
+        scaleFactor,
+        casingWidth: is4k ? prof.casingW * 2 : prof.casingW,
+        casingHeight: is4k ? prof.casingH * 2 : prof.casingH,
+        casingOffsetX: is4k ? prof.offX * 2 : prof.offX,
+        casingOffsetY: is4k ? prof.offY * 2 : prof.offY,
         hasBezelGap: withBezel && prof.hasBezelGap,
-        gapWidth: prof.gapWidth,
-        gapX: prof.gapX,
-        gaps: prof.gaps,
+        gapWidth: prof.gapWidth ? (is4k ? prof.gapWidth * 2 : prof.gapWidth) : 0,
+        gapX: prof.gapX ? (is4k ? prof.gapX * 2 : prof.gapX) : 1920,
+        gaps: prof.gaps ? prof.gaps.map(g => is4k ? g * 2 : g) : undefined,
         boardType: 'default',
         monitorId: prof.id,
         layoutType,
@@ -201,6 +218,128 @@ export function generateActiveLayout(monitorId = 'zim2x32', layoutType = 'zuganz
             // Einzelbildschirm / Vitrine 32 / Stele 65h (wie media_1789984220426.png)
             layout.screens = [
                 { id: 'plan_main', type: 'wagenreihung_plan', x: 0, y: 0, w: width, h: height, planOffset: 0 }
+            ];
+        }
+    // ========================================================
+    // 5. ANZEIGETYP: WAGENSTANDSANZEIGER (Gleis-Vitrine / Kombi)
+    // ========================================================
+    else if (layoutType === 'wagenstand_gleis') {
+        if (prof.id === 'zim2x32') {
+            // Klassische DB-Bahnsteigkombination: Links Zuganzeiger, Rechts 32" Wagenstandsanzeiger
+            const slot2X = withBezel ? 1970 : 1920;
+            layout.screens = [
+                { id: 'hauptmonitor', type: 'haupt', x: 0, y: 0, w: 1920, h: 1080, trainIndex: 0 },
+                { id: 'vitrine_right', type: 'vitrine32', x: slot2X, y: 0, w: 1920, h: 1080, trainIndex: 0 }
+            ];
+        } else if (prof.id === 'zim3x32') {
+            // Triple: Haupt + Neben + Wagenstand
+            const slot2X = withBezel ? 1970 : 1920;
+            const slot3X = withBezel ? 3940 : 3840;
+            layout.screens = [
+                { id: 'hauptmonitor', type: 'haupt', x: 0, y: 0, w: 1920, h: 1080, trainIndex: 0 },
+                { id: 'nebenmonitor_1', type: 'neben', x: slot2X, y: 0, w: 960, h: 1080, trainIndex: 1 },
+                { id: 'nebenmonitor_2', type: 'neben_rotierend', x: slot2X + 960, y: 0, w: 960, h: 1080 },
+                { id: 'vitrine_right', type: 'vitrine32', x: slot3X, y: 0, w: 1920, h: 1080, trainIndex: 0 }
+            ];
+        } else if (prof.id === 'zimvitrine65h') {
+            // Hochkant-Stele: Zeigt den digitalen Wagenreihungsplan
+            layout.screens = [
+                { id: 'stele_plan', type: 'wagenreihung_plan', x: 0, y: 0, w: 1080, h: 1920, planOffset: 0 }
+            ];
+        } else {
+            // Einzelmonitor (zimvitrine32, zim32_single, zimwide, etc.)
+            layout.screens = [
+                { id: 'vitrine_main', type: 'vitrine32', x: 0, y: 0, w: width, h: height, trainIndex: 0 }
+            ];
+        }
+    }
+
+    return layout;
+}
+
+/**
+ * Erzeugt dynamisch das Layout für einen einzelnen Pop-Out-Monitor (?screen=1, ?screen=2, ?screen=3).
+ * Garantiert 100% randlose, exakt passende Darstellung in 1080p oder 4K Ultra-HD.
+ * 
+ * @param {string} [layoutType='zuganzeiger'] - 'zuganzeiger' | 'anschlusstafel' | 'ankunftstafel' | 'wagenreihungsplan' | 'wagenstand_gleis'
+ * @param {string|number} [targetScreen='1'] - '1', '2' oder '3'
+ * @param {boolean} [is4k=false] - 4K Ultra-HD Skalierungs-Flag
+ * @returns {object} Layout-Objekt für den Einzelschirm
+ */
+export function generateTargetScreenLayout(layoutType = 'zuganzeiger', targetScreen = '1', is4k = false) {
+    const screenNum = parseInt(targetScreen, 10) || 1;
+    const sWidth = is4k ? 3840 : 1920;
+    const sHeight = is4k ? 2160 : 1080;
+    const scaleFactor = is4k ? 2.0 : 1.0;
+
+    const layout = {
+        id: `target_screen_${screenNum}_${is4k ? '4k_' : ''}${layoutType}`,
+        family: 'standard',
+        width: sWidth,
+        height: sHeight,
+        scaleFactor,
+        casingWidth: 0,
+        casingHeight: 0,
+        casingOffsetX: 0,
+        casingOffsetY: 0,
+        hasBezelGap: false,
+        boardType: 'default',
+        monitorId: `screen${screenNum}`,
+        layoutType,
+        screens: []
+    };
+
+    // 1. ZUGANZEIGER (Bahnsteig / Gleis)
+    if (layoutType === 'zuganzeiger') {
+        if (screenNum === 1) {
+            // Screen 1: Hauptmonitor (große Schrift, Ziel, Vias, Reihung)
+            layout.screens = [
+                { id: 'hauptmonitor', type: 'haupt', x: 0, y: 0, w: sWidth, h: sHeight, trainIndex: 0 }
+            ];
+        } else if (screenNum === 2) {
+            // Screen 2: 2x Nebenmonitor (Folgezug + Rotierend)
+            layout.screens = [
+                { id: 'nebenmonitor_1', type: 'neben', x: 0, y: 0, w: sWidth / 2, h: sHeight, trainIndex: 1 },
+                { id: 'nebenmonitor_2', type: 'neben_rotierend', x: sWidth / 2, y: 0, w: sWidth / 2, h: sHeight }
+            ];
+        } else {
+            // Screen 3: Weiterer Folgezug
+            layout.screens = [
+                { id: 'nebenmonitor_3', type: 'neben', x: 0, y: 0, w: sWidth / 2, h: sHeight, trainIndex: 2 },
+                { id: 'nebenmonitor_4', type: 'neben_rotierend', x: sWidth / 2, y: 0, w: sWidth / 2, h: sHeight }
+            ];
+        }
+    }
+    // 2. ANSCHLUSSTAFEL (Abfahrten)
+    else if (layoutType === 'anschlusstafel') {
+        const colIdx = Math.max(0, screenNum - 1);
+        layout.screens = [
+            { id: `abfahrt_col${screenNum}`, type: 'abfahrt', x: 0, y: 0, w: sWidth, h: sHeight, colIndex: colIdx, maxCols: 3 }
+        ];
+    }
+    // 3. ANKUNFTSTAFEL (Ankünfte)
+    else if (layoutType === 'ankunftstafel') {
+        const colIdx = Math.max(0, screenNum - 1);
+        layout.screens = [
+            { id: `ankunft_col${screenNum}`, type: 'ankunft', x: 0, y: 0, w: sWidth, h: sHeight, colIndex: colIdx, maxCols: 3 }
+        ];
+    }
+    // 4. WAGENREIHUNGSPLAN
+    else if (layoutType === 'wagenreihungsplan') {
+        const offset = (screenNum - 1) * 4;
+        layout.screens = [
+            { id: `plan_col${screenNum}`, type: 'wagenreihung_plan', x: 0, y: 0, w: sWidth, h: sHeight, planOffset: offset }
+        ];
+    }
+    // 5. WAGENSTANDSANZEIGER (Gleis-Vitrine)
+    else if (layoutType === 'wagenstand_gleis') {
+        if (screenNum === 1) {
+            layout.screens = [
+                { id: 'hauptmonitor', type: 'haupt', x: 0, y: 0, w: sWidth, h: sHeight, trainIndex: 0 }
+            ];
+        } else {
+            layout.screens = [
+                { id: 'vitrine_main', type: 'vitrine32', x: 0, y: 0, w: sWidth, h: sHeight, trainIndex: 0 }
             ];
         }
     }

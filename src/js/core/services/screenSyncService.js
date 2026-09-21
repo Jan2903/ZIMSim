@@ -1,4 +1,6 @@
 // js/core/services/screenSyncService.js
+import { displayConfigStore } from '../../displays/core/displayConfigStore.svelte.js';
+
 /**
  * @fileoverview Multi-Monitor-Synchronisation über HTML5 BroadcastChannel.
  * Ermöglicht latenzfreie Kommunikation zwischen Steuerungs-Dashboard (Master)
@@ -70,8 +72,11 @@ export class ScreenSyncService {
             } else if (event.data.type === 'SYNC_DISPLAY' && event.data.payload) {
                 if (event.data.payload.activeFeature && display.activeFeature !== event.data.payload.activeFeature) {
                     display.activeFeature = event.data.payload.activeFeature;
-                    display.updateAll();
                 }
+                if (event.data.payload.layoutType && displayConfigStore.layoutType !== event.data.payload.layoutType) {
+                    displayConfigStore.setLayoutType(event.data.payload.layoutType);
+                }
+                display.updateAll();
             } else if (event.data.type === 'UPDATE_ALL') {
                 display.updateAll();
             }
@@ -106,7 +111,7 @@ export class ScreenSyncService {
     }
 
     /**
-     * Überträgt Display-Einstellungen (z.B. Wagenreihung-Feature) an alle Slaves.
+     * Überträgt Display-Einstellungen (z.B. Wagenreihung-Feature, DB-Layout) an alle Slaves.
      * @param {object} displayConfig
      */
     static broadcastDisplayConfig(displayConfig) {
@@ -114,7 +119,13 @@ export class ScreenSyncService {
         if (!ch || !this.isMaster) return;
 
         try {
-            const payload = JSON.parse(JSON.stringify(displayConfig));
+            const config = {
+                activeFeature: displayConfig.activeFeature,
+                layoutType: displayConfig.layoutType || displayConfigStore.layoutType,
+                monitorId: displayConfig.monitorId || displayConfigStore.monitorId,
+                ...displayConfig
+            };
+            const payload = JSON.parse(JSON.stringify(config));
             ch.postMessage({
                 type: 'SYNC_DISPLAY',
                 payload,
@@ -140,9 +151,10 @@ export class ScreenSyncService {
      * @param {number|string} screenIndex - 1, 2 oder 3
      * @param {boolean} [is4k=false] - Ob 4K-Auflösung genutzt werden soll
      * @param {boolean} [kiosk=true] - Ob Kiosk-Modus aktiv sein soll
+     * @param {string|null} [layoutType=null] - Aktueller DB-Anzeigetyp
      * @returns {string} Die absolute Ziel-URL
      */
-    static getScreenUrl(screenIndex, is4k = false, kiosk = true) {
+    static getScreenUrl(screenIndex, is4k = false, kiosk = true, layoutType = null) {
         const url = new URL(window.location.href);
         url.searchParams.set('screen', String(screenIndex));
         if (kiosk) url.searchParams.set('kiosk', '1');
@@ -150,6 +162,10 @@ export class ScreenSyncService {
 
         if (is4k) url.searchParams.set('res', '4k');
         else url.searchParams.delete('res');
+
+        const activeLayout = layoutType || displayConfigStore.layoutType;
+        if (activeLayout) url.searchParams.set('layout', activeLayout);
+        else url.searchParams.delete('layout');
 
         return url.href;
     }
@@ -160,10 +176,11 @@ export class ScreenSyncService {
      * @param {number|string} screenIndex - 1 (Hauptmonitor), 2 (Nebenmonitore) oder 3 (Zusatzanzeiger)
      * @param {boolean} [is4k=false]
      * @param {boolean} [kiosk=true]
+     * @param {string|null} [layoutType=null]
      * @returns {Window|null} Das geöffnete Fenster
      */
-    static openScreenWindow(screenIndex, is4k = false, kiosk = true) {
-        const targetUrl = this.getScreenUrl(screenIndex, is4k, kiosk);
+    static openScreenWindow(screenIndex, is4k = false, kiosk = true, layoutType = null) {
+        const targetUrl = this.getScreenUrl(screenIndex, is4k, kiosk, layoutType);
         const windowName = `zim_display_screen_${screenIndex}`;
         const width = is4k ? 3840 : 1920;
         const height = is4k ? 2160 : 1080;

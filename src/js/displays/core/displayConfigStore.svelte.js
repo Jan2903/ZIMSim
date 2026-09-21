@@ -19,18 +19,26 @@ class DisplayConfigStore {
     isFullscreen = $state(false);
     isKiosk = $state(false);
 
+    // 5. Multi-Screen / Pop-Out Zielmonitor (z.B. '1', '2', '3' oder null für Hauptansicht)
+    targetScreen = $state(null);
+
+    // 6. 4K Ultra-HD Skalierungs-Flag
+    is4k = $state(false);
+
     /**
-     * Berechnet reaktiv das aktuelle Layout-Objekt basierend auf Monitor, Typ und Gehäuse.
+     * Berechnet reaktiv das aktuelle Layout-Objekt basierend auf Monitor, Typ, Gehäuse und Pop-Out-Ziel.
      */
     currentLayout = $derived.by(() => {
-        return generateActiveLayout(this.monitorId, this.layoutType, this.showBezel && !this.isFullscreen && !this.isKiosk);
+        const withBezel = !this.targetScreen && this.showBezel && !this.isFullscreen && !this.isKiosk;
+        return generateActiveLayout(this.monitorId, this.layoutType, withBezel, this.targetScreen, this.is4k);
     });
 
     /**
      * Ob das physische Gehäuse aktuell gezeichnet werden soll.
+     * Bei Pop-Out-Einzelfenstern (targetScreen) ist das Gehäuse stets inaktiv.
      */
     isCasingActive = $derived.by(() => {
-        return this.showBezel && !this.isFullscreen && !this.isKiosk && Boolean(this.currentLayout?.casingWidth);
+        return !this.targetScreen && this.showBezel && !this.isFullscreen && !this.isKiosk && Boolean(this.currentLayout?.casingWidth);
     });
 
     /**
@@ -72,11 +80,22 @@ class DisplayConfigStore {
 
     /**
      * Wechselt den fachlichen DB-Anzeigetyp.
-     * @param {string} type - 'zuganzeiger' | 'anschlusstafel' | 'ankunftstafel' | 'wagenreihungsplan'
+     * @param {string} type - 'zuganzeiger' | 'anschlusstafel' | 'ankunftstafel' | 'wagenreihungsplan' | 'wagenstand_gleis'
      */
     setLayoutType(type) {
         this.layoutType = type;
         localStorage.setItem('zimsim_layout_type', type);
+    }
+
+    /**
+     * Konfiguriert den Zielmonitor für Multi-Monitor / Pop-Out Fenster.
+     * @param {string|number|null} screenNumber - '1', '2', '3' oder null für Hauptansicht
+     * @param {boolean} [use4k=false] - Ob 4K-Auflösung genutzt wird
+     * @returns {void}
+     */
+    setTargetScreen(screenNumber, use4k = false) {
+        this.targetScreen = screenNumber ? String(screenNumber) : null;
+        this.is4k = Boolean(use4k);
     }
 
     /**

@@ -20,8 +20,8 @@ export function drawAnkunftBoard(ctx, journeys = [], width = 1920, height = 1080
     const HEADER_HEIGHT = isPortrait ? 110 : 80;
     const SUBHEADER_HEIGHT = isPortrait ? 40 : 34;
 
-    // 1. Hintergrund (DB-Nachtblau)
-    ctx.fillStyle = '#08152b';
+    // 1. Hintergrund (Midnightblue – passend zum Standard-Zuganzeiger)
+    ctx.fillStyle = COLORS.MIDNIGHT_BLUE;
     ctx.fillRect(0, 0, width, height);
 
     // 2. Kopfbereich zeichnen
@@ -36,8 +36,8 @@ export function drawAnkunftBoard(ctx, journeys = [], width = 1920, height = 1080
     const maxCols = screenOptions.maxCols || 1;
     const maxRows = isPortrait ? (screenOptions.maxRows || 20) : (screenOptions.maxRows || 7);
 
-    // Für Ankunftstafel: Züge anzeigen (falls 'ankunft' geflaggt bevorzugt, sonst alle)
-    const allTrains = (journeys || []).filter(j => !j.infoscreen);
+    // 4. Fahrten für diese Spalte / diesen Bildschirm filtern (Strikte Filterung: nur Ankünfte)
+    const allTrains = (journeys || []).filter(j => !j.infoscreen && j.ankunft);
     const trainsPerCol = maxRows;
     const startIndex = colIndex * trainsPerCol;
     const visibleTrains = allTrains.slice(startIndex, startIndex + trainsPerCol);
@@ -46,23 +46,48 @@ export function drawAnkunftBoard(ctx, journeys = [], width = 1920, height = 1080
     const rowHeight = availableHeight / maxRows;
 
     // 5. Zeilen zeichnen
-    for (let i = 0; i < maxRows; i++) {
-        const rowY = tableTop + (i * rowHeight);
-        const train = visibleTrains[i];
+    if (allTrains.length === 0) {
+        drawNoArrivalsMessage(ctx, width, tableTop, availableHeight, isPortrait);
+    } else {
+        for (let i = 0; i < maxRows; i++) {
+            const rowY = tableTop + (i * rowHeight);
+            const train = visibleTrains[i];
 
-        if (train) {
-            drawAnkunftRow(ctx, train, 0, rowY, width, rowHeight, i % 2 === 1, isPortrait);
-        } else {
-            drawEmptyAnkunftRow(ctx, 0, rowY, width, rowHeight, i % 2 === 1);
+            if (train) {
+                drawAnkunftRow(ctx, train, 0, rowY, width, rowHeight, i % 2 === 1, isPortrait);
+            } else {
+                drawEmptyAnkunftRow(ctx, 0, rowY, width, rowHeight, i % 2 === 1);
+            }
         }
     }
+}
+
+/**
+ * Zeichnet eine formatierte DB-Meldung, wenn keine Ankünfte vorliegen.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} width
+ * @param {number} topY
+ * @param {number} availableHeight
+ * @param {boolean} isPortrait
+ * @returns {void}
+ */
+function drawNoArrivalsMessage(ctx, width, topY, availableHeight, isPortrait) {
+    const centerY = topY + (availableHeight / 2);
+    ctx.textAlign = 'center';
+    ctx.font = FONTS.bold(isPortrait ? 30 : 38);
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText('Keine Ankünfte im gewählten Zeitraum', width / 2, centerY - 15);
+
+    ctx.font = FONTS.italic(isPortrait ? 22 : 26);
+    ctx.fillStyle = '#64748b';
+    ctx.fillText('No arrivals scheduled in this time period', width / 2, centerY + 25);
 }
 
 /**
  * Zeichnet die Haupt-Kopfzeile der Ankunftstafel.
  */
 function drawAnkunftHeader(ctx, width, height, renderCtx) {
-    ctx.fillStyle = '#061124';
+    ctx.fillStyle = COLORS.MIDNIGHT_BLUE_HEADER;
     ctx.fillRect(0, 0, width, height);
 
     // Akzentstreifen
@@ -105,7 +130,7 @@ function drawAnkunftHeader(ctx, width, height, renderCtx) {
  * Zeichnet die Spaltenüberschriften nach DB-Vorgabe.
  */
 function drawSubHeader(ctx, width, topY, height, isPortrait) {
-    ctx.fillStyle = '#0a1a36';
+    ctx.fillStyle = COLORS.MIDNIGHT_BLUE_HEADER;
     ctx.fillRect(0, topY, width, height);
 
     ctx.fillStyle = '#94a3b8';
@@ -135,7 +160,7 @@ function drawSubHeader(ctx, width, topY, height, isPortrait) {
  * Zeichnet eine einzelne Zeile der Ankunftstafel.
  */
 function drawAnkunftRow(ctx, train, x, y, width, height, isAlt, isPortrait) {
-    ctx.fillStyle = isAlt ? '#07142a' : '#081730';
+    ctx.fillStyle = isAlt ? COLORS.MIDNIGHT_BLUE_ALT : COLORS.MIDNIGHT_BLUE;
     ctx.fillRect(x, y, width, height);
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
@@ -238,7 +263,7 @@ function drawAnkunftRow(ctx, train, x, y, width, height, isAlt, isPortrait) {
 }
 
 function drawEmptyAnkunftRow(ctx, x, y, width, height, isAlt) {
-    ctx.fillStyle = isAlt ? '#07142a' : '#081730';
+    ctx.fillStyle = isAlt ? COLORS.MIDNIGHT_BLUE_ALT : COLORS.MIDNIGHT_BLUE;
     ctx.fillRect(x, y, width, height);
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';

@@ -6,6 +6,8 @@ export const COLORS = {
     WHITE: 'white',
     NAVY: 'navy',
     MIDNIGHT_BLUE: 'midnightblue',
+    MIDNIGHT_BLUE_ALT: '#141460',
+    MIDNIGHT_BLUE_HEADER: '#121258',
     ORANGE: 'orange',
     DARK_RED: 'DarkRed',
     DIM_GREY: 'DimGrey',

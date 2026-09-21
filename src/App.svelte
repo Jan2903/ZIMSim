@@ -23,6 +23,7 @@
     const targetScreen = urlParams.get('screen'); // z.B. '1', '2', '3' oder null
     const isKiosk = urlParams.get('kiosk') === '1' || urlParams.get('fullscreen') === '1';
     const is4k = urlParams.get('res') === '4k';
+    const targetLayout = urlParams.get('layout');
 
     // Hybrid-Modus für Mobile/Desktop: 'fit' (an Bildschirm anpassen) oder 'scroll' (Mindestbreite mit Scrollbalken)
     let displayScaleMode = $state(localStorage.getItem('zimsim_scale_mode') || 'fit');
@@ -124,7 +125,7 @@
      */
     function openScreen(screenIndex, use4k = false) {
         monitorMenuOpen = false;
-        ScreenSyncService.openScreenWindow(screenIndex, use4k, true);
+        ScreenSyncService.openScreenWindow(screenIndex, use4k, true, displayConfigStore.layoutType);
     }
 
     /**
@@ -320,18 +321,21 @@
     }
 
     onMount(() => {
+        displayConfigStore.isKiosk = isKiosk;
+        if (targetLayout) {
+            displayConfigStore.setLayoutType(targetLayout);
+        }
+
         // Multi-Screen / Kiosk Setup
         if (targetScreen) {
+            displayConfigStore.setTargetScreen(targetScreen, is4k);
             trainDisplay.setTargetScreen(targetScreen, is4k, false);
             if (isKiosk || targetScreen !== '1') {
                 ansagenStore.muted = true; // Sekundäre Monitore stumm schalten
             }
             ScreenSyncService.initSlave(journeyStore, trainDisplay);
         } else {
-            displayConfigStore.isKiosk = isKiosk;
-            if (is4k) {
-                trainDisplay.switchLayout('standard_4k');
-            }
+            displayConfigStore.setTargetScreen(null, is4k);
             ScreenSyncService.initMaster(journeyStore);
             trainDisplay.updateAll();
         }
