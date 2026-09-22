@@ -1,3 +1,4 @@
+// js/displays/boards/ankunftstafelRenderer.js
 import { COLORS, FONTS } from '../core/constants.js';
 import { truncateWithEllipsis } from '../core/textUtils.js';
 import { getSimulatedTime } from '../../core/utils/config.js';
@@ -263,3 +264,5 @@ function drawEmptyAnkunftRow(ctx, x, y, width, height, isAlt) {
     ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
     ctx.fillRect(x, y, width, 1);
 }
+
+export { drawAnkunftBoard as drawAnkunftstafelBoard };

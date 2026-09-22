@@ -1,4 +1,4 @@
-// js/displays/components/pictogramRenderer.js
+// js/displays/primitives/pictogramRenderer.js
 import { COLORS, FONTS, INFO } from '../core/constants.js';
 import { drawIcon } from '../core/icons.js';
 

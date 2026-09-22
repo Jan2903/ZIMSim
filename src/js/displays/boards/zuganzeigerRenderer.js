@@ -1,7 +1,7 @@
-// js/displays/trainInfoRenderer.js
+// js/displays/boards/zuganzeigerRenderer.js
 import { COLORS, FONTS, INFO } from '../core/constants.js';
 import { drawText, drawWrappedText, drawInfoTopText, drawTextInRectangle } from '../core/textUtils.js';
-import { drawPictograms } from './pictogramRenderer.js';
+import { drawPictograms } from '../primitives/pictogramRenderer.js';
 import { calculateCoachPositions, getSectorsForCoaches } from '../../features/formation/formationUtils.js';
 import { formatDisplayName } from '../../features/journey/trainNumberFormatter.js';
 import { journeyStore } from '../../core/state/stores.js';

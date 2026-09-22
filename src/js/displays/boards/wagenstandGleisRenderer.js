@@ -1,5 +1,6 @@
+// js/displays/boards/wagenstandGleisRenderer.js
 import { COLORS, FONTS, FORMATION } from '../core/constants.js';
-import { drawFormation, drawSectors } from './formationRenderer.js';
+import { drawFormation, drawSectors } from '../primitives/formationRenderer.js';
 import { drawText } from '../core/textUtils.js';
 import { drawDBLogo, drawAnalogClock } from '../core/sharedRenderers.js';
 import { getSimulatedTime } from '../../core/utils/config.js';

@@ -1,7 +1,7 @@
-// js/displays/components/wagenreihungPlanRenderer.js
+// js/displays/boards/wagenreihungPlanRenderer.js
 import { COLORS, FONTS, FORMATION } from '../core/constants.js';
 import { getSimulatedTime } from '../../core/utils/config.js';
-import { drawFormation, drawSectors } from './formationRenderer.js';
+import { drawFormation, drawSectors } from '../primitives/formationRenderer.js';
 import { drawDBLogo } from '../core/sharedRenderers.js';
 import { truncateWithEllipsis } from '../core/textUtils.js';
 

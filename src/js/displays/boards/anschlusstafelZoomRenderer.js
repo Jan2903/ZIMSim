@@ -1,3 +1,4 @@
+// js/displays/boards/anschlusstafelZoomRenderer.js
 import { COLORS, FONTS } from '../core/constants.js';
 import { truncateWithEllipsis } from '../core/textUtils.js';
 

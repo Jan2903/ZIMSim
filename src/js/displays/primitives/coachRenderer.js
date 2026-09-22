@@ -1,4 +1,4 @@
-// js/displays/coachRenderer.js
+// js/displays/primitives/coachRenderer.js
 import { COLORS, FONTS, FORMATION, COUPLING } from '../core/constants.js';
 import { ICONS, drawIcon } from '../core/icons.js';
 import { drawInNormalizedBox } from './pictogramRenderer.js';

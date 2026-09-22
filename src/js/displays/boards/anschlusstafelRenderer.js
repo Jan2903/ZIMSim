@@ -1,10 +1,10 @@
-// js/displays/components/listeRenderer.js
+// js/displays/boards/anschlusstafelRenderer.js
 import { COLORS, FONTS } from '../core/constants.js';
 import { drawText, drawWrappedText, truncateWithEllipsis } from '../core/textUtils.js';
 import { getSimulatedTime } from '../../core/utils/config.js';
 
 /**
- * Vollständiger dynamischer Renderer für Voranzeiger und Abfahrtstafeln.
+ * Vollständiger dynamischer Renderer für Voranzeiger und Abfahrtstafeln (Anschlusstafel).
  *
  * Eigenschaften:
  * - Dynamische Kopfzeile ("Abfahrt Departure", Station, Live-Uhrzeit)
@@ -14,12 +14,13 @@ import { getSimulatedTime } from '../../core/utils/config.js';
  */
 
 /**
- * Zeichnet das gesamte Voranzeiger-Board auf den Canvas.
+ * Zeichnet das gesamte Voranzeiger- / Anschlusstafel-Board auf den Canvas.
  * @param {CanvasRenderingContext2D} ctx - Der Canvas-Kontext.
  * @param {import('../../features/journey/journey.svelte.js').Journey[]} journeys - Alle Fahrten.
  * @param {number} width - Verfügbare Breite (z.B. 1920 oder 2560).
  * @param {number} height - Verfügbare Höhe (z.B. 1080 oder 1920).
  * @param {object} renderCtx - Render-Kontext mit Pagination- und Scroll-Daten.
+ * @param {object} [screenOptions={}] - Optionale Bildschirminformationen.
  */
 export function drawVoranzeigerBoard(ctx, journeys = [], width = 1920, height = 1080, renderCtx = {}, screenOptions = {}) {
     const isPortrait = height > width; // z.B. Stele 1080×1920
@@ -426,3 +427,5 @@ export function drawListeRow(ctx, journey, width, height) {
     if (!journey) return;
     drawTrainRow(ctx, journey, 0, 0, width, height, false);
 }
+
+export { drawVoranzeigerBoard as drawAnschlusstafelBoard };

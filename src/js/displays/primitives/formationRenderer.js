@@ -1,4 +1,4 @@
-// js/displays/formationRenderer.js
+// js/displays/primitives/formationRenderer.js
 import { Coach } from '../../features/formation/coachModel.svelte.js';
 import { COLORS, FONTS, FORMATION } from '../core/constants.js';
 import { drawText } from '../core/textUtils.js';

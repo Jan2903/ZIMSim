@@ -4,13 +4,13 @@ import { config } from '../core/utils/config.js';
 import { COLORS } from './core/constants.js';
 import { Journey } from '../features/journey/journey.svelte.js';
 import { ScrollManager } from './core/scrollManager.js';
-import { drawFormation } from './components/formationRenderer.js';
-import { drawTrainInfo, shouldRenderFormation } from './components/trainInfoRenderer.js';
-import { drawListeRow, drawVoranzeigerBoard } from './components/listeRenderer.js';
-import { drawVitrine32Wagenstand } from './components/vitrineRenderer.js';
-import { drawAnkunftBoard } from './components/ankunftRenderer.js';
-import { drawWagenreihungPlan } from './components/wagenreihungPlanRenderer.js';
-import { drawAnschlusstafelZoomBoard } from './components/anschlusstafelZoomRenderer.js';
+import { drawFormation } from './primitives/formationRenderer.js';
+import { drawTrainInfo, shouldRenderFormation } from './boards/zuganzeigerRenderer.js';
+import { drawListeRow, drawVoranzeigerBoard, drawAnschlusstafelBoard } from './boards/anschlusstafelRenderer.js';
+import { drawVitrine32Wagenstand } from './boards/wagenstandGleisRenderer.js';
+import { drawAnkunftBoard } from './boards/ankunftstafelRenderer.js';
+import { drawWagenreihungPlan } from './boards/wagenreihungPlanRenderer.js';
+import { drawAnschlusstafelZoomBoard } from './boards/anschlusstafelZoomRenderer.js';
 import { displayConfigStore } from './core/displayConfigStore.svelte.js';
 import { ScreenSyncService } from '../core/services/screenSyncService.js';
 
@@ -512,46 +512,14 @@ export class TrainDisplay {
 
                     const clearBg = (layer === 'all' || layer === 'static' || isDynamicRotierend);
                     this.drawOnScreen(screen, (ctx, width, height) => {
-                        if (screen.type === 'haupt' || screen.type === 'neben' || screen.type === 'neben_rotierend' || screen.type === 'zuganzeiger_portrait') {
-                            if (layer === 'all' || layer === 'static' || isDynamicRotierend) {
-                                drawTrainInfo(ctx, journeys, width, height, renderCtx);
-                            }
-                            if (shouldRenderFormation(journeys)) {
-                                ctx.save();
-                                ctx.translate(0, 820);
-                                if (isDynamicRotierend) {
-                                    ctx.globalAlpha = this.pageAlpha;
-                                }
-                                drawFormation(ctx, journeys, this.journeyStore.platform, {
-                                    fullScreen,
-                                    activeFeature: this.activeFeature,
-                                    featureAlpha: this.featureAlpha,
-                                    drawLayer: isDynamicRotierend ? 'all' : layer
-                                });
-                                ctx.restore();
-                            }
-                        } else if (screen.type === 'abfahrt_zoom') {
-                            drawAnschlusstafelZoomBoard(ctx, journeys, width, height, renderCtx, screen);
-                        } else if (screen.type === 'abfahrt' || screen.type === 'abfahrt_portrait' || screen.type === 'voranzeiger') {
-                            drawVoranzeigerBoard(ctx, journeys, width, height, renderCtx, screen);
-                        } else if (screen.type === 'ankunft' || screen.type === 'ankunft_portrait') {
-                            drawAnkunftBoard(ctx, journeys, width, height, renderCtx, screen);
-                        } else if (screen.type === 'wagenreihung_plan') {
-                            drawWagenreihungPlan(ctx, journeyGroups || [], this.journeyStore.platform, width, height, renderCtx, screen);
-                        } else if (screen.type === 'liste') {
-                            if (layer === 'all' || layer === 'static') {
-                                drawListeRow(ctx, journeys[0], width, height);
-                            }
-                        } else if (screen.type === 'vitrine32') {
-                            const trackNumber = document.getElementById('entry_gleis') ? document.getElementById('entry_gleis').value : '';
-                            drawVitrine32Wagenstand(ctx, journeyGroups || [], this.journeyStore.platform, width, height, trackNumber, {
-                                activeFeatureIndex: this.activeFeatureIndex,
-                                activeFeatureStr: this.activeFeature,
-                                progress: this.vitrineProgress,
-                                featureAlpha: this.featureAlpha,
-                                drawLayer: layer
-                            });
-                        }
+                        this._renderScreenByType(ctx, screen, width, height, {
+                            journeys,
+                            journeyGroups,
+                            renderCtx,
+                            layer,
+                            isDynamicRotierend,
+                            fullScreen
+                        });
                     }, canvas, clearBg);
 
                     if (layer === 'all' || layer === 'static' || isDynamicRotierend) this.scrollManager.cleanupUnused(zugID);
@@ -561,6 +529,90 @@ export class TrainDisplay {
             });
         } catch (err) {
             console.error('Error in _renderDynamicScreens:', err);
+        }
+    }
+
+    /**
+     * Delegiert das Zeichnen eines Screens an das entsprechende Board-Modul (Strategy-Pattern).
+     * 
+     * @param {CanvasRenderingContext2D} ctx - Canvas 2D Kontext
+     * @param {object} screen - Bildschirm-Konfigurationsobjekt
+     * @param {number} width - Bildschirmbreite
+     * @param {number} height - Bildschirmhöhe
+     * @param {object} params - Render-Parameter
+     * @param {import('../features/journey/journey.svelte.js').Journey[]} params.journeys - Fahrtenliste
+     * @param {import('../features/journey/journey.svelte.js').Journey[][]} [params.journeyGroups] - Fahrtengruppen
+     * @param {object} params.renderCtx - Render-Kontext mit Pagination- und Scroll-Daten
+     * @param {string} params.layer - Zeichen-Ebene ('all' | 'static' | 'dynamic')
+     * @param {boolean} params.isDynamicRotierend - Ob rotierender Nebenmonitor dynamisch gezeichnet wird
+     * @param {boolean} params.fullScreen - Ob Hauptmonitor im Vollbildmodus ist
+     * @returns {void}
+     */
+    _renderScreenByType(ctx, screen, width, height, { journeys, journeyGroups, renderCtx, layer, isDynamicRotierend, fullScreen }) {
+        switch (screen.type) {
+            case 'haupt':
+            case 'neben':
+            case 'neben_rotierend':
+            case 'zuganzeiger_portrait':
+                if (layer === 'all' || layer === 'static' || isDynamicRotierend) {
+                    drawTrainInfo(ctx, journeys, width, height, renderCtx);
+                }
+                if (shouldRenderFormation(journeys)) {
+                    ctx.save();
+                    ctx.translate(0, 820);
+                    if (isDynamicRotierend) {
+                        ctx.globalAlpha = this.pageAlpha;
+                    }
+                    drawFormation(ctx, journeys, this.journeyStore.platform, {
+                        fullScreen,
+                        activeFeature: this.activeFeature,
+                        featureAlpha: this.featureAlpha,
+                        drawLayer: isDynamicRotierend ? 'all' : layer
+                    });
+                    ctx.restore();
+                }
+                break;
+
+            case 'abfahrt_zoom':
+                drawAnschlusstafelZoomBoard(ctx, journeys, width, height, renderCtx, screen);
+                break;
+
+            case 'abfahrt':
+            case 'abfahrt_portrait':
+            case 'voranzeiger':
+                drawVoranzeigerBoard(ctx, journeys, width, height, renderCtx, screen);
+                break;
+
+            case 'ankunft':
+            case 'ankunft_portrait':
+                drawAnkunftBoard(ctx, journeys, width, height, renderCtx, screen);
+                break;
+
+            case 'wagenreihung_plan':
+                drawWagenreihungPlan(ctx, journeyGroups || [], this.journeyStore.platform, width, height, renderCtx, screen);
+                break;
+
+            case 'liste':
+                if (layer === 'all' || layer === 'static') {
+                    drawListeRow(ctx, journeys[0], width, height);
+                }
+                break;
+
+            case 'vitrine32': {
+                const trackNumber = document.getElementById('entry_gleis') ? document.getElementById('entry_gleis').value : '';
+                drawVitrine32Wagenstand(ctx, journeyGroups || [], this.journeyStore.platform, width, height, trackNumber, {
+                    activeFeatureIndex: this.activeFeatureIndex,
+                    activeFeatureStr: this.activeFeature,
+                    progress: this.vitrineProgress,
+                    featureAlpha: this.featureAlpha,
+                    drawLayer: layer
+                });
+                break;
+            }
+
+            default:
+                console.warn(`[TrainDisplay] Unbekannter screen.type: ${screen.type}`);
+                break;
         }
     }
 
