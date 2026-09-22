@@ -128,9 +128,15 @@ export class IrisApiService {
             let hh = null;
 
             // Suche nach ar oder dp Nodes um die LOKALE Zeit am Bahnhof zu finden
-            const arNode = Array.from(s.childNodes).find(n => n.nodeName === 'ar');
-            const dpNode = Array.from(s.childNodes).find(n => n.nodeName === 'dp');
-            const primaryNode = arNode || dpNode;
+            let primaryNode = null;
+            const children = s.children;
+            for (let i = 0; i < children.length; i++) {
+                const nodeName = children[i].nodeName;
+                if (nodeName === 'ar' || nodeName === 'dp') {
+                    primaryNode = children[i];
+                    break;
+                }
+            }
 
             if (primaryNode) {
                 const pt = primaryNode.getAttribute('pt');
@@ -231,11 +237,14 @@ export class IrisApiService {
 
     /**
      * Wendet die abgerufenen Echtzeitdaten (XML) auf die bestehenden Fahrplandaten (Map) an.
+     * Gibt ein Set der geänderten Zug-IDs zurück für selektives Re-Mapping (Dirty-Tracking).
      * @param {Map} journeys 
      * @param {Document} realtimeXml 
+     * @returns {Set<string>} Set der geänderten Zug-IDs
      */
     static mergeRealtime(journeys, realtimeXml) {
-        if (!realtimeXml) return;
+        const changedIds = new Set();
+        if (!realtimeXml) return changedIds;
         
         const sNodes = realtimeXml.querySelectorAll('s');
         for (const s of sNodes) {
@@ -243,9 +252,17 @@ export class IrisApiService {
             if (!journeys.has(id)) continue;
             
             const journey = journeys.get(id);
-            const ar = s.querySelector('ar');
-            const dp = s.querySelector('dp');
-            const msgs = s.querySelectorAll('m');
+            let ar = null;
+            let dp = null;
+            const msgs = [];
+            const children = s.children;
+            for (let i = 0; i < children.length; i++) {
+                const child = children[i];
+                const nodeName = child.nodeName;
+                if (nodeName === 'ar') ar = child;
+                else if (nodeName === 'dp') dp = child;
+                else if (nodeName === 'm') msgs.push(child);
+            }
 
             if (ar) {
                 journey.rt.ar = this._extractNodeAttributes(ar, ['ct', 'cp', 'pp', 'cs', 'cpth']);
@@ -254,7 +271,7 @@ export class IrisApiService {
                 journey.rt.dp = this._extractNodeAttributes(dp, ['ct', 'cp', 'pp', 'cs', 'cpth']);
             }
             
-            journey.rt.messages = Array.from(msgs).map(m => ({
+            journey.rt.messages = msgs.map(m => ({
                 id: m.getAttribute('id'),
                 c: m.getAttribute('c'),
                 t: m.getAttribute('t'),
@@ -262,7 +279,10 @@ export class IrisApiService {
                 from: m.getAttribute('from'),
                 to: m.getAttribute('to')
             })).filter(m => m.c);
+
+            changedIds.add(id);
         }
+        return changedIds;
     }
 
     static _parsePlan(xml, journeys = new Map()) {
@@ -271,9 +291,17 @@ export class IrisApiService {
 
         for (const s of sNodes) {
             const id = s.getAttribute('id');
-            const tl = s.querySelector('tl');
-            const ar = s.querySelector('ar');
-            const dp = s.querySelector('dp');
+            let tl = null;
+            let ar = null;
+            let dp = null;
+            const children = s.children;
+            for (let i = 0; i < children.length; i++) {
+                const child = children[i];
+                const nodeName = child.nodeName;
+                if (nodeName === 'tl') tl = child;
+                else if (nodeName === 'ar') ar = child;
+                else if (nodeName === 'dp') dp = child;
+            }
 
             if (!tl) continue;
 

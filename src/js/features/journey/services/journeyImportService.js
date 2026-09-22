@@ -335,9 +335,16 @@ export class JourneyImportService {
             }
         }
         
+        // Build lookup map for O(1) matching
+        const existingMap = new Map();
+        for (const j of journeys) {
+            existingMap.set(`${j.journeyId}_${j.ankunft}`, j);
+        }
+        
         // Add or update
         for (const jData of journeysData) {
-            let existing = journeys.find(j => j.journeyId === jData.journeyId && j.ankunft === jData.ankunft);
+            const key = `${jData.journeyId}_${jData.ankunft}`;
+            let existing = existingMap.get(key);
             if (existing) {
                 // Update existing fields where relevant for realtime, avoiding unnecessary reactivity
                 if (existing.expectedTime !== jData.expectedTime) existing.expectedTime = jData.expectedTime;
@@ -352,8 +359,12 @@ export class JourneyImportService {
                 const newStopsStr = jData.stops.map(s => `${s.name}:${(s.cancelled || s.isCancelled) ? 'c' : ''}:${(s.additional || s.isAdditional) ? 'a' : ''}:${s.platform || ''}`).join('|');
                 
                 if (currentStopsStr !== newStopsStr) {
+                    const prevStopsMap = new Map();
+                    for (const old of existing.stops) {
+                        prevStopsMap.set(old.name, old);
+                    }
                     existing.stops = jData.stops.map(s => {
-                        const prevStop = existing.stops.find(old => old.name === s.name);
+                        const prevStop = prevStopsMap.get(s.name);
                         const data = { ...s };
                         if (prevStop) {
                             data.id = prevStop.id;

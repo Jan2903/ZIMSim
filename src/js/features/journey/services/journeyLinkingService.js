@@ -135,18 +135,26 @@ export class JourneyLinkingService {
      * @param {Array} journeys - Liste aller Journeys
      */
     static autoLink(journeys) {
+        const journeysById = new Map();
+        const arrivalsByJourneyId = new Map();
+        for (const j of journeys) {
+            journeysById.set(j.id, j);
+            if (j.ankunft && j.journeyId) {
+                arrivalsByJourneyId.set(j.journeyId, j);
+            }
+        }
+
         // Phase 1: Reset aller heuristischen Verknüpfungen (Durchfahrten schützen)
         journeys.forEach(j => {
             if (!j.ankunft && j.linkedArrivalJourneyId) {
+                const arr = journeysById.get(j.linkedArrivalJourneyId);
                 if (j.isThroughTrain) {
-                    const arr = journeys.find(a => a.id === j.linkedArrivalJourneyId);
                     if (arr) {
                         arr.isThroughTrain = true;
                         if (arr._effectiveTimeMs) j.arrivalEffectiveTimeMs = arr._effectiveTimeMs;
                     }
                     return; // Durchfahrten niemals auflösen
                 }
-                const arr = journeys.find(a => a.id === j.linkedArrivalJourneyId);
                 const isThrough = arr && (j.journeyId && arr.journeyId && j.journeyId === arr.journeyId);
                 if (isThrough) {
                     j.isThroughTrain = true;
@@ -162,40 +170,62 @@ export class JourneyLinkingService {
         });
 
         // Echte Durchfahrten (gleiche journeyId) IMMER sicherstellen (auch bei Ausfall!)
-        for (const dep of journeys.filter(j => !j.ankunft)) {
-            if (dep.linkedArrivalJourneyId) continue;
-            if (dep.journeyId) {
-                const exactMatch = journeys.find(a => a.ankunft && a.journeyId === dep.journeyId);
-                if (exactMatch) {
-                    dep.linkedArrivalJourneyId = exactMatch.id;
-                    dep.isThroughTrain = true;
-                    exactMatch.isThroughTrain = true;
-                    if (exactMatch._effectiveTimeMs) {
-                        dep.arrivalEffectiveTimeMs = exactMatch._effectiveTimeMs;
-                    }
+        for (const dep of journeys) {
+            if (dep.ankunft || dep.linkedArrivalJourneyId || !dep.journeyId) continue;
+            const exactMatch = arrivalsByJourneyId.get(dep.journeyId);
+            if (exactMatch) {
+                dep.linkedArrivalJourneyId = exactMatch.id;
+                dep.isThroughTrain = true;
+                exactMatch.isThroughTrain = true;
+                if (exactMatch._effectiveTimeMs) {
+                    dep.arrivalEffectiveTimeMs = exactMatch._effectiveTimeMs;
                 }
             }
         }
 
         const arrivals = journeys.filter(j => j.ankunft && !j.ausfall && !j.isThroughTrain);
         const departures = journeys.filter(j => !j.ankunft && !j.ausfall && !j.isThroughTrain);
+        const linkedArrivalIds = new Set();
+        for (const d of departures) {
+            if (d.linkedArrivalJourneyId) {
+                linkedArrivalIds.add(d.linkedArrivalJourneyId);
+            }
+        }
 
         const MAX_TURNAROUND = 180;
+
+        // Vorab-Gruppierung nicht-ausgefallener Fahrten nach Basis-Gleis (z.B. "4"),
+        // um O(N*M) Track-Parsing und String-Regexes auf O(N) zu reduzieren
+        const journeysByBaseTrack = new Map();
+        for (const T of journeys) {
+            if (T.ausfall) continue;
+            const trackStrT = T.ezGleis || T.platform;
+            const baseT = parseTrack(trackStrT).base;
+            if (!baseT) continue;
+            let list = journeysByBaseTrack.get(baseT);
+            if (!list) {
+                list = [];
+                journeysByBaseTrack.set(baseT, list);
+            }
+            list.push(T);
+        }
 
         // Phase 2 & 3: Chronologischer Scan in die Zukunft für jede Ankunft
         for (const A of arrivals) {
             // Bereits durch API oder Durchfahrt fix verknüpft? (Wird sie von einer Abfahrt referenziert?)
-            const isAlreadyLinked = departures.some(d => d.linkedArrivalJourneyId === A.id);
-            if (isAlreadyLinked) continue;
+            if (linkedArrivalIds.has(A.id)) continue;
 
             const trackStrA = A.ezGleis || A.platform;
             const baseA = parseTrack(trackStrA);
             if (!baseA.base) continue;
 
+            const candidatesOnTrack = journeysByBaseTrack.get(baseA.base) || [];
+
             // Finde alle Events auf demselben Basis-Gleis in den nächsten MAX_TURNAROUND Minuten
             const futureEvents = [];
-            for (const T of journeys) {
-                if (T.id === A.id || T.ausfall) continue;
+            for (let i = 0; i < candidatesOnTrack.length; i++) {
+                const T = candidatesOnTrack[i];
+                if (T.id === A.id) continue;
                 
                 const trackStrT = T.ezGleis || T.platform;
 
@@ -241,6 +271,7 @@ export class JourneyLinkingService {
                     if (operatorMatch && diffPlan <= MAX_TURNAROUND) {
                         // Treffer! Verknüpfen (strikte 1:1 Beziehung)
                         T.linkedArrivalJourneyId = A.id;
+                        linkedArrivalIds.add(A.id);
                         T.isThroughTrain = false;
                         A.isThroughTrain = false;
                         if (A._effectiveTimeMs) {

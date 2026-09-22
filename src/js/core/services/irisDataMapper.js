@@ -9,16 +9,21 @@ export class IrisDataMapper {
      * @param {Map} journeysMap Die Map mit den Rohdaten der Fahrplan-Fahrten
      * @param {string} eva Die Bahnhofs-ID
      * @param {Date} simulatedTime Die aktuelle simulierte Zeit
-     * @param {number} futureWindowHours Das Vorhersagefenster in Stunden
+     * @param {number} [futureWindowHours=2] Das Vorhersagefenster in Stunden
+     * @param {Set<string>|null} [dirtyIds=null] Optionale Menge geänderter Zug-IDs für selektives Re-Mapping
+     * @param {number} [lookbehindMinutes=30] Zeitfenster in die Vergangenheit für Standzeiten und Wenden (in Minuten)
      * @returns {Array} Array der gemappten Zug-Objekte
      */
-    static mapToZimsimFormat(journeysMap, eva, simulatedTime, futureWindowHours = 2) {
+    static mapToZimsimFormat(journeysMap, eva, simulatedTime, futureWindowHours = 2, dirtyIds = null, lookbehindMinutes = 30) {
         const results = [];
         const simTimeMs = simulatedTime ? simulatedTime.getTime() : Date.now();
-        const pastThreshold = simTimeMs - (3 * 60 * 1000); // 3 Minuten in der Vergangenheit
+        const pastThreshold = simTimeMs - (lookbehindMinutes * 60 * 1000); // Konfigurierbarer Lookbehind
         const futureThreshold = simTimeMs + (futureWindowHours * 60 * 60 * 1000); // X Stunden in der Zukunft
 
         for (const raw of journeysMap.values()) {
+            if (dirtyIds && !dirtyIds.has(raw.id)) {
+                continue;
+            }
             if (raw.ar) {
                 const mappedAr = this._mapSingleNode(raw, 'ar', pastThreshold, futureThreshold, simTimeMs);
                 if (mappedAr) results.push(mappedAr);
@@ -285,7 +290,9 @@ export class IrisDataMapper {
         let delayReason = '';
         if (RisTextService.isLoaded) {
             for (const msg of validMessages) {
-                const preset = RisTextService.presets.find(p => p.code === msg.c);
+                const preset = typeof RisTextService.getPresetByCode === 'function'
+                    ? RisTextService.getPresetByCode(msg.c)
+                    : RisTextService.presets.find(p => p.code === msg.c);
                 if (preset) {
                     delayReason = preset.text;
                     break; 

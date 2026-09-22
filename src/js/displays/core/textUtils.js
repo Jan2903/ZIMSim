@@ -350,10 +350,12 @@ export function drawTextInRectangle(ctx, text, x, y, font, textAlign, textHeight
 }
 
 let _measuringCtx = null;
+const _textLinesCache = new Map();
+const MAX_TEXT_LINES_CACHE = 1000;
 
 /**
  * Berechnet, wie viele Zeilen ein gegebener Text bei einer maximalen Breite einnimmt.
- * Nutzt einen gecachten Canvas-Kontext für optimale Performance ohne Garbage-Collection-Overhead.
+ * Nutzt einen gecachten Canvas-Kontext und einen Lookup-Cache für optimale Performance ohne Garbage-Collection-Overhead.
  * @param {string} text - Der zu messende Text
  * @param {number} maxWidth - Maximale Breite in Pixeln
  * @param {string} font - Font-Definition (z.B. FONTS.regular(75))
@@ -362,6 +364,11 @@ let _measuringCtx = null;
 export function measureTextLines(text, maxWidth, font = 'normal 75px "Open Sans Condensed", sans-serif') {
     if (!text) return 0;
     if (typeof document === 'undefined') return 1;
+
+    const cacheKey = `${font}|${maxWidth}|${text}`;
+    if (_textLinesCache.has(cacheKey)) {
+        return _textLinesCache.get(cacheKey);
+    }
 
     if (!_measuringCtx) {
         const canvas = document.createElement('canvas');
@@ -384,5 +391,11 @@ export function measureTextLines(text, maxWidth, font = 'normal 75px "Open Sans 
             currentLine = testLine;
         }
     }
+
+    if (_textLinesCache.size >= MAX_TEXT_LINES_CACHE) {
+        _textLinesCache.clear();
+    }
+    _textLinesCache.set(cacheKey, lines);
+
     return lines;
 }

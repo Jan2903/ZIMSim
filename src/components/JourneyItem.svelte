@@ -6,7 +6,7 @@
     import JourneyDetails from './JourneyDetails.svelte';
     import ZimIcon from './ZimIcon.svelte';
 
-    let { journey = $bindable() } = $props();
+    let { journey = $bindable(), index = -1 } = $props();
 
     let isExpanded = $derived(uiState.expandedJourneyId === journey.id);
 
@@ -55,7 +55,7 @@
 
     let couplingClass = $derived.by(() => {
         if (!journey.couplingGroupId) return '';
-        const idx = journeyStore.journeys.indexOf(journey);
+        const idx = index >= 0 ? index : journeyStore.journeys.indexOf(journey);
         const prev = journeyStore.journeys[idx - 1];
         const next = journeyStore.journeys[idx + 1];
         

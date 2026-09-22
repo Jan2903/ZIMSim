@@ -178,7 +178,7 @@ export class Journey {
         // === Halteliste (für Details-Ansicht & API-Import) ===
         this.stops = (data.stops || []).map(s => {
             const stop = s instanceof Stop ? s : new Stop(s);
-            if (!(s instanceof Stop)) stop.enrichWithStationData();
+            if (!(s instanceof Stop) && !stop.extId) stop.enrichWithStationData();
             return stop;
         });
         this._currentStopIndex = data._currentStopIndex !== undefined ? data._currentStopIndex : -1;

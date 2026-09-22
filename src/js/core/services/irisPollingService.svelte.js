@@ -7,15 +7,44 @@ import { irisAnnouncementService } from '../../audio/irisAnnouncementService.js'
 export const irisConfig = $state({
     autoUpdateInterval: 0,
     futureWindowHours: 2,
+    lookbehindMinutes: 30, // Vergangenheits-Puffer für Standzeiten und Wenden (in Minuten)
     autoAnnouncements: false,
     autoSort: true,
 });
+
+/**
+ * Gibt den JavaScript-Event-Loop frei, damit Browser-Events (Klicks, Tasten, Render-Frames)
+ * ohne Einfrieren oder Warnungen verarbeitet werden können.
+ * Nutzt scheduler.yield() wenn verfügbar (Chromium), sonst MessageChannel (Firefox/Safari) ohne 4ms-Timeout-Clamp.
+ * @param {AbortSignal} [signal=null]
+ * @returns {Promise<void>}
+ */
+export async function yieldToMain(signal = null) {
+    if (signal && signal.aborted) {
+        throw new DOMException('Aborted', 'AbortError');
+    }
+    if (typeof window !== 'undefined' && window.scheduler && typeof window.scheduler.yield === 'function') {
+        await window.scheduler.yield();
+    } else if (typeof MessageChannel !== 'undefined') {
+        await new Promise(resolve => {
+            const channel = new MessageChannel();
+            channel.port1.onmessage = () => resolve();
+            channel.port2.postMessage(null);
+        });
+    } else {
+        await new Promise(resolve => setTimeout(resolve, 0));
+    }
+    if (signal && signal.aborted) {
+        throw new DOMException('Aborted', 'AbortError');
+    }
+}
 
 class IrisPollingService {
     lastPollTime = $state(null);
     nextPollSecs = $state(0);
     upcomingAnnouncements = $state([]);
     isActive = $state(false);
+    isFetching = $state(false);
 
     constructor() {
         this.pollingInterval = null;
@@ -48,6 +77,7 @@ class IrisPollingService {
 
     stop() {
         this.isActive = false;
+        this.isFetching = false;
         
         if (this.tickerInterval) {
             clearInterval(this.tickerInterval);
@@ -81,6 +111,7 @@ class IrisPollingService {
         
         // 300ms Debounce-Delay bei Initialisierung (User klickt schnell durch Bahnhöfe)
         const delay = isInitial ? 300 : 0;
+        if (delay > 0) this.isFetching = true;
         
         this._debounceTimer = setTimeout(() => {
             this.pollRealtime(isInitial);
@@ -104,8 +135,11 @@ class IrisPollingService {
         }
         this._abortController = new AbortController();
         const signal = this._abortController.signal;
+        this.isFetching = true;
         
         try {
+            let newlyLoadedIds = null;
+
             // Check if hour changed or initial load, if so, load new base plan
             if (isInitial || currentSimTime.getHours() !== this._lastSimulatedHour) {
                 this._lastSimulatedHour = currentSimTime.getHours();
@@ -116,14 +150,18 @@ class IrisPollingService {
                     this.irisJourneysMap = basePlan || new Map();
                     this._mappedCache.clear();
                 } else {
+                    newlyLoadedIds = new Set();
                     // Mergen des neuen Plans in die bestehende Map (alte Züge bleiben wg fchg erhalten)
                     for (const [id, raw] of (basePlan || new Map()).entries()) {
                         if (!this.irisJourneysMap.has(id)) {
                             this.irisJourneysMap.set(id, raw);
+                            newlyLoadedIds.add(id);
                         }
                     }
                 }
             }
+
+            await yieldToMain(signal);
 
             // Using rchg for updates, fchg for initial or if last poll was > 90s ago
             let fetchType = isInitial ? 'fchg' : 'rchg';
@@ -137,42 +175,62 @@ class IrisPollingService {
             const realtimeXml = await IrisApiService.fetchRealtime(eva, fetchType, signal);
             
             if (realtimeXml) {
+                await yieldToMain(signal);
+
                 // Lazy loading of plans for delayed trains in fchg/rchg
                 await IrisApiService.loadMissingPlans(eva, realtimeXml, this.irisJourneysMap, currentSimTime, irisConfig.futureWindowHours, signal);
                 
-                // Merge realtime (mutates this.irisJourneysMap)
-                IrisApiService.mergeRealtime(this.irisJourneysMap, realtimeXml);
+                // Merge realtime (mutates this.irisJourneysMap und liefert geänderte IDs)
+                const changedIds = IrisApiService.mergeRealtime(this.irisJourneysMap, realtimeXml);
+                if (newlyLoadedIds) {
+                    for (const id of newlyLoadedIds) {
+                        changedIds.add(id);
+                    }
+                }
                 
                 // Garbage Collection: Alte Züge löschen um Memory Leak zu vermeiden
                 this._cleanupOldJourneys(currentSimTime);
 
+                await yieldToMain(signal);
+
+                // Wenn Initial oder fchg, alle mappen. Bei rchg nur die veränderten Züge mappen (Dirty-Tracking).
+                const dirtyIdsToMap = (isInitial || fetchType === 'fchg') ? null : changedIds;
+
                 // Update display models über den Mapper
+                const lookbehindMinutes = irisConfig.lookbehindMinutes ?? 30;
                 const dirtyJourneysData = IrisDataMapper.mapToZimsimFormat(
                     this.irisJourneysMap, 
                     eva, 
                     currentSimTime,
-                    irisConfig.futureWindowHours
+                    irisConfig.futureWindowHours,
+                    dirtyIdsToMap,
+                    lookbehindMinutes
                 );
 
                 for (const item of dirtyJourneysData) {
                     this._mappedCache.set(`${item.journeyId}_${item.ankunft}`, item);
                 }
 
-                // Sliding Window Check für alle Züge (auch ungeänderte)
-                const pastThreshold = currentSimTime.getTime() - (3 * 60 * 1000);
+                // Sliding Window Check für alle Züge (inkl. Lookbehind für Wenden/Standzeiten)
+                const pastThreshold = currentSimTime.getTime() - (lookbehindMinutes * 60 * 1000);
                 const futureThreshold = currentSimTime.getTime() + (irisConfig.futureWindowHours * 60 * 60 * 1000);
                 const allJourneysData = [];
 
                 for (const [key, item] of this._mappedCache.entries()) {
-                    if (item._effectiveTimeMs && (item._effectiveTimeMs < pastThreshold || item._effectiveTimeMs > futureThreshold)) {
+                    // Löschen wenn außerhalb des Fensters oder wenn der Zug in irisJourneysMap nicht mehr existiert
+                    if (!this.irisJourneysMap.has(item.journeyId) || (item._effectiveTimeMs && (item._effectiveTimeMs < pastThreshold || item._effectiveTimeMs > futureThreshold))) {
                         this._mappedCache.delete(key);
                     } else {
                         allJourneysData.push(item);
                     }
                 }
                 
+                await yieldToMain(signal);
+
                 // Update journeyStore
                 journeyStore.upsertIrisJourneys(allJourneysData);
+
+                await yieldToMain(signal);
 
                 // Verknüpfe Ankünfte und Abfahrten (Durchfahrten/Wenden)
                 journeyStore.autoLinkJourneys();
@@ -183,6 +241,8 @@ class IrisPollingService {
                 if (irisConfig.autoSort) {
                     journeyStore.sortJourneys();
                 }
+
+                await yieldToMain(signal);
 
                 // Fachliche Ansagenlogik ansprechen: Baseline bei Start, sonst Änderungsprüfung
                 if (isInitial) {
@@ -200,6 +260,8 @@ class IrisPollingService {
             } else {
                 console.error('[IrisPollingService] Polling error:', e);
             }
+        } finally {
+            this.isFetching = false;
         }
     }
 
@@ -224,13 +286,14 @@ class IrisPollingService {
     }
 
     /**
-     * Bereinigt veraltete Einträge aus der irisJourneysMap (Garbage Collection).
-     * Verhindert Memory-Leaks in lang laufenden Simulationen.
+     * Bereinigt veraltete Einträge aus der irisJourneysMap und dem _mappedCache (Garbage Collection).
+     * Verhindert Memory-Leaks in lang laufenden Simulationen unter Berücksichtigung des Lookbehinds.
      * @param {Date} simTime Die aktuell simulierte Zeit
      */
     _cleanupOldJourneys(simTime) {
         const simTimeMs = simTime.getTime();
-        const thresholdMs = 2 * 60 * 60 * 1000; // 2 Stunden in der Vergangenheit
+        const lookbehindMs = (irisConfig.lookbehindMinutes ?? 30) * 60 * 1000;
+        const thresholdMs = Math.max(2 * 60 * 60 * 1000, lookbehindMs + (60 * 60 * 1000));
         
         for (const [id, raw] of this.irisJourneysMap.entries()) {
             const primaryNode = raw.dp || raw.ar;
@@ -239,6 +302,8 @@ class IrisPollingService {
             const timeMs = IrisDataMapper._parseIrisDateTime(primaryNode.pt);
             if (timeMs && (simTimeMs - timeMs > thresholdMs)) {
                 this.irisJourneysMap.delete(id);
+                this._mappedCache.delete(`${id}_true`);
+                this._mappedCache.delete(`${id}_false`);
             }
         }
     }

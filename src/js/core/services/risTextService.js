@@ -39,13 +39,29 @@ export class RisTextService {
             // CSV verwendet Semikolon als Trennzeichen
             const cols = line.split(';');
             if (cols.length >= 3) {
-                this.presets.push({
+                const preset = {
                     code: cols[0].trim(),
                     type: cols[1].trim(), // 'R' oder 'Q'
                     text: cols[2].trim()
-                });
+                };
+                this.presets.push(preset);
+                if (!this._codeMap.has(preset.code)) {
+                    this._codeMap.set(preset.code, preset);
+                }
             }
         }
+    }
+
+    static _codeMap = new Map();
+
+    /**
+     * Sucht ein Preset anhand seines Codes ($O(1)$).
+     * @param {string} code
+     * @returns {object|null}
+     */
+    static getPresetByCode(code) {
+        if (!code) return null;
+        return this._codeMap.get(code) || null;
     }
 
     /**

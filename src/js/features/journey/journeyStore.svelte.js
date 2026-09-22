@@ -41,6 +41,34 @@ export class JourneyStore {
     // Eigene vom User angelegte Stationen
     customStations = $state([]);
 
+    // O(1) Verknüpfungs-Index für flüssiges UI-Rendering bei vielen Fahrten
+    linkedJourneysMap = $derived.by(() => {
+        const map = new Map();
+        const journeysById = new Map();
+        const depByArrivalId = new Map();
+
+        for (let i = 0; i < this.journeys.length; i++) {
+            const j = this.journeys[i];
+            journeysById.set(j.id, j);
+            if (!j.ankunft && j.linkedArrivalJourneyId) {
+                depByArrivalId.set(j.linkedArrivalJourneyId, j);
+            }
+        }
+
+        for (let i = 0; i < this.journeys.length; i++) {
+            const j = this.journeys[i];
+            if (j.ankunft) {
+                const linkedDep = depByArrivalId.get(j.id);
+                if (linkedDep) map.set(j.id, linkedDep);
+            } else if (j.linkedArrivalJourneyId) {
+                const linkedArr = journeysById.get(j.linkedArrivalJourneyId);
+                if (linkedArr) map.set(j.id, linkedArr);
+            }
+        }
+
+        return map;
+    });
+
     constructor() {}
 
     /**
@@ -59,6 +87,9 @@ export class JourneyStore {
             kategorie: 7
         };
         this.customStations.push(newStation);
+        import('../station/stationService.js').then(({ StationService }) => {
+            StationService.clearCache();
+        }).catch(() => {});
         return newStation;
     }
 
@@ -283,10 +314,15 @@ export class JourneyStore {
     /**
      * Holt die verknüpfte Ankunfts-Journey einer Abfahrt, 
      * oder die verknüpfte Abfahrts-Journey einer Ankunft.
+     * Nutzt den reaktiven O(1) Index für maximale UI-Performance.
      * @param {string} id - Die ID der Journey
      * @returns {Journey|null} Die verknüpfte Journey oder null
      */
     getLinkedJourney(id) {
+        if (!id) return null;
+        if (this.linkedJourneysMap) {
+            return this.linkedJourneysMap.get(id) || null;
+        }
         return JourneyLinkingService.getLinkedJourney(this.journeys, id);
     }
 

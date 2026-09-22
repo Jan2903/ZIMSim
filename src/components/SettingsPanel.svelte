@@ -329,8 +329,8 @@
     <div class="dashboard-grid">
         <div class="main-controls" class:tab-content-hidden={desktopViewMode === 'tabs' && activeMobileTab !== 'fahrten'} class:mobile-hidden={activeMobileTab !== 'fahrten'}>
             {#snippet journeyActions()}
-                <button class="btn-secondary btn-sm" onclick={fetchIrisData} disabled={isFetchingIris}>
-                    {isFetchingIris ? 'Lädt...' : 'IRIS API Suche'}
+                <button class="btn-secondary btn-sm" onclick={fetchIrisData} disabled={isFetchingIris || irisPollingService.isFetching}>
+                    {isFetchingIris || irisPollingService.isFetching ? 'Lädt...' : 'IRIS API Suche'}
                 </button>
                 <button id="add_journey_btn" class="btn-primary btn-sm" onclick={addManualJourney} style="display: inline-flex; align-items: center; gap: 6px;">
                     <ZimIcon name="plus" size={14} />
@@ -509,6 +509,10 @@
                         <label style="display: block; margin-bottom: 5px; margin-top: 10px;">
                             Anzeige-Zeitfenster (Zukunft in Std.):
                             <input type="number" class="short-input" min="0" max="10" bind:value={irisConfig.futureWindowHours} onchange={() => irisPollingService.pollRealtime()}>
+                        </label>
+                        <label style="display: block; margin-bottom: 5px; margin-top: 10px;">
+                            Lookbehind (Vergangenheit in Min.):
+                            <input type="number" class="short-input" min="0" max="180" bind:value={irisConfig.lookbehindMinutes} onchange={() => irisPollingService.pollRealtime()}>
                         </label>
                         <label class="checkbox-label" style="margin-top: 10px;">
                             <input type="checkbox" bind:checked={irisConfig.autoAnnouncements}>
