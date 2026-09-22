@@ -11,11 +11,23 @@ export class StationService {
     static async loadStations() {
         if (this.isLoaded) return;
         try {
-            const response = await fetch(import.meta.env.BASE_URL + 'stations/stations.csv');
-            const csvText = await response.text();
-            this.parseCSV(csvText);
+            const [baseRes, extRes] = await Promise.all([
+                fetch(import.meta.env.BASE_URL + 'stations/stations.csv'),
+                fetch(import.meta.env.BASE_URL + 'stations/stations_ext.csv').catch(() => null)
+            ]);
+
+            if (baseRes && baseRes.ok) {
+                const csvText = await baseRes.text();
+                this.parseCSV(csvText);
+            }
+
+            if (extRes && extRes.ok) {
+                const extCsvText = await extRes.text();
+                this.parseCSV(extCsvText);
+            }
+
             this.isLoaded = true;
-            console.log(`[StationService] Erfolgreich ${this.stations.length} Stationen geladen.`);
+            console.log(`[StationService] Erfolgreich ${this.stations.length} Stationen geladen (DB & Extended).`);
 
             // Nachträgliches Anreichern bereits existierender Züge (z.B. Demo-Daten oder Preset)
             if (journeyStore && journeyStore.journeys) {
@@ -34,7 +46,7 @@ export class StationService {
                 }
             }
         } catch (error) {
-            console.error('[StationService] Fehler beim Laden der stations.csv:', error);
+            console.error('[StationService] Fehler beim Laden der Stationsdaten:', error);
         }
     }
 
