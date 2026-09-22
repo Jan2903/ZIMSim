@@ -11,6 +11,7 @@
     import ZimIcon from './components/ZimIcon.svelte';
     import HardwareBezel from './components/HardwareBezel.svelte';
     import { displayConfigStore } from './js/displays/core/displayConfigStore.svelte.js';
+    import { lineColorService } from './js/features/journey/services/lineColorService.svelte.js';
 
     let modalsComp = $state();
     let canvasElement = $state();
@@ -227,6 +228,7 @@
         const at = journeyStore.activeTracks;
         const pf = journeyStore.platforms;
         const nrw = journeyStore.nrwMode;
+        const lr = lineColorService.rules;
         
         trainDisplay.updateAll();
 

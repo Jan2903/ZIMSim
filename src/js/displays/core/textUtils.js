@@ -239,8 +239,9 @@ export function drawLineBadge(ctx, text, x, y, width, height, options = {}) {
  * @param {string} [textColor=COLORS.WHITE]
  * @param {boolean} [inverted=false]
  * @param {boolean} [widthLimited=false]
+ * @param {boolean} [isLineBadge=false] - Ob Linienfarben & Formen über LineColorService aufgelöst werden sollen
  */
-export function drawTextInRectangle(ctx, text, x, y, font, textAlign, textHeight, rectPadding, renderCtx, cornerRadius = 0, rectColor = COLORS.DIM_GREY, textColor = COLORS.WHITE, inverted = false, widthLimited = false) {
+export function drawTextInRectangle(ctx, text, x, y, font, textAlign, textHeight, rectPadding, renderCtx, cornerRadius = 0, rectColor = COLORS.DIM_GREY, textColor = COLORS.WHITE, inverted = false, widthLimited = false, isLineBadge = false) {
     const { fullScreen = false, screen = null, scrollManager = null, zugID = 1, canvas = null } = renderCtx || {};
 
     ctx.font = font;
@@ -263,47 +264,72 @@ export function drawTextInRectangle(ctx, text, x, y, font, textAlign, textHeight
     }
 
     if (text !== "") {
-        // Zentral aufgelöster Stil aus LineColorService
-        const resolved = lineColorService.resolveStyle(text, {
-            inverted,
-            fullScreen,
-            defaultBgColor: rectColor,
-            defaultTextColor: textColor
-        });
+        let boxBg = rectColor;
+        let boxTextColor = textColor;
+        let boxBorderColor = 'transparent';
+        let boxBorderWidth = 0;
+        let boxRadius = cornerRadius;
+        let isOutline = false;
+
+        if (isLineBadge) {
+            // Zentral aufgelöster Stil aus LineColorService
+            const resolved = lineColorService.resolveStyle(text, {
+                inverted,
+                fullScreen,
+                defaultBgColor: rectColor,
+                defaultTextColor: textColor
+            });
+
+            if (resolved.hasMatchedRule) {
+                boxBg = resolved.backgroundColor;
+                boxTextColor = resolved.textColor;
+                boxBorderColor = resolved.borderColor || 'transparent';
+                boxBorderWidth = resolved.borderWidth || 1;
+                isOutline = resolved.shape === 'outline';
+
+                const boxWidthTemp = textWidth + 2 * rectPadding;
+                const boxHeightTemp = textHeight + rectPadding;
+
+                if (resolved.shape === 'pill') {
+                    boxRadius = Math.min(boxWidthTemp, boxHeightTemp) / 2;
+                } else if (resolved.shape === 'rectangle') {
+                    boxRadius = 0;
+                } else if (resolved.shape === 'rounded' || resolved.shape === 'outline') {
+                    boxRadius = resolved.cornerRadius || Math.max(4, Math.round(boxHeightTemp * 0.12));
+                }
+            } else {
+                // Kein Regel-Treffer: Standard ZIM (z.B. DIM_GREY auf Zuganzeiger ohne Zwangsrahmen)
+                boxBg = rectColor;
+                boxTextColor = textColor;
+                boxRadius = cornerRadius;
+            }
+        }
 
         const boxWidth = textWidth + 2 * rectPadding;
         const boxHeight = textHeight + rectPadding;
         const boxX = textAlign === 'right' ? (x - textWidth - rectPadding) : (x - rectPadding);
         const boxY = y - textHeight / 2 - rectPadding;
 
-        // Shape & Radius berechnen
-        let radius = cornerRadius;
-        if (resolved.shape === 'pill') {
-            radius = Math.min(boxWidth, boxHeight) / 2;
-        } else if (resolved.shape === 'rectangle') {
-            radius = 0;
-        } else if (resolved.shape === 'rounded' || resolved.shape === 'outline') {
-            radius = resolved.cornerRadius || Math.max(4, Math.round(boxHeight * 0.12));
-        }
-
         ctx.beginPath();
-        ctx.roundRect(boxX, boxY, boxWidth, boxHeight, radius);
+        ctx.roundRect(boxX, boxY, boxWidth, boxHeight, boxRadius);
 
-        if (resolved.shape === 'outline' || (inverted && resolved.borderColor && resolved.borderColor !== 'transparent')) {
-            if (resolved.backgroundColor && resolved.backgroundColor !== 'transparent') {
-                ctx.fillStyle = resolved.backgroundColor;
+        if (isOutline || (inverted && boxBorderColor && boxBorderColor !== 'transparent')) {
+            if (boxBg && boxBg !== 'transparent') {
+                ctx.fillStyle = boxBg;
                 ctx.fill();
             }
-            ctx.strokeStyle = resolved.borderColor || resolved.textColor;
-            ctx.lineWidth = resolved.borderWidth || 2;
+            ctx.strokeStyle = boxBorderColor || boxTextColor;
+            ctx.lineWidth = boxBorderWidth || 2;
             ctx.stroke();
         } else {
-            ctx.fillStyle = resolved.backgroundColor;
-            ctx.fill();
+            if (boxBg && boxBg !== 'transparent') {
+                ctx.fillStyle = boxBg;
+                ctx.fill();
+            }
 
-            if (resolved.borderColor && resolved.borderColor !== 'transparent') {
-                ctx.strokeStyle = resolved.borderColor;
-                ctx.lineWidth = resolved.borderWidth || 1;
+            if (boxBorderColor && boxBorderColor !== 'transparent') {
+                ctx.strokeStyle = boxBorderColor;
+                ctx.lineWidth = boxBorderWidth || 1;
                 ctx.stroke();
             }
         }
@@ -315,10 +341,10 @@ export function drawTextInRectangle(ctx, text, x, y, font, textAlign, textHeight
                 `${canvas.offsetTop + screen.y + boxY}px`,
                 `${boxWidth}px`,
                 `${boxHeight}px`,
-                resolved.textColor, font
+                boxTextColor, font
             );
         } else {
-            drawText(ctx, text, x, y, font, resolved.textColor, textAlign);
+            drawText(ctx, text, x, y, font, boxTextColor, textAlign);
         }
     }
 }

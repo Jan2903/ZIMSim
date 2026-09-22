@@ -1,6 +1,7 @@
 <script>
     import { lineColorService, DEFAULT_LINE_RULES } from '../js/features/journey/services/lineColorService.svelte.js';
-    import { trainDisplay } from '../js/core/state/stores.js';
+    import { journeyStore, trainDisplay } from '../js/core/state/stores.js';
+    import { ScreenSyncService } from '../js/core/services/screenSyncService.js';
     import ZimIcon from './ZimIcon.svelte';
 
     let { isOpen = $bindable(false) } = $props();
@@ -26,9 +27,14 @@
         }
     });
 
+    function syncDisplay() {
+        trainDisplay.updateAll();
+        ScreenSyncService.broadcastState(journeyStore);
+    }
+
     function closeModal() {
         isOpen = false;
-        trainDisplay.updateAll();
+        syncDisplay();
     }
 
     function addNewRule() {
@@ -43,7 +49,7 @@
         });
         selectedRuleId = newRule.id;
         previewTestText = newRule.pattern;
-        trainDisplay.updateAll();
+        syncDisplay();
     }
 
     function removeRule(id, e) {
@@ -53,32 +59,32 @@
             if (selectedRuleId === id) {
                 selectedRuleId = lineColorService.rules[0]?.id || null;
             }
-            trainDisplay.updateAll();
+            syncDisplay();
         }
     }
 
     function moveUp(id, e) {
         e?.stopPropagation();
         lineColorService.moveRule(id, 'up');
-        trainDisplay.updateAll();
+        syncDisplay();
     }
 
     function moveDown(id, e) {
         e?.stopPropagation();
         lineColorService.moveRule(id, 'down');
-        trainDisplay.updateAll();
+        syncDisplay();
     }
 
     function handleFieldChange() {
         lineColorService.saveRules();
-        trainDisplay.updateAll();
+        syncDisplay();
     }
 
     function resetDefaults() {
         if (confirm('Möchtest du alle Linien-Regeln auf die DB-Standards (IC-Pille, Flixtrain, S-Bahn) zurücksetzen?')) {
             lineColorService.resetToDefaults();
             selectedRuleId = lineColorService.rules[0]?.id || null;
-            trainDisplay.updateAll();
+            syncDisplay();
         }
     }
 
@@ -102,7 +108,7 @@
             const success = lineColorService.importRules(event.target.result);
             if (success) {
                 selectedRuleId = lineColorService.rules[0]?.id || null;
-                trainDisplay.updateAll();
+                syncDisplay();
                 alert('Linienfarben erfolgreich importiert.');
             } else {
                 alert('Fehler beim Importieren der JSON-Datei.');
@@ -110,19 +116,6 @@
         };
         reader.readAsText(file);
         e.target.value = '';
-    }
-
-    /**
-     * Berechnet den CSS-Border-Radius für ein Element basierend auf Shape und Height.
-     * @param {string} shape
-     * @param {number} cornerRadius
-     * @param {number} height
-     * @returns {string}
-     */
-    function getCssBorderRadius(shape, cornerRadius = 6, height = 36) {
-        if (shape === 'pill') return `${height / 2}px`;
-        if (shape === 'rectangle') return '0px';
-        return `${cornerRadius || 6}px`;
     }
 </script>
 
@@ -159,6 +152,7 @@
                                     class="rule-item" 
                                     class:active={rule.id === selectedRuleId}
                                     onclick={() => selectedRuleId = rule.id}
+                                    onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectedRuleId = rule.id; } }}
                                     role="button"
                                     tabindex="0"
                                 >
@@ -181,12 +175,7 @@
                                         </button>
                                     </div>
 
-                                    <div class="rule-chip-preview" style="
-                                        background-color: {rule.shape === 'outline' ? 'transparent' : rule.backgroundColor};
-                                        color: {rule.textColor};
-                                        border: {rule.shape === 'outline' ? `${rule.borderWidth || 2}px solid ${rule.borderColor || rule.textColor}` : (rule.borderColor && rule.borderColor !== 'transparent' ? `${rule.borderWidth || 1}px solid ${rule.borderColor}` : '1px solid rgba(255,255,255,0.2)')};
-                                        border-radius: {getCssBorderRadius(rule.shape, rule.cornerRadius, 26)};
-                                    ">
+                                    <div class="rule-chip-preview" style={lineColorService.getCssStyle({ ...rule, hasMatchedRule: true }, 26)}>
                                         {rule.pattern}
                                     </div>
 
@@ -222,12 +211,7 @@
                                 <!-- Auf DB-Blau (Normal) -->
                                 <div class="preview-screen dark-screen">
                                     <div class="screen-label">Normal (DB-Blau)</div>
-                                    <div class="sample-badge" style="
-                                        background-color: {selectedRule.shape === 'outline' ? 'transparent' : selectedRule.backgroundColor};
-                                        color: {selectedRule.textColor};
-                                        border: {selectedRule.shape === 'outline' ? `${selectedRule.borderWidth || 2}px solid ${selectedRule.borderColor || selectedRule.textColor}` : (selectedRule.borderColor && selectedRule.borderColor !== 'transparent' ? `${selectedRule.borderWidth || 1}px solid ${selectedRule.borderColor}` : '1px solid rgba(255,255,255,0.2)')};
-                                        border-radius: {getCssBorderRadius(selectedRule.shape, selectedRule.cornerRadius, 38)};
-                                    ">
+                                    <div class="sample-badge" style={lineColorService.getCssStyle({ ...selectedRule, hasMatchedRule: true }, 38)}>
                                         {previewTestText || selectedRule.pattern}
                                     </div>
                                 </div>
@@ -235,25 +219,9 @@
                                 <!-- Auf Weiß (Ausfall / Invers) -->
                                 <div class="preview-screen light-screen">
                                     <div class="screen-label">Ausfall / Invers</div>
-                                    {#if selectedRule.hasInvertOverride}
-                                        <div class="sample-badge" style="
-                                            background-color: {selectedRule.invertedShape === 'outline' ? 'transparent' : (selectedRule.invertedBgColor || selectedRule.backgroundColor)};
-                                            color: {selectedRule.invertedTextColor || selectedRule.textColor};
-                                            border: {selectedRule.invertedShape === 'outline' ? `${selectedRule.borderWidth || 2}px solid ${selectedRule.invertedBorderColor || selectedRule.invertedTextColor || 'navy'}` : (selectedRule.invertedBorderColor ? `${selectedRule.borderWidth || 1}px solid ${selectedRule.invertedBorderColor}` : '1px solid rgba(0,0,0,0.18)')};
-                                            border-radius: {getCssBorderRadius(selectedRule.invertedShape || selectedRule.shape, selectedRule.cornerRadius, 38)};
-                                        ">
-                                            {previewTestText || selectedRule.pattern}
-                                        </div>
-                                    {:else}
-                                        <div class="sample-badge" style="
-                                            background-color: {selectedRule.shape === 'outline' ? 'transparent' : selectedRule.backgroundColor};
-                                            color: {selectedRule.textColor};
-                                            border: {selectedRule.shape === 'outline' ? `${selectedRule.borderWidth || 2}px solid ${selectedRule.borderColor || selectedRule.textColor}` : '1px solid rgba(0,0,0,0.18)'};
-                                            border-radius: {getCssBorderRadius(selectedRule.shape, selectedRule.cornerRadius, 38)};
-                                        ">
-                                            {previewTestText || selectedRule.pattern}
-                                        </div>
-                                    {/if}
+                                    <div class="sample-badge" style={lineColorService.getCssStyle(lineColorService.resolveStyle(previewTestText || selectedRule.pattern, { isAusfall: true, defaultBgColor: '#e2e8f0', defaultTextColor: '#000080' }), 38)}>
+                                        {previewTestText || selectedRule.pattern}
+                                    </div>
                                 </div>
                             </div>
 
@@ -305,7 +273,7 @@
                                     <div class="color-item">
                                         <label for="bg_color_picker">Hintergrund</label>
                                         <div class="color-input-wrap">
-                                            <input id="bg_color_picker" type="color" bind:value={selectedRule.backgroundColor} oninput={handleFieldChange}>
+                                            <input id="bg_color_picker" type="color" value={lineColorService.toHexColor(selectedRule.backgroundColor, '#1e3a8a')} oninput={(e) => { selectedRule.backgroundColor = e.target.value; handleFieldChange(); }}>
                                             <input type="text" class="hex-input" bind:value={selectedRule.backgroundColor} oninput={handleFieldChange}>
                                         </div>
                                     </div>
@@ -313,7 +281,7 @@
                                     <div class="color-item">
                                         <label for="text_color_picker">Schrift</label>
                                         <div class="color-input-wrap">
-                                            <input id="text_color_picker" type="color" bind:value={selectedRule.textColor} oninput={handleFieldChange}>
+                                            <input id="text_color_picker" type="color" value={lineColorService.toHexColor(selectedRule.textColor, '#ffffff')} oninput={(e) => { selectedRule.textColor = e.target.value; handleFieldChange(); }}>
                                             <input type="text" class="hex-input" bind:value={selectedRule.textColor} oninput={handleFieldChange}>
                                         </div>
                                     </div>
@@ -321,7 +289,7 @@
                                     <div class="color-item">
                                         <label for="border_color_picker">Rahmen (Optional)</label>
                                         <div class="color-input-wrap">
-                                            <input id="border_color_picker" type="color" value={selectedRule.borderColor && selectedRule.borderColor !== 'transparent' ? selectedRule.borderColor : '#ffffff'} oninput={(e) => { selectedRule.borderColor = e.target.value; handleFieldChange(); }}>
+                                            <input id="border_color_picker" type="color" value={lineColorService.toHexColor(selectedRule.borderColor, '#ffffff')} oninput={(e) => { selectedRule.borderColor = e.target.value; handleFieldChange(); }}>
                                             <input type="text" class="hex-input" bind:value={selectedRule.borderColor} placeholder="transparent" oninput={handleFieldChange}>
                                         </div>
                                     </div>
@@ -340,16 +308,16 @@
                                         <div class="color-item">
                                             <label for="inv_bg_picker">Invert. Hintergrund</label>
                                             <div class="color-input-wrap">
-                                                <input id="inv_bg_picker" type="color" value={selectedRule.invertedBgColor || '#navy'} oninput={(e) => { selectedRule.invertedBgColor = e.target.value; handleFieldChange(); }}>
-                                                <input type="text" class="hex-input" bind:value={selectedRule.invertedBgColor} placeholder="z.B. navy" oninput={handleFieldChange}>
+                                                <input id="inv_bg_picker" type="color" value={lineColorService.toHexColor(selectedRule.invertedBgColor, '#000080')} oninput={(e) => { selectedRule.invertedBgColor = e.target.value; handleFieldChange(); }}>
+                                                <input type="text" class="hex-input" bind:value={selectedRule.invertedBgColor} placeholder="z.B. #000080" oninput={handleFieldChange}>
                                             </div>
                                         </div>
 
                                         <div class="color-item">
                                             <label for="inv_text_picker">Invert. Schrift</label>
                                             <div class="color-input-wrap">
-                                                <input id="inv_text_picker" type="color" value={selectedRule.invertedTextColor || '#000080'} oninput={(e) => { selectedRule.invertedTextColor = e.target.value; handleFieldChange(); }}>
-                                                <input type="text" class="hex-input" bind:value={selectedRule.invertedTextColor} placeholder="z.B. navy" oninput={handleFieldChange}>
+                                                <input id="inv_text_picker" type="color" value={lineColorService.toHexColor(selectedRule.invertedTextColor, '#000080')} oninput={(e) => { selectedRule.invertedTextColor = e.target.value; handleFieldChange(); }}>
+                                                <input type="text" class="hex-input" bind:value={selectedRule.invertedTextColor} placeholder="z.B. #000080" oninput={handleFieldChange}>
                                             </div>
                                         </div>
 

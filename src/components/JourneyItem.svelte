@@ -10,10 +10,18 @@
 
     let isExpanded = $derived(uiState.expandedJourneyId === journey.id);
 
+    let formattedDisplayName = $derived(
+        formatDisplayName(journey.effectiveDisplayName, journeyStore.nrwMode)
+    );
+
     let lineBadgeStyle = $derived(
-        lineColorService.resolveStyle(journey.effectiveDisplayName, {
+        lineColorService.resolveStyle(formattedDisplayName || journey.effectiveDisplayName, {
             isAusfall: journey.ausfall
         })
+    );
+
+    let customBadgeStyle = $derived(
+        lineBadgeStyle.hasMatchedRule ? lineColorService.getCssStyle(lineBadgeStyle, 20) : ''
     );
 
     function toggleExpand() {
@@ -92,8 +100,8 @@
                     class="journey-name" 
                     class:has-custom-badge={lineBadgeStyle.hasMatchedRule}
                     title="{journey.effectiveDisplayName}"
-                    style={lineBadgeStyle.hasMatchedRule ? `background-color: ${lineBadgeStyle.backgroundColor}; color: ${lineBadgeStyle.textColor}; border: ${lineBadgeStyle.shape === 'outline' || (lineBadgeStyle.borderColor && lineBadgeStyle.borderColor !== 'transparent') ? `${lineBadgeStyle.borderWidth || 1}px solid ${lineBadgeStyle.borderColor}` : 'none'}; border-radius: ${lineBadgeStyle.shape === 'pill' ? '9999px' : (lineBadgeStyle.shape === 'rectangle' ? '0px' : `${lineBadgeStyle.cornerRadius || 4}px`)}; padding: 1px 7px;` : ''}
-                >{formatDisplayName(journey.effectiveDisplayName, journeyStore.nrwMode) || '(kein Name)'}</span>
+                    style={customBadgeStyle}
+                >{formattedDisplayName || '(kein Name)'}</span>
                 {#if journey.infoscreen}
                     <span class="badge badge-info" title="Infoscreen">ⓘ</span>
                 {:else if journey.ankunft}
