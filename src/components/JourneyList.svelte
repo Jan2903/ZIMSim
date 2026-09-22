@@ -30,14 +30,8 @@
      onconsider={handleDndConsider}
      onfinalize={handleDndFinalize}>
     {#each journeyStore.journeys as journey, i (journey.id)}
-        {#if enableFlip}
-            <div animate:flip={{duration: flipDurationMs}}>
-                <JourneyItem bind:journey={journeyStore.journeys[i]} index={i} />
-            </div>
-        {:else}
-            <div>
-                <JourneyItem bind:journey={journeyStore.journeys[i]} index={i} />
-            </div>
-        {/if}
+        <div animate:flip={{duration: enableFlip ? flipDurationMs : 0}}>
+            <JourneyItem bind:journey={journeyStore.journeys[i]} index={i} />
+        </div>
     {/each}
 </div>

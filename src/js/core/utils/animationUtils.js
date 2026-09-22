@@ -5,6 +5,9 @@ import { flip as originalFlip } from 'svelte/animate';
  * aus den Keyframes entfernt, um Warnungen im Browser zu vermeiden.
  */
 export function safeFlip(node, animation, params) {
+    if (params && params.duration === 0) {
+        return { duration: 0 };
+    }
     const r = originalFlip(node, animation, params);
     if (r && r.css) {
         const originalCss = r.css;
