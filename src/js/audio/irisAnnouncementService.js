@@ -1,6 +1,7 @@
 import { ansagenGenerator } from './ansagenGenerator.js';
 import { announcementQueueService, ANNOUNCEMENT_TYPE } from './announcementQueueService.svelte.js';
 import { JourneyAnnouncementState } from '../features/journey/journey.svelte.js';
+import { ansagenPlayer } from './ansagenPlayer.svelte.js';
 
 class IrisAnnouncementService {
     upcomingAnnouncements = [];
@@ -14,8 +15,9 @@ class IrisAnnouncementService {
     initializeBaseline(journeys, simTimeMs) {
         if (!journeys) return;
 
-        // Warteschlange bei Initialisierung oder Stationswechsel leeren
+        // Warteschlange bei Initialisierung oder Stationswechsel leeren und laufende Wiedergabe stoppen
         announcementQueueService.clearQueue();
+        ansagenPlayer.stop();
 
         for (const j of journeys) {
             const roundedDelay = ansagenGenerator._calculateDelay(j);
@@ -44,8 +46,9 @@ class IrisAnnouncementService {
      * Erkennt Änderungen (Ausfall, Gleiswechsel, Verspätung, Haltabweichung) nach einem IRIS-Poll.
      * @param {Array} journeys - Liste aller Züge
      * @param {number} simTimeMs - Aktuelle Simulationszeit in Millisekunden
+     * @param {boolean} [autoAnnouncementsEnabled=true] - Ist Autoplay aktiv?
      */
-    checkChanges(journeys, simTimeMs) {
+    checkChanges(journeys, simTimeMs, autoAnnouncementsEnabled = true) {
         if (!journeys) return;
 
         const maxFutureMs = 60 * 60 * 1000; // 60-Minuten-Horizont
@@ -78,20 +81,26 @@ class IrisAnnouncementService {
             // Züge, deren Einfahrt bereits erfolgt ist, für Änderungen ignorieren
             if (state.hasPlayedEinfahrt) continue;
 
+            // Verhindert doppelte generateInformation-Ansagen desselben Zuges im selben Poll-Zyklus (z.B. Gleiswechsel + Verspätung)
+            let infoAnnouncementEnqueued = false;
+
             // 1. Erst-Ausfall (Priorität 80)
             if (j.ausfall && !state.cancelled) {
                 state.cancelled = true;
                 state.lastAnnouncedSimTimeMs = simTimeMs;
-                const playlist = ansagenGenerator.generateInformation(j);
-                if (playlist.length > 0) {
-                    announcementQueueService.enqueue({
-                        journeyId: j.journeyId,
-                        trainName: j.name,
-                        type: ANNOUNCEMENT_TYPE.AUSFALL,
-                        playlist: playlist,
-                        label: `${j.name} Ausfall`,
-                        trainCountdownTimeMs: trainTime
-                    });
+                if (autoAnnouncementsEnabled) {
+                    const playlist = ansagenGenerator.generateInformation(j);
+                    if (playlist.length > 0) {
+                        announcementQueueService.enqueue({
+                            journeyId: j.journeyId,
+                            trainName: j.name,
+                            type: ANNOUNCEMENT_TYPE.AUSFALL,
+                            playlist: playlist,
+                            label: `${j.name} Ausfall`,
+                            trainCountdownTimeMs: trainTime
+                        });
+                        infoAnnouncementEnqueued = true;
+                    }
                 }
                 continue; // Keine weiteren Folgeänderungen bei Ausfall
             }
@@ -101,16 +110,19 @@ class IrisAnnouncementService {
             if (state.platform && currentPlatform && currentPlatform !== state.platform) {
                 state.platform = currentPlatform;
                 state.lastAnnouncedSimTimeMs = simTimeMs;
-                const playlist = ansagenGenerator.generateInformation(j);
-                if (playlist.length > 0) {
-                    announcementQueueService.enqueue({
-                        journeyId: j.journeyId,
-                        trainName: j.name,
-                        type: ANNOUNCEMENT_TYPE.GLEISWECHSEL,
-                        playlist: playlist,
-                        label: `${j.name} Gleiswechsel (Gl. ${currentPlatform})`,
-                        trainCountdownTimeMs: trainTime
-                    });
+                if (autoAnnouncementsEnabled) {
+                    const playlist = ansagenGenerator.generateInformation(j);
+                    if (playlist.length > 0) {
+                        announcementQueueService.enqueue({
+                            journeyId: j.journeyId,
+                            trainName: j.name,
+                            type: ANNOUNCEMENT_TYPE.GLEISWECHSEL,
+                            playlist: playlist,
+                            label: `${j.name} Gleiswechsel (Gl. ${currentPlatform})`,
+                            trainCountdownTimeMs: trainTime
+                        });
+                        infoAnnouncementEnqueued = true;
+                    }
                 }
             } else if (!state.platform && currentPlatform) {
                 state.platform = currentPlatform;
@@ -129,16 +141,20 @@ class IrisAnnouncementService {
                 if (delayDiff >= 5 && (state.lastAnnouncedDelay === 0 || cooldownPassed)) {
                     state.lastAnnouncedDelay = roundedDelay;
                     state.lastAnnouncedSimTimeMs = simTimeMs;
-                    const playlist = ansagenGenerator.generateInformation(j);
-                    if (playlist.length > 0) {
-                        announcementQueueService.enqueue({
-                            journeyId: j.journeyId,
-                            trainName: j.name,
-                            type: ANNOUNCEMENT_TYPE.VERSPAETUNG,
-                            playlist: playlist,
-                            label: `${j.name} Verspätung (+${roundedDelay}m)`,
-                            trainCountdownTimeMs: trainTime
-                        });
+                    // Nur einreihen, wenn nicht bereits Gleiswechsel in diesem Zyklus die Information abgedeckt hat
+                    if (autoAnnouncementsEnabled && !infoAnnouncementEnqueued) {
+                        const playlist = ansagenGenerator.generateInformation(j);
+                        if (playlist.length > 0) {
+                            announcementQueueService.enqueue({
+                                journeyId: j.journeyId,
+                                trainName: j.name,
+                                type: ANNOUNCEMENT_TYPE.VERSPAETUNG,
+                                playlist: playlist,
+                                label: `${j.name} Verspätung (+${roundedDelay}m)`,
+                                trainCountdownTimeMs: trainTime
+                            });
+                            infoAnnouncementEnqueued = true;
+                        }
                     }
                 }
             } else {
@@ -165,16 +181,19 @@ class IrisAnnouncementService {
                         const cooldownPassed = (simTimeMs - state.lastAnnouncedSimTimeMs) >= 2 * 60 * 1000;
                         if (cooldownPassed) {
                             state.lastAnnouncedSimTimeMs = simTimeMs;
-                            const playlist = ansagenGenerator.generateInformation(j);
-                            if (playlist.length > 0) {
-                                announcementQueueService.enqueue({
-                                    journeyId: j.journeyId,
-                                    trainName: j.name,
-                                    type: ANNOUNCEMENT_TYPE.FAHRTAENDERUNG,
-                                    playlist: playlist,
-                                    label: `${j.name} Fahrplanänderung`,
-                                    trainCountdownTimeMs: trainTime
-                                });
+                            if (autoAnnouncementsEnabled && !infoAnnouncementEnqueued) {
+                                const playlist = ansagenGenerator.generateInformation(j);
+                                if (playlist.length > 0) {
+                                    announcementQueueService.enqueue({
+                                        journeyId: j.journeyId,
+                                        trainName: j.name,
+                                        type: ANNOUNCEMENT_TYPE.FAHRTAENDERUNG,
+                                        playlist: playlist,
+                                        label: `${j.name} Fahrplanänderung`,
+                                        trainCountdownTimeMs: trainTime
+                                    });
+                                    infoAnnouncementEnqueued = true;
+                                }
                             }
                         }
                     }

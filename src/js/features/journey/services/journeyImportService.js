@@ -347,6 +347,7 @@ export class JourneyImportService {
                 if (existing._effectiveTimeMs !== jData._effectiveTimeMs) existing._effectiveTimeMs = jData._effectiveTimeMs;
                 
                 // Semantic compare of stops to avoid Svelte reactivity spam
+                const hadStopsBefore = existing.stops && existing.stops.length > 0;
                 const currentStopsStr = existing.stops.map(s => `${s.name}:${s.cancelled ? 'c' : ''}:${s.additional ? 'a' : ''}:${s.platform || ''}`).join('|');
                 const newStopsStr = jData.stops.map(s => `${s.name}:${(s.cancelled || s.isCancelled) ? 'c' : ''}:${(s.additional || s.isAdditional) ? 'a' : ''}:${s.platform || ''}`).join('|');
                 
@@ -365,14 +366,10 @@ export class JourneyImportService {
                     });
                 }
 
-                // Automatische Vias sicherstellen, falls noch keine aktiv sind
-                if (!existing.ankunft && existing.stops && existing.stops.length > 0) {
-                    if (!existing.stops.some(s => s.audioVia)) {
-                        existing.autoGenerateAudioVias(ansagenStore.maxVias, ansagenStore.viaSortMode);
-                    }
-                    if (!existing.stops.some(s => s.showAsVia)) {
-                        existing.autoGenerateVias();
-                    }
+                // Automatische Vias nur initial generieren, falls die Fahrt bisher noch keine Halte hatte
+                if (!hadStopsBefore && !existing.ankunft && existing.stops && existing.stops.length > 0) {
+                    existing.autoGenerateAudioVias(ansagenStore.maxVias, ansagenStore.viaSortMode);
+                    existing.autoGenerateVias();
                 }
                 
                 if (JSON.stringify(existing.qosMessages) !== JSON.stringify(jData.qosMessages)) {

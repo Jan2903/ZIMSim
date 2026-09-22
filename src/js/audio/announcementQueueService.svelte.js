@@ -60,18 +60,39 @@ class AnnouncementQueueService {
         };
 
         // --- Intelligente Deduplizierung ---
-        if (queueItem.type === ANNOUNCEMENT_TYPE.VERSPAETUNG && queueItem.journeyId) {
-            // Neuere Verspätung für denselben Zug ersetzt eine bereits wartende ältere Verspätung
-            this.queue = this.queue.filter(
-                q => !(q.journeyId === queueItem.journeyId && q.type === ANNOUNCEMENT_TYPE.VERSPAETUNG)
-            );
-        } else if (
+        const isInfoType = [
+            ANNOUNCEMENT_TYPE.VERSPAETUNG,
+            ANNOUNCEMENT_TYPE.GLEISWECHSEL,
+            ANNOUNCEMENT_TYPE.FAHRTAENDERUNG,
+            ANNOUNCEMENT_TYPE.REMINDER
+        ].includes(queueItem.type);
+
+        if (
             (queueItem.type === ANNOUNCEMENT_TYPE.AUSFALL || queueItem.type === ANNOUNCEMENT_TYPE.AUSFALL_PLANZEIT) &&
             queueItem.journeyId
         ) {
-            // Bei Zugausfall: Alle wartenden Einfahrts- und Verspätungsansagen des Zuges verwerfen
+            // Bei Zugausfall: Alle wartenden Ansagen dieses Zuges verwerfen
+            this.queue = this.queue.filter(q => q.journeyId !== queueItem.journeyId);
+        } else if (isInfoType && queueItem.journeyId) {
+            // Verhindern, dass exakt dieselbe Ansage eingereiht wird, wenn sie gerade schon abgespielt wird
+            if (this.currentAnnouncement &&
+                this.currentAnnouncement.journeyId === queueItem.journeyId &&
+                this.currentAnnouncement.textSummary === queueItem.textSummary) {
+                return;
+            }
+
+            // Neuere Information für denselben Zug ersetzt bereits wartende ältere Informations-Ansagen
             this.queue = this.queue.filter(
-                q => !(q.journeyId === queueItem.journeyId && (q.type === ANNOUNCEMENT_TYPE.EINFAHRT || q.type === ANNOUNCEMENT_TYPE.VERSPAETUNG))
+                q => !(q.journeyId === queueItem.journeyId && [
+                    ANNOUNCEMENT_TYPE.VERSPAETUNG,
+                    ANNOUNCEMENT_TYPE.GLEISWECHSEL,
+                    ANNOUNCEMENT_TYPE.FAHRTAENDERUNG,
+                    ANNOUNCEMENT_TYPE.REMINDER
+                ].includes(q.type))
+            );
+        } else if (queueItem.type === ANNOUNCEMENT_TYPE.EINFAHRT && queueItem.journeyId) {
+            this.queue = this.queue.filter(
+                q => !(q.journeyId === queueItem.journeyId && q.type === ANNOUNCEMENT_TYPE.EINFAHRT)
             );
         }
 

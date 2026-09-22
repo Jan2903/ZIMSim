@@ -164,6 +164,56 @@ export class AnsagenGenerator {
     }
 
     /**
+     * Fügt Vias vor dem Ziel an (z.B. "über X, Y nach Z" für Wendezüge).
+     * @param {Array} playlist - Die Playlist
+     * @param {string|object} target - Stationsname des Hauptziels oder { name, extId }
+     * @param {Array} vias - Liste der Vias (Array von Strings oder { name, nameKurz, extId })
+     */
+    _viaBeforeTarget(playlist, target, vias = []) {
+        if (!target) return;
+
+        const targetStr = typeof target === 'object' ? (target.name || '') : target;
+        if (!targetStr) return;
+
+        const targetIbnr = typeof target === 'object'
+            ? (target.extId || this._getIbnr(target))
+            : this._getIbnr(target);
+        if (!targetIbnr) return;
+
+        const mainVariant = ansagenStore.variantZiel;
+        const viaVariant = ansagenStore.variantVias;
+
+        const validVias = [];
+        for (const v of vias) {
+            if (!v) continue;
+            const viaName = typeof v === 'object' ? (v.nameKurz || v.name) : v;
+            const viaIbnr = typeof v === 'object' && v.extId ? v.extId : this._getIbnr(v);
+            if (viaIbnr) {
+                validVias.push({ name: viaName, ibnr: viaIbnr });
+            }
+        }
+
+        const activeVias = validVias.slice(0, 6);
+
+        if (activeVias.length > 0) {
+            this._module(playlist, 'UEBER');
+            for (let i = 0; i < activeVias.length; i++) {
+                const { name: viaName, ibnr: viaIbnr } = activeVias[i];
+                playlist.push({
+                    file: `${this.lang}/ziele/variante${viaVariant}/hoch/${viaIbnr}`,
+                    text: viaName
+                });
+            }
+        }
+
+        this._module(playlist, 'NACH');
+        playlist.push({
+            file: `${this.lang}/ziele/variante${mainVariant}/tief/${targetIbnr}`,
+            text: targetStr
+        });
+    }
+
+    /**
      * Generiert die Ansagenteile für den Zugnamen (Gattung und Nummer).
      * Zuggattungen werden immer "hoch" gesprochen. Bei einbuchstabigen Zuggattungen (z.B. S-Bahnen)
      * wird die Zugnummer "tief" gesprochen, ansonsten "hoch".
@@ -232,7 +282,7 @@ export class AnsagenGenerator {
     }
 
     _generateDeviations(playlist, journey) {
-        if (!journey.stops || journey.stops.length === 0) return;
+        if (journey.ankunft || !journey.stops || journey.stops.length === 0) return;
 
         const startIndex = journey._currentStopIndex >= 0 ? journey._currentStopIndex + 1 : 0;
         const futureStops = journey.stops.slice(startIndex);
@@ -352,7 +402,7 @@ export class AnsagenGenerator {
         if (this._calculateDelay(journey) >= 5) return true;
         if (journey.ezGleis && journey.ezGleis !== journey.platform) return true;
 
-        if (journey.stops && journey.stops.length > 0) {
+        if (!journey.ankunft && journey.stops && journey.stops.length > 0) {
             const startIndex = journey._currentStopIndex >= 0 ? journey._currentStopIndex + 1 : 0;
             const futureStops = journey.stops.slice(startIndex);
             if (futureStops.some(s => s.cancelled || s.isCancelled || s.additional || s.isAdditional)) {
@@ -443,7 +493,7 @@ export class AnsagenGenerator {
             // 2. EINFAHRT
             this._module(p, 'EINFAHRT');
 
-            // 3. Ankunftsteil: Zugname + VON + Herkunft + Ankunftszeit
+            // 3. Ankunftsteil: Zugname + VON + Herkunft (ohne Ankunftszeit)
             this._train(p, arrival.name);
             this._module(p, 'VON');
             this._targetWithVia(p, { name: arrival.destination, extId: arrival.destinationIbnr }, [], true);
@@ -451,10 +501,9 @@ export class AnsagenGenerator {
             // 4. Modul WEITER_ALS
             this._module(p, 'WEITER_ALS');
 
-            // 5. Abfahrtsteil: Zugname + NACH + Ziel + Vias + Abfahrtszeit
+            // 5. Abfahrtsteil: Zugname + [über Vias] + NACH + Ziel + Abfahrtszeit
             this._train(p, departure.name);
-            this._module(p, 'NACH');
-            this._targetWithVia(p, { name: departure.destination, extId: departure.destinationIbnr }, departure.audioVias, false);
+            this._viaBeforeTarget(p, { name: departure.destination, extId: departure.destinationIbnr }, departure.audioVias);
             this._appendTimeInfo(p, departure, 'ABFAHRT');
 
             // 6. Abweichungen + VORSICHT_BEI_DER_EINFAHRT

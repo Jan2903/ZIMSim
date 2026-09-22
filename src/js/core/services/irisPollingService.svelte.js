@@ -188,7 +188,7 @@ class IrisPollingService {
                 if (isInitial) {
                     irisAnnouncementService.initializeBaseline(journeyStore.journeys, currentSimTime.getTime());
                 } else {
-                    irisAnnouncementService.checkChanges(journeyStore.journeys, currentSimTime.getTime());
+                    irisAnnouncementService.checkChanges(journeyStore.journeys, currentSimTime.getTime(), irisConfig.autoAnnouncements);
                 }
                 
                 this.lastPollTime = new Date();
