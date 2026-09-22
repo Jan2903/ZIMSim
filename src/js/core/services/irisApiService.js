@@ -1,5 +1,6 @@
 import { IrisCacheService } from './irisCacheService.js';
 import { safeApiFetch } from './apiClient.js';
+import { yieldToMain } from '../utils/yieldUtils.js';
 
 export class IrisApiService {
     static BASE_URL = 'https://iris.noncd.db.de/iris-tts/timetable';
@@ -92,13 +93,14 @@ export class IrisApiService {
         const prevHour = new Date(dateObj.getTime() - 60 * 60 * 1000);
         const nextHour = new Date(dateObj.getTime() + 60 * 60 * 1000);
 
-        // Fahrplan für vorherige, aktuelle und nächste Stunde laden
-        // Dank _fetchWithLimit passiert das nun sauber nacheinander (mit Delay) auf dem Netzwerk!
-        const [planPrev, planCurr, planNext] = await Promise.all([
-            fetchPlanForHour(prevHour),
-            fetchPlanForHour(dateObj),
-            fetchPlanForHour(nextHour)
-        ]);
+        // Fahrplan für vorherige, aktuelle und nächste Stunde sequenziell laden.
+        // Yields zwischen den Requests geben den Event-Loop frei – wichtig besonders bei Cache-Hits,
+        // wo das CPU-intensive XML-Parsen ohne Netzwart direkt hintereinander läuft.
+        const planPrev = await fetchPlanForHour(prevHour);
+        await yieldToMain(signal);
+        const planCurr = await fetchPlanForHour(dateObj);
+        await yieldToMain(signal);
+        const planNext = await fetchPlanForHour(nextHour);
 
         const journeys = new Map();
         if (planPrev) this._parsePlan(planPrev, journeys);

@@ -383,7 +383,9 @@ export class JourneyImportService {
                     existing.autoGenerateVias();
                 }
                 
-                if (JSON.stringify(existing.qosMessages) !== JSON.stringify(jData.qosMessages)) {
+                // Leichtgewichtiger ID+Timestamp Fingerprint statt JSON.stringify (spart CPU bei 100+ Zügen)
+                const qosFingerprint = (msgs) => msgs ? msgs.map(m => `${m.id}|${m.ts}`).join(',') : '';
+                if (qosFingerprint(existing.qosMessages) !== qosFingerprint(jData.qosMessages)) {
                     existing.qosMessages = jData.qosMessages;
                 }
             } else {

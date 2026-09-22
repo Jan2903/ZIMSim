@@ -3,6 +3,10 @@ import { IrisDataMapper } from './irisDataMapper.js';
 import { journeyStore, trainDisplay } from '../state/stores.js';
 import { getSimulatedTime } from '../utils/config.js';
 import { irisAnnouncementService } from '../../audio/irisAnnouncementService.js';
+import { yieldToMain } from '../utils/yieldUtils.js';
+
+// Re-Export für externe Konsumenten (Rückwärtskompatibilität)
+export { yieldToMain };
 
 export const irisConfig = $state({
     autoUpdateInterval: 0,
@@ -11,33 +15,6 @@ export const irisConfig = $state({
     autoAnnouncements: false,
     autoSort: true,
 });
-
-/**
- * Gibt den JavaScript-Event-Loop frei, damit Browser-Events (Klicks, Tasten, Render-Frames)
- * ohne Einfrieren oder Warnungen verarbeitet werden können.
- * Nutzt scheduler.yield() wenn verfügbar (Chromium), sonst MessageChannel (Firefox/Safari) ohne 4ms-Timeout-Clamp.
- * @param {AbortSignal} [signal=null]
- * @returns {Promise<void>}
- */
-export async function yieldToMain(signal = null) {
-    if (signal && signal.aborted) {
-        throw new DOMException('Aborted', 'AbortError');
-    }
-    if (typeof window !== 'undefined' && window.scheduler && typeof window.scheduler.yield === 'function') {
-        await window.scheduler.yield();
-    } else if (typeof MessageChannel !== 'undefined') {
-        await new Promise(resolve => {
-            const channel = new MessageChannel();
-            channel.port1.onmessage = () => resolve();
-            channel.port2.postMessage(null);
-        });
-    } else {
-        await new Promise(resolve => setTimeout(resolve, 0));
-    }
-    if (signal && signal.aborted) {
-        throw new DOMException('Aborted', 'AbortError');
-    }
-}
 
 class IrisPollingService {
     lastPollTime = $state(null);
@@ -217,8 +194,14 @@ class IrisPollingService {
                 const allJourneysData = [];
 
                 for (const [key, item] of this._mappedCache.entries()) {
+                    // Defensiv: Züge ohne Zeitstempel sollten nicht existieren, aber sicher entfernen
+                    if (!item._effectiveTimeMs) {
+                        console.warn(`[IrisPollingService] Zombie-Eintrag ohne Zeitstempel entfernt: ${key}`);
+                        this._mappedCache.delete(key);
+                        continue;
+                    }
                     // Löschen wenn außerhalb des Fensters oder wenn der Zug in irisJourneysMap nicht mehr existiert
-                    if (!this.irisJourneysMap.has(item.journeyId) || (item._effectiveTimeMs && (item._effectiveTimeMs < pastThreshold || item._effectiveTimeMs > futureThreshold))) {
+                    if (!this.irisJourneysMap.has(item.journeyId) || item._effectiveTimeMs < pastThreshold || item._effectiveTimeMs > futureThreshold) {
                         this._mappedCache.delete(key);
                     } else {
                         allJourneysData.push(item);
@@ -232,8 +215,20 @@ class IrisPollingService {
 
                 await yieldToMain(signal);
 
-                // Verknüpfe Ankünfte und Abfahrten (Durchfahrten/Wenden)
-                journeyStore.autoLinkJourneys();
+                // Verknüpfe Ankünfte und Abfahrten (Durchfahrten/Wenden).
+                // Optimierung: Bei rchg nur neu linken, wenn sich mindestens ein Gleis geändert hat.
+                // Reine Verspätungsupdates (ct ohne cp) ändern die physische Gleisbelegung nicht.
+                const hasPlatformChange = isInitial || fetchType === 'fchg' || (() => {
+                    for (const id of changedIds) {
+                        const raw = this.irisJourneysMap.get(id);
+                        if (raw?.rt && (raw.rt.ar?.cp || raw.rt.dp?.cp)) return true;
+                    }
+                    return false;
+                })();
+
+                if (hasPlatformChange) {
+                    journeyStore.autoLinkJourneys();
+                }
                 
                 trainDisplay.updateAll();
                 
@@ -271,9 +266,15 @@ class IrisPollingService {
                 this.nextPollSecs--;
             }
             if (this.nextPollSecs <= 0) {
-                // Regulärer Polling-Zyklus benötigt kein langes Debouncing
-                this._debouncedPollRealtime(false);
-                this.nextPollSecs = irisConfig.autoUpdateInterval;
+                if (this.isFetching) {
+                    // Vorheriger Poll noch aktiv: Countdown zurücksetzen statt laufende Anfrage abzubrechen.
+                    // Der Abort-Mechanismus bleibt explizit Stationswechseln vorbehalten.
+                    this.nextPollSecs = irisConfig.autoUpdateInterval;
+                } else {
+                    // Regulärer Polling-Zyklus benötigt kein langes Debouncing
+                    this._debouncedPollRealtime(false);
+                    this.nextPollSecs = irisConfig.autoUpdateInterval;
+                }
             }
         }
 
