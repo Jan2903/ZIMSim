@@ -15,8 +15,12 @@
     import ZimIcon from './ZimIcon.svelte';
     import { displayConfigStore } from '../js/displays/core/displayConfigStore.svelte.js';
     import { MONITOR_PROFILES, LAYOUT_TYPES } from '../js/displays/core/displayLayoutService.js';
+    import LineColorEditorModal from './LineColorEditorModal.svelte';
     
     let { modalsComp } = $props();
+
+    // Modal-Status für Linienfarben & Badge-Editor
+    let isLineColorModalOpen = $state(false);
 
     // Mobiler Tab-State: 'fahrten' | 'monitor' | 'tools'
     let activeMobileTab = $state('fahrten');
@@ -392,6 +396,18 @@
                     <div class="checkbox-group" style="margin-top: 14px;">
                         <label class="checkbox-label"><input type="checkbox" id="nrw_mode_checkbox" bind:checked={journeyStore.nrwMode} onchange={() => trainDisplay.updateAll()}> Nur Liniennummern (NRW)</label>
                     </div>
+
+                    <div style="margin-top: 10px;">
+                        <button 
+                            type="button" 
+                            class="btn-secondary btn-sm" 
+                            onclick={() => isLineColorModalOpen = true}
+                            style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 7px 12px; font-weight: 600;"
+                        >
+                            <ZimIcon name="palette" size={16} />
+                            <span>Linienfarben & Badges anpassen</span>
+                        </button>
+                    </div>
                 </CollapsibleSection>
                 
                 <CollapsibleSection title="Bahnhof/Station" isOpen={true} isFrame={false}>
@@ -661,6 +677,8 @@
         </div>
     </div>
 </div>
+
+<LineColorEditorModal bind:isOpen={isLineColorModalOpen} />
 
 <style>
     .variant-settings {

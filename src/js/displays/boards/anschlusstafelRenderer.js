@@ -1,7 +1,8 @@
 // js/displays/boards/anschlusstafelRenderer.js
 import { COLORS, FONTS } from '../core/constants.js';
-import { drawText, drawWrappedText, truncateWithEllipsis } from '../core/textUtils.js';
+import { drawText, drawWrappedText, truncateWithEllipsis, drawLineBadge } from '../core/textUtils.js';
 import { getSimulatedTime } from '../../core/utils/config.js';
+import { lineColorService } from '../../features/journey/services/lineColorService.svelte.js';
 
 /**
  * Vollständiger dynamischer Renderer für Voranzeiger und Abfahrtstafeln (Anschlusstafel).
@@ -237,19 +238,15 @@ function drawTrainRow(ctx, train, x, y, width, height, isAlt, isPortrait = false
     const trainBoxH = isPortrait ? 38 : 46;
     const trainBoxY = timeY - (isPortrait ? 28 : 34);
 
-    ctx.fillStyle = '#1e293b';
-    ctx.beginPath();
-    ctx.roundRect(trainX, trainBoxY, trainBoxW, trainBoxH, 6);
-    ctx.fill();
-
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    ctx.font = FONTS.bold(isPortrait ? 24 : 34);
-    ctx.fillStyle = COLORS.WHITE;
-    ctx.textAlign = 'center';
-    ctx.fillText(displayName, trainX + (trainBoxW / 2), trainBoxY + (isPortrait ? 27 : 33));
+    const font = FONTS.bold(isPortrait ? 24 : 34);
+    const badgeStyle = lineColorService.resolveStyle(displayName, {
+        defaultBgColor: '#1e293b',
+        defaultTextColor: COLORS.WHITE
+    });
+    drawLineBadge(ctx, displayName, trainX, trainBoxY, trainBoxW, trainBoxH, {
+        font,
+        ...badgeStyle
+    });
 
     // 3. Spalte: Ziel & Vias
     const destX = isPortrait ? 280 : 380;

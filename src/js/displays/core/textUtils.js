@@ -1,5 +1,6 @@
 // js/displays/textUtils.js
 import { COLORS, FONTS, INFO } from './constants.js';
+import { lineColorService } from '../../features/journey/services/lineColorService.svelte.js';
 
 /**
  * @typedef {object} RenderContext
@@ -151,8 +152,78 @@ export function findMaxTextWidth(ctx, startX, yCenter, height, screen) {
 }
 
 /**
+ * Universelle Canvas-Zeichenfunktion für Linien- und Zuggattungs-Badges.
+ * Wendet Form (Pille, Abgerundet, Eckig, Outline), Farben und Ränder
+ * dynamisch und proportional zur gegebenen Boxgröße an.
+ *
+ * @param {CanvasRenderingContext2D} ctx - Canvas 2D Kontext
+ * @param {string} text - Anzuzeigender Linien-/Zugname
+ * @param {number} x - X-Koordinate (links)
+ * @param {number} y - Y-Koordinate (oben)
+ * @param {number} width - Breite des Badges
+ * @param {number} height - Höhe des Badges
+ * @param {object} [options={}] - Styling- und Font-Optionen
+ * @param {string} [options.font] - Canvas Font String
+ * @param {string} [options.backgroundColor] - Hintergrundfarbe
+ * @param {string} [options.textColor] - Textfarbe
+ * @param {string} [options.borderColor] - Rahmenfarbe
+ * @param {number} [options.borderWidth=1] - Rahmenbreite
+ * @param {'pill' | 'rounded' | 'rectangle' | 'outline'} [options.shape='rounded'] - Badge-Form
+ * @param {number} [options.cornerRadius] - Expliziter Eckenradius
+ */
+export function drawLineBadge(ctx, text, x, y, width, height, options = {}) {
+    const shape = options.shape || 'rounded';
+    let radius = 0;
+
+    if (shape === 'pill') {
+        radius = Math.min(width, height) / 2;
+    } else if (shape === 'rounded' || shape === 'outline') {
+        radius = options.cornerRadius !== undefined ? options.cornerRadius : Math.max(4, Math.round(height * 0.12));
+    } else if (shape === 'rectangle') {
+        radius = 0;
+    }
+
+    ctx.save();
+
+    // 1. Pfad definieren
+    ctx.beginPath();
+    ctx.roundRect(x, y, width, height, radius);
+
+    // 2. Füllung & Rahmen
+    if (shape === 'outline') {
+        if (options.backgroundColor && options.backgroundColor !== 'transparent') {
+            ctx.fillStyle = options.backgroundColor;
+            ctx.fill();
+        }
+        ctx.strokeStyle = options.borderColor || options.textColor || COLORS.WHITE;
+        ctx.lineWidth = options.borderWidth || 2;
+        ctx.stroke();
+    } else {
+        ctx.fillStyle = options.backgroundColor || '#1f3d47';
+        ctx.fill();
+
+        if (options.borderColor && options.borderColor !== 'transparent') {
+            ctx.strokeStyle = options.borderColor;
+            ctx.lineWidth = options.borderWidth || 1;
+            ctx.stroke();
+        }
+    }
+
+    // 3. Text zeichnen (zentriert)
+    if (text) {
+        if (options.font) ctx.font = options.font;
+        ctx.fillStyle = options.textColor || COLORS.WHITE;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, x + (width / 2), y + (height / 2) + 1);
+    }
+
+    ctx.restore();
+}
+
+/**
  * Zeichnet Text in einem gerundeten Rechteck mit optionalem Scrolling
- * und spezieller IC/FLX-Farblogik.
+ * und zentral aufgelöster Linien-/Gattungsfarblogik.
  *
  * @param {CanvasRenderingContext2D} ctx
  * @param {string} text
@@ -191,61 +262,63 @@ export function drawTextInRectangle(ctx, text, x, y, font, textAlign, textHeight
         }
     }
 
-    let stroke = false;
     if (text !== "") {
-        if (text.includes("IC")) {
-            if (fullScreen) {
-                textColor = COLORS.NAVY;
-                ctx.fillStyle = COLORS.WHITE;
-                cornerRadius = 15;
-            } else {
-                if (inverted) {
-                    stroke = true;
-                    cornerRadius = 10;
-                    textColor = COLORS.NAVY;
-                    ctx.fillStyle = COLORS.NAVY;
-                    ctx.strokeStyle = COLORS.NAVY;
-                    ctx.lineWidth = 4;
-                } else {
-                    textColor = COLORS.NAVY;
-                    ctx.fillStyle = COLORS.WHITE;
-                    cornerRadius = 15;
-                }
-            }
-        } else if (text.includes("FLX")) {
-            textColor = COLORS.WHITE;
-            ctx.fillStyle = COLORS.LIME;
-        } else {
-            ctx.fillStyle = rectColor;
+        // Zentral aufgelöster Stil aus LineColorService
+        const resolved = lineColorService.resolveStyle(text, {
+            inverted,
+            fullScreen,
+            defaultBgColor: rectColor,
+            defaultTextColor: textColor
+        });
+
+        const boxWidth = textWidth + 2 * rectPadding;
+        const boxHeight = textHeight + rectPadding;
+        const boxX = textAlign === 'right' ? (x - textWidth - rectPadding) : (x - rectPadding);
+        const boxY = y - textHeight / 2 - rectPadding;
+
+        // Shape & Radius berechnen
+        let radius = cornerRadius;
+        if (resolved.shape === 'pill') {
+            radius = Math.min(boxWidth, boxHeight) / 2;
+        } else if (resolved.shape === 'rectangle') {
+            radius = 0;
+        } else if (resolved.shape === 'rounded' || resolved.shape === 'outline') {
+            radius = resolved.cornerRadius || Math.max(4, Math.round(boxHeight * 0.12));
         }
 
         ctx.beginPath();
-        if (textAlign === 'left') {
-            ctx.roundRect(x - rectPadding, y - textHeight / 2 - rectPadding, textWidth + 2 * rectPadding, textHeight + rectPadding, cornerRadius);
-        } else if (textAlign === 'right') {
-            ctx.roundRect(x - textWidth - rectPadding, y - textHeight / 2 - rectPadding, textWidth + 2 * rectPadding, textHeight + rectPadding, cornerRadius);
-        }
-        if (stroke) {
+        ctx.roundRect(boxX, boxY, boxWidth, boxHeight, radius);
+
+        if (resolved.shape === 'outline' || (inverted && resolved.borderColor && resolved.borderColor !== 'transparent')) {
+            if (resolved.backgroundColor && resolved.backgroundColor !== 'transparent') {
+                ctx.fillStyle = resolved.backgroundColor;
+                ctx.fill();
+            }
+            ctx.strokeStyle = resolved.borderColor || resolved.textColor;
+            ctx.lineWidth = resolved.borderWidth || 2;
             ctx.stroke();
         } else {
+            ctx.fillStyle = resolved.backgroundColor;
             ctx.fill();
+
+            if (resolved.borderColor && resolved.borderColor !== 'transparent') {
+                ctx.strokeStyle = resolved.borderColor;
+                ctx.lineWidth = resolved.borderWidth || 1;
+                ctx.stroke();
+            }
         }
 
         if (shouldScroll && scrollManager && canvas && screen) {
-            const boxLeft = textAlign === 'right'
-                ? x - textWidth - rectPadding
-                : x - rectPadding;
-
             scrollManager.createOrUpdate(
                 canvas, zugID, 'zugNr_' + Math.round(y), text,
-                `${canvas.offsetLeft + screen.x + boxLeft}px`,
-                `${canvas.offsetTop + screen.y + y - (textHeight / 2) - rectPadding}px`,
-                `${textWidth + 2 * rectPadding}px`,
-                `${textHeight + rectPadding}px`,
-                textColor, font
+                `${canvas.offsetLeft + screen.x + boxX}px`,
+                `${canvas.offsetTop + screen.y + boxY}px`,
+                `${boxWidth}px`,
+                `${boxHeight}px`,
+                resolved.textColor, font
             );
         } else {
-            drawText(ctx, text, x, y, font, textColor, textAlign);
+            drawText(ctx, text, x, y, font, resolved.textColor, textAlign);
         }
     }
 }

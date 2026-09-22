@@ -1,7 +1,8 @@
 // js/displays/boards/ankunftstafelRenderer.js
 import { COLORS, FONTS } from '../core/constants.js';
-import { truncateWithEllipsis } from '../core/textUtils.js';
+import { truncateWithEllipsis, drawLineBadge } from '../core/textUtils.js';
 import { getSimulatedTime } from '../../core/utils/config.js';
+import { lineColorService } from '../../features/journey/services/lineColorService.svelte.js';
 
 /**
  * Renderer für die DB-Ankunftstafel (Nur Ankünfte).
@@ -206,19 +207,15 @@ function drawAnkunftRow(ctx, train, x, y, width, height, isAlt, isPortrait) {
     const badgeH = height * 0.72;
     const badgeY = y + (height * 0.14);
 
-    ctx.fillStyle = '#1e293b';
-    ctx.beginPath();
-    ctx.roundRect(trainX, badgeY, badgeW, badgeH, 5);
-    ctx.fill();
-
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    ctx.font = FONTS.bold(isPortrait ? 26 : 28);
-    ctx.fillStyle = COLORS.WHITE;
-    ctx.textAlign = 'center';
-    ctx.fillText(trainName, trainX + (badgeW / 2), textY);
+    const font = FONTS.bold(isPortrait ? 26 : 28);
+    const badgeStyle = lineColorService.resolveStyle(trainName, {
+        defaultBgColor: '#1e293b',
+        defaultTextColor: COLORS.WHITE
+    });
+    drawLineBadge(ctx, trainName, trainX, badgeY, badgeW, badgeH, {
+        font,
+        ...badgeStyle
+    });
 
     // 4. Startbahnhof (Herkunft des Zuges)
     const originX = isPortrait ? 360 : 500;

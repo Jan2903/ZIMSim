@@ -2,12 +2,19 @@
     import { uiState } from '../js/core/state/uiState.svelte.js';
     import { journeyStore, trainDisplay } from '../js/core/state/stores.js';
     import { formatDisplayName } from '../js/features/journey/trainNumberFormatter.js';
+    import { lineColorService } from '../js/features/journey/services/lineColorService.svelte.js';
     import JourneyDetails from './JourneyDetails.svelte';
     import ZimIcon from './ZimIcon.svelte';
 
     let { journey = $bindable() } = $props();
 
     let isExpanded = $derived(uiState.expandedJourneyId === journey.id);
+
+    let lineBadgeStyle = $derived(
+        lineColorService.resolveStyle(journey.effectiveDisplayName, {
+            isAusfall: journey.ausfall
+        })
+    );
 
     function toggleExpand() {
         if (uiState.expandedJourneyId === journey.id) {
@@ -81,7 +88,12 @@
         </div>
         <div class="journey-col-main">
             <div class="journey-summary" role="button" tabindex="0" onclick={toggleExpand} onpointerdown={(e) => e.stopPropagation()} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(); } }}>
-                <span class="journey-name" title="{journey.effectiveDisplayName}">{formatDisplayName(journey.effectiveDisplayName, journeyStore.nrwMode) || '(kein Name)'}</span>
+                <span 
+                    class="journey-name" 
+                    class:has-custom-badge={lineBadgeStyle.hasMatchedRule}
+                    title="{journey.effectiveDisplayName}"
+                    style={lineBadgeStyle.hasMatchedRule ? `background-color: ${lineBadgeStyle.backgroundColor}; color: ${lineBadgeStyle.textColor}; border: ${lineBadgeStyle.shape === 'outline' || (lineBadgeStyle.borderColor && lineBadgeStyle.borderColor !== 'transparent') ? `${lineBadgeStyle.borderWidth || 1}px solid ${lineBadgeStyle.borderColor}` : 'none'}; border-radius: ${lineBadgeStyle.shape === 'pill' ? '9999px' : (lineBadgeStyle.shape === 'rectangle' ? '0px' : `${lineBadgeStyle.cornerRadius || 4}px`)}; padding: 1px 7px;` : ''}
+                >{formatDisplayName(journey.effectiveDisplayName, journeyStore.nrwMode) || '(kein Name)'}</span>
                 {#if journey.infoscreen}
                     <span class="badge badge-info" title="Infoscreen">ⓘ</span>
                 {:else if journey.ankunft}
@@ -182,6 +194,7 @@
 .journey-col-main { flex: 1; padding: 8px 12px; min-width: 0; }
 .journey-summary { display: flex; align-items: center; gap: 10px; cursor: pointer; flex-wrap: wrap; }
 .journey-name { font-weight: bold; font-size: 1.05em; color: var(--text-main); white-space: nowrap; }
+.journey-name.has-custom-badge { display: inline-flex; align-items: center; line-height: 1.25; font-size: 0.95em; }
 .journey-destination { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 80px; }
 .journey-time { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .journey-platform { color: var(--text-muted); white-space: nowrap; font-size: 0.9em; }

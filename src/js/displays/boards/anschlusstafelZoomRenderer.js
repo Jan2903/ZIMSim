@@ -1,7 +1,8 @@
 // js/displays/boards/anschlusstafelZoomRenderer.js
 import { COLORS, FONTS } from '../core/constants.js';
-import { truncateWithEllipsis } from '../core/textUtils.js';
+import { truncateWithEllipsis, drawLineBadge } from '../core/textUtils.js';
 import { drawQualityIcons } from '../primitives/pictogramRenderer.js';
+import { lineColorService } from '../../features/journey/services/lineColorService.svelte.js';
 
 /**
  * Dedizierter Renderer für die DB-Anschlusstafel im Zoom-Layout (4 Zeilen Vollbild).
@@ -110,8 +111,8 @@ function drawZoomRow(ctx, train, x, y, width, height, renderCtx = {}, screenOpti
     }
 
     // 2. Vertikale Textanker (optimiert für 270px Zeilenhöhe)
-    const upperY = y + 76;
-    const lowerY = y + 215;
+    const upperY = y + 80;
+    const lowerY = y + 218;
 
     // 3. Spalte 1: Badge oben, Zeit & Verspätung unten
     const col1X = x + 40;
@@ -146,8 +147,8 @@ function drawZoomRow(ctx, train, x, y, width, height, renderCtx = {}, screenOpti
     );
 
     // 5. Spalte 2: Zielbahnhof & Vias/Infotext (Mitte)
-    const destX = x + 420;
-    const trackReservedW = showQualityIcons ? 220 : 260;
+    const destX = x + 400;
+    const trackReservedW = showQualityIcons ? 230 : 270;
     const availableMiddleW = width - destX - trackReservedW;
 
     drawZoomMiddleColumn(ctx, train, isAusfall, destX, upperY, lowerY, availableMiddleW, renderCtx);
@@ -162,27 +163,24 @@ function drawZoomRow(ctx, train, x, y, width, height, renderCtx = {}, screenOpti
  * @param {boolean} isAusfall - Ob die Zeile vollflächig invertiert ist
  */
 function drawZoomBadge(ctx, displayName, x, y, isAusfall) {
-    ctx.font = FONTS.bold(38);
+    const font = FONTS.bold(40);
+    ctx.font = font;
     const textWidth = ctx.measureText(displayName).width;
-    const paddingX = 14;
-    const badgeW = Math.max(110, textWidth + (paddingX * 2));
-    const badgeH = 50;
-    const badgeY = y - 36;
+    const paddingX = 16;
+    const badgeW = Math.max(116, textWidth + (paddingX * 2));
+    const badgeH = 52;
+    const badgeY = y - 38;
 
-    ctx.fillStyle = isAusfall ? '#e2e8f0' : 'rgba(255, 255, 255, 0.16)';
-    ctx.beginPath();
-    ctx.roundRect(x, badgeY, badgeW, badgeH, 6);
-    ctx.fill();
+    const style = lineColorService.resolveStyle(displayName, {
+        isAusfall,
+        defaultBgColor: '#1f3d47',
+        defaultTextColor: COLORS.WHITE
+    });
 
-    ctx.strokeStyle = isAusfall ? 'rgba(0, 0, 0, 0.18)' : 'rgba(255, 255, 255, 0.22)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    ctx.fillStyle = isAusfall ? COLORS.NAVY : COLORS.WHITE;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(displayName, x + (badgeW / 2), badgeY + (badgeH / 2) + 1);
-    ctx.textBaseline = 'alphabetic';
+    drawLineBadge(ctx, displayName, x, badgeY, badgeW, badgeH, {
+        font,
+        ...style
+    });
 }
 
 /**
@@ -196,7 +194,7 @@ function drawZoomBadge(ctx, displayName, x, y, isAusfall) {
  */
 function drawZoomTimeAndDelay(ctx, scheduledTime, expectedTime, x, y, isAusfall) {
     const plannedTime = scheduledTime || '--:--';
-    ctx.font = FONTS.bold(82);
+    ctx.font = FONTS.bold(84);
     ctx.textAlign = 'left';
     ctx.fillStyle = isAusfall ? COLORS.NAVY : COLORS.WHITE;
     ctx.fillText(plannedTime, x, y);
@@ -204,20 +202,22 @@ function drawZoomTimeAndDelay(ctx, scheduledTime, expectedTime, x, y, isAusfall)
     // Verspätungsbox (nur bei regulären, nicht-ausgefallenen Fahrten mit Zeitabweichung)
     if (!isAusfall && expectedTime && expectedTime !== scheduledTime) {
         const timeWidth = ctx.measureText(plannedTime).width;
-        const boxX = x + timeWidth + 18;
+        const boxX = x + timeWidth + 16;
         const boxW = 126;
-        const boxH = 50;
-        const boxY = y - 48;
+        const boxH = 56;
+        const boxY = y - 60; // Zentriert die Box vertikal zu den Ziffern
 
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
         ctx.roundRect(boxX, boxY, boxW, boxH, 6);
         ctx.fill();
 
-        ctx.font = FONTS.bold(36);
+        ctx.font = FONTS.bold(38);
         ctx.fillStyle = COLORS.NAVY;
         ctx.textAlign = 'center';
-        ctx.fillText(expectedTime, boxX + (boxW / 2), boxY + 36);
+        ctx.textBaseline = 'middle';
+        ctx.fillText(expectedTime, boxX + (boxW / 2), boxY + (boxH / 2) + 1);
+        ctx.textBaseline = 'alphabetic';
         ctx.textAlign = 'left';
     }
 }
@@ -245,7 +245,7 @@ function drawZoomMiddleColumn(ctx, train, isAusfall, x, upperY, lowerY, availabl
     }
 
     if (infoText) {
-        ctx.font = FONTS.bold(38);
+        ctx.font = FONTS.bold(44);
         const textWidth = ctx.measureText(infoText).width;
         const textColor = isAusfall ? COLORS.NAVY : '#cbd5e1';
 
@@ -253,7 +253,7 @@ function drawZoomMiddleColumn(ctx, train, isAusfall, x, upperY, lowerY, availabl
             // Ticker / Marquee mit Canvas-Clipping
             ctx.save();
             ctx.beginPath();
-            ctx.rect(x, upperY - 42, availableWidth, 60);
+            ctx.rect(x, upperY - 44, availableWidth, 60);
             ctx.clip();
 
             ctx.fillStyle = textColor;
@@ -280,7 +280,7 @@ function drawZoomMiddleColumn(ctx, train, isAusfall, x, upperY, lowerY, availabl
         }
 
         if (viaStr) {
-            ctx.font = FONTS.regular(38);
+            ctx.font = FONTS.bold(42);
             ctx.fillStyle = isAusfall ? COLORS.NAVY : '#cbd5e1';
             ctx.textAlign = 'left';
             viaStr = truncateWithEllipsis(ctx, viaStr, availableWidth);
@@ -298,7 +298,7 @@ function drawZoomMiddleColumn(ctx, train, isAusfall, x, upperY, lowerY, availabl
     ctx.textAlign = 'left';
     ctx.fillStyle = isAusfall ? COLORS.NAVY : COLORS.WHITE;
 
-    let destFontSize = 82;
+    let destFontSize = 86;
     ctx.font = FONTS.bold(destFontSize);
     while (destFontSize > 54 && ctx.measureText(destText).width > availableWidth) {
         destFontSize -= 2;
@@ -328,18 +328,18 @@ function drawZoomTrackColumn(ctx, scheduledTrack, changedTrack, hasTrackChange, 
         // VARIANTE A: Großes Gleis unten (Standard)
         // ========================================================
         if (isAusfall) {
-            ctx.font = FONTS.bold(92);
+            ctx.font = FONTS.bold(96);
             ctx.fillStyle = COLORS.NAVY;
             ctx.textAlign = 'right';
             ctx.fillText('-', gleisRightX, lowerY);
         } else if (hasTrackChange) {
             // Gleiswechsel: Neues Gleis im weißen Inverskasten (kein Altgleis)
-            ctx.font = FONTS.bold(68);
+            ctx.font = FONTS.bold(72);
             const trackMetrics = ctx.measureText(changedTrack);
             const boxW = Math.max(120, trackMetrics.width + 36);
-            const boxH = 72;
+            const boxH = 76;
             const boxX = gleisRightX - boxW;
-            const boxY = lowerY - 65;
+            const boxY = lowerY - 68;
 
             ctx.fillStyle = '#ffffff';
             ctx.beginPath();
@@ -348,10 +348,10 @@ function drawZoomTrackColumn(ctx, scheduledTrack, changedTrack, hasTrackChange, 
 
             ctx.fillStyle = COLORS.NAVY;
             ctx.textAlign = 'center';
-            ctx.fillText(changedTrack, boxX + (boxW / 2), boxY + 52);
+            ctx.fillText(changedTrack, boxX + (boxW / 2), boxY + 55);
         } else {
             // Normal: Reine Gleisnummer groß und prominent
-            ctx.font = FONTS.bold(92);
+            ctx.font = FONTS.bold(96);
             ctx.fillStyle = COLORS.WHITE;
             ctx.textAlign = 'right';
             ctx.fillText(scheduledTrack, gleisRightX, lowerY);
@@ -362,18 +362,18 @@ function drawZoomTrackColumn(ctx, scheduledTrack, changedTrack, hasTrackChange, 
         // ========================================================
         // 1. Gleis in der oberen Zeile
         if (isAusfall) {
-            ctx.font = FONTS.bold(54);
+            ctx.font = FONTS.bold(68);
             ctx.fillStyle = COLORS.NAVY;
             ctx.textAlign = 'right';
             ctx.fillText('-', gleisRightX, upperY);
         } else if (hasTrackChange) {
             // Gleiswechsel oben im Inverskasten
-            ctx.font = FONTS.bold(48);
+            ctx.font = FONTS.bold(54);
             const trackMetrics = ctx.measureText(changedTrack);
             const boxW = Math.max(90, trackMetrics.width + 24);
-            const boxH = 48;
+            const boxH = 54;
             const boxX = gleisRightX - boxW;
-            const boxY = upperY - 38;
+            const boxY = upperY - 42;
 
             ctx.fillStyle = '#ffffff';
             ctx.beginPath();
@@ -382,9 +382,9 @@ function drawZoomTrackColumn(ctx, scheduledTrack, changedTrack, hasTrackChange, 
 
             ctx.fillStyle = COLORS.NAVY;
             ctx.textAlign = 'center';
-            ctx.fillText(changedTrack, boxX + (boxW / 2), boxY + 35);
+            ctx.fillText(changedTrack, boxX + (boxW / 2), boxY + 40);
         } else {
-            ctx.font = FONTS.bold(54);
+            ctx.font = FONTS.bold(68);
             ctx.fillStyle = COLORS.WHITE;
             ctx.textAlign = 'right';
             ctx.fillText(scheduledTrack, gleisRightX, upperY);
@@ -392,9 +392,9 @@ function drawZoomTrackColumn(ctx, scheduledTrack, changedTrack, hasTrackChange, 
 
         // 2. Bis zu 2 Qualitätsmerkmal-Icons in der unteren Zeile
         if (!isAusfall) {
-            const iconSize = 52;
+            const iconSize = 56;
             const iconGap = 8;
-            drawQualityIcons(ctx, scrollText, trainNumber, gleisRightX, lowerY - 54, iconSize, iconGap, 2);
+            drawQualityIcons(ctx, scrollText, trainNumber, gleisRightX, lowerY - 58, iconSize, iconGap, 2);
         }
     }
 }

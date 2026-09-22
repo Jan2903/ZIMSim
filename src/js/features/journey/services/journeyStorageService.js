@@ -1,5 +1,6 @@
 import { Journey } from '../journey.svelte.js';
 import { Platform } from '../../station/platform.svelte.js';
+import { lineColorService } from './lineColorService.svelte.js';
 
 /**
  * Service für Serialisierung und Deserialisierung des Store-Status (Export / Import).
@@ -21,7 +22,8 @@ export class JourneyStorageService {
             nrwMode: store.nrwMode,
             activeTracks: store.activeTracks,
             platforms: store.platforms,
-            customStations: store.customStations
+            customStations: store.customStations,
+            lineColorRules: lineColorService.rules
         };
 
         try {
@@ -63,6 +65,10 @@ export class JourneyStorageService {
             } else {
                 store.stationContext.platform = new Platform();
             }
+        }
+
+        if (data.lineColorRules && Array.isArray(data.lineColorRules)) {
+            lineColorService.importRules(data.lineColorRules);
         }
 
         store.journeys = (data.journeys || []).map(j => new Journey(j));
