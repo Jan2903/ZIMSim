@@ -21,7 +21,8 @@ export const LAYOUT_TYPES = [
     { id: 'ankunftstafel', name: 'Ankunftstafel (Nur Ankünfte)' },
     { id: 'wagenreihungsplan', name: 'Digitaler Wagenreihungsplan' },
     { id: 'wagenstand_gleis', name: 'Wagenstandsanzeiger (Gleis)' },
-    { id: 'anschlusstafel_zoom', name: 'Anschlusstafel Zoom 4× (2×32")' }
+    { id: 'anschlusstafel_zoom', name: 'Anschlusstafel Zoom 4× (Großes Gleis)' },
+    { id: 'anschlusstafel_zoom_icons', name: 'Anschlusstafel Zoom 4× (mit Qualitätsmerkmalen)' }
 ];
 
 /**
@@ -258,32 +259,33 @@ export function generateActiveLayout(monitorId = 'zim2x32', layoutType = 'zuganz
     // ========================================================
     // 6. ANZEIGETYP: ANSCHLUSSTAFEL ZOOM (4 Zeilen pro FullHD-Bildschirm)
     // ========================================================
-    else if (layoutType === 'anschlusstafel_zoom') {
+    else if (layoutType === 'anschlusstafel_zoom' || layoutType === 'anschlusstafel_zoom_icons') {
+        const showQualityIcons = layoutType === 'anschlusstafel_zoom_icons';
         if (prof.id === 'zim2x32') {
             // 2 Spalten nebeneinander – je 4 große Abfahrtszeilen pro Bildschirm
             const slot2X = withBezel ? 1970 : 1920;
             layout.screens = [
-                { id: 'abfahrt_zoom_col1', type: 'abfahrt_zoom', x: 0, y: 0, w: 1920, h: 1080, colIndex: 0, maxCols: 2, maxRows: 4 },
-                { id: 'abfahrt_zoom_col2', type: 'abfahrt_zoom', x: slot2X, y: 0, w: 1920, h: 1080, colIndex: 1, maxCols: 2, maxRows: 4 }
+                { id: 'abfahrt_zoom_col1', type: 'abfahrt_zoom', x: 0, y: 0, w: 1920, h: 1080, colIndex: 0, maxCols: 2, maxRows: 4, showQualityIcons },
+                { id: 'abfahrt_zoom_col2', type: 'abfahrt_zoom', x: slot2X, y: 0, w: 1920, h: 1080, colIndex: 1, maxCols: 2, maxRows: 4, showQualityIcons }
             ];
         } else if (prof.id === 'zim3x32') {
             // 3 Spalten nebeneinander – je 4 große Abfahrtszeilen pro Bildschirm
             const slot2X = withBezel ? 1970 : 1920;
             const slot3X = withBezel ? 3940 : 3840;
             layout.screens = [
-                { id: 'abfahrt_zoom_col1', type: 'abfahrt_zoom', x: 0, y: 0, w: 1920, h: 1080, colIndex: 0, maxCols: 3, maxRows: 4 },
-                { id: 'abfahrt_zoom_col2', type: 'abfahrt_zoom', x: slot2X, y: 0, w: 1920, h: 1080, colIndex: 1, maxCols: 3, maxRows: 4 },
-                { id: 'abfahrt_zoom_col3', type: 'abfahrt_zoom', x: slot3X, y: 0, w: 1920, h: 1080, colIndex: 2, maxCols: 3, maxRows: 4 }
+                { id: 'abfahrt_zoom_col1', type: 'abfahrt_zoom', x: 0, y: 0, w: 1920, h: 1080, colIndex: 0, maxCols: 3, maxRows: 4, showQualityIcons },
+                { id: 'abfahrt_zoom_col2', type: 'abfahrt_zoom', x: slot2X, y: 0, w: 1920, h: 1080, colIndex: 1, maxCols: 3, maxRows: 4, showQualityIcons },
+                { id: 'abfahrt_zoom_col3', type: 'abfahrt_zoom', x: slot3X, y: 0, w: 1920, h: 1080, colIndex: 2, maxCols: 3, maxRows: 4, showQualityIcons }
             ];
         } else if (prof.id === 'zimvitrine65h') {
             // Stele Hochkant: 8 große Zeilen (entspricht 4 auf FullHD-Verhältnis)
             layout.screens = [
-                { id: 'abfahrt_zoom_stele', type: 'abfahrt_portrait', x: 0, y: 0, w: 1080, h: 1920, maxRows: 8 }
+                { id: 'abfahrt_zoom_stele', type: 'abfahrt_portrait', x: 0, y: 0, w: 1080, h: 1920, maxRows: 8, showQualityIcons }
             ];
         } else {
             // Einzelmonitor (zim32_single, zimvitrine32, zimwide, zimultrawide)
             layout.screens = [
-                { id: 'abfahrt_zoom_single', type: 'abfahrt_zoom', x: 0, y: 0, w: width, h: 1080, colIndex: 0, maxCols: 1, maxRows: 4 }
+                { id: 'abfahrt_zoom_single', type: 'abfahrt_zoom', x: 0, y: 0, w: width, h: 1080, colIndex: 0, maxCols: 1, maxRows: 4, showQualityIcons }
             ];
         }
     }
@@ -352,10 +354,11 @@ export function generateTargetScreenLayout(layoutType = 'zuganzeiger', targetScr
         ];
     }
     // 2b. ANSCHLUSSTAFEL ZOOM (4 Zeilen / Bildschirm)
-    else if (layoutType === 'anschlusstafel_zoom') {
+    else if (layoutType === 'anschlusstafel_zoom' || layoutType === 'anschlusstafel_zoom_icons') {
         const colIdx = Math.max(0, screenNum - 1);
+        const showQualityIcons = layoutType === 'anschlusstafel_zoom_icons';
         layout.screens = [
-            { id: `abfahrt_zoom_col${screenNum}`, type: 'abfahrt_zoom', x: 0, y: 0, w: sWidth, h: sHeight, colIndex: colIdx, maxCols: 3, maxRows: 4 }
+            { id: `abfahrt_zoom_col${screenNum}`, type: 'abfahrt_zoom', x: 0, y: 0, w: sWidth, h: sHeight, colIndex: colIdx, maxCols: 3, maxRows: 4, showQualityIcons }
         ];
     }
     // 3. ANKUNFTSTAFEL (Ankünfte)

@@ -249,3 +249,51 @@ export function drawPictograms(ctx, scrollText, trainNumber, fullScreen, isArriv
     }
     return x;
 }
+
+/**
+ * Findet bis zu `maxCount` passende Piktogramm-Regeln für eine Fahrt basierend auf Text und Zugnummer.
+ * @param {string} scrollText - Der Lauftext / Info-String
+ * @param {string} trainNumber - Die Zugnummer
+ * @param {number} [maxCount=2] - Maximale Anzahl an Piktogrammen
+ * @returns {Array<object>} Liste passender Piktogramm-Regeln
+ */
+export function getMatchingPictogramRules(scrollText, trainNumber, maxCount = 2) {
+    if (!scrollText && !trainNumber) return [];
+    const text = scrollText || '';
+    const nr = trainNumber || '';
+    const matches = [];
+    for (const rule of PICTOGRAM_RULES) {
+        if (rule.match(text, nr)) {
+            matches.push(rule);
+            if (matches.length >= maxCount) break;
+        }
+    }
+    return matches;
+}
+
+/**
+ * Zeichnet bis zu `maxCount` Qualitätsmerkmal-Piktogramme rechtsbündig nebeneinander.
+ * @param {CanvasRenderingContext2D} ctx - Canvas Kontext
+ * @param {string} scrollText - Der Lauftext / Info-String
+ * @param {string} trainNumber - Die Zugnummer
+ * @param {number} rightX - Rechter Ankerpunkt für die Piktogramme
+ * @param {number} y - Y-Position (oberer Rand der Boxen)
+ * @param {number} [size=52] - Kantenlänge der quadratischen Box
+ * @param {number} [gap=8] - Abstand zwischen zwei Piktogrammen
+ * @param {number} [maxCount=2] - Maximale Anzahl darzustellender Piktogramme
+ * @returns {number} Gesamtbreite aller gezeichneten Piktogramme
+ */
+export function drawQualityIcons(ctx, scrollText, trainNumber, rightX, y, size = 52, gap = 8, maxCount = 2) {
+    const rules = getMatchingPictogramRules(scrollText, trainNumber, maxCount);
+    if (rules.length === 0) return 0;
+
+    const totalWidth = (rules.length * size) + ((rules.length - 1) * gap);
+    let startX = rightX - totalWidth;
+
+    for (const rule of rules) {
+        drawInNormalizedBox(ctx, startX, y, size, rule.draw);
+        startX += size + gap;
+    }
+
+    return totalWidth;
+}
