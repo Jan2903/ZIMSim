@@ -3,11 +3,20 @@
   "identifier": "default",
   "description": "enables the default permissions",
   "windows": [
-    "main"
+    "*"
   ],
   "permissions": [
     "core:default",
-    "http:default",
-    "dialog:default"
+    "dialog:default",
+    {
+      "identifier": "http:default",
+      "allow": [
+        { "url": "https://app.services-bahn.de/**" },
+        { "url": "https://iris.noncd.db.de/**" },
+        { "url": "https://**" },
+        { "url": "http://127.0.0.1:**" },
+        { "url": "http://localhost:**" }
+      ]
+    }
   ]
 }

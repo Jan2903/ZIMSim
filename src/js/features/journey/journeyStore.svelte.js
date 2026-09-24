@@ -139,6 +139,14 @@ export class JourneyStore {
     }
 
     /**
+     * Löscht alle Fahrten aus dem Store.
+     * @returns {void}
+     */
+    clearJourneys() {
+        this.journeys = [];
+    }
+
+    /**
      * Findet eine Journey anhand ihrer ID.
      * @param {string} id
      * @returns {Journey|undefined}

@@ -341,8 +341,7 @@
         margin-bottom: 6px;
     }
 
-    .form-input,
-    .form-select {
+    .form-input {
         width: 100%;
         background: var(--bg-input, #0f172a);
         color: var(--text-main, #f8fafc);
@@ -355,8 +354,7 @@
         transition: border-color 0.2s ease;
     }
 
-    .form-input:focus,
-    .form-select:focus {
+    .form-input:focus {
         border-color: var(--accent, #3b82f6);
     }
 

@@ -82,7 +82,6 @@
                 <div class="source-title">
                     <ZimIcon name="train_fast" size={16} />
                     <strong>DB Navigator / bahn.de API</strong>
-                    <span class="badge-status">Neu / Vorbereitung</span>
                 </div>
                 <div class="source-desc">
                     Erweiterte Fahrplandetails, Zwischenhalte, Ankunft & Abfahrt kombiniert sowie Wagenreihung (Formationen).

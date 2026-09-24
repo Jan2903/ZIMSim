@@ -199,7 +199,7 @@
 
                             <!-- Optionen -->
                             <div class="options-group">
-                                <label class="option-label">Traktion (Zugverband):</label>
+                                <span class="option-label">Traktion (Zugverband):</span>
                                 <div class="tractions-selector">
                                     {#each [1, 2, 3] as tVal}
                                         {@const isSupported = selectedPreset.supportedTractions.includes(tVal)}

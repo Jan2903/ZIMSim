@@ -23,7 +23,7 @@ export default defineConfig({
     // Modern target to avoid esbuild transpilation errors with destructuring
     target: 'esnext',
     // don't minify for debug builds
-    minify: !process.env.TAURI_DEBUG ? 'esbuild' : false,
+    minify: !process.env.TAURI_DEBUG,
     // produce sourcemaps for debug builds
     sourcemap: !!process.env.TAURI_DEBUG,
   },

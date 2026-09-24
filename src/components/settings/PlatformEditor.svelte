@@ -23,6 +23,10 @@
     // Nächster verfügbarer Sektor-Buchstabe (A bis K)
     let nextLetter = $derived(platform ? platform.getNextAvailableLetter() : null);
 
+    // ZIM Standort Pin Position
+    let zimTotalLen = $derived(Math.max(1, platform?.length || 400));
+    let zimPct = $derived(Math.max(0, Math.min(100, (Number(platform?.currentLocation || 0) / zimTotalLen) * 100)));
+
     /**
      * Wählt einen anderen Bahnsteig aus der Liste.
      * @param {Event} e
@@ -93,6 +97,13 @@
     function cancelRenamePlatform() {
         isRenaming = false;
         renamePlatformValue = '';
+    }
+
+    /**
+     * Svelte-Action für barrierefreies Fokussieren von Eingabefeldern bei Öffnung
+     */
+    function autoFocus(node) {
+        node.focus();
     }
 
     /**
@@ -244,7 +255,7 @@
                     placeholder="z.B. Gleis 4 oder Bahnsteig A"
                     bind:value={newPlatformName}
                     onkeydown={(e) => { if (e.key === 'Enter') confirmCreatePlatform(); if (e.key === 'Escape') cancelCreatePlatform(); }}
-                    autofocus
+                    use:autoFocus
                 />
                 <button type="button" class="btn-primary btn-sm" onclick={confirmCreatePlatform}>Erstellen</button>
                 <button type="button" class="btn-secondary btn-sm" onclick={cancelCreatePlatform}>Abbrechen</button>
@@ -263,7 +274,7 @@
                     placeholder="Neuer Name"
                     bind:value={renamePlatformValue}
                     onkeydown={(e) => { if (e.key === 'Enter') confirmRenamePlatform(); if (e.key === 'Escape') cancelRenamePlatform(); }}
-                    autofocus
+                    use:autoFocus
                 />
                 <button type="button" class="btn-primary btn-sm" onclick={confirmRenamePlatform}>Speichern</button>
                 <button type="button" class="btn-secondary btn-sm" onclick={cancelRenamePlatform}>Abbrechen</button>
@@ -291,7 +302,7 @@
                 type="number" 
                 min="0" 
                 max={platform.length} 
-                step="5"
+                step="1"
                 class="form-input" 
                 bind:value={platform.currentLocation} 
                 oninput={() => trainDisplay.updateAll()}
@@ -347,8 +358,6 @@
                 {/each}
 
                 <!-- ZIM Standort Pin -->
-                {@const totalLen = Math.max(1, platform.length || 400)}
-                {@const zimPct = Math.max(0, Math.min(100, (Number(platform.currentLocation || 0) / totalLen) * 100))}
                 <div 
                     class="zim-location-pin"
                     style="left: {zimPct}%;"
