@@ -301,7 +301,7 @@ export class Journey {
 
     /** Sicherer Anzeigename für Render-Komponenten (Fallback: 'Zug') */
     get displayTitle() {
-        return this.displayNameOverride || this.displayName || this.name || 'Zug';
+        return this.displayNameOverride || this.effectiveDisplayName || this.name || 'Zug';
     }
 
     /** Effektives Ziel: Override oder auto-generiert */

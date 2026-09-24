@@ -85,9 +85,6 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
         skalieren = false,
     } = primary;
 
-    // FormationGroups aus allen Journeys zusammenführen (für Flügelzüge)
-    const allFormationGroups = journeys.flatMap(j => j.formation ? j.formation.groups : []);
-
     // Trennlinie am linken Rand (nur Nebenmonitore)
     if (!fullScreen && (drawLayer === 'all' || drawLayer === 'static')) {
         ctx.strokeStyle = COLORS.WHITE;
@@ -98,8 +95,13 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
     }
 
     // --- Normale Wagenreihung ---
-    
-    if (allFormationGroups.length === 0 || allFormationGroups.every(g => g.coaches.length === 0)) return null;
+    const calcResult = calculateCoachPositions(journeys);
+    let allCoaches = calcResult.allCoaches;
+    const isMultipleTrains = calcResult.isMultipleTrains;
+    const groupProperties = calcResult.groupProperties;
+    const allFormationGroups = calcResult.allFormationGroups;
+
+    if (allFormationGroups.length === 0 || allCoaches.length === 0) return null;
 
     const threshold = customStartX;
     const coachGap = fullScreen ? FORMATION.COACH_GAP_FULL : FORMATION.COACH_GAP_COMPACT;
@@ -110,11 +112,6 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
     const meterAreaPixels = usableDisplayLength - 2 * arrowBuffer;
     let pixelPerMeter = meterAreaPixels / platformLengthMeters;
     let meterOrigin = threshold + arrowBuffer; // Pixel-Position von Meter 0
-
-    const calcResult = calculateCoachPositions(journeys);
-    let allCoaches = calcResult.allCoaches;
-    const isMultipleTrains = calcResult.isMultipleTrains;
-    const groupProperties = calcResult.groupProperties;
 
     if (allCoaches.length === 0) return null;
 

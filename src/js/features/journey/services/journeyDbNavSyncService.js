@@ -4,6 +4,7 @@ import { JourneyImportService } from './journeyImportService.js';
 import { journeyStore, trainDisplay } from '../../../core/state/stores.js';
 import { Journey } from '../journey.svelte.js';
 import { getSimulatedTime } from '../../../core/utils/config.js';
+import { formatHHMM, formatYYYYMMDD } from '../../../core/utils/dateUtils.js';
 
 /**
  * @fileoverview Service für die Synchronisation und Anreicherung von Fahrten
@@ -188,13 +189,13 @@ export class JourneyDbNavSyncService {
                 const nextMin = lm + 1;
                 const c2Date = new Date(`${chunk2DateStr}T00:00:00`);
                 c2Date.setHours(lh, nextMin, 0, 0);
-                chunk2TimeStr = `${String(c2Date.getHours()).padStart(2, '0')}:${String(c2Date.getMinutes()).padStart(2, '0')}`;
-                chunk2DateStr = `${c2Date.getFullYear()}-${String(c2Date.getMonth() + 1).padStart(2, '0')}-${String(c2Date.getDate()).padStart(2, '0')}`;
+                chunk2TimeStr = formatHHMM(c2Date);
+                chunk2DateStr = formatYYYYMMDD(c2Date);
             } else {
                 // Fallback: 1 Stunde nach Start von Chunk 1
                 const c2Date = new Date(startDate.getTime() + 60 * 60 * 1000);
-                chunk2TimeStr = `${String(c2Date.getHours()).padStart(2, '0')}:${String(c2Date.getMinutes()).padStart(2, '0')}`;
-                chunk2DateStr = `${c2Date.getFullYear()}-${String(c2Date.getMonth() + 1).padStart(2, '0')}-${String(c2Date.getDate()).padStart(2, '0')}`;
+                chunk2TimeStr = formatHHMM(c2Date);
+                chunk2DateStr = formatYYYYMMDD(c2Date);
             }
 
             const boardData2 = await DbNavApiService.getStationBoard(targetStationId, true, chunk2DateStr, chunk2TimeStr);
@@ -290,8 +291,8 @@ export class JourneyDbNavSyncService {
         const totalChunks = options.chunks ?? 2;
 
         const startDate = new Date(simDate.getTime() - lookbehindMinutes * 60 * 1000);
-        let currDateStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
-        let currTimeStr = `${String(startDate.getHours()).padStart(2, '0')}:${String(startDate.getMinutes()).padStart(2, '0')}`;
+        let currDateStr = formatYYYYMMDD(startDate);
+        let currTimeStr = formatHHMM(startDate);
 
         if (replaceExisting) {
             journeyStore.clearJourneys();
@@ -318,8 +319,8 @@ export class JourneyDbNavSyncService {
                 const nextMin = lm + 1;
                 const nextDate = new Date(`${currDateStr}T00:00:00`);
                 nextDate.setHours(lh, nextMin, 0, 0);
-                currTimeStr = `${String(nextDate.getHours()).padStart(2, '0')}:${String(nextDate.getMinutes()).padStart(2, '0')}`;
-                currDateStr = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`;
+                currTimeStr = formatHHMM(nextDate);
+                currDateStr = formatYYYYMMDD(nextDate);
             } else {
                 break;
             }

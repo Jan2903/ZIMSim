@@ -244,7 +244,7 @@ export class IrisDataMapper {
      * @param {string} irisTimeStr 
      * @returns {number|null} Timestamp in Millisekunden
      */
-    static _parseIrisDateTime(irisTimeStr) {
+    static parseIrisDateTime(irisTimeStr) {
         if (!irisTimeStr || irisTimeStr.length !== 10) return null;
         const yy = 2000 + parseInt(irisTimeStr.slice(0, 2), 10);
         const mm = parseInt(irisTimeStr.slice(2, 4), 10) - 1;
@@ -252,6 +252,15 @@ export class IrisDataMapper {
         const hh = parseInt(irisTimeStr.slice(6, 8), 10);
         const min = parseInt(irisTimeStr.slice(8, 10), 10);
         return new Date(yy, mm, dd, hh, min).getTime();
+    }
+
+    /**
+     * Parst den Iris Zeit-String in einen JS-Timestamp (Legacy-Alias).
+     * @param {string} irisTimeStr
+     * @returns {number|null} Timestamp in Millisekunden
+     */
+    static _parseIrisDateTime(irisTimeStr) {
+        return this.parseIrisDateTime(irisTimeStr);
     }
 
     /**

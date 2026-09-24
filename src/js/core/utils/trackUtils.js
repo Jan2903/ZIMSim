@@ -129,14 +129,6 @@ export function sectionsOverlap(trackStrA, trackStrB) {
 }
 
 /**
- * Prüft auf exakte Gleis-Gleichheit oder Überschneidung, wenn als Vergleich genutzt.
- * Hier primär alias für sectionsOverlap, um die alte API abzubilden.
- */
-export function compareTracks(trackStrA, trackStrB) {
-    return sectionsOverlap(trackStrA, trackStrB);
-}
-
-/**
  * Prüft, ob zwei Gleise einander direkt gegenüberliegen (selber Mittelbahnsteig).
  * Nutzt zuerst benutzerspezifische Gleispaare (falls vorhanden)
  * und fällt sonst auf die DB-Standardheuristik für Mittelbahnsteige zurück (z.B. 2 ↔ 3, 4 ↔ 5).

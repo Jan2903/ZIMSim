@@ -1,6 +1,7 @@
 import { calculateCoachPositions, getSectorsForCoaches } from '../../formation/formationUtils.js';
 import { formatDisplayName } from '../trainNumberFormatter.js';
 import { JourneyCouplingService } from './journeyCouplingService.js';
+import { calculateDelayMinutes, parseTimeToMinutes, formatTimeFromMinutes } from '../../../core/utils/dateUtils.js';
 
 /**
  * Service für die Erzeugung und Aktualisierung dynamischer Lauftext-Bausteine
@@ -25,24 +26,12 @@ export class DynamicTextService {
 
         // Verspätung berechnen & auf volle 5 Minuten abrunden
         if (arrivalJourney.expectedTime && arrivalJourney.expectedTime !== arrivalJourney.scheduledTime) {
-            const planTimeStr = arrivalJourney.scheduledTime;
-            const expectedTimeStr = arrivalJourney.expectedTime;
-
-            const [pHe, pMe] = planTimeStr.split(':').map(Number);
-            const [eHe, eMe] = expectedTimeStr.split(':').map(Number);
-            if (!isNaN(pHe) && !isNaN(eHe)) {
-                let planMin = pHe * 60 + pMe;
-                let expMin = eHe * 60 + eMe;
-                // Tageswechsel-Handling (z.B. Plan 23:55, Erwartet 00:05)
-                if (expMin < planMin && planMin > 23 * 60) expMin += 24 * 60;
-
-                const delay = expMin - planMin;
-                if (delay >= 5) {
+            const delay = calculateDelayMinutes(arrivalJourney.scheduledTime, arrivalJourney.expectedTime);
+            if (delay >= 5) {
+                const planMin = parseTimeToMinutes(arrivalJourney.scheduledTime);
+                if (planMin !== null) {
                     const roundedDelay = Math.floor(delay / 5) * 5;
-                    const newExpMin = planMin + roundedDelay;
-                    const rH = Math.floor(newExpMin / 60) % 24;
-                    const rM = newExpMin % 60;
-                    const roundedExpectedTime = `${String(rH).padStart(2, '0')}:${String(rM).padStart(2, '0')}`;
+                    const roundedExpectedTime = formatTimeFromMinutes(planMin + roundedDelay);
                     text += ` (heute ca. ${roundedExpectedTime})`;
                 }
             }

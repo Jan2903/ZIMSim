@@ -1,6 +1,7 @@
 import { IrisCacheService } from './irisCacheService.js';
 import { safeApiFetch } from './apiClient.js';
 import { yieldToMain } from '../utils/yieldUtils.js';
+import { IrisDataMapper } from './irisDataMapper.js';
 
 export class IrisApiService {
     static BASE_URL = 'https://iris.noncd.db.de/iris-tts/timetable';
@@ -145,15 +146,9 @@ export class IrisApiService {
                 const ct = primaryNode.getAttribute('ct');
                 const effectiveTimeStr = ct || pt;
 
-                if (effectiveTimeStr && effectiveTimeStr.length >= 10) {
-                    const yy = 2000 + parseInt(effectiveTimeStr.slice(0, 2), 10);
-                    const mm = parseInt(effectiveTimeStr.slice(2, 4), 10) - 1;
-                    const dd = parseInt(effectiveTimeStr.slice(4, 6), 10);
-                    const h = parseInt(effectiveTimeStr.slice(6, 8), 10);
-                    const m = parseInt(effectiveTimeStr.slice(8, 10), 10);
-                    
-                    const effectiveTimeMs = new Date(yy, mm, dd, h, m).getTime();
-                    if (effectiveTimeMs < pastThreshold || effectiveTimeMs > futureThreshold) {
+                if (effectiveTimeStr) {
+                    const effectiveTimeMs = IrisDataMapper.parseIrisDateTime(effectiveTimeStr);
+                    if (effectiveTimeMs && (effectiveTimeMs < pastThreshold || effectiveTimeMs > futureThreshold)) {
                         continue; // Zug ist zeitlich nicht mehr relevant, Basisplan wird nicht benötigt
                     }
                 }

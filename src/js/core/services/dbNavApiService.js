@@ -1,6 +1,7 @@
 // js/core/services/dbNavApiService.js
 import { safeApiFetch } from './apiClient.js';
 import { getSimulatedTime } from '../utils/config.js';
+import { formatHHMM, formatYYYYMMDD } from '../utils/dateUtils.js';
 
 /**
  * @fileoverview Plattform- und rate-limit-sicherer Service für die DB Navigator / DB Vendo APIs.
@@ -141,20 +142,8 @@ export class DbNavApiService {
         const endpoint = isDeparture ? 'abfahrt' : 'ankunft';
         const simDate = getSimulatedTime();
         
-        let finalDate = dateStr;
-        if (!finalDate) {
-            const y = simDate.getFullYear();
-            const m = String(simDate.getMonth() + 1).padStart(2, '0');
-            const d = String(simDate.getDate()).padStart(2, '0');
-            finalDate = `${y}-${m}-${d}`;
-        }
-
-        let finalTime = timeStr;
-        if (!finalTime) {
-            const hh = String(simDate.getHours()).padStart(2, '0');
-            const mm = String(simDate.getMinutes()).padStart(2, '0');
-            finalTime = `${hh}:${mm}`;
-        }
+        const finalDate = dateStr || formatYYYYMMDD(simDate);
+        const finalTime = timeStr || formatHHMM(simDate);
 
         const cacheKey = `${locationId}_${endpoint}_${finalDate}_${finalTime}`;
 

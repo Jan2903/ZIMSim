@@ -3,6 +3,7 @@ import { ansagenStore } from './ansagenStore.svelte.js';
 import { isOppositeTrack } from '../core/utils/trackUtils.js';
 import { journeyStore } from '../core/state/stores.js';
 import { getSimulatedTime } from '../core/utils/config.js';
+import { calculateDelayMinutes } from '../core/utils/dateUtils.js';
 import { JourneyConnectionService } from '../features/journey/services/journeyConnectionService.js';
 import { AnsagenSpeechFormatter } from './ansagenSpeechFormatter.js';
 
@@ -95,12 +96,7 @@ export class AnsagenGenerator {
     _calculateDelay(journey) {
         if (!journey || !journey.expectedTime || !journey.scheduledTime) return 0;
         
-        const [sh, sm] = journey.scheduledTime.split(':').map(Number);
-        const [eh, em] = journey.expectedTime.split(':').map(Number);
-        
-        let diff = (eh * 60 + em) - (sh * 60 + sm);
-        if (diff < -720) diff += 1440; 
-        else if (diff > 720) diff -= 1440; 
+        const diff = calculateDelayMinutes(journey.scheduledTime, journey.expectedTime);
         
         if (diff < 5) return 0;                             // 0-4 Min -> pünktlich / unterdrückt
         if (diff <= 60) return Math.floor(diff / 5) * 5;    // 5-60 Min -> 5er-Schritte nach unten

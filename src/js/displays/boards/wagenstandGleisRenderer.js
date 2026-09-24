@@ -4,6 +4,7 @@ import { drawFormation, drawSectors } from '../primitives/formationRenderer.js';
 import { drawText } from '../core/textUtils.js';
 import { drawDBLogo, drawAnalogClock } from '../core/sharedRenderers.js';
 import { getSimulatedTime } from '../../core/utils/config.js';
+import { formatHHMM } from '../../core/utils/dateUtils.js';
 
 function drawVitrineHeader(ctx, width, activeFeatureIndex, progress, trackNumber, featureAlpha = 1.0) {
     // 1. Clock (Left)
@@ -11,7 +12,7 @@ function drawVitrineHeader(ctx, width, activeFeatureIndex, progress, trackNumber
     
     // Digital Time
     const now = getSimulatedTime();
-    const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    const timeStr = formatHHMM(now);
     drawText(ctx, timeStr, 150, 110, FONTS.bold(86), COLORS.WHITE, 'left', 'middle');
 
     // 2. Progress Bar & Features (Center)
