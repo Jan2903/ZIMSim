@@ -10,6 +10,7 @@ import { DynamicTextService } from './services/dynamicTextService.js';
 import { JourneyImportService } from './services/journeyImportService.js';
 import { JourneyStorageService } from './services/journeyStorageService.js';
 import { JourneyConnectionService } from './services/journeyConnectionService.js';
+import { formationRuleService } from '../formation/formationRuleService.svelte.js';
 
 /**
  * Zentrale Datenverwaltung (Façade & reaktiver Svelte 5 Store).
@@ -108,6 +109,9 @@ export class JourneyStore {
      */
     addJourney(data = {}) {
         const journey = new Journey(data);
+        if (formationRuleService.autoAssign && journey.formation && journey.formation.isEmpty) {
+            formationRuleService.applyRulesToJourney(journey);
+        }
         this.journeys.push(journey);
         return journey;
     }

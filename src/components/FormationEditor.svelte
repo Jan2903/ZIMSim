@@ -9,12 +9,16 @@
     import CoachEditorRow from './CoachEditorRow.svelte';
     import StationPicker from './StationPicker.svelte';
     import ZimIcon from './ZimIcon.svelte';
+    import FormationPresetModal from './FormationPresetModal.svelte';
+    import FormationRuleEditorModal from './FormationRuleEditorModal.svelte';
     import { JourneyDbNavSyncService } from '../js/features/journey/services/journeyDbNavSyncService.js';
 
     let { journey = $bindable() } = $props();
 
     const flipDurationMs = 200;
     let fileInputRef = $state();
+    let isPresetModalOpen = $state(false);
+    let isRulesModalOpen = $state(false);
 
     async function fetchFromDbNav() {
         const res = await JourneyDbNavSyncService.fetchFormationForJourney(journey);
@@ -215,6 +219,14 @@
                 <ZimIcon name="export" size={14} />
                 <span>Export</span>
             </button>
+            <button type="button" class="btn-secondary btn-sm" onclick={() => isPresetModalOpen = true} title="Wagenreihung aus einer Vorlage (Preset) erstellen" style="display: inline-flex; align-items: center; gap: 6px;">
+                <ZimIcon name="copy" size={14} />
+                <span>Preset</span>
+            </button>
+            <button type="button" class="btn-secondary btn-sm" onclick={() => isRulesModalOpen = true} title="Regeln für automatische Wagenreihung anpassen" style="display: inline-flex; align-items: center; gap: 6px;">
+                <ZimIcon name="settings" size={14} />
+                <span>Auto-Regeln</span>
+            </button>
             <button type="button" class="btn-secondary btn-sm" onclick={reverseEntireFormation} title="Dreht die Reihenfolge aller Gruppen und Wagen um" style="display: inline-flex; align-items: center; gap: 6px;">
                 <ZimIcon name="rotate" size={14} />
                 <span>Komplett drehen</span>
@@ -233,6 +245,15 @@
             </div>
             <p>Keine Wagenreihung für diese Fahrt vorhanden.</p>
             <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+                <button 
+                    type="button" 
+                    class="btn-primary" 
+                    onclick={() => isPresetModalOpen = true}
+                    style="display: inline-flex; align-items: center; gap: 6px;"
+                >
+                    <ZimIcon name="copy" size={14} />
+                    <span>Aus Vorlage wählen</span>
+                </button>
                 <button 
                     type="button" 
                     class="btn-secondary" 
@@ -389,6 +410,18 @@
             {/each}
         </div>
     {/if}
+
+    <!-- Modal für Wagenreihungs-Vorlagen (Presets) -->
+    <FormationPresetModal 
+        bind:isOpen={isPresetModalOpen} 
+        bind:journey={journey} 
+        onApplied={triggerUpdate} 
+    />
+
+    <!-- Modal für automatische Zuweisungs-Regeln -->
+    <FormationRuleEditorModal 
+        bind:isOpen={isRulesModalOpen} 
+    />
 </div>
 
 <style>

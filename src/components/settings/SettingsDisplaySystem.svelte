@@ -4,6 +4,7 @@
     import { uiState } from '../../js/core/state/uiState.svelte.js';
     import { config } from '../../js/core/utils/config.js';
     import LineColorEditorModal from '../LineColorEditorModal.svelte';
+    import FormationRuleEditorModal from '../FormationRuleEditorModal.svelte';
     import ZimIcon from '../ZimIcon.svelte';
 
     /**
@@ -14,6 +15,7 @@
 
     // Modal-Status für Linienfarben & Badges
     let isLineColorModalOpen = $state(false);
+    let isFormationRulesModalOpen = $state(false);
 
     // Performance-Modus (30 FPS Begrenzung)
     let isPerformanceMode = $state(config.performance_mode);
@@ -94,6 +96,15 @@
                     <ZimIcon name="palette" size={16} />
                     <span>Linienfarben & Badges anpassen</span>
                 </button>
+                <button 
+                    type="button" 
+                    class="btn-secondary" 
+                    onclick={() => isFormationRulesModalOpen = true}
+                    style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 8px;"
+                >
+                    <ZimIcon name="train" size={16} />
+                    <span>Wagenreihungs-Regeln anpassen</span>
+                </button>
             </div>
 
             <div class="info-note" style="margin-top: 14px; font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
@@ -173,6 +184,7 @@
 </div>
 
 <LineColorEditorModal bind:isOpen={isLineColorModalOpen} />
+<FormationRuleEditorModal bind:isOpen={isFormationRulesModalOpen} />
 
 <style>
     .settings-tab-grid {
