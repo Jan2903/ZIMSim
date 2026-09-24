@@ -441,46 +441,6 @@
 {/if}
 
 <style>
-    /* Fullscreen HUD & Display Wrapper */
-    .fullscreen-hud {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        z-index: 10000;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.3s ease;
-    }
-    .fullscreen-hud.hud-visible {
-        opacity: 1;
-        pointer-events: auto;
-    }
-    .fullscreen-hud-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        background: rgba(20, 20, 25, 0.85);
-        color: #fff;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        backdrop-filter: blur(10px);
-        padding: 8px 16px;
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 0.85rem;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-        transition: all 0.2s ease;
-    }
-    .fullscreen-hud-btn:hover {
-        background: rgba(40, 40, 50, 0.95);
-        border-color: rgba(255, 255, 255, 0.4);
-    }
-    }
-    .dropdown-divider {
-        height: 1px;
-        background: var(--border);
-        margin: 4px 0;
-    }
-
     /* Subtiler Innenrahmen/Fase um die Bildschirme (Display-Einbau) */
     .display-bezel-lip {
         position: absolute;
