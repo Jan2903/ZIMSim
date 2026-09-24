@@ -88,7 +88,19 @@ export async function safeApiFetch(url, options = {}, isNonCorsApi = false) {
         if (proxyConfig.enabled) {
             const proxyBase = proxyConfig.url.replace(/\/+$/, '');
             const proxiedUrl = url.replace('https://app.services-bahn.de', proxyBase);
-            return window.fetch(proxiedUrl, options);
+
+            // Im Browser sind 'User-Agent' und ähnliche Header verboten (Forbidden Header Name)
+            // und führen bei Browser-Fetches zu CORS-Preflight-Fehlern.
+            // Der Python-Proxy generiert diese Header ohnehin serverseitig selbst.
+            let browserOptions = options;
+            if (options && options.headers) {
+                const cleanedHeaders = { ...options.headers };
+                delete cleanedHeaders['User-Agent'];
+                delete cleanedHeaders['user-agent'];
+                browserOptions = { ...options, headers: cleanedHeaders };
+            }
+
+            return window.fetch(proxiedUrl, browserOptions);
         }
 
         // Web-Modus ohne Proxy: Nicht-CORS-Requests verhindern

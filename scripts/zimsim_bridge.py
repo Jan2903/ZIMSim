@@ -87,8 +87,15 @@ class ZimSimBridgeHandler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Accept, X-Requested-With, Authorization')
-        # Wichtig fuer Chromium Private Network Access (PNA) Preflights von HTTPS-Websites
+        
+        # Dynamisch angeforderte Header spiegeln oder vollstaendige Whitelist senden
+        req_headers = self.headers.get('Access-Control-Request-Headers') if self.headers else None
+        if req_headers:
+            self.send_header('Access-Control-Allow-Headers', req_headers)
+        else:
+            self.send_header('Access-Control-Allow-Headers', 'Content-Type, Accept, User-Agent, user-agent, X-App-Version, X-Device-Os-Name, X-Device-Os-Version, X-Device-Model, X-Correlation-ID, X-INSTANA-ANDROID, Accept-Language, X-Requested-With, Authorization, *')
+
+        # Wichtig fuer Chromium & Firefox Private Network Access (PNA) Preflights von HTTPS-Websites
         self.send_header('Access-Control-Allow-Private-Network', 'true')
         self.send_header('Access-Control-Max-Age', '86400')
 
