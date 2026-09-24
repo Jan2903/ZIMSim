@@ -9,6 +9,7 @@ import { JourneyFilterService } from './services/journeyFilterService.js';
 import { DynamicTextService } from './services/dynamicTextService.js';
 import { JourneyImportService } from './services/journeyImportService.js';
 import { JourneyStorageService } from './services/journeyStorageService.js';
+import { JourneyConnectionService } from './services/journeyConnectionService.js';
 
 /**
  * Zentrale Datenverwaltung (Façade & reaktiver Svelte 5 Store).
@@ -445,6 +446,30 @@ export class JourneyStore {
      */
     getAllTracks() {
         return JourneyFilterService.getAllTracks(this.journeys);
+    }
+
+    // ==========================================
+    // Anschlüsse (Connections)
+    // ==========================================
+
+    /**
+     * Ermittelt die nächsten passenden Anschlusszüge für eine Referenzfahrt.
+     * @param {Journey|null} [referenceJourney=null] - Die Bezugsfahrt
+     * @param {object} [options={}] - Optionen für Zeitfenster, Mindestumsteigezeit etc.
+     * @returns {Journey[]} Liste passender Anschluss-Journeys
+     */
+    findConnections(referenceJourney = null, options = {}) {
+        return JourneyConnectionService.findConnections(this.journeys, referenceJourney, options);
+    }
+
+    /**
+     * Prüft, ob für eine Referenzfahrt erreichbare Anschlüsse existieren.
+     * @param {Journey|null} [referenceJourney=null] - Die Bezugsfahrt
+     * @param {object} [options={}] - Optionen für Zeitfenster, Mindestumsteigezeit etc.
+     * @returns {boolean} true wenn Anschlüsse existieren
+     */
+    hasReachableConnections(referenceJourney = null, options = {}) {
+        return JourneyConnectionService.hasReachableConnections(this.journeys, referenceJourney, options);
     }
 
     // ==========================================

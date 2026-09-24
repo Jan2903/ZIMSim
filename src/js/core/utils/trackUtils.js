@@ -135,3 +135,42 @@ export function sectionsOverlap(trackStrA, trackStrB) {
 export function compareTracks(trackStrA, trackStrB) {
     return sectionsOverlap(trackStrA, trackStrB);
 }
+
+/**
+ * Prüft, ob zwei Gleise einander direkt gegenüberliegen (selber Mittelbahnsteig).
+ * Nutzt zuerst benutzerspezifische Gleispaare (falls vorhanden)
+ * und fällt sonst auf die DB-Standardheuristik für Mittelbahnsteige zurück (z.B. 2 ↔ 3, 4 ↔ 5).
+ *
+ * @param {string} trackA - Erstes Gleis (z.B. "2" oder "2 A-C")
+ * @param {string} trackB - Zweites Gleis (z.B. "3")
+ * @param {Array<[string, string]>|null} [customPairs=null] - Optionale Liste konfigurierter Gleispaare
+ * @returns {boolean} true wenn die Gleise gegenüberliegen
+ */
+export function isOppositeTrack(trackA, trackB, customPairs = null) {
+    if (!trackA || !trackB) return false;
+    const baseA = parseTrack(trackA).base;
+    const baseB = parseTrack(trackB).base;
+    if (!baseA || !baseB || baseA === baseB) return false;
+
+    // 1. Benutzerspezifische Konfiguration prüfen
+    if (Array.isArray(customPairs) && customPairs.length > 0) {
+        return customPairs.some(([a, b]) => {
+            const pA = parseTrack(a).base;
+            const pB = parseTrack(b).base;
+            return (pA === baseA && pB === baseB) || (pA === baseB && pB === baseA);
+        });
+    }
+
+    // 2. DB-Standardheuristik für Insel-/Mittelbahnsteige (z.B. 2/3, 4/5, 6/7, ...)
+    const numA = parseInt(baseA, 10);
+    const numB = parseInt(baseB, 10);
+    if (!isNaN(numA) && !isNaN(numB) && String(numA) === baseA && String(numB) === baseB) {
+        const min = Math.min(numA, numB);
+        const max = Math.max(numA, numB);
+        if (min % 2 === 0 && max === min + 1) {
+            return true;
+        }
+    }
+
+    return false;
+}
