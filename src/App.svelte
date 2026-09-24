@@ -4,6 +4,7 @@
     import { ScreenSyncService } from './js/core/services/screenSyncService.js';
     import { ansagenStore } from './js/audio/ansagenStore.svelte.js';
     import Header from './components/Header.svelte';
+    import DisplayToolbar from './components/DisplayToolbar.svelte';
     import SettingsPanel from './components/SettingsPanel.svelte';
     import Modals from './components/Modals.svelte';
     import PlayerOverlay from './components/PlayerOverlay.svelte';
@@ -35,9 +36,6 @@
     // Auto-Hiding HUD für Vollbild/Kiosk
     let hudVisible = $state(false);
     let hudTimeout = null;
-
-    // Dropdown-Zustand für Multi-Monitor Menü
-    let monitorMenuOpen = $state(false);
 
     // Gehäuse-Zustand & dynamische Abmessungen für Gehäuse vs. Reines Display via Store
     let showBezel = $derived(displayConfigStore.showBezel);
@@ -316,12 +314,6 @@
         }
     }
 
-    function onWindowClick(e) {
-        if (monitorMenuOpen && !e.target.closest('.display-toolbar-dropdown-container')) {
-            monitorMenuOpen = false;
-        }
-    }
-
     onMount(() => {
         displayConfigStore.isKiosk = isKiosk;
         if (targetLayout) {
@@ -354,14 +346,12 @@
         window.addEventListener('resize', handleResize);
         document.addEventListener('fullscreenchange', onFullscreenChange);
         window.addEventListener('keydown', onKeyDown);
-        window.addEventListener('click', onWindowClick);
         setTimeout(handleResize, 100);
         
         return () => {
             window.removeEventListener('resize', handleResize);
             document.removeEventListener('fullscreenchange', onFullscreenChange);
             window.removeEventListener('keydown', onKeyDown);
-            window.removeEventListener('click', onWindowClick);
             if (observer) observer.disconnect();
             if (hudTimeout) clearTimeout(hudTimeout);
         };
@@ -431,107 +421,15 @@
 
 <!-- Schlanke Display-Steuerungsleiste direkt unter dem Monitor (0% Überdeckung der Bildfläche) -->
 {#if !isKiosk}
-<div class="display-toolbar">
-    <div class="display-toolbar-info">
-        <span class="display-toolbar-status">
-            Display: <strong>{displayScaleMode === 'fit' ? 'Fit (angepasst)' : '1:1 (scrollbar)'}</strong>
-            {#if targetScreen}
-                <span class="target-screen-tag">Monitor {targetScreen}</span>
-            {/if}
-        </span>
-    </div>
-    <div class="display-toolbar-actions">
-        <!-- Gehäuse-Toggle (Rahmen & Steg) -->
-        <button 
-            type="button" 
-            class="display-toolbar-btn"
-            class:active-btn={displayConfigStore.showBezel}
-            onclick={toggleBezel}
-            title={displayConfigStore.showBezel ? 'Gehäuse-Simulation ausblenden (Reiner Canvas)' : 'Gehäuse-Simulation einblenden'}
-            aria-label="Gehäuse umschalten"
-        >
-            <ZimIcon name="eye" size={14} />
-            <span>Gehäuse: {displayConfigStore.showBezel ? 'An' : 'Aus'}</span>
-        </button>
-
-        <!-- Screenshot Download -->
-        <button 
-            type="button" 
-            class="display-toolbar-btn"
-            onclick={downloadScreenshot}
-            title="Screenshot des Monitors herunterladen"
-            aria-label="Screenshot herunterladen"
-        >
-            <ZimIcon name="camera" size={14} />
-            <span>Screenshot</span>
-        </button>
-
-        <!-- Fit / Scroll Toggle -->
-        <button 
-            type="button" 
-            class="display-toolbar-btn"
-            onclick={toggleScaleMode}
-            title={displayScaleMode === 'fit' ? 'Zur scrollbaren Detailansicht (1:1) wechseln' : 'An Bildschirmbreite anpassen (Fit)'}
-            aria-label="Display-Skalierung umschalten"
-        >
-            <ZimIcon name={displayScaleMode === 'fit' ? 'zoom_scroll' : 'zoom_fit'} size={14} />
-            <span>{displayScaleMode === 'fit' ? 'Fit' : '1:1'}</span>
-        </button>
-
-        <!-- Vollbild-Modus -->
-        <button 
-            type="button" 
-            class="display-toolbar-btn btn-fullscreen"
-            onclick={toggleFullscreen}
-            title="In den Vollbildmodus wechseln (F11 / Esc)"
-            aria-label="Vollbildmodus"
-        >
-            <ZimIcon name="fullscreen" size={14} />
-            <span>Vollbild</span>
-        </button>
-
-        <!-- Multi-Monitor Pop-Out Dropdown (nur Desktop) -->
-        <div class="display-toolbar-dropdown-container desktop-only">
-            <button 
-                type="button" 
-                class="display-toolbar-btn"
-                onclick={() => monitorMenuOpen = !monitorMenuOpen}
-                title="Monitore in separaten Vollbild-/Kiosk-Fenstern öffnen"
-                aria-expanded={monitorMenuOpen}
-            >
-                <ZimIcon name="monitors" size={14} />
-                <span>Monitore ▾</span>
-            </button>
-            {#if monitorMenuOpen}
-                <div class="display-toolbar-dropdown-menu" role="menu">
-                    <div class="dropdown-header">Full-HD (1080p)</div>
-                    <button type="button" class="dropdown-item" onclick={() => openScreen(1, false)}>
-                        <ZimIcon name="popout" size={14} />
-                        <span>Monitor 1 (Hauptmonitor)</span>
-                    </button>
-                    <button type="button" class="dropdown-item" onclick={() => openScreen(2, false)}>
-                        <ZimIcon name="popout" size={14} />
-                        <span>Monitor 2 (Nebenmonitore)</span>
-                    </button>
-                    <button type="button" class="dropdown-item" onclick={() => openScreen(3, false)}>
-                        <ZimIcon name="popout" size={14} />
-                        <span>Monitor 3 (Zusatzanzeiger)</span>
-                    </button>
-                    <div class="dropdown-divider"></div>
-                    <div class="dropdown-header">4K Ultra-HD (2160p)</div>
-                    <button type="button" class="dropdown-item" onclick={() => openScreen(1, true)}>
-                        <ZimIcon name="popout" size={14} />
-                        <span>Monitor 1 (4K)</span>
-                    </button>
-                    <button type="button" class="dropdown-item" onclick={() => openScreen(2, true)}>
-                        <ZimIcon name="popout" size={14} />
-                        <span>Monitor 2 (4K)</span>
-                    </button>
-                </div>
-            {/if}
-        </div>
-    </div>
-</div>
+<DisplayToolbar 
+    {displayScaleMode}
+    {targetScreen}
+    onToggleBezel={toggleBezel}
+    onScreenshot={downloadScreenshot}
+    onToggleScaleMode={toggleScaleMode}
+    onToggleFullscreen={toggleFullscreen}
+    onOpenScreen={openScreen}
+/>
 
 <SettingsPanel {modalsComp} />
 
@@ -543,111 +441,39 @@
 {/if}
 
 <style>
-    /* Display Toolbar */
-    .display-toolbar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: rgba(18, 18, 22, 0.95);
-        border-bottom: 1px solid var(--border);
-        border-top: 1px solid rgba(255, 255, 255, 0.05);
-        padding: 6px 16px;
-        font-size: 0.8rem;
-        color: var(--text-muted);
-        box-sizing: border-box;
+    /* Fullscreen HUD & Display Wrapper */
+    .fullscreen-hud {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 10000;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
     }
-    .display-toolbar-status strong {
-        color: var(--text-main);
-        font-weight: 600;
+    .fullscreen-hud.hud-visible {
+        opacity: 1;
+        pointer-events: auto;
     }
-    .target-screen-tag {
-        background: var(--accent);
-        color: white;
-        font-size: 0.7rem;
-        padding: 2px 6px;
-        border-radius: 4px;
-        margin-left: 8px;
-        font-weight: 600;
-    }
-    .display-toolbar-actions {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    .display-toolbar-btn {
-        background: rgba(30, 30, 38, 0.9);
-        color: var(--text-main);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-sm, 4px);
-        padding: 4px 10px;
-        font-size: 0.75rem;
-        cursor: pointer;
+    .fullscreen-hud-btn {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
+        gap: 8px;
+        background: rgba(20, 20, 25, 0.85);
+        color: #fff;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(10px);
+        padding: 8px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
         transition: all 0.2s ease;
     }
-    .display-toolbar-btn:hover {
-        background: rgba(45, 45, 55, 1);
-        border-color: var(--accent);
-        color: white;
+    .fullscreen-hud-btn:hover {
+        background: rgba(40, 40, 50, 0.95);
+        border-color: rgba(255, 255, 255, 0.4);
     }
-    .active-btn {
-        background: rgba(45, 45, 60, 1);
-        border-color: var(--accent);
-        color: white;
-    }
-    .btn-fullscreen {
-        border-color: rgba(235, 30, 40, 0.5);
-    }
-    .btn-fullscreen:hover {
-        background: var(--accent);
-        color: white;
-    }
-
-    /* Multi-Monitor Dropdown */
-    .display-toolbar-dropdown-container {
-        position: relative;
-        display: inline-block;
-    }
-    .display-toolbar-dropdown-menu {
-        position: absolute;
-        right: 0;
-        bottom: calc(100% + 4px);
-        background: rgba(22, 22, 28, 0.98);
-        backdrop-filter: blur(12px);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-md, 6px);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
-        min-width: 220px;
-        z-index: 1000;
-        padding: 6px 0;
-    }
-    .dropdown-header {
-        padding: 6px 14px 4px;
-        font-size: 0.7rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: var(--text-muted);
-    }
-    .dropdown-item {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        width: 100%;
-        padding: 8px 14px;
-        background: transparent;
-        border: none;
-        color: var(--text-main);
-        font-size: 0.8rem;
-        text-align: left;
-        cursor: pointer;
-        transition: background 0.15s ease;
-    }
-    .dropdown-item:hover {
-        background: rgba(255, 255, 255, 0.08);
-        color: white;
     }
     .dropdown-divider {
         height: 1px;
@@ -700,24 +526,5 @@
         background: rgba(40, 40, 50, 0.95);
         border-color: var(--accent);
         transform: scale(1.02);
-    }
-
-    @media (max-width: 768px) {
-        .desktop-only {
-            display: none !important;
-        }
-        .display-toolbar {
-            padding: 6px 10px;
-            flex-wrap: wrap;
-            gap: 6px;
-        }
-        .display-toolbar-btn {
-            padding: 5px 8px;
-            font-size: 0.72rem;
-            min-height: 34px;
-        }
-        .display-toolbar-status {
-            font-size: 0.75rem;
-        }
     }
 </style>

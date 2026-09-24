@@ -1,92 +1,45 @@
+<!-- src/components/SettingsPanel.svelte -->
 <script>
-    import { journeyStore, trainDisplay } from '../js/core/state/stores.js';
-    import { StationService } from '../js/features/station/stationService.js';
-    import { IrisApiService } from '../js/core/services/irisApiService.js';
-    import { uiState } from '../js/core/state/uiState.svelte.js';
-    import { fade, slide } from 'svelte/transition';
-    import JourneyList from './JourneyList.svelte';
-    import StationPicker from './StationPicker.svelte';
-    import CollapsibleSection from './CollapsibleSection.svelte';
-    import { setSimulatedTime, getSimulatedTime, timeConfig, config } from '../js/core/utils/config.js';
+    import { journeyStore } from '../js/core/state/stores.js';
     import { irisPollingService, irisConfig } from '../js/core/services/irisPollingService.svelte.js';
-    import { MOT_PRESETS, getSmartHeaderString, MOT_ALL_KEYS } from '../js/features/station/motManager.js';
-    import { ansagenStore } from '../js/audio/ansagenStore.svelte.js';
-    import { open } from '@tauri-apps/plugin-dialog';
+    import JourneyList from './JourneyList.svelte';
+    import CollapsibleSection from './CollapsibleSection.svelte';
     import ZimIcon from './ZimIcon.svelte';
-    import { displayConfigStore } from '../js/displays/core/displayConfigStore.svelte.js';
-    import { MONITOR_PROFILES, LAYOUT_TYPES } from '../js/displays/core/displayLayoutService.js';
-    import LineColorEditorModal from './LineColorEditorModal.svelte';
+
+    // Fachspezifische Einstellungs-Unterkomponenten
+    import SettingsStationTime from './settings/SettingsStationTime.svelte';
+    import SettingsLiveData from './settings/SettingsLiveData.svelte';
+    import SettingsAudio from './settings/SettingsAudio.svelte';
+    import SettingsDisplaySystem from './settings/SettingsDisplaySystem.svelte';
     
+    /**
+     * @typedef {Object} Props
+     * @property {object} [modalsComp] - Referenz auf die Modals-Komponente für Dialog-Aufrufe
+     */
     let { modalsComp } = $props();
 
-    // Modal-Status für Linienfarben & Badge-Editor
-    let isLineColorModalOpen = $state(false);
+    // Aktiver Tab: 'fahrten' | 'station' | 'livedata' | 'audio' | 'system'
+    let activeTab = $state('fahrten');
 
-    // Mobiler Tab-State: 'fahrten' | 'monitor' | 'tools'
-    let activeMobileTab = $state('fahrten');
-
-    // Desktop-Ansichtsmodus: 'split' (zweispaltig) oder 'tabs' (dreigeteilt in Reiter)
-    let desktopViewMode = $state(localStorage.getItem('zimsim_view_mode') || 'split');
+    // Status für manuellen IRIS-Schnellabruf
+    let isFetchingIris = $state(false);
 
     /**
-     * Schaltet den Desktop-Ansichtsmodus zwischen geteilter Ansicht und Reiter-Fokusmodus um.
-     * @param {'split'|'tabs'} mode - Gewählter Ansichtsmodus
+     * Fügt eine neue manuelle Fahrt zur Liste hinzu.
      * @returns {void}
      */
-    function setDesktopViewMode(mode) {
-        desktopViewMode = mode;
-        localStorage.setItem('zimsim_view_mode', mode);
-    }
-
-    // Derived values for the UI
-    let entry_station_search = $state('');
-    let isPerformanceMode = $state(config.performance_mode);
-    let autoUpdateTime = $state(timeConfig.isRunning);
-    
-    // Time logic
-    let customTimeString = $state('');
-    
-    // Init customTimeString without triggering timezone issues, keeping it simple
-    function formatForInput(date) {
-        return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 19);
-    }
-    
-    $effect(() => {
-        config.performance_mode = isPerformanceMode;
-        localStorage.setItem('zimsim_performance_mode', isPerformanceMode);
-    });
-
-    $effect(() => {
-        timeConfig.isRunning = autoUpdateTime;
-        
-        let interval;
-        if (autoUpdateTime) {
-            // Update the input field every second when auto update is on
-            interval = setInterval(() => {
-                customTimeString = formatForInput(getSimulatedTime());
-            }, 1000);
-        }
-        return () => {
-            if (interval) clearInterval(interval);
-        };
-    });
-    
-    // Fallback: Initial time setup
-    $effect(() => {
-        if (!customTimeString && !autoUpdateTime) {
-            customTimeString = formatForInput(getSimulatedTime());
-        }
-    });
-
     function addManualJourney() {
         journeyStore.addJourney();
     }
-    
-    let isFetchingIris = $state(false);
 
+    /**
+     * Führt eine sofortige IRIS-Aktualisierung aus.
+     * @returns {Promise<void>}
+     */
     async function fetchIrisData() {
         if (!journeyStore.stationContext.stationId) {
             alert('Bitte zuerst eine Station auswählen!');
+            activeTab = 'station';
             return;
         }
         isFetchingIris = true;
@@ -97,719 +50,238 @@
                 await irisPollingService.pollRealtime(true);
             }
         } catch (e) {
-            console.error(e);
+            console.error('[SettingsPanel] IRIS-Abruf fehlgeschlagen:', e);
             alert('Fehler beim Abrufen der IRIS-Daten.');
         } finally {
             isFetchingIris = false;
         }
     }
-    
-    function onMonitorChange(id) {
-        displayConfigStore.setMonitorId(id);
-        trainDisplay.updateAll();
-        window.dispatchEvent(new Event('resize'));
-    }
-
-    function onLayoutTypeChange(type) {
-        displayConfigStore.setLayoutType(type);
-        trainDisplay.updateAll();
-        window.dispatchEvent(new Event('resize'));
-    }
-    
-    function onFeatureChange(event) {
-        trainDisplay.onFeatureButtonChange(event.target.value);
-    }
-    
-    function selectStation(station) {
-        entry_station_search = station.name;
-        journeyStore.stationContext.stationName = station.name;
-        journeyStore.stationContext.stationId = station.ibnr || station.eva;
-    }
-
-    function setCurrentTime() {
-        setSimulatedTime(new Date());
-        customTimeString = formatForInput(getSimulatedTime());
-    }
-
-    function onCustomTimeChange(e) {
-        if (e.target.value) {
-            setSimulatedTime(new Date(e.target.value));
-            customTimeString = e.target.value;
-        }
-    }
-
-    function setMotPreset(preset) {
-        journeyStore.activeMots = [...MOT_PRESETS[preset]];
-        trainDisplay.updateAll();
-    }
-
-    let motSummary = $derived(getSmartHeaderString(journeyStore.activeMots));
-    
-    // Dynamically build track list, including both active (manually added) and those in journeys
-    let allAvailableTracks = $derived.by(() => {
-        const fromJourneys = journeyStore.getAllTracks();
-        const all = new Set([...fromJourneys, ...journeyStore.activeTracks]);
-        return Array.from(all).sort((a, b) => {
-            return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
-        });
-    });
-    
-    let trackSummary = $derived(journeyStore.activeTracks.length === 0 ? 'Gleise: Alle' : `Gleise: ${journeyStore.activeTracks.length} ausgewählt`);
-
-    function toggleTrack(track) {
-        if (journeyStore.activeTracks.includes(track)) {
-            journeyStore.activeTracks = journeyStore.activeTracks.filter(t => t !== track);
-        } else {
-            journeyStore.activeTracks = [...journeyStore.activeTracks, track];
-        }
-        trainDisplay.updateAll();
-    }
-
-    function invertTracks() {
-        const newTracks = [];
-        for (const track of allAvailableTracks) {
-            if (!journeyStore.activeTracks.includes(track)) {
-                newTracks.push(track);
-            }
-        }
-        journeyStore.activeTracks = newTracks;
-        trainDisplay.updateAll();
-    }
-
-    let manualTrackInput = $state('');
-    function addManualTrack() {
-        if (manualTrackInput && !journeyStore.activeTracks.includes(manualTrackInput)) {
-            journeyStore.activeTracks = [...journeyStore.activeTracks, manualTrackInput];
-            trainDisplay.updateAll();
-        }
-        manualTrackInput = '';
-    }
-
-    function exportConfig() {
-        const data = journeyStore.exportAll();
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `zimsim_export_${new Date().getTime()}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-    }
-
-    let fileInput;
-    function handleFileImport(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            try {
-                const data = JSON.parse(event.target.result);
-                journeyStore.importAll(data);
-                trainDisplay.updateAll();
-            } catch (err) {
-                console.error("Import Fehler:", err);
-                alert("Fehler beim Importieren der Datei.");
-            }
-        };
-        reader.readAsText(file);
-        e.target.value = ''; // Reset
-    }
-
-    let audioZipInput;
-    async function handleZipLoad() {
-        if (ansagenStore.isTauri) {
-            try {
-                const file = await open({
-                    multiple: false,
-                    filters: [{ name: 'ZIP', extensions: ['zip'] }]
-                });
-                if (file) {
-                    ansagenStore.setFileRef(file, file.split(/[/\\]/).pop());
-                }
-            } catch (e) {
-                console.error("Failed to open dialog", e);
-            }
-        } else {
-            // Web: try File System Access API
-            if (window.showOpenFilePicker) {
-                try {
-                    const [fileHandle] = await window.showOpenFilePicker({
-                        types: [{ description: 'ZIP Files', accept: { 'application/zip': ['.zip'] } }],
-                        multiple: false
-                    });
-                    await ansagenStore.setFileRef(fileHandle, fileHandle.name);
-                } catch (e) {
-                    if (e.name !== 'AbortError') {
-                        console.error("Failed to get file handle", e);
-                        // Fallback to classic input
-                        audioZipInput.click();
-                    }
-                }
-            } else {
-                // Safari/iOS Fallback
-                audioZipInput.click();
-            }
-        }
-    }
-
-    function handleWebZipUpload(e) {
-        const file = e.target.files[0];
-        if (file) {
-            ansagenStore.setFileRef(file, file.name);
-        }
-        e.target.value = ''; // Reset
-    }
-
-    // Anschluss-Gleispaare State & Logik
-    let newTrackA = $state('');
-    let newTrackB = $state('');
-
-    let currentStationId = $derived(journeyStore.stationContext.stationId || 'default');
-    let currentStationTrackPairs = $derived(ansagenStore.getOppositeTrackPairs(currentStationId));
-    let stationTracks = $derived(journeyStore.getAllTracks());
-
-    function handleAddTrackPair() {
-        if (!newTrackA || !newTrackB) return;
-        ansagenStore.addOppositeTrackPair(currentStationId, newTrackA, newTrackB);
-        newTrackA = '';
-        newTrackB = '';
-    }
-
-    function handleRemoveTrackPair(index) {
-        ansagenStore.removeOppositeTrackPair(currentStationId, index);
-    }
 </script>
 
-<div class="settings-container {desktopViewMode === 'tabs' ? 'view-mode-tabs' : 'view-mode-split'}">
-    <!-- Dashboard Top Bar: Segment Navigation & View Mode Switcher -->
-    <div class="dashboard-top-bar">
-        <div class="dashboard-nav-tabs" role="tablist">
+<div class="settings-container">
+    <!-- Einheitliche 5-Tab Hauptnavigation (Desktop & Mobile) -->
+    <div class="dashboard-nav-wrapper">
+        <nav class="dashboard-tabs" role="tablist" aria-label="Einstellungs-Bereiche">
+            <!-- Tab 1: Fahrten -->
             <button 
                 type="button" 
-                class="dashboard-tab-btn" 
-                class:active={activeMobileTab === 'fahrten'}
-                onclick={() => activeMobileTab = 'fahrten'}
+                class="tab-btn" 
+                class:active={activeTab === 'fahrten'}
+                onclick={() => activeTab = 'fahrten'}
                 role="tab"
-                aria-selected={activeMobileTab === 'fahrten'}
+                aria-selected={activeTab === 'fahrten'}
             >
                 <ZimIcon name="train" size={16} />
                 <span>Fahrten ({journeyStore.journeys.length})</span>
             </button>
-            <button 
-                type="button" 
-                class="dashboard-tab-btn" 
-                class:active={activeMobileTab === 'monitor'}
-                onclick={() => activeMobileTab = 'monitor'}
-                role="tab"
-                aria-selected={activeMobileTab === 'monitor'}
-            >
-                <ZimIcon name="zoom_fit" size={16} />
-                <span>Monitor</span>
-            </button>
-            <button 
-                type="button" 
-                class="dashboard-tab-btn" 
-                class:active={activeMobileTab === 'tools'}
-                onclick={() => activeMobileTab = 'tools'}
-                role="tab"
-                aria-selected={activeMobileTab === 'tools'}
-            >
-                <ZimIcon name="save" size={16} />
-                <span>Tools & Audio</span>
-            </button>
-        </div>
 
-        <!-- Desktop Ansichts-Umschalter (nur auf Desktop sichtbar) -->
-        <div class="desktop-view-switcher" title="Dashboard-Ansichtsmodus wählen">
-            <span class="switcher-label">Ansicht:</span>
-            <div class="segment-switch">
-                <label>
-                    <input 
-                        type="radio" 
-                        name="desktop-view-mode" 
-                        checked={desktopViewMode === 'split'} 
-                        onchange={() => setDesktopViewMode('split')}
-                    >
-                    <span>Geteilt</span>
-                </label>
-                <label>
-                    <input 
-                        type="radio" 
-                        name="desktop-view-mode" 
-                        checked={desktopViewMode === 'tabs'} 
-                        onchange={() => setDesktopViewMode('tabs')}
-                    >
-                    <span>Reiter</span>
-                </label>
-            </div>
-        </div>
+            <!-- Tab 2: Bahnhof & Zeit -->
+            <button 
+                type="button" 
+                class="tab-btn" 
+                class:active={activeTab === 'station'}
+                onclick={() => activeTab = 'station'}
+                role="tab"
+                aria-selected={activeTab === 'station'}
+            >
+                <ZimIcon name="station" size={16} />
+                <span>Bahnhof & Zeit</span>
+            </button>
+
+            <!-- Tab 3: Live-Daten -->
+            <button 
+                type="button" 
+                class="tab-btn" 
+                class:active={activeTab === 'livedata'}
+                onclick={() => activeTab = 'livedata'}
+                role="tab"
+                aria-selected={activeTab === 'livedata'}
+            >
+                <ZimIcon name="api" size={16} />
+                <span>Live-Daten</span>
+            </button>
+
+            <!-- Tab 4: Ansagen & Audio -->
+            <button 
+                type="button" 
+                class="tab-btn" 
+                class:active={activeTab === 'audio'}
+                onclick={() => activeTab = 'audio'}
+                role="tab"
+                aria-selected={activeTab === 'audio'}
+            >
+                <ZimIcon name="volume_high" size={16} />
+                <span>Ansagen</span>
+            </button>
+
+            <!-- Tab 5: Anzeige & System -->
+            <button 
+                type="button" 
+                class="tab-btn" 
+                class:active={activeTab === 'system'}
+                onclick={() => activeTab = 'system'}
+                role="tab"
+                aria-selected={activeTab === 'system'}
+            >
+                <ZimIcon name="settings" size={16} />
+                <span>Anzeige & System</span>
+            </button>
+        </nav>
     </div>
 
-    <div class="dashboard-grid">
-        <div class="main-controls" class:tab-content-hidden={desktopViewMode === 'tabs' && activeMobileTab !== 'fahrten'} class:mobile-hidden={activeMobileTab !== 'fahrten'}>
-            {#snippet journeyActions()}
-                <button class="btn-secondary btn-sm" onclick={fetchIrisData} disabled={isFetchingIris || irisPollingService.isFetching}>
-                    {isFetchingIris || irisPollingService.isFetching ? 'Lädt...' : 'IRIS API Suche'}
-                </button>
-                <button id="add_journey_btn" class="btn-primary btn-sm" onclick={addManualJourney} style="display: inline-flex; align-items: center; gap: 6px;">
-                    <ZimIcon name="plus" size={14} />
-                    <span>Fahrt hinzufügen</span>
-                </button>
-            {/snippet}
+    <!-- Tab-Inhalte -->
+    <div class="dashboard-content">
+        <!-- Tab 1: Fahrten (Züge) -->
+        {#if activeTab === 'fahrten'}
+            <div class="tab-pane">
+                {#snippet journeyActions()}
+                    <button 
+                        type="button"
+                        class="btn-secondary btn-sm" 
+                        onclick={fetchIrisData} 
+                        disabled={isFetchingIris || irisPollingService.isFetching}
+                        style="display: inline-flex; align-items: center; gap: 6px;"
+                    >
+                        <ZimIcon name="api" size={14} />
+                        <span>{isFetchingIris || irisPollingService.isFetching ? 'Lädt...' : 'Live-Daten abrufen'}</span>
+                    </button>
+                    <button 
+                        type="button"
+                        id="add_journey_btn" 
+                        class="btn-primary btn-sm" 
+                        onclick={addManualJourney} 
+                        style="display: inline-flex; align-items: center; gap: 6px;"
+                    >
+                        <ZimIcon name="plus" size={14} />
+                        <span>Fahrt hinzufügen</span>
+                    </button>
+                {/snippet}
 
-            <div id="journey_list_frame">
-                <CollapsibleSection title="Fahrten" isOpen={true} isFrame={true} headerActions={journeyActions}>
-                    <div id="journey_list" class="journey-list">
-                        <JourneyList />
-                    </div>
-                </CollapsibleSection>
-            </div>
-        </div>
-
-        <div class="side-controls" class:tab-content-hidden={desktopViewMode === 'tabs' && activeMobileTab === 'fahrten'} class:mobile-hidden={activeMobileTab === 'fahrten'}>
-            <div class="settings-frame" id="frame_links_oben" style="padding-top: 10px;">
-                
-                <div class="panel-group-monitor" class:tab-content-hidden={desktopViewMode === 'tabs' && activeMobileTab !== 'monitor'} class:mobile-hidden={activeMobileTab !== 'monitor'}>
-                    <CollapsibleSection title="Anzeige Wagenreihung" isOpen={true} isFrame={false}>
-                        <div class="options-grid">
-                            <label class="radio-card"><input type="radio" name="wahl" value="rotierend" onchange={onFeatureChange}> Rotierend</label>
-                            <label class="radio-card"><input type="radio" name="wahl" value="wagennummern" checked onchange={onFeatureChange}> Nummern</label>
-                            <label class="radio-card"><input type="radio" name="wahl" value="ausstattung" onchange={onFeatureChange}> Ausstattung</label>
-                            <label class="radio-card"><input type="radio" name="wahl" value="klasse" onchange={onFeatureChange}> Klasse</label>
+                <div id="journey_list_frame">
+                    <CollapsibleSection title="Fahrten" isOpen={true} isFrame={true} headerActions={journeyActions}>
+                        <div id="journey_list" class="journey-list">
+                            <JourneyList />
                         </div>
                     </CollapsibleSection>
-
-                <CollapsibleSection title="Monitor & Layout" isOpen={true} isFrame={false}>
-                    <div style="font-size: 0.82em; font-weight: 700; color: #94a3b8; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">1. Monitortyp & Hardware:</div>
-                    <div class="options-grid" style="grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; margin-bottom: 16px;">
-                        {#each MONITOR_PROFILES as prof}
-                            <label class="radio-card">
-                                <input 
-                                    type="radio" 
-                                    name="monitor_select" 
-                                    value={prof.id} 
-                                    checked={displayConfigStore.monitorId === prof.id} 
-                                    onchange={() => onMonitorChange(prof.id)}
-                                >
-                                <span>{prof.name}</span>
-                            </label>
-                        {/each}
-                    </div>
-
-                    <div style="font-size: 0.82em; font-weight: 700; color: #94a3b8; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">2. DB-Anzeigetyp (Inhalte):</div>
-                    <div class="options-grid" style="grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px;">
-                        {#each LAYOUT_TYPES as lt}
-                            <label class="radio-card">
-                                <input 
-                                    type="radio" 
-                                    name="layout_type_select" 
-                                    value={lt.id} 
-                                    checked={displayConfigStore.layoutType === lt.id} 
-                                    onchange={() => onLayoutTypeChange(lt.id)}
-                                >
-                                <span>{lt.name}</span>
-                            </label>
-                        {/each}
-                    </div>
-
-                    <div class="checkbox-group" style="margin-top: 14px;">
-                        <label class="checkbox-label"><input type="checkbox" id="nrw_mode_checkbox" bind:checked={journeyStore.nrwMode} onchange={() => trainDisplay.updateAll()}> Nur Liniennummern (NRW)</label>
-                    </div>
-
-                    <div style="margin-top: 10px;">
-                        <button 
-                            type="button" 
-                            class="btn-secondary btn-sm" 
-                            onclick={() => isLineColorModalOpen = true}
-                            style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 7px 12px; font-weight: 600;"
-                        >
-                            <ZimIcon name="palette" size={16} />
-                            <span>Linienfarben & Badges anpassen</span>
-                        </button>
-                    </div>
-                </CollapsibleSection>
-                
-                <CollapsibleSection title="Bahnhof/Station" isOpen={true} isFrame={false}>
-                    <div class="form-row column-layout">
-                        <label for="entry_station_search" style="margin-bottom: 5px; display: block;">Station (Suche):</label>
-                        <div style="display: flex; gap: 8px; align-items: flex-start; margin-bottom: 10px;">
-                            <div style="flex: 1;">
-                                <StationPicker 
-                                    bind:value={entry_station_search} 
-                                    placeholder="z.B. Hannover Hbf oder 8000152"
-                                    onSelect={selectStation}
-                                />
-                            </div>
-                            <button id="btn_api_station_search" class="btn-secondary" style="padding: 8px 12px; margin: 0;">API Suche</button>
-                        </div>
-
-                        <label style="margin-top: 5px;">Datum/Uhrzeit: <input type="datetime-local" step="1" id="custom_time_input" value={customTimeString} onchange={onCustomTimeChange}></label>
-                        <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 5px; margin-top: 5px;">
-                            <button id="set_current_time_btn" class="btn-secondary btn-sm" style="flex: 1;" onclick={setCurrentTime}>Systemzeit setzen</button>
-                        </div>
-                        <div class="checkbox-group" style="margin-bottom: 15px;">
-                            <label class="checkbox-label"><input type="checkbox" id="auto_update_time_checkbox" bind:checked={autoUpdateTime}> Zeit automatisch simulieren</label>
-                        </div>
-                        
-                        <details class="mot-details" id="mot_details" style="margin-bottom: 10px;">
-                            <summary class="mot-summary" id="mot_summary">{motSummary}</summary>
-                            <div class="mot-content">
-                                <div class="mot-presets">
-                                    {#each Object.keys(MOT_PRESETS) as preset}
-                                        <button class="btn-secondary btn-sm mot-preset-btn" onclick={() => setMotPreset(preset)}>{preset}</button>
-                                    {/each}
-                                </div>
-                                <div class="checkbox-group mot-checkboxes">
-                                    {#each MOT_ALL_KEYS as motKey}
-                                        <label class="checkbox-label">
-                                            <input type="checkbox" class="mot_dep" value={motKey} bind:group={journeyStore.activeMots} onchange={() => trainDisplay.updateAll()}>
-                                            {motKey}
-                                        </label>
-                                    {/each}
-                                </div>
-                            </div>
-                        </details>
-
-                        <details class="mot-details" id="track_details">
-                            <summary class="mot-summary" id="track_summary">{trackSummary}</summary>
-                            <div class="mot-content">
-                                <div class="mot-presets" style="display: flex; gap: 5px; margin-bottom: 10px;">
-                                    <button class="btn-secondary btn-sm" id="btn_invert_tracks" onclick={invertTracks}>Auswahl invertieren</button>
-                                    <input type="text" id="manual_track_input" class="short-input" placeholder="Gl." style="width: 50px; margin: 0;" bind:value={manualTrackInput} onkeydown={(e) => { if (e.key === 'Enter') addManualTrack(); }}>
-                                    <button class="btn-secondary btn-sm" id="btn_add_manual_track" onclick={addManualTrack} title="Gleis hinzufügen" style="display: inline-flex; align-items: center; justify-content: center; padding: 4px 8px;"><ZimIcon name="plus" size={14} /></button>
-                                </div>
-                                <div class="checkbox-group mot-checkboxes" id="track_checkbox_container">
-                                    {#each allAvailableTracks as track}
-                                        <label class="checkbox-label">
-                                            <input type="checkbox" checked={journeyStore.activeTracks.includes(track)} onchange={() => toggleTrack(track)}>
-                                            Gleis {track}
-                                        </label>
-                                    {/each}
-                                </div>
-                            </div>
-                        </details>
-                    </div>
-                </CollapsibleSection>
-
-                <CollapsibleSection title="Bahnsteig" isOpen={true} isFrame={false}>
-                    <div class="form-row column-layout">
-                        <label for="global_platform_select" style="margin-bottom: 5px; display: block;">Konfiguration wählen:</label>
-                        <select id="global_platform_select" style="width: 100%; padding: 5px; margin-bottom: 10px;" 
-                                bind:value={journeyStore.stationContext.activePlatformName} 
-                                onchange={() => {
-                                    if (journeyStore.stationContext.activePlatformName && journeyStore.platforms[journeyStore.stationContext.activePlatformName]) {
-                                        journeyStore.stationContext.platform = journeyStore.platforms[journeyStore.stationContext.activePlatformName];
-                                    }
-                                    trainDisplay.updateAll();
-                                }}>
-                            <option value="default">Standard (Generisch)</option>
-                            {#each Object.keys(journeyStore.platforms) as pName}
-                                <option value={pName}>{pName}</option>
-                            {/each}
-                        </select>
-                        <label>Länge (m): <input type="number" id="platform_length" class="short-input" bind:value={journeyStore.stationContext.platform.length} oninput={() => trainDisplay.updateAll()}></label>
-                        <label>Standort (m): <input type="number" id="platform_location" class="short-input" bind:value={journeyStore.stationContext.platform.currentLocation} oninput={() => trainDisplay.updateAll()}></label>
-                    </div>
-                </CollapsibleSection>
                 </div>
-
-                <div class="panel-group-tools" class:tab-content-hidden={desktopViewMode === 'tabs' && activeMobileTab !== 'tools'} class:mobile-hidden={activeMobileTab !== 'tools'}>
-                <CollapsibleSection title="DB IRIS Live-Daten" isOpen={true} isFrame={false}>
-                    <div class="form-row column-layout" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px;">
-                        <label style="display: block; margin-bottom: 5px;">
-                            Auto-Update (Polling):
-                            <select style="width: 100%; margin-top: 5px; padding: 4px;" bind:value={irisConfig.autoUpdateInterval} onchange={() => irisPollingService.restart()}>
-                                <option value={0}>Aus</option>
-                                <option value={20}>Alle 20 Sekunden</option>
-                                <option value={30}>Alle 30 Sekunden</option>
-                                <option value={60}>Alle 60 Sekunden</option>
-                            </select>
-                        </label>
-                        <label style="display: block; margin-bottom: 5px; margin-top: 10px;">
-                            Anzeige-Zeitfenster (Zukunft in Std.):
-                            <input type="number" class="short-input" min="0" max="10" bind:value={irisConfig.futureWindowHours} onchange={() => irisPollingService.pollRealtime()}>
-                        </label>
-                        <label style="display: block; margin-bottom: 5px; margin-top: 10px;">
-                            Lookbehind (Vergangenheit in Min.):
-                            <input type="number" class="short-input" min="0" max="180" bind:value={irisConfig.lookbehindMinutes} onchange={() => irisPollingService.pollRealtime()}>
-                        </label>
-                        <label class="checkbox-label" style="margin-top: 10px;">
-                            <input type="checkbox" bind:checked={irisConfig.autoAnnouncements}>
-                            Autom. Ansagen (Verspätungen & Autoplay)
-                        </label>
-                        <label class="checkbox-label" style="margin-top: 10px;">
-                            <input type="checkbox" bind:checked={irisConfig.autoSort} onchange={() => { if(irisConfig.autoSort) journeyStore.sortJourneys(); }}>
-                            Züge automatisch nach Echtzeit sortieren
-                        </label>
-                    </div>
-                </CollapsibleSection>
-
-                <CollapsibleSection title="Ansagen" isOpen={true} isFrame={false}>
-                    <div class="form-row column-layout" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px;">
-                        <div style="margin-bottom: 15px;">
-                            <label for="ansagen_vias_slider" style="display: block; margin-bottom: 5px;">
-                                Anzahl Vias in Ansage: 
-                                <strong>{ansagenStore.maxVias === 6 ? 'Alle' : ansagenStore.maxVias}</strong>
-                            </label>
-                            <input type="range" id="ansagen_vias_slider" min="0" max="6" step="1" style="width: 100%;" 
-                                   bind:value={ansagenStore.maxVias} 
-                                   onchange={() => {
-                                       localStorage.setItem('ansagen_max_vias', ansagenStore.maxVias);
-                                       journeyStore.journeys.forEach(j => j.autoGenerateAudioVias(ansagenStore.maxVias, ansagenStore.viaSortMode));
-                                       trainDisplay.updateAll();
-                                   }}>
-                        </div>
-
-                        <div style="margin-bottom: 15px;">
-                            <span style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.9em;">Via-Halte Auswahl (Ansage):</span>
-                            <div class="segment-switch">
-                                <label>
-                                    <input type="radio" bind:group={ansagenStore.viaSortMode} value={1} onchange={() => {
-                                        localStorage.setItem('ansagen_via_sort_mode', 1);
-                                        journeyStore.journeys.forEach(j => j.autoGenerateAudioVias(ansagenStore.maxVias, ansagenStore.viaSortMode));
-                                        trainDisplay.updateAll();
-                                    }}>
-                                    <span>Priorisiert</span>
-                                </label>
-                                <label>
-                                    <input type="radio" bind:group={ansagenStore.viaSortMode} value={2} onchange={() => {
-                                        localStorage.setItem('ansagen_via_sort_mode', 2);
-                                        journeyStore.journeys.forEach(j => j.autoGenerateAudioVias(ansagenStore.maxVias, ansagenStore.viaSortMode));
-                                        trainDisplay.updateAll();
-                                    }}>
-                                    <span>Standard</span>
-                                </label>
-                            </div>
-                        </div>
-
-                        <div class="variant-settings">
-                            <span style="display: block; margin-bottom: 8px; font-weight: bold; font-size: 0.9em;">Stationsnamen Varianten:</span>
-                            
-                            <div class="variant-row">
-                                <span class="variant-label">Ziel (Abfahrt)</span>
-                                <div class="segment-switch">
-                                    <label>
-                                        <input type="radio" bind:group={ansagenStore.variantZiel} value={1} onchange={() => localStorage.setItem('ansagen_variant_ziel', ansagenStore.variantZiel)}>
-                                        <span>Kurz</span>
-                                    </label>
-                                    <label>
-                                        <input type="radio" bind:group={ansagenStore.variantZiel} value={2} onchange={() => localStorage.setItem('ansagen_variant_ziel', ansagenStore.variantZiel)}>
-                                        <span>Lang</span>
-                                    </label>
-                                </div>
-                            </div>
-
-                            <div class="variant-row">
-                                <span class="variant-label">Herkunft (Ankunft)</span>
-                                <div class="segment-switch">
-                                    <label>
-                                        <input type="radio" bind:group={ansagenStore.variantHerkunft} value={1} onchange={() => localStorage.setItem('ansagen_variant_herkunft', ansagenStore.variantHerkunft)}>
-                                        <span>Kurz</span>
-                                    </label>
-                                    <label>
-                                        <input type="radio" bind:group={ansagenStore.variantHerkunft} value={2} onchange={() => localStorage.setItem('ansagen_variant_herkunft', ansagenStore.variantHerkunft)}>
-                                        <span>Lang</span>
-                                    </label>
-                                </div>
-                            </div>
-
-                            <div class="variant-row">
-                                <span class="variant-label">Vias (Zwischenhalte)</span>
-                                <div class="segment-switch">
-                                    <label>
-                                        <input type="radio" bind:group={ansagenStore.variantVias} value={1} onchange={() => localStorage.setItem('ansagen_variant_vias', ansagenStore.variantVias)}>
-                                        <span>Kurz</span>
-                                    </label>
-                                    <label>
-                                        <input type="radio" bind:group={ansagenStore.variantVias} value={2} onchange={() => localStorage.setItem('ansagen_variant_vias', ansagenStore.variantVias)}>
-                                        <span>Lang</span>
-                                    </label>
-                                </div>
-                            </div>
-
-                            <div class="variant-row">
-                                <span class="variant-label">Zugteilung</span>
-                                <div class="segment-switch">
-                                    <label>
-                                        <input type="radio" bind:group={ansagenStore.variantZugteilung} value={1} onchange={() => localStorage.setItem('ansagen_variant_zugteilung', ansagenStore.variantZugteilung)}>
-                                        <span>Kurz</span>
-                                    </label>
-                                    <label>
-                                        <input type="radio" bind:group={ansagenStore.variantZugteilung} value={2} onchange={() => localStorage.setItem('ansagen_variant_zugteilung', ansagenStore.variantZugteilung)}>
-                                        <span>Lang</span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div style="margin-bottom: 10px; font-size: 0.9em;">
-                            {#if ansagenStore.status === 'loaded'}
-                                <span style="color: #4CAF50; display: inline-flex; align-items: center; gap: 6px;">
-                                    <ZimIcon name="check" size={16} />
-                                    <span>ZIP verknüpft:</span>
-                                </span> {ansagenStore.fileName}
-                                <div style="margin-top: 5px;">
-                                    <button class="btn-secondary btn-sm" onclick={() => ansagenStore.clearFileRef()}>Verknüpfung aufheben</button>
-                                </div>
-                            {:else}
-                                <span style="color: #ff9800; display: inline-flex; align-items: center; gap: 6px;">
-                                    <ZimIcon name="warning" size={16} />
-                                    <span>Keine ZIP verknüpft</span>
-                                </span>
-                                <div style="font-size: 0.85em; opacity: 0.8; margin-top: 5px;">
-                                    Lade die Audio-Daten (ZIP), um Ansagen abzuspielen.
-                                </div>
-                            {/if}
-                        </div>
-                        <button class="btn-primary" onclick={handleZipLoad}>
-                            {ansagenStore.status === 'loaded' ? 'ZIP ändern' : 'ZIP laden'}
-                        </button>
-                        <!-- Fallback hidden file input for Safari/iOS or when File System Access API fails -->
-                        <input type="file" bind:this={audioZipInput} style="display: none;" accept=".zip" onchange={handleWebZipUpload}>
-                    </div>
-                </CollapsibleSection>
-
-                <CollapsibleSection title="Anschluss-Ansagen" isOpen={true} isFrame={false}>
-                    <div class="form-row column-layout" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px;">
-                        <label style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                            <span>Max. Anzahl Anschlüsse:</span>
-                            <input type="number" class="short-input" min="1" max="10" 
-                                   value={ansagenStore.anschluesseMaxCount} 
-                                   oninput={(e) => ansagenStore.setAnschluesseMaxCount(e.currentTarget.value)}>
-                        </label>
-                        <label style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                            <span>Suchzeitfenster (Min.):</span>
-                            <input type="number" class="short-input" min="5" max="180" 
-                                   value={ansagenStore.anschluesseTimeWindow} 
-                                   oninput={(e) => ansagenStore.setAnschluesseTimeWindow(e.currentTarget.value)}>
-                        </label>
-                        <label style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                            <span>Min. Umsteigezeit normal (Min.):</span>
-                            <input type="number" class="short-input" min="1" max="30" 
-                                   value={ansagenStore.anschluesseMinTransfer} 
-                                   oninput={(e) => ansagenStore.setAnschluesseMinTransfer(e.currentTarget.value)}>
-                        </label>
-                        <label style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                            <span>Min. Umsteigezeit gegenüber (Min.):</span>
-                            <input type="number" class="short-input" min="0" max="20" 
-                                   value={ansagenStore.anschluesseMinTransferOpposite} 
-                                   oninput={(e) => ansagenStore.setAnschluesseMinTransferOpposite(e.currentTarget.value)}>
-                        </label>
-
-                        <div class="checkbox-group" style="margin-top: 10px; margin-bottom: 15px;">
-                            <label class="checkbox-label">
-                                <input type="checkbox" 
-                                       checked={ansagenStore.anschluesseIncludeDelays} 
-                                       onchange={(e) => ansagenStore.setAnschluesseIncludeDelays(e.currentTarget.checked)}>
-                                Verspätungen ansagen (ab 5 Min.)
-                            </label>
-                            <label class="checkbox-label" style="margin-top: 6px;">
-                                <input type="checkbox" 
-                                       checked={ansagenStore.anschluesseIncludeDeviations} 
-                                       onchange={(e) => ansagenStore.setAnschluesseIncludeDeviations(e.currentTarget.checked)}>
-                                Haltabweichungen ansagen
-                            </label>
-                        </div>
-
-                        <div class="opposite-tracks-section" style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px; margin-top: 5px;">
-                            <span style="display: block; font-weight: bold; font-size: 0.9em; margin-bottom: 4px;">
-                                Gleise direkt gegenüber (selber Bahnsteig):
-                            </span>
-                            <div style="font-size: 0.8em; opacity: 0.75; margin-bottom: 8px;">
-                                Station: <strong>{journeyStore.stationContext.stationName || 'Aktueller Bahnhof'}</strong>
-                                {#if currentStationId !== 'default'} ({currentStationId}){/if}
-                            </div>
-
-                            {#if currentStationTrackPairs.length > 0}
-                                <div class="track-pairs-list" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px;">
-                                    {#each currentStationTrackPairs as [tA, tB], idx}
-                                        <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.08); padding: 5px 8px; border-radius: 4px; font-size: 0.85em;">
-                                            <span>Gleis <strong>{tA}</strong> ↔ Gleis <strong>{tB}</strong></span>
-                                            <button class="btn-secondary btn-sm" onclick={() => handleRemoveTrackPair(idx)} title="Gleispaar entfernen" style="padding: 2px 6px;">
-                                                <ZimIcon name="close" size={12} />
-                                            </button>
-                                        </div>
-                                    {/each}
-                                </div>
-                            {:else}
-                                <div style="font-size: 0.8em; opacity: 0.7; margin-bottom: 10px; font-style: italic;">
-                                    Keine benutzerdefinierten Paare. DB-Standard für Mittelbahnsteige aktiv (2 ↔ 3, 4 ↔ 5 etc.).
-                                </div>
-                            {/if}
-
-                            <div style="display: flex; gap: 6px; align-items: center;">
-                                <input type="text" list="opposite-tracks-datalist" placeholder="Gleis A" bind:value={newTrackA} class="short-input" style="flex: 1;">
-                                <span style="opacity: 0.5;">↔</span>
-                                <input type="text" list="opposite-tracks-datalist" placeholder="Gleis B" bind:value={newTrackB} class="short-input" style="flex: 1;">
-                                <button class="btn-secondary btn-sm" onclick={handleAddTrackPair} title="Gleispaar hinzufügen" style="display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;">
-                                    <ZimIcon name="plus" size={14} />
-                                    <span>Paar</span>
-                                </button>
-                            </div>
-                            <datalist id="opposite-tracks-datalist">
-                                {#each stationTracks as tr}
-                                    <option value={tr}>{tr}</option>
-                                {/each}
-                            </datalist>
-                        </div>
-                    </div>
-                </CollapsibleSection>
-
-                <CollapsibleSection title="Sonstige Einstellungen" isOpen={true} isFrame={false}>
-                    <div class="form-row column-layout">
-                        <div class="checkbox-group">
-                            <label class="checkbox-label"><input type="checkbox" id="performance_mode_checkbox" bind:checked={isPerformanceMode}> Performance-Modus (30 FPS)</label>
-                            <label class="checkbox-label"><input type="checkbox" bind:checked={uiState.hideLinkedArrivals}> Durchfahrt-Ankünfte verstecken</label>
-                            <label class="checkbox-label"><input type="checkbox" bind:checked={uiState.enableDragAndDrop}> Listen-Sortierung per Drag & Drop (ansonsten nur Pfeile)</label>
-                        </div>
-                    </div>
-                </CollapsibleSection>
-
-                <div class="button-group-vertical" style="margin-top: 15px;">
-                    <button id="export_all_btn" class="btn-secondary" onclick={exportConfig} style="display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
-                        <ZimIcon name="export" size={16} />
-                        <span>Exportieren</span>
-                    </button>
-                    <button id="import_all_btn" class="btn-secondary" onclick={() => fileInput.click()} style="display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
-                        <ZimIcon name="import" size={16} />
-                        <span>Importieren</span>
-                    </button>
-                    <input type="file" bind:this={fileInput} style="display: none;" accept=".json" onchange={handleFileImport}>
-                    <button id="import_db_btn" class="btn-secondary" onclick={() => modalsComp?.openDbImport()} style="display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
-                        <ZimIcon name="train_fast" size={18} />
-                        <span>DB-Daten importieren</span>
-                    </button>
-                </div>
-                </div>
-                
             </div>
-        </div>
+
+        <!-- Tab 2: Bahnhof & Zeit -->
+        {:else if activeTab === 'station'}
+            <div class="tab-pane">
+                <SettingsStationTime />
+            </div>
+
+        <!-- Tab 3: Live-Daten (IRIS & DB Navigator Vorbereitung) -->
+        {:else if activeTab === 'livedata'}
+            <div class="tab-pane">
+                <SettingsLiveData {modalsComp} />
+            </div>
+
+        <!-- Tab 4: Ansagen & Audio -->
+        {:else if activeTab === 'audio'}
+            <div class="tab-pane">
+                <SettingsAudio />
+            </div>
+
+        <!-- Tab 5: Anzeige & System -->
+        {:else if activeTab === 'system'}
+            <div class="tab-pane">
+                <SettingsDisplaySystem {modalsComp} />
+            </div>
+        {/if}
     </div>
 </div>
 
-<LineColorEditorModal bind:isOpen={isLineColorModalOpen} />
-
 <style>
-    .variant-settings {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        margin-top: 15px;
-        margin-bottom: 15px;
-        padding-top: 15px;
-        border-top: 1px solid rgba(255,255,255,0.1);
+    .settings-container {
+        max-width: 1600px;
+        margin: 20px auto 40px auto;
+        padding: 0 20px;
+        box-sizing: border-box;
+        font-family: system-ui, -apple-system, sans-serif;
     }
-    .variant-row {
+
+    .dashboard-nav-wrapper {
+        margin-bottom: 20px;
+    }
+
+    .dashboard-tabs {
         display: flex;
-        justify-content: space-between;
+        background: var(--bg-card, #1e293b);
+        border: 1px solid var(--border, #334155);
+        border-radius: var(--radius-md, 8px);
+        padding: 4px;
+        gap: 6px;
+        overflow-x: auto;
+        box-shadow: var(--shadow-card, 0 4px 12px rgba(0, 0, 0, 0.2));
+    }
+
+    .tab-btn {
+        flex: 1;
+        min-width: 140px;
+        min-height: 42px;
+        padding: 8px 14px;
+        background: transparent;
+        color: var(--text-muted, #94a3b8);
+        border: none;
+        border-radius: var(--radius-sm, 6px);
+        cursor: pointer;
+        display: inline-flex;
         align-items: center;
+        justify-content: center;
+        gap: 8px;
+        font-size: 0.88rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+        user-select: none;
     }
-    .variant-label {
-        font-size: 0.9em;
+
+    .tab-btn:hover {
+        color: var(--text-main, #f8fafc);
+        background: rgba(255, 255, 255, 0.05);
     }
+
+    .tab-btn.active {
+        background: var(--accent, #3b82f6);
+        color: #ffffff;
+        font-weight: 600;
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.35);
+    }
+
+    .dashboard-content {
+        width: 100%;
+    }
+
+    .tab-pane {
+        width: 100%;
+        animation: fadeIn 0.15s ease-out;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(4px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
     @media (max-width: 768px) {
-        :global(.mobile-hidden) {
-            display: none !important;
+        .settings-container {
+            padding: 0 10px;
+            margin: 12px auto 30px auto;
+        }
+        .dashboard-tabs {
+            justify-content: flex-start;
+        }
+        .tab-btn {
+            min-width: 110px;
+            font-size: 0.8rem;
+            padding: 6px 10px;
         }
     }
 </style>
