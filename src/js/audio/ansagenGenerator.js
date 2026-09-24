@@ -164,56 +164,6 @@ export class AnsagenGenerator {
     }
 
     /**
-     * Fügt Vias vor dem Ziel an (z.B. "über X, Y nach Z" für Wendezüge).
-     * @param {Array} playlist - Die Playlist
-     * @param {string|object} target - Stationsname des Hauptziels oder { name, extId }
-     * @param {Array} vias - Liste der Vias (Array von Strings oder { name, nameKurz, extId })
-     */
-    _viaBeforeTarget(playlist, target, vias = []) {
-        if (!target) return;
-
-        const targetStr = typeof target === 'object' ? (target.name || '') : target;
-        if (!targetStr) return;
-
-        const targetIbnr = typeof target === 'object'
-            ? (target.extId || this._getIbnr(target))
-            : this._getIbnr(target);
-        if (!targetIbnr) return;
-
-        const mainVariant = ansagenStore.variantZiel;
-        const viaVariant = ansagenStore.variantVias;
-
-        const validVias = [];
-        for (const v of vias) {
-            if (!v) continue;
-            const viaName = typeof v === 'object' ? (v.nameKurz || v.name) : v;
-            const viaIbnr = typeof v === 'object' && v.extId ? v.extId : this._getIbnr(v);
-            if (viaIbnr) {
-                validVias.push({ name: viaName, ibnr: viaIbnr });
-            }
-        }
-
-        const activeVias = validVias.slice(0, 6);
-
-        if (activeVias.length > 0) {
-            this._module(playlist, 'UEBER');
-            for (let i = 0; i < activeVias.length; i++) {
-                const { name: viaName, ibnr: viaIbnr } = activeVias[i];
-                playlist.push({
-                    file: `${this.lang}/ziele/variante${viaVariant}/hoch/${viaIbnr}`,
-                    text: viaName
-                });
-            }
-        }
-
-        this._module(playlist, 'NACH');
-        playlist.push({
-            file: `${this.lang}/ziele/variante${mainVariant}/tief/${targetIbnr}`,
-            text: targetStr
-        });
-    }
-
-    /**
      * Generiert die Ansagenteile für den Zugnamen (Gattung und Nummer).
      * Zuggattungen werden immer "hoch" gesprochen. Bei einbuchstabigen Zuggattungen (z.B. S-Bahnen)
      * wird die Zugnummer "tief" gesprochen, ansonsten "hoch".
@@ -393,14 +343,14 @@ export class AnsagenGenerator {
         return 210;                                         // Obergrenze 210 Min
     }
 
-    /**
-     * Prüft, ob für eine Fahrt Informationsbedarf (Ausfall, Verspätung, Gleiswechsel, Haltänderung) besteht.
-     */
-    hasInformationalContent(journey) {
+    hasGleiswechsel(journey) {
+        return Boolean(journey && journey.ezGleis && journey.ezGleis !== journey.platform);
+    }
+
+    hasGeneralInformationalContent(journey) {
         if (!journey) return false;
         if (journey.ausfall) return true;
         if (this._calculateDelay(journey) >= 5) return true;
-        if (journey.ezGleis && journey.ezGleis !== journey.platform) return true;
 
         if (!journey.ankunft && journey.stops && journey.stops.length > 0) {
             const startIndex = journey._currentStopIndex >= 0 ? journey._currentStopIndex + 1 : 0;
@@ -412,18 +362,46 @@ export class AnsagenGenerator {
         return false;
     }
 
+    /**
+     * Prüft, ob für eine Fahrt Informationsbedarf (Ausfall, Verspätung, Gleiswechsel, Haltänderung) besteht.
+     */
+    hasInformationalContent(journey) {
+        return this.hasGleiswechsel(journey) || this.hasGeneralInformationalContent(journey);
+    }
+
+    _isWende(journey, linkedJourney) {
+        return Boolean(
+            linkedJourney &&
+            !journey.isThroughTrain &&
+            !linkedJourney.isThroughTrain &&
+            (journey.journeyId !== linkedJourney.journeyId || (!journey.journeyId && !linkedJourney.journeyId)) &&
+            ((journey.ankunft && !linkedJourney.ankunft) || (!journey.ankunft && linkedJourney.ankunft))
+        );
+    }
+
     // --- DRY Helpers ---
     
-    _appendPlatform(playlist, journey) {
+    /**
+     * Fügt die Gleis- und Abschnittsansage zur Playlist hinzu.
+     * @param {Array} playlist - Die Playlist
+     * @param {object} journey - Das Journey-Objekt
+     * @param {string} [prefixModule='GLEIS'] - Das einzuleitende Audio-Modul ('GLEIS', 'HEUTE_VON_GLEIS', 'HEUTE_AUF_GLEIS')
+     * @param {string|null} [pitch=null] - Optionale Tonhöhe ('hoch' oder 'tief'). Wenn null, wird sie kontextabhängig ermittelt.
+     */
+    _appendPlatform(playlist, journey, prefixModule = 'GLEIS', pitch = null) {
         const gleis = journey.ezGleis || journey.platform;
         if (!gleis) return;
         
         const parsed = parseTrack(gleis);
-        this._module(playlist, 'GLEIS');
-        this._number(playlist, parsed.base, 'hoch');
+        this._module(playlist, prefixModule);
 
         const sections = parsed.sections;
-        if (!sections || sections.length === 0 || sections[0] === '*') {
+        const hasSections = sections && sections.length > 0 && sections[0] !== '*';
+
+        const numberPitch = pitch || (hasSections || prefixModule === 'GLEIS' ? 'hoch' : 'tief');
+        this._number(playlist, parsed.base, numberPitch);
+
+        if (!hasSections) {
             return;
         }
 
@@ -434,9 +412,9 @@ export class AnsagenGenerator {
             const first = sections[0].toLowerCase();
             const last = sections[sections.length - 1].toLowerCase();
             
-            this._pushAudio(playlist, `${this.lang}/abschnitte/hoch/${first}`, sections[0]);
+            this._pushAudio(playlist, `${this.lang}/abschnitte/tief/${first}`, sections[0]);
             this._module(playlist, 'BIS');
-            this._pushAudio(playlist, `${this.lang}/abschnitte/hoch/${last}`, sections[sections.length - 1]);
+            this._pushAudio(playlist, `${this.lang}/abschnitte/tief/${last}`, sections[sections.length - 1]);
         }
     }
 
@@ -475,13 +453,7 @@ export class AnsagenGenerator {
         const p = [];
         this._gong(p);
 
-        const isWende = Boolean(
-            linkedJourney &&
-            !journey.isThroughTrain &&
-            !linkedJourney.isThroughTrain &&
-            (journey.journeyId !== linkedJourney.journeyId || (!journey.journeyId && !linkedJourney.journeyId)) &&
-            ((journey.ankunft && !linkedJourney.ankunft) || (!journey.ankunft && linkedJourney.ankunft))
-        );
+        const isWende = this._isWende(journey, linkedJourney);
 
         if (isWende) {
             const arrival = journey.ankunft ? journey : linkedJourney;
@@ -494,16 +466,13 @@ export class AnsagenGenerator {
             this._module(p, 'EINFAHRT');
 
             // 3. Ankunftsteil: Zugname + VON + Herkunft (ohne Ankunftszeit)
-            this._train(p, arrival.name);
-            this._module(p, 'VON');
-            this._targetWithVia(p, { name: arrival.destination, extId: arrival.destinationIbnr }, [], true);
+            this._appendRoute(p, arrival);
 
             // 4. Modul WEITER_ALS
             this._module(p, 'WEITER_ALS');
 
-            // 5. Abfahrtsteil: Zugname + [über Vias] + NACH + Ziel + Abfahrtszeit
-            this._train(p, departure.name);
-            this._viaBeforeTarget(p, { name: departure.destination, extId: departure.destinationIbnr }, departure.audioVias);
+            // 5. Abfahrtsteil: Zugname + NACH + Ziel + [über Vias] + Abfahrtszeit
+            this._appendRoute(p, departure);
             this._appendTimeInfo(p, departure, 'ABFAHRT');
 
             // 6. Abweichungen + VORSICHT_BEI_DER_EINFAHRT
@@ -540,8 +509,98 @@ export class AnsagenGenerator {
         return p;
     }
 
+    /**
+     * Generiert eine Gleiswechsel-Ansage mit Wiederholung (ICH_WIEDERHOLE).
+     * Bei Wendezügen wird die Herkunft nur in Teil 1 genannt, in Teil 2 nur die Weiterfahrt.
+     * Bei Verspätung wird diese nur in Teil 1 genannt (mit UND_VON_GLEIS bzw. HEUTE_AUF_GLEIS).
+     * Andere Abweichungen (Haltausfälle etc.) werden bei Gleiswechsel nicht angesagt.
+     *
+     * @param {object} journey - Das Journey-Objekt
+     * @param {object|null} [linkedJourney=null] - Verknüpfter Partner-Zug (z.B. Ankunft bei Wendezug)
+     * @returns {Array} Playlist mit Audio-Objekten
+     */
+    generateGleiswechsel(journey, linkedJourney = null) {
+        if (!journey || journey.ausfall) {
+            return [];
+        }
+
+        const isWende = this._isWende(journey, linkedJourney);
+        const arrival = isWende ? (journey.ankunft ? journey : linkedJourney) : null;
+        const departure = isWende ? (journey.ankunft ? linkedJourney : journey) : null;
+        const mainJourney = isWende ? departure : journey;
+
+        const effectivePlatformJourney = (mainJourney.ezGleis && mainJourney.ezGleis !== mainJourney.platform)
+            ? mainJourney
+            : (arrival && arrival.ezGleis && arrival.ezGleis !== arrival.platform ? arrival : mainJourney);
+
+        if (!this.hasGleiswechsel(effectivePlatformJourney)) {
+            return [];
+        }
+
+        const p = [];
+        this._gong(p);
+        this._module(p, 'INFORMATION_ZU');
+
+        // --- TEIL 1: Vollständige Erstansage ---
+        if (isWende) {
+            // Ankunftsteil: Zugname + VON + Herkunft (ohne Ankunftszeit)
+            this._appendRoute(p, arrival);
+            this._module(p, 'WEITER_ALS');
+            // Abfahrtsteil: Zugname + NACH + Ziel + [über Vias] + Abfahrtszeit
+            this._appendRoute(p, departure);
+            this._appendTimeInfo(p, departure, 'ABFAHRT');
+        } else {
+            this._appendRoute(p, mainJourney);
+            this._appendTimeInfo(p, mainJourney, mainJourney.ankunft ? 'ANKUNFT' : 'ABFAHRT');
+        }
+
+        // Verspätung (nur in Teil 1)
+        const delay = this._calculateDelay(mainJourney);
+        if (delay >= 5) {
+            const delayStr = String(delay).padStart(3, '0');
+            p.push({
+                file: `${this.lang}/zeiten/verspaetung_heute/${delayStr}`,
+                text: `heute ca. ${delay} Minuten später`
+            });
+        }
+
+        // Gleisangabe Teil 1:
+        // Bei Abfahrt/Weiterfahrt mit Verspätung: UND_VON_GLEIS
+        // Bei Ankunft: HEUTE_AUF_GLEIS
+        // Sonst: HEUTE_VON_GLEIS
+        let prefixPart1;
+        if (mainJourney.ankunft) {
+            prefixPart1 = 'HEUTE_AUF_GLEIS';
+        } else if (delay >= 5) {
+            prefixPart1 = 'UND_VON_GLEIS';
+        } else {
+            prefixPart1 = 'HEUTE_VON_GLEIS';
+        }
+        this._appendPlatform(p, effectivePlatformJourney, prefixPart1);
+
+        // --- TEIL 2: Wiederholung (ICH_WIEDERHOLE) ---
+        this._module(p, 'ICH_WIEDERHOLE');
+
+        // In der Wiederholung bei Wendezügen NUR der Abfahrtsteil!
+        this._appendRoute(p, mainJourney);
+        this._appendTimeInfo(p, mainJourney, mainJourney.ankunft ? 'ANKUNFT' : 'ABFAHRT');
+
+        // Gleisangabe Teil 2 (ohne "und", da Verspätung in Teil 2 entfällt):
+        const prefixPart2 = mainJourney.ankunft ? 'HEUTE_AUF_GLEIS' : 'HEUTE_VON_GLEIS';
+        this._appendPlatform(p, effectivePlatformJourney, prefixPart2);
+
+        return p;
+    }
+
+    /**
+     * Generiert eine allgemeine Informations-Ansage (Verspätung, Haltabweichungen, Ausfall).
+     * Enthält keine Gleiswechselansage (siehe generateGleiswechsel) und kein ICH_WIEDERHOLE.
+     *
+     * @param {object} journey - Das Journey-Objekt
+     * @returns {Array} Playlist mit Audio-Objekten
+     */
     generateInformation(journey) {
-        if (!this.hasInformationalContent(journey)) {
+        if (!this.hasGeneralInformationalContent(journey)) {
             return [];
         }
 
@@ -569,11 +628,6 @@ export class AnsagenGenerator {
         }
         
         this._generateDeviations(p, journey);
-
-        if (journey.ezGleis && journey.ezGleis !== journey.platform) {
-            this._module(p, 'HEUTE_VON_GLEIS');
-            this._number(p, journey.ezGleis, 'tief');
-        }
 
         return p;
     }

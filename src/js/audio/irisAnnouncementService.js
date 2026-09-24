@@ -111,7 +111,8 @@ class IrisAnnouncementService {
                 state.platform = currentPlatform;
                 state.lastAnnouncedSimTimeMs = simTimeMs;
                 if (autoAnnouncementsEnabled) {
-                    const playlist = ansagenGenerator.generateInformation(j);
+                    const linkedPartner = this._getLinkedArrival(j, journeys);
+                    const playlist = ansagenGenerator.generateGleiswechsel(j, linkedPartner);
                     if (playlist.length > 0) {
                         announcementQueueService.enqueue({
                             journeyId: j.journeyId,
@@ -292,12 +293,9 @@ class IrisAnnouncementService {
                     state.hasPlayedEinfahrt = true;
 
                     // Bei verknüpftem Zug Partner ermitteln und ebenfalls markieren
-                    let linkedPartner = null;
-                    if (j.linkedArrivalJourneyId) {
-                        linkedPartner = journeys.find(a => a.id === j.linkedArrivalJourneyId) || null;
-                        if (linkedPartner && linkedPartner.announcementState) {
-                            linkedPartner.announcementState.hasPlayedEinfahrt = true;
-                        }
+                    const linkedPartner = this._getLinkedArrival(j, journeys);
+                    if (linkedPartner && linkedPartner.announcementState) {
+                        linkedPartner.announcementState.hasPlayedEinfahrt = true;
                     }
 
                     if (autoAnnouncementsEnabled) {
@@ -371,7 +369,10 @@ class IrisAnnouncementService {
 
         if (simTimeMs - state.lastAnnouncedSimTimeMs >= intervalMins * 60 * 1000) {
             state.lastAnnouncedSimTimeMs = simTimeMs;
-            const playlist = ansagenGenerator.generateInformation(journey);
+            const isPlatformChange = ansagenGenerator.hasGleiswechsel(journey);
+            const playlist = isPlatformChange
+                ? ansagenGenerator.generateGleiswechsel(journey)
+                : ansagenGenerator.generateInformation(journey);
             announcementQueueService.enqueue({
                 journeyId: journey.journeyId,
                 trainName: journey.name,
@@ -392,6 +393,23 @@ class IrisAnnouncementService {
         const d = new Date(simTimeDate.getTime());
         d.setHours(sh, sm, 0, 0);
         return d.getTime();
+    }
+
+    /**
+     * Ermittelt die verknüpfte Ankunft für eine Abfahrt.
+     * @param {object} journey - Die Abfahrts-Journey
+     * @param {Array} journeys - Liste aller Züge
+     * @returns {object|null} Verknüpfte Ankunft oder null
+     */
+    _getLinkedArrival(journey, journeys) {
+        if (!journey || journey.ankunft || !journeys) return null;
+        if (journey.linkedArrivalJourneyId) {
+            return journeys.find(a => a.id === journey.linkedArrivalJourneyId) || null;
+        }
+        if (journey.journeyId) {
+            return journeys.find(a => a.ankunft && a.journeyId === journey.journeyId) || null;
+        }
+        return null;
     }
 }
 

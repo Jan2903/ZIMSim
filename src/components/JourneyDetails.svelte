@@ -135,11 +135,13 @@
 
     function playAnsage(mode) {
         let playlist = [];
+        const linked = journeyStore.getLinkedJourney(journey.id);
         if (mode === 'Einfahrt') {
-            const linked = journeyStore.getLinkedJourney(journey.id);
             playlist = ansagenGenerator.generateEinfahrt(journey, linked);
         } else if (mode === 'Steht') {
             playlist = ansagenGenerator.generateSteht(journey);
+        } else if (mode === 'Gleiswechsel') {
+            playlist = ansagenGenerator.generateGleiswechsel(journey, linked);
         } else if (mode === 'Information') {
             playlist = ansagenGenerator.generateInformation(journey);
         } else if (mode === 'Anschluesse') {
@@ -292,7 +294,15 @@
                     <ZimIcon name="volume_high" size={14} />
                     <span>Steht</span>
                 </button>
-                <button class="btn-secondary btn-sm" onclick={() => playAnsage('Information')} title="Ansage Information generieren" style="display: inline-flex; align-items: center; gap: 6px;">
+                <button class="btn-secondary btn-sm" 
+                        onclick={() => playAnsage('Gleiswechsel')} 
+                        title="Ansage Gleiswechsel generieren"
+                        disabled={!journey.ezGleis || journey.ezGleis === journey.platform}
+                        style="display: inline-flex; align-items: center; gap: 6px;">
+                    <ZimIcon name="volume_high" size={14} />
+                    <span>Gleisw.</span>
+                </button>
+                <button class="btn-secondary btn-sm" onclick={() => playAnsage('Information')} title="Ansage Allgemeine Information generieren" style="display: inline-flex; align-items: center; gap: 6px;">
                     <ZimIcon name="volume_high" size={14} />
                     <span>Info</span>
                 </button>
