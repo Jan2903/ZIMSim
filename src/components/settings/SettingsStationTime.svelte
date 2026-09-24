@@ -4,6 +4,7 @@
     import { setSimulatedTime, getSimulatedTime, timeConfig } from '../../js/core/utils/config.js';
     import { MOT_PRESETS, getSmartHeaderString, MOT_ALL_KEYS } from '../../js/features/station/motManager.js';
     import StationPicker from '../StationPicker.svelte';
+    import PlatformEditor from './PlatformEditor.svelte';
     import ZimIcon from '../ZimIcon.svelte';
 
     // Suchtext für die Bahnhofssuche
@@ -173,49 +174,10 @@
                 {/if}
             </div>
 
-            <!-- Bahnsteig-Dimensionen -->
-            <div class="sub-section" style="margin-top: 16px;">
-                <h4 class="sub-title">Bahnsteig & Position</h4>
-                <div class="form-row column-layout">
-                    <label for="global_platform_select" class="field-label">Konfiguration wählen:</label>
-                    <select 
-                        id="global_platform_select" 
-                        class="form-select"
-                        bind:value={journeyStore.stationContext.activePlatformName} 
-                        onchange={() => {
-                            if (journeyStore.stationContext.activePlatformName && journeyStore.platforms[journeyStore.stationContext.activePlatformName]) {
-                                journeyStore.stationContext.platform = journeyStore.platforms[journeyStore.stationContext.activePlatformName];
-                            }
-                            trainDisplay.updateAll();
-                        }}
-                    >
-                        <option value="default">Standard (Generisch)</option>
-                        {#each Object.keys(journeyStore.platforms) as pName}
-                            <option value={pName}>{pName}</option>
-                        {/each}
-                    </select>
-
-                    <div class="inline-inputs" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px;">
-                        <label class="field-label">
-                            Länge (m):
-                            <input 
-                                type="number" 
-                                class="form-input" 
-                                bind:value={journeyStore.stationContext.platform.length} 
-                                oninput={() => trainDisplay.updateAll()}
-                            >
-                        </label>
-                        <label class="field-label">
-                            Standort (m):
-                            <input 
-                                type="number" 
-                                class="form-input" 
-                                bind:value={journeyStore.stationContext.platform.currentLocation} 
-                                oninput={() => trainDisplay.updateAll()}
-                            >
-                        </label>
-                    </div>
-                </div>
+            <!-- Bahnsteig & Position (Konfiguration, Abschnitte & Sektoren) -->
+            <div class="sub-section" style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 16px;">
+                <h4 class="sub-title" style="margin-bottom: 12px;">Bahnsteig & Position</h4>
+                <PlatformEditor />
             </div>
         </div>
     </div>

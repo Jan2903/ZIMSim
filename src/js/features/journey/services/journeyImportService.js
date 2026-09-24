@@ -309,6 +309,7 @@ export class JourneyImportService {
                 // Falls es der erste importierte Bahnsteig ist oder wir den aktuellen Bahnsteig aktualisieren, direkt anwenden
                 if (Object.keys(platforms).length === 1 || stationContext.platform.name === platformName) {
                     stationContext.platform = newPlatform;
+                    stationContext.activePlatformName = platformName;
                 }
             }
         }

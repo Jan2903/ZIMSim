@@ -21,11 +21,14 @@ export class JourneyStore {
     stationContext = $state({
         stationName: '',
         stationId: '',
-        platform: new Platform()
+        activePlatformName: 'default',
+        platform: new Platform({ name: 'default' })
     });
 
-    // Speichert importierte Bahnsteigkonfigurationen (Key: Gleisbezeichnung)
-    platforms = $state({});
+    // Speichert importierte und eigene Bahnsteigkonfigurationen (Key: Gleisbezeichnung)
+    platforms = $state({
+        'default': new Platform({ name: 'default' })
+    });
 
     // Dynamische Journey-Liste (keine feste Anzahl)
     journeys = $state([]);
@@ -470,6 +473,116 @@ export class JourneyStore {
      */
     hasReachableConnections(referenceJourney = null, options = {}) {
         return JourneyConnectionService.hasReachableConnections(this.journeys, referenceJourney, options);
+    }
+
+    // ==========================================
+    // Bahnsteig-Verwaltung (Platforms & Abschnitte)
+    // ==========================================
+
+    /**
+     * Wählt eine Bahnsteigkonfiguration anhand des Namens aus.
+     * @param {string} name - Name des Bahnsteigs
+     * @returns {void}
+     */
+    selectPlatform(name) {
+        if (!name) return;
+        if (!this.platforms[name]) {
+            this.platforms[name] = new Platform({ name });
+        }
+        this.stationContext.activePlatformName = name;
+        this.stationContext.platform = this.platforms[name];
+    }
+
+    /**
+     * Erstellt eine neue Bahnsteigkonfiguration.
+     * @param {string} [name=''] - Name des neuen Bahnsteigs
+     * @param {object|Platform} [baseData=null] - Optionale Basisdaten oder Template
+     * @returns {Platform}
+     */
+    addPlatform(name = '', baseData = null) {
+        let finalName = (name || '').trim();
+        if (!finalName) {
+            let counter = 1;
+            while (this.platforms[`Gleis ${counter}`]) {
+                counter++;
+            }
+            finalName = `Gleis ${counter}`;
+        }
+        let uniqueName = finalName;
+        let counter = 2;
+        while (this.platforms[uniqueName]) {
+            uniqueName = `${finalName} (${counter++})`;
+        }
+
+        const newPlat = baseData instanceof Platform 
+            ? baseData.clone(uniqueName) 
+            : new Platform({ ...(baseData || {}), name: uniqueName });
+        
+        newPlat.name = uniqueName;
+        this.platforms[uniqueName] = newPlat;
+        this.selectPlatform(uniqueName);
+        return newPlat;
+    }
+
+    /**
+     * Dupliziert eine bestehende Bahnsteigkonfiguration.
+     * @param {string} sourceName - Name des zu duplizierenden Bahnsteigs
+     * @returns {Platform|null}
+     */
+    duplicatePlatform(sourceName) {
+        const source = this.platforms[sourceName] || this.stationContext.platform;
+        if (!source) return null;
+        const copyName = `${source.name || 'Bahnsteig'} (Kopie)`;
+        return this.addPlatform(copyName, source);
+    }
+
+    /**
+     * Entfernt eine Bahnsteigkonfiguration.
+     * @param {string} name - Name des zu entfernenden Bahnsteigs
+     * @returns {boolean}
+     */
+    removePlatform(name) {
+        if (!name || !this.platforms[name]) return false;
+        
+        const keys = Object.keys(this.platforms);
+        if (keys.length <= 1) {
+            this.platforms[name].resetToDefault();
+            return false;
+        }
+
+        delete this.platforms[name];
+
+        if (this.stationContext.activePlatformName === name) {
+            const nextKey = this.platforms['default'] ? 'default' : Object.keys(this.platforms)[0];
+            this.selectPlatform(nextKey);
+        }
+
+        return true;
+    }
+
+    /**
+     * Benennt eine Bahnsteigkonfiguration um.
+     * @param {string} oldName
+     * @param {string} newName
+     * @returns {boolean}
+     */
+    renamePlatform(oldName, newName) {
+        const trimmed = (newName || '').trim();
+        if (!oldName || !trimmed || oldName === trimmed) return false;
+        if (this.platforms[trimmed]) return false;
+
+        const plat = this.platforms[oldName];
+        if (!plat) return false;
+
+        plat.name = trimmed;
+        this.platforms[trimmed] = plat;
+        delete this.platforms[oldName];
+
+        if (this.stationContext.activePlatformName === oldName) {
+            this.stationContext.activePlatformName = trimmed;
+        }
+
+        return true;
     }
 
     // ==========================================

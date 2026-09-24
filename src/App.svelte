@@ -225,6 +225,8 @@
         const tm = journeyStore.activeMots;
         const at = journeyStore.activeTracks;
         const pf = journeyStore.platforms;
+        const plat = journeyStore.stationContext.platform;
+        const pName = journeyStore.stationContext.activePlatformName;
         const nrw = journeyStore.nrwMode;
         const lr = lineColorService.rules;
         

@@ -46,24 +46,32 @@ export class JourneyStorageService {
         store.activeTracks = data.activeTracks || [];
         store.customStations = data.customStations || [];
 
-        if (data.platforms) {
+        if (data.platforms && Object.keys(data.platforms).length > 0) {
             store.platforms = {};
             for (const [key, platData] of Object.entries(data.platforms)) {
                 store.platforms[key] = new Platform(platData);
             }
         } else {
-            store.platforms = {};
+            store.platforms = {
+                'default': new Platform({ name: 'default' })
+            };
         }
 
         if (data.stationContext) {
             store.stationContext.stationName = data.stationContext.stationName || '';
             store.stationContext.stationId = data.stationContext.stationId || '';
             
-            const activeName = data.stationContext.activePlatformName;
+            const activeName = data.stationContext.activePlatformName || 'default';
             if (activeName && store.platforms[activeName]) {
                 store.stationContext.platform = store.platforms[activeName];
+                store.stationContext.activePlatformName = activeName;
             } else {
-                store.stationContext.platform = new Platform();
+                const firstKey = Object.keys(store.platforms)[0] || 'default';
+                if (!store.platforms[firstKey]) {
+                    store.platforms[firstKey] = new Platform({ name: firstKey });
+                }
+                store.stationContext.platform = store.platforms[firstKey];
+                store.stationContext.activePlatformName = firstKey;
             }
         }
 
