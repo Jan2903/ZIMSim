@@ -120,8 +120,10 @@
 </script>
 
 {#if isOpen}
-<div class="modal-overlay" onclick={closeModal} role="dialog" aria-modal="true">
-    <div class="modal-content modal-extra-wide" onclick={(e) => e.stopPropagation()}>
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="modal-overlay" onclick={(e) => { if (e.target === e.currentTarget) closeModal(); }} role="presentation">
+    <div class="modal-content modal-extra-wide" role="dialog" aria-modal="true" tabindex="-1">
         <div class="modal-header">
             <div style="display: flex; align-items: center; gap: 10px;">
                 <ZimIcon name="palette" size={22} />

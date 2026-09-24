@@ -86,7 +86,6 @@
 
 <style>
 .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 16px; box-sizing: border-box; }
-.modal-overlay.hidden { display: none; }
 .modal-content { background: var(--bg-card); border-radius: 12px; padding: 0; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column; width: 100%; max-width: 900px; box-sizing: border-box; }
 .modal-wide { width: 100%; max-width: 900px; }
 .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--border); }

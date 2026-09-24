@@ -61,7 +61,7 @@
 <div class="settings-container">
     <!-- Einheitliche 5-Tab Hauptnavigation (Desktop & Mobile) -->
     <div class="dashboard-nav-wrapper">
-        <nav class="dashboard-tabs" role="tablist" aria-label="Einstellungs-Bereiche">
+        <div class="dashboard-tabs" role="tablist" aria-label="Einstellungs-Bereiche">
             <!-- Tab 1: Fahrten -->
             <button 
                 type="button" 
@@ -126,7 +126,7 @@
                 <ZimIcon name="settings" size={16} />
                 <span>Anzeige & System</span>
             </button>
-        </nav>
+        </div>
     </div>
 
     <!-- Tab-Inhalte -->

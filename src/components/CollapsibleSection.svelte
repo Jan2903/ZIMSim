@@ -11,23 +11,21 @@
      */
     let { 
         title, 
-        isOpen = true, 
+        isOpen = $bindable(true), 
         isFrame = true,
         headerActions, 
         children 
     } = $props();
 
-    let open = $state(isOpen);
-
     function toggle() {
-        open = !open;
+        isOpen = !isOpen;
     }
 </script>
 
 <div class="collapsible-wrapper" class:is-frame={isFrame}>
-    <button type="button" class="collapsible-header" onclick={toggle} aria-expanded={open}>
+    <button type="button" class="collapsible-header" onclick={toggle} aria-expanded={isOpen}>
         <div class="collapsible-title">
-            <span class="chevron" class:open><ZimIcon name="chevron_right" size={16} /></span>
+            <span class="chevron" class:open={isOpen}><ZimIcon name="chevron_right" size={16} /></span>
             <h3>{title}</h3>
         </div>
         {#if headerActions}
@@ -39,7 +37,7 @@
         {/if}
     </button>
     
-    {#if open}
+    {#if isOpen}
         <div class="collapsible-content" transition:slide={{ duration: 250 }}>
             <div class="collapsible-content-inner">
                 {@render children()}

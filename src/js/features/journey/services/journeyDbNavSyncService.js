@@ -110,7 +110,7 @@ export class JourneyDbNavSyncService {
                     (depGattung && (j.name.toLowerCase().includes(depGattung.toLowerCase()) || (j.produktGattung && j.produktGattung.toLowerCase() === depGattung.toLowerCase()))));
 
                 if (numMatch || timeMatch) {
-                    j.hasFormation = hasWagenreihung;
+                    j.hasFormationAvailable = hasWagenreihung;
                     j.dbNavMeta = {
                         abgangsDatum: dep.abgangsDatum,
                         ezAbgangsDatum: dep.ezAbgangsDatum,
@@ -256,7 +256,6 @@ export class JourneyDbNavSyncService {
                 journeyStore.stationContext
             );
 
-            journey.hasFormation = true;
             trainDisplay.updateAll();
 
             return { success: true };
@@ -358,7 +357,7 @@ export class JourneyDbNavSyncService {
                 ausfall: Boolean(item.ausfall),
                 ankunft: isArrival,
                 vias: Array.isArray(item.via) ? [...item.via] : [],
-                hasFormation: Boolean(item.wagenreihung),
+                hasFormationAvailable: Boolean(item.wagenreihung),
                 dbNavMeta: {
                     abgangsDatum: item.abgangsDatum,
                     ezAbgangsDatum: item.ezAbgangsDatum,
@@ -398,7 +397,7 @@ export class JourneyDbNavSyncService {
             if (fetched >= maxTrains) break;
 
             const hasCoaches = j.formation?.groups?.some(g => g.coaches?.length > 0);
-            if (j.hasFormation && !hasCoaches && !j.isFetchingFormation) {
+            if (j.hasFormationAvailable && !hasCoaches && !j.isFetchingFormation) {
                 const res = await this.fetchFormationForJourney(j);
                 if (res.success) {
                     fetched++;

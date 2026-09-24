@@ -168,12 +168,14 @@
                             <span>{journey.ankunft ? 'Wird zu' : 'Kommt aus'} {linkedJourney.effectiveDisplayName} ({linkedJourney.scheduledTime})</span>
                         </span>
                     </span>
-                {#if hasFormationLoaded}
+                {/if}
+
+                {#if journey.hasFormation}
                     <span class="badge badge-formation-loaded" title="Wagenreihung vorhanden">
                         <ZimIcon name="train_fast" size={12} />
                         <span>WR</span>
                     </span>
-                {:else if journey.hasFormation}
+                {:else if journey.hasFormationAvailable}
                     <button 
                         type="button"
                         class="badge badge-formation-available" 

@@ -235,7 +235,7 @@
         </div>
         <div class="card-body">
             <!-- Datenquellen-Segment -->
-            <label class="field-label">Aktive Schnittstelle:</label>
+            <div class="field-label">Aktive Schnittstelle:</div>
             <div class="source-selector">
                 <label class="source-card" class:active={selectedDataSource === 'iris'}>
                     <input type="radio" name="data_source" value="iris" bind:group={selectedDataSource}>
@@ -435,7 +435,7 @@
 
                     <!-- DB Navigator Wagenreihungs-Abgleich (Hybrid) -->
                     <div class="sub-section" style="margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px;">
-                        <label class="field-label">DB Navigator Wagenreihungs-Abgleich (Hybrid):</label>
+                        <div class="field-label">DB Navigator Wagenreihungs-Abgleich (Hybrid):</div>
                         <div class="checkbox-group" style="margin-bottom: 10px;">
                             <label class="checkbox-label">
                                 <input type="checkbox" bind:checked={autoFetchActiveFormations}>
@@ -469,7 +469,7 @@
                 {/if}
 
                 <div class="form-row column-layout">
-                    <label class="field-label">Abfrage-Modus für Bahnhofstafel:</label>
+                    <div class="field-label">Abfrage-Modus für Bahnhofstafel:</div>
                     <div class="segment-switch" style="width: 100%; margin-bottom: 14px;">
                         <label>
                             <input type="radio" name="dbnav_query_type" value="departures" bind:group={dbNavConfig.queryType}>
@@ -514,7 +514,7 @@
 
                     <!-- Hybrid-Sync Sektion -->
                     <div class="sub-section" style="margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px;">
-                        <label class="field-label">Hybrid-Sync für bestehende Fahrten:</label>
+                        <div class="field-label">Hybrid-Sync für bestehende Fahrten:</div>
                         <button 
                             type="button" 
                             class="btn-secondary" 

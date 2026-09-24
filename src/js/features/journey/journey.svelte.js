@@ -93,7 +93,7 @@ export class Journey {
     stops = $state([]);
     _currentStopIndex = $state(-1);
     zugattribute = $state([]);
-    hasFormation = $state(false);
+    hasFormationAvailable = $state(false);
     dbNavMeta = $state(null);
     isFetchingFormation = $state(false);
 
@@ -101,7 +101,7 @@ export class Journey {
         // === Identifikation ===
         this.id = data.id || crypto.randomUUID();
         this.journeyId = data.journeyId || '';     // DB API Journey-ID
-        this.hasFormation = Boolean(data.hasFormation);
+        this.hasFormationAvailable = Boolean(data.hasFormationAvailable ?? data.hasFormation);
         this.dbNavMeta = data.dbNavMeta || null;
         this.isFetchingFormation = false;
 

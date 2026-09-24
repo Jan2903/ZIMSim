@@ -362,12 +362,14 @@
     <Header onScreenshot={downloadScreenshot} />
 {/if}
 
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div 
     bind:this={displayWrapper} 
     class="display-wrapper {isKiosk ? 'kiosk-active' : ''} {isFullscreen ? 'fullscreen-active' : ''}" 
     onmousemove={handleUserActivity}
     ontouchstart={handleUserActivity}
     onpointerdown={handleUserActivity}
+    role="presentation"
     style="width: 100%; position: relative; {isFullscreen || isKiosk ? 'height: 100vh; overflow: hidden; background: #000;' : 'overflow-x: auto; overflow-y: hidden;'}"
 >
     <!-- Schwebendes Exit-HUD im Vollbild / Kiosk-Modus -->
