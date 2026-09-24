@@ -2,7 +2,7 @@
 <script>
     import { journeyStore, trainDisplay } from '../../js/core/state/stores.js';
     import { irisPollingService, irisConfig } from '../../js/core/services/irisPollingService.svelte.js';
-    import { isTauri, isGitHubPages } from '../../js/core/services/apiClient.js';
+    import { isTauri, isGitHubPages, proxyConfig, checkProxyHealth } from '../../js/core/services/apiClient.js';
     import { DbNavApiService } from '../../js/core/services/dbNavApiService.js';
     import { JourneyDbNavSyncService } from '../../js/features/journey/services/journeyDbNavSyncService.js';
     import ZimIcon from '../ZimIcon.svelte';
@@ -38,6 +38,35 @@
     let isFetchingDbNavBoard = $state(false);
     let autoFetchActiveFormations = $state(false);
 
+    // Status und Konfiguration fuer lokalen Python-Proxy (ZIMSim Bridge)
+    let proxyEnabled = $state(proxyConfig.enabled);
+    let proxyUrl = $state(proxyConfig.url);
+    let isCheckingProxy = $state(false);
+    let proxyStatus = $state(null);
+
+    /**
+     * Prüft die Verbindung zum lokalen Python-Proxy (ZIMSim Bridge).
+     */
+    async function checkProxy() {
+        isCheckingProxy = true;
+        try {
+            const res = await checkProxyHealth(proxyUrl);
+            proxyStatus = res;
+            if (res.connected) {
+                proxyConfig.enabled = true;
+                proxyEnabled = true;
+            }
+        } finally {
+            isCheckingProxy = false;
+        }
+    }
+
+    $effect(() => {
+        if (!isTauri) {
+            checkProxy();
+        }
+    });
+
     /**
      * Führt eine sofortige Aktualisierung der IRIS-Daten aus.
      * @returns {Promise<void>}
@@ -72,6 +101,15 @@
             alert('Bitte zuerst eine Station auswählen!');
             return;
         }
+
+        if (!isTauri && !proxyConfig.enabled) {
+            dbNavSyncResult = {
+                success: false,
+                message: 'DB Navigator erfordert im Browser die lokale Python-Bridge (start_bridge.bat) oder Tauri.'
+            };
+            return;
+        }
+
         isSyncingDbNav = true;
         dbNavSyncResult = null;
         try {
@@ -111,6 +149,12 @@
             alert('Bitte zuerst eine Station auswählen!');
             return;
         }
+
+        if (!isTauri && !proxyConfig.enabled) {
+            alert('Für DB Navigator im Browser bitte zuerst die lokale Python-Bridge (start_bridge.bat) starten.');
+            return;
+        }
+
         isFetchingDbNavBoard = true;
         try {
             const isArrival = dbNavConfig.queryType === 'arrivals';
@@ -140,6 +184,12 @@
      */
     async function searchExtendedStations() {
         if (!extendedStationQuery.trim()) return;
+
+        if (!isTauri && !proxyConfig.enabled) {
+            alert('Für die Stationssuche im Browser bitte zuerst die lokale Python-Bridge (start_bridge.bat) starten.');
+            return;
+        }
+
         isExtendedSearching = true;
         extendedSearchResults = [];
 
@@ -232,12 +282,68 @@
                     {#if isTauri}
                         Native HTTP-Sockets aktiv. Keine CORS-Einschränkungen für externe APIs (IRIS und DB Navigator direkt nutzbar).
                     {:else if isGitHubPages}
-                        Gehostet auf GitHub Pages. IRIS-API ist direkt verfügbar. DB Navigator erfordert die Desktop-App oder lokalen Build mit Proxy.
+                        Gehostet auf GitHub Pages. IRIS-API ist direkt verfügbar. DB Navigator erfordert die lokale Python-Bridge oder Tauri.
                     {:else}
-                        Lokale Browser-Umgebung. IRIS ist direkt aktiv. Nicht-CORS-APIs (DB Navigator) erfordern lokalen Proxy oder Tauri.
+                        Lokale Browser-Umgebung. IRIS ist direkt aktiv. DB Navigator erfordert die lokale Python-Bridge oder Tauri.
                     {/if}
                 </div>
             </div>
+
+            {#if !isTauri}
+                <!-- Lokaler Python-Proxy (ZIMSim Bridge) -->
+                <div class="proxy-config-card" style="margin-top: 14px; padding: 12px; border-radius: 6px; border: 1px solid var(--border); background: rgba(0, 0, 0, 0.25);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <ZimIcon name="api" size={16} />
+                            <strong style="font-size: 0.9rem;">Python-Proxy (ZIMSim Bridge)</strong>
+                        </div>
+                        {#if proxyStatus?.connected}
+                            <span class="badge" style="background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.3); font-size: 0.72rem;">
+                                Verbunden ({proxyStatus.info?.version || 'v1.0'})
+                            </span>
+                        {:else}
+                            <span class="badge" style="background: rgba(148, 163, 184, 0.15); color: var(--text-muted); border: 1px solid var(--border); font-size: 0.72rem;">
+                                Nicht aktiv
+                            </span>
+                        {/if}
+                    </div>
+
+                    <div class="checkbox-group" style="margin-bottom: 8px;">
+                        <label class="checkbox-label">
+                            <input 
+                                type="checkbox" 
+                                bind:checked={proxyEnabled}
+                                onchange={() => { proxyConfig.enabled = proxyEnabled; }}
+                            >
+                            <span>Proxy für DB Navigator im Browser aktivieren</span>
+                        </label>
+                    </div>
+
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                        <input 
+                            type="text" 
+                            class="form-input" 
+                            style="font-size: 0.8rem; padding: 6px 10px;"
+                            bind:value={proxyUrl} 
+                            onchange={() => { proxyConfig.url = proxyUrl; }}
+                            placeholder="http://127.0.0.1:8765"
+                        >
+                        <button 
+                            type="button" 
+                            class="btn-secondary btn-sm" 
+                            onclick={checkProxy} 
+                            disabled={isCheckingProxy}
+                            style="white-space: nowrap;"
+                        >
+                            {isCheckingProxy ? 'Prüfe...' : 'Testen'}
+                        </button>
+                    </div>
+
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; line-height: 1.4;">
+                        Start per Doppelklick auf <code style="color: var(--accent); background: rgba(0,0,0,0.3); padding: 1px 4px; border-radius: 3px;">scripts/start_bridge.bat</code> auf Windows.
+                    </div>
+                </div>
+            {/if}
         </div>
     </div>
 
@@ -356,6 +462,12 @@
 
             {:else if selectedDataSource === 'db_navigator'}
                 <!-- DB Navigator / bahn.de spezifische Einstellungen -->
+                {#if !isTauri && !proxyStatus?.connected}
+                    <div style="padding: 10px 12px; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 6px; margin-bottom: 14px; font-size: 0.82rem; color: #fde68a; line-height: 1.45;">
+                        <strong>Hinweis für Browser / GitHub Pages:</strong> DB Navigator Anfragen benötigen im Web-Modus die lokale Python-Bridge. Bitte starten Sie <code style="color: white; background: rgba(0,0,0,0.3); padding: 1px 4px; border-radius: 3px;">scripts/start_bridge.bat</code> auf Windows.
+                    </div>
+                {/if}
+
                 <div class="form-row column-layout">
                     <label class="field-label">Abfrage-Modus für Bahnhofstafel:</label>
                     <div class="segment-switch" style="width: 100%; margin-bottom: 14px;">
