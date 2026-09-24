@@ -13,6 +13,7 @@ import { drawWagenreihungPlan } from './boards/wagenreihungPlanRenderer.js';
 import { drawAnschlusstafelZoomBoard } from './boards/anschlusstafelZoomRenderer.js';
 import { displayConfigStore } from './core/displayConfigStore.svelte.js';
 import { ScreenSyncService } from '../core/services/screenSyncService.js';
+import { ScreenAssignmentService } from './core/screenAssignmentService.js';
 
 export class TrainDisplay {
     constructor(journeyStore) {
@@ -622,246 +623,20 @@ export class TrainDisplay {
 
     /**
      * Baut die Journey-Zuweisungen für alle Screens des aktuellen Layouts auf.
-     * Layout-spezifische Regeln (z.B. Störungen auf den rotierenden Monitor)
-     * werden hier zentral umgesetzt.
+     * Delegiert an den ScreenAssignmentService.
      *
-     * @returns {Map<string, {journeys: Journey[], zugID: number}>}
+     * @returns {Map<string, object>}
      */
     _buildScreenAssignments() {
-        const assignments = new Map();
-        const layout = this.currentLayout;
-        const screens = layout?.screens || [];
-
-        const hasAnkunft = screens.some(s => s.type === 'ankunft' || s.type === 'ankunft_portrait');
-        const hasAbfahrt = screens.some(s => s.type === 'abfahrt' || s.type === 'abfahrt_portrait' || s.type === 'voranzeiger' || s.type === 'abfahrt_zoom');
-        const hasWagenreihungPlan = screens.some(s => s.type === 'wagenreihung_plan');
-
-        if (hasAnkunft) {
-            this._assignAnkunft(assignments);
-        } else if (hasAbfahrt) {
-            this._assignVoranzeiger(assignments);
-        } else if (hasWagenreihungPlan) {
-            this._assignWagenreihungPlan(assignments);
-        } else {
-            this._assignStandard(assignments);
-        }
-
-        // Falls vitrine32 Screens im Layout vorhanden sind (z.B. Wagenstandsanzeiger-Kombi), diese mit JourneyGroups versorgen
-        const vitrineScreens = screens.filter(s => s.type === 'vitrine32');
-        if (vitrineScreens.length > 0) {
-            const groups = this._getVisibleJourneyGroups();
-            vitrineScreens.forEach(screen => {
-                assignments.set(screen.id, {
-                    journeyGroups: groups.slice(0, 3),
-                    zugID: 1,
-                });
-            });
-        }
-
-        return assignments;
-    }
-
-    /**
-     * Standard-Layout (2×32" Doppelmonitor, Einzelschirme oder 4K):
-     * - Hauptmonitor: Erste normale Journey-Gruppe
-     * - Nebenmonitor(e): Weitere normale Journey-Gruppen
-     * - Nebenmonitor (rotierend): Gestörte Journeys (Vorrang), sonst nachfolgende Gruppen
-     *
-     * @param {Map<string, {journeys: Journey[], zugID: number}>} assignments
-     */
-    _assignStandard(assignments) {
-        const groups = this._getVisibleJourneyGroups();
-
-        // Trennung in normale und gestörte Gruppen
-        const normal = groups.filter(g => !g[0].isDisrupted);
-        const disrupted = groups.filter(g => g[0].isDisrupted);
-
-        const screens = this.currentLayout.screens;
-        const haupt = screens.find(s => s.type === 'haupt');
-        const nebens = screens.filter(s => s.type === 'neben');
-        const rotierend = screens.find(s => s.type === 'neben_rotierend');
-
-        // Hauptmonitor
-        if (haupt) {
-            const hIndex = haupt.trainIndex !== undefined ? haupt.trainIndex : 0;
-            assignments.set(haupt.id, {
-                journeys: normal[hIndex] || [],
-                zugID: hIndex + 1,
-            });
-        }
-
-        // Feste Nebenmonitore
-        nebens.forEach(neben => {
-            const nIndex = neben.trainIndex !== undefined ? neben.trainIndex : 1;
-            assignments.set(neben.id, {
-                journeys: normal[nIndex] || [],
-                zugID: nIndex + 1,
-            });
+        const { assignments, rotatingPages, activePageIndex } = ScreenAssignmentService.buildScreenAssignments({
+            layout: this.currentLayout,
+            journeyStore: this.journeyStore,
+            activePageIndex: this.activePageIndex
         });
 
-        // Nebenmonitor 2 (rotierend): Gestörte Journeys + normale ab normalStartIndex
-        if (rotierend) {
-            let normalStartIndex = 2;
-            if (!haupt && nebens.length > 0) {
-                const maxIndex = Math.max(...nebens.map(s => (s.trainIndex !== undefined ? s.trainIndex : 1)));
-                normalStartIndex = maxIndex + 1;
-            } else if (!haupt && nebens.length === 0) {
-                normalStartIndex = 0;
-            }
-
-            const groupsToRotate = [...disrupted, ...normal.slice(normalStartIndex)];
-            this.rotatingPages = [];
-            
-            for (const group of groupsToRotate) {
-                const primary = group[0];
-                let visibleTexts = primary.infoTexts ? [...primary.infoTexts.filter(t => t.visible)] : [];
-                
-                // Ankunftstext und Schwächungstext sind nun nativ als Bausteine in `infoTexts` vorhanden.
-                // Es ist kein manuelles Hinzufügen für die Rotation mehr nötig.
-                
-                // Bei Gleiswechsel sollen laut Nutzer-Anforderung KEINE Infotexte rotieren/angezeigt werden,
-                // sondern dauerhaft die Vias (wie auf Display 2).
-                if (primary.hasTrackChange) {
-                    visibleTexts = [];
-                }
-
-                const isDisrupted = primary.isDisrupted;
-
-                // Basis-Seite wird NUR bei "Verkehrt ab" (und nicht Ausfall/Infoscreen) vorangestellt.
-                let hasBaseText = !primary.ausfall && !primary.infoscreen && primary.verkehrtAb !== '0';
-                let infoTextPages = visibleTexts.length;
-                let rotateInfos = false;
-
-                if (isDisrupted && infoTextPages > 0) {
-                    rotateInfos = true;
-                } else if (!isDisrupted && primary.infoscreen && infoTextPages > 0) {
-                    rotateInfos = true;
-                }
-
-                if (rotateInfos) {
-                    if (hasBaseText) {
-                        // Seite 1: Basis-Text (Verkehrt ab oder reguläre vias)
-                        this.rotatingPages.push({
-                            journeys: group,
-                            infoText: null
-                        });
-                    }
-                    // Seite 2 bis N: Die dynamischen Infotexte
-                    for (let i = 0; i < infoTextPages; i++) {
-                        this.rotatingPages.push({
-                            journeys: group,
-                            infoText: visibleTexts[i]
-                        });
-                    }
-                } else {
-                    // Keine Rotation von Infotexten: Fallback auf Standard-Darstellung (Vias)
-                    this.rotatingPages.push({
-                        journeys: group,
-                        infoText: null
-                    });
-                }
-            }
-
-            let currentJourneys = [];
-            if (this.rotatingPages.length > 0) {
-                if (this.activePageIndex >= this.rotatingPages.length) {
-                    this.activePageIndex = 0;
-                }
-                currentJourneys = this.rotatingPages[this.activePageIndex].journeys;
-            }
-
-            const rotZugId = nebens.length > 0
-                ? (Math.max(...nebens.map(s => (s.trainIndex !== undefined ? s.trainIndex : 1))) + 2)
-                : (haupt ? 3 : 1);
-
-            assignments.set(rotierend.id, {
-                journeys: currentJourneys,
-                zugID: rotZugId,
-            });
-        } else {
-            this.rotatingPages = [];
-        }
-    }
-
-    /**
-     * Voranzeiger-Layout (Dynamische Abfahrtstafel):
-     * Bildschirme vom Typ 'voranzeiger' erhalten alle sichtbaren Journeys für
-     * dynamische Berechnung von Abfahrten, Störungsbox unten und Pagination.
-     */
-    _assignVoranzeiger(assignments) {
-        const groups = this._getVisibleJourneyGroups();
-        const allVisibleJourneys = this.journeyStore.journeys.filter(j => j.visible);
-
-        for (const screen of this.currentLayout.screens) {
-            if (screen.type === 'voranzeiger' || screen.type === 'abfahrt' || screen.type === 'abfahrt_portrait' || screen.type === 'abfahrt_zoom') {
-                assignments.set(screen.id, {
-                    journeys: allVisibleJourneys,
-                    zugID: 1,
-                });
-            } else if (screen.type === 'vitrine32') {
-                assignments.set(screen.id, {
-                    journeyGroups: groups.slice(0, 3),
-                    zugID: 1,
-                });
-            } else {
-                const index = screen.trainIndex || 0;
-                assignments.set(screen.id, {
-                    journeys: groups[index] || [],
-                    zugID: index + 1,
-                });
-            }
-        }
-    }
-
-    _assignAnkunft(assignments) {
-        const allVisibleJourneys = this.journeyStore.journeys.filter(j => j.visible);
-        for (const screen of this.currentLayout.screens) {
-            assignments.set(screen.id, {
-                journeys: allVisibleJourneys,
-                zugID: 1,
-            });
-        }
-    }
-
-    _assignWagenreihungPlan(assignments) {
-        const groups = this._getVisibleJourneyGroups();
-        for (const screen of this.currentLayout.screens) {
-            assignments.set(screen.id, {
-                journeyGroups: groups,
-                zugID: 1,
-            });
-        }
-    }
-
-    _assignVitrine(assignments) {
-        const groups = this._getVisibleJourneyGroups();
-        for (const screen of this.currentLayout.screens) {
-            if (screen.type === 'vitrine32') {
-                assignments.set(screen.id, {
-                    journeyGroups: groups.slice(0, 3),
-                    zugID: 1,
-                });
-            }
-        }
-    }
-
-    /**
-     * Generische Zuweisung für unbekannte Layouts: Slot-basiert via JourneyStore.
-     */
-    _assignGeneric(assignments) {
-        const options = { boardType: this.currentLayout.boardType || 'default' };
-        for (const screen of this.currentLayout.screens) {
-            let slot;
-            if (screen.type === 'haupt') slot = 1;
-            else if (screen.type === 'neben') slot = 2;
-            else if (screen.type === 'neben_rotierend') slot = 3;
-            else slot = (screen.trainIndex || 0) + 1;
-
-            assignments.set(screen.id, {
-                journeys: this.journeyStore.getJourneysForSlot(slot, options),
-                zugID: slot,
-            });
-        }
+        this.rotatingPages = rotatingPages;
+        this.activePageIndex = activePageIndex;
+        return assignments;
     }
 
     /**
@@ -871,7 +646,6 @@ export class TrainDisplay {
      * @returns {Journey[][]} Array von Journey-Gruppen
      */
     _getVisibleJourneyGroups() {
-        const options = { boardType: this.currentLayout.boardType || 'default' };
-        return this.journeyStore.getVisibleJourneyGroups(options);
+        return ScreenAssignmentService.getVisibleJourneyGroups(this.journeyStore, this.currentLayout);
     }
-}
+}
