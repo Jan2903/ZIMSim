@@ -5,10 +5,23 @@
     import { lineColorService } from '../js/features/journey/services/lineColorService.svelte.js';
     import JourneyDetails from './JourneyDetails.svelte';
     import ZimIcon from './ZimIcon.svelte';
+    import { JourneyDbNavSyncService } from '../js/features/journey/services/journeyDbNavSyncService.js';
 
     let { journey = $bindable(), index = -1 } = $props();
 
     let isExpanded = $derived(uiState.expandedJourneyId === journey.id);
+
+    let hasFormationLoaded = $derived(
+        journey.formation && Array.isArray(journey.formation.groups) && journey.formation.groups.some(g => g.coaches && g.coaches.length > 0)
+    );
+
+    async function fetchWagenreihung(e) {
+        e.stopPropagation();
+        const res = await JourneyDbNavSyncService.fetchFormationForJourney(journey);
+        if (!res.success) {
+            alert(res.message || 'Wagenreihung konnte nicht geladen werden.');
+        }
+    }
 
     let formattedDisplayName = $derived(
         formatDisplayName(journey.effectiveDisplayName, journeyStore.nrwMode)
@@ -155,8 +168,24 @@
                             <span>{journey.ankunft ? 'Wird zu' : 'Kommt aus'} {linkedJourney.effectiveDisplayName} ({linkedJourney.scheduledTime})</span>
                         </span>
                     </span>
+                {#if hasFormationLoaded}
+                    <span class="badge badge-formation-loaded" title="Wagenreihung vorhanden">
+                        <ZimIcon name="train_fast" size={12} />
+                        <span>WR</span>
+                    </span>
+                {:else if journey.hasFormation}
+                    <button 
+                        type="button"
+                        class="badge badge-formation-available" 
+                        title="Wagenreihung verfügbar (DB Navigator) - Klicken zum Laden"
+                        disabled={journey.isFetchingFormation}
+                        onclick={fetchWagenreihung}
+                    >
+                        <ZimIcon name="train_fast" size={12} />
+                        <span>{journey.isFetchingFormation ? 'Lädt...' : '[W]'}</span>
+                    </button>
                 {/if}
-                
+
                 <button class="btn-icon expand-toggle" title={isExpanded ? 'Einklappen' : 'Ausklappen'}>
                     <ZimIcon name={isExpanded ? 'chevron_down' : 'chevron_right'} size={16} />
                 </button>
@@ -211,6 +240,33 @@
 .badge-arrival { background: #1e40af; color: #93c5fd; }
 .badge-departure { background: #334155; color: #f8fafc; }
 .badge-info { background: transparent; color: var(--text-muted); font-size: 1.2em; padding: 0 4px; border: 1px solid var(--border); }
+.badge-formation-loaded {
+    background: rgba(34, 197, 94, 0.15);
+    color: #4ade80;
+    border: 1px solid rgba(74, 222, 128, 0.3);
+    gap: 4px;
+    font-size: 0.75em;
+    padding: 2px 6px;
+}
+.badge-formation-available {
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    border: 1px solid rgba(96, 165, 250, 0.3);
+    gap: 4px;
+    font-size: 0.75em;
+    padding: 2px 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.badge-formation-available:hover:not(:disabled) {
+    background: rgba(59, 130, 246, 0.3);
+    color: #93c5fd;
+    border-color: #60a5fa;
+}
+.badge-formation-available:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
 .expand-toggle { margin-left: auto; }
 
 @media (max-width: 768px) {

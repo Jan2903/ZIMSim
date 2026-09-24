@@ -9,11 +9,19 @@
     import CoachEditorRow from './CoachEditorRow.svelte';
     import StationPicker from './StationPicker.svelte';
     import ZimIcon from './ZimIcon.svelte';
+    import { JourneyDbNavSyncService } from '../js/features/journey/services/journeyDbNavSyncService.js';
 
     let { journey = $bindable() } = $props();
 
     const flipDurationMs = 200;
     let fileInputRef = $state();
+
+    async function fetchFromDbNav() {
+        const res = await JourneyDbNavSyncService.fetchFormationForJourney(journey);
+        if (!res.success) {
+            alert(res.message || 'Wagenreihung konnte nicht geladen werden.');
+        }
+    }
 
     function triggerUpdate() {
         trainDisplay.updateAll();
@@ -181,6 +189,17 @@
     <div class="formation-header-actions">
         <h4>Wagenreihung</h4>
         <div class="actions-buttons-wrap">
+            <button 
+                type="button" 
+                class="btn-secondary btn-sm" 
+                onclick={fetchFromDbNav} 
+                disabled={journey.isFetchingFormation}
+                title="Wagenreihung über DB Navigator / bahn.de API live abrufen" 
+                style="display: inline-flex; align-items: center; gap: 6px;"
+            >
+                <ZimIcon name="train_fast" size={14} />
+                <span>{journey.isFetchingFormation ? 'Lädt...' : 'DB Navigator'}</span>
+            </button>
             <button type="button" class="btn-secondary btn-sm" onclick={triggerFileInput} title="Wagenreihung aus JSON importieren" style="display: inline-flex; align-items: center; gap: 6px;">
                 <ZimIcon name="import" size={14} />
                 <span>Import</span>
@@ -213,10 +232,22 @@
                 <ZimIcon name="train" size={48} color="var(--text-muted)" />
             </div>
             <p>Keine Wagenreihung für diese Fahrt vorhanden.</p>
-            <button type="button" class="btn-secondary" onclick={addGroup} style="display: inline-flex; align-items: center; gap: 6px;">
-                <ZimIcon name="plus" size={14} />
-                <span>Erste Gruppe anlegen</span>
-            </button>
+            <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+                <button 
+                    type="button" 
+                    class="btn-secondary" 
+                    onclick={fetchFromDbNav}
+                    disabled={journey.isFetchingFormation}
+                    style="display: inline-flex; align-items: center; gap: 6px;"
+                >
+                    <ZimIcon name="train_fast" size={14} />
+                    <span>{journey.isFetchingFormation ? 'Lädt...' : 'Live aus DB Navigator laden'}</span>
+                </button>
+                <button type="button" class="btn-secondary" onclick={addGroup} style="display: inline-flex; align-items: center; gap: 6px;">
+                    <ZimIcon name="plus" size={14} />
+                    <span>Erste Gruppe anlegen</span>
+                </button>
+            </div>
         </div>
     {:else}
         <!-- Gruppen-Liste mit dndzone (Gruppe gegen Gruppe verschiebbar) -->

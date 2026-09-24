@@ -93,11 +93,17 @@ export class Journey {
     stops = $state([]);
     _currentStopIndex = $state(-1);
     zugattribute = $state([]);
+    hasFormation = $state(false);
+    dbNavMeta = $state(null);
+    isFetchingFormation = $state(false);
 
     constructor(data = {}) {
         // === Identifikation ===
         this.id = data.id || crypto.randomUUID();
         this.journeyId = data.journeyId || '';     // DB API Journey-ID
+        this.hasFormation = Boolean(data.hasFormation);
+        this.dbNavMeta = data.dbNavMeta || null;
+        this.isFetchingFormation = false;
 
         // === Zug-Identifikation ===
         this.name = data.name || '';                 // Der formatierte Name des Zuges (z.B. "RE 70 / 95835")
