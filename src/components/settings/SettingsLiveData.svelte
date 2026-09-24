@@ -38,14 +38,14 @@
     let isFetchingDbNavBoard = $state(false);
     let autoFetchActiveFormations = $state(false);
 
-    // Status und Konfiguration fuer lokalen Python-Proxy (ZIMSim Bridge)
+    // Status und Konfiguration fuer lokalen Python-Proxy (ZIMSim Bridge) - strikt Opt-In
     let proxyEnabled = $state(proxyConfig.enabled);
     let proxyUrl = $state(proxyConfig.url);
     let isCheckingProxy = $state(false);
     let proxyStatus = $state(null);
 
     /**
-     * Prüft die Verbindung zum lokalen Python-Proxy (ZIMSim Bridge).
+     * Prüft die Verbindung zum lokalen Python-Proxy (ZIMSim Bridge) explizit auf Nutzeraktion.
      */
     async function checkProxy() {
         isCheckingProxy = true;
@@ -61,11 +61,17 @@
         }
     }
 
-    $effect(() => {
-        if (!isTauri) {
-            checkProxy();
+    /**
+     * Schaltet den lokalen Python-Proxy explizit ein oder aus (Opt-In).
+     */
+    async function handleProxyToggle() {
+        proxyConfig.enabled = proxyEnabled;
+        if (proxyEnabled) {
+            await checkProxy();
+        } else {
+            proxyStatus = null;
         }
-    });
+    }
 
     /**
      * Führt eine sofortige Aktualisierung der IRIS-Daten aus.
@@ -297,13 +303,17 @@
                             <ZimIcon name="api" size={16} />
                             <strong style="font-size: 0.9rem;">Python-Proxy (ZIMSim Bridge)</strong>
                         </div>
-                        {#if proxyStatus?.connected}
+                        {#if !proxyEnabled}
+                            <span class="badge" style="background: rgba(148, 163, 184, 0.12); color: var(--text-muted); border: 1px solid var(--border); font-size: 0.72rem;">
+                                Deaktiviert
+                            </span>
+                        {:else if proxyStatus?.connected}
                             <span class="badge" style="background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.3); font-size: 0.72rem;">
                                 Verbunden ({proxyStatus.info?.version || 'v1.0'})
                             </span>
                         {:else}
-                            <span class="badge" style="background: rgba(148, 163, 184, 0.15); color: var(--text-muted); border: 1px solid var(--border); font-size: 0.72rem;">
-                                Nicht aktiv
+                            <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); font-size: 0.72rem;">
+                                Nicht erreichbar
                             </span>
                         {/if}
                     </div>
@@ -313,9 +323,9 @@
                             <input 
                                 type="checkbox" 
                                 bind:checked={proxyEnabled}
-                                onchange={() => { proxyConfig.enabled = proxyEnabled; }}
+                                onchange={handleProxyToggle}
                             >
-                            <span>Proxy für DB Navigator im Browser aktivieren</span>
+                            <span>Lokalen Proxy im Browser aktivieren (Opt-In)</span>
                         </label>
                     </div>
 

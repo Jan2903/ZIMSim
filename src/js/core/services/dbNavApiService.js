@@ -249,6 +249,7 @@ export class DbNavApiService {
             if (!res.ok) {
                 if (res.status === 404) {
                     console.log(`[DbNavApiService] Keine Wagenreihung für ${gattung} ${zugnummer} an EVA ${evaNr} gefunden (HTTP 404).`);
+                    this._formationCache.set(cacheKey, { data: null, timestamp: Date.now() });
                 } else {
                     console.error(`[DbNavApiService] wagenreihung Fehler für ${gattung} ${zugnummer}: HTTP ${res.status}`);
                 }

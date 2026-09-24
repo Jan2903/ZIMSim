@@ -48,7 +48,7 @@ export class JourneyDbNavSyncService {
      * @returns {string}
      */
     static generateIsoDateTimeWithOffset(timeString) {
-        const now = new Date();
+        const now = typeof getSimulatedTime === 'function' ? getSimulatedTime() : new Date();
         let hours = now.getHours();
         let minutes = now.getMinutes();
 
@@ -245,6 +245,7 @@ export class JourneyDbNavSyncService {
             const data = await DbNavApiService.getFormation(stationId, abgangsDatum, kurztext, zugnummer);
             
             if (!data) {
+                journey.hasFormationAvailable = false;
                 return { success: false, message: 'Keine Formationsdaten für diesen Zug erhalten.' };
             }
 
