@@ -235,14 +235,63 @@ function drawLayoutItems(ctx, items, safeStart, safeEnd, maxShift) {
     }
 }
 
+/**
+ * Führt die Item-Sammlung und Kollisionsauflösung für alle Zugteile aus.
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Array<object>} scaledCoaches - Die skalierten Wagen
+ * @param {number} maxShift - Maximal erlaubte Verschiebung (40 bei Fullscreen, 100 bei Kompakt)
+ * @param {function(Array<object>, Array<object>): void} collectItemsForPart - Befüllt das items-Array für einen Zugteil
+ */
+function renderLayoutForParts(ctx, scaledCoaches, maxShift, collectItemsForPart) {
+    if (!scaledCoaches || scaledCoaches.length === 0) return;
+    const parts = getTrainParts(scaledCoaches);
+    for (const part of parts) {
+        const items = [];
+        collectItemsForPart(part, items);
+        const safeStart = part[0].start;
+        const safeEnd = part[part.length - 1].start + part[part.length - 1].length;
+        drawLayoutItems(ctx, items, safeStart, safeEnd, maxShift);
+    }
+}
+
+/**
+ * Gruppiert aufeinanderfolgende Wagen eines Zugteils anhand eines Prädikats
+ * und ruft für jede zusammenhängende Gruppe den Handler auf.
+ *
+ * @param {Array<object>} part - Liste der Wagen eines Zugteils
+ * @param {function(object): boolean} canInclude - Prüft, ob ein Wagen grundsätzlich gruppenfähig ist
+ * @param {function(object, object): boolean} shouldGroup - Prüft, ob zwei aufeinanderfolgende Wagen in dieselbe Gruppe gehören
+ * @param {function(Array<object>): void} processGroup - Wird für jede Gruppe aufgerufen
+ */
+function groupConsecutiveCoaches(part, canInclude, shouldGroup, processGroup) {
+    let currentGroup = [];
+    for (const coach of part) {
+        if (!canInclude(coach)) {
+            if (currentGroup.length > 0) {
+                processGroup(currentGroup);
+                currentGroup = [];
+            }
+        } else if (currentGroup.length > 0 && shouldGroup(currentGroup[0], coach)) {
+            currentGroup.push(coach);
+        } else {
+            if (currentGroup.length > 0) {
+                processGroup(currentGroup);
+            }
+            currentGroup = [coach];
+        }
+    }
+    if (currentGroup.length > 0) {
+        processGroup(currentGroup);
+    }
+}
+
 // ==========================================
 // Fullscreen Features (Individuelle Wagen)
 // ==========================================
 
 export function drawFullscreenClassLabels(ctx, scaledCoaches, y) {
-    const parts = getTrainParts(scaledCoaches);
-    for (const part of parts) {
-        const items = [];
+    renderLayoutForParts(ctx, scaledCoaches, 40, (part, items) => {
         for (const coach of part) {
             if (!coach.open) continue;
             let text = null;
@@ -267,10 +316,7 @@ export function drawFullscreenClassLabels(ctx, scaledCoaches, y) {
                 });
             }
         }
-        const safeStart = part[0].start;
-        const safeEnd = part[part.length - 1].start + part[part.length - 1].length;
-        drawLayoutItems(ctx, items, safeStart, safeEnd, 40);
-    }
+    });
 }
 
 function getAmenityIconProps(amenities) {
@@ -305,9 +351,7 @@ export function drawAmenityIcon(ctx, finalX, y, iconKey, size) {
 }
 
 export function drawFullscreenAmenityIcons(ctx, scaledCoaches, y) {
-    const parts = getTrainParts(scaledCoaches);
-    for (const part of parts) {
-        const items = [];
+    renderLayoutForParts(ctx, scaledCoaches, 40, (part, items) => {
         for (const coach of part) {
             if (!coach.open) continue;
             const { iconKey, size } = getAmenityIconProps(coach.amenities);
@@ -320,16 +364,11 @@ export function drawFullscreenAmenityIcons(ctx, scaledCoaches, y) {
                 });
             }
         }
-        const safeStart = part[0].start;
-        const safeEnd = part[part.length - 1].start + part[part.length - 1].length;
-        drawLayoutItems(ctx, items, safeStart, safeEnd, 40);
-    }
+    });
 }
 
 export function drawFullscreenWagonNumbers(ctx, scaledCoaches, y) {
-    const parts = getTrainParts(scaledCoaches);
-    for (const part of parts) {
-        const items = [];
+    renderLayoutForParts(ctx, scaledCoaches, 40, (part, items) => {
         for (const coach of part) {
             if (!coach.open) continue;
             if (coach.wagonIdentificationNumber != null && coach.wagonIdentificationNumber !== 0) {
@@ -348,10 +387,7 @@ export function drawFullscreenWagonNumbers(ctx, scaledCoaches, y) {
                 });
             }
         }
-        const safeStart = part[0].start;
-        const safeEnd = part[part.length - 1].start + part[part.length - 1].length;
-        drawLayoutItems(ctx, items, safeStart, safeEnd, 40);
-    }
+    });
 }
 
 // ==========================================
@@ -359,57 +395,34 @@ export function drawFullscreenWagonNumbers(ctx, scaledCoaches, y) {
 // ==========================================
 
 export function drawCompactClassLabels(ctx, scaledCoaches, y) {
-    if (!scaledCoaches || scaledCoaches.length === 0) return;
-    const parts = getTrainParts(scaledCoaches);
-    
-    for (const part of parts) {
-        const items = [];
-        let currentGroup = [];
-        
-        const processGroup = (group) => {
-            if (group.length === 0) return;
-            if (group[0].coachClass !== 1) return; // Nur 1. Klasse
-            
-            const firstCoach = group[0];
-            const lastCoach = group[group.length - 1];
-            const center = (firstCoach.start + lastCoach.start + lastCoach.length) / 2;
-            
-            ctx.font = FONTS.bold(40);
-            items.push({
-                x: center,
-                width: ctx.measureText("1.").width,
-                drawFn: (finalX) => {
-                    ctx.font = FONTS.bold(40);
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillStyle = COLORS.ORANGE;
-                    ctx.fillText("1.", finalX, y + 44);
-                }
-            });
-        };
+    renderLayoutForParts(ctx, scaledCoaches, 100, (part, items) => {
+        groupConsecutiveCoaches(
+            part,
+            coach => coach.open !== false && coach.coachClass === 1,
+            () => true,
+            group => {
+                const firstCoach = group[0];
+                const lastCoach = group[group.length - 1];
+                const center = (firstCoach.start + lastCoach.start + lastCoach.length) / 2;
 
-        for (const coach of part) {
-            if (coach.open === false) {
-                processGroup(currentGroup);
-                currentGroup = [];
-            } else if (currentGroup.length > 0 && coach.coachClass === currentGroup[0].coachClass) {
-                currentGroup.push(coach);
-            } else {
-                processGroup(currentGroup);
-                currentGroup = [coach];
+                ctx.font = FONTS.bold(40);
+                items.push({
+                    x: center,
+                    width: ctx.measureText("1.").width,
+                    drawFn: (finalX) => {
+                        ctx.font = FONTS.bold(40);
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillStyle = COLORS.ORANGE;
+                        ctx.fillText("1.", finalX, y + 44);
+                    }
+                });
             }
-        }
-        processGroup(currentGroup);
-        
-        const safeStart = part[0].start;
-        const safeEnd = part[part.length - 1].start + part[part.length - 1].length;
-        drawLayoutItems(ctx, items, safeStart, safeEnd, 100);
-    }
+        );
+    });
 }
 
 export function drawCompactAmenityIcons(ctx, scaledCoaches, y) {
-    if (!scaledCoaches || scaledCoaches.length === 0) return;
-    
     const arraysAreEqual = (a, b) => {
         const arrA = Array.isArray(a) ? a : [];
         const arrB = Array.isArray(b) ? b : [];
@@ -419,95 +432,59 @@ export function drawCompactAmenityIcons(ctx, scaledCoaches, y) {
         return sortedA.every((val, index) => val === sortedB[index]);
     };
 
-    const parts = getTrainParts(scaledCoaches);
-    for (const part of parts) {
-        const items = [];
-        let currentGroup = [];
-        
-        const processGroup = (group) => {
-            if (group.length === 0 || !group[0].amenities || group[0].amenities.length === 0) return;
-            const firstCoach = group[0];
-            const lastCoach = group[group.length - 1];
-            const center = (firstCoach.start + lastCoach.start + lastCoach.length) / 2;
-            const amenities = firstCoach.amenities;
-            
-            const { iconKey, size } = getAmenityIconProps(amenities);
-            
-            if (iconKey && ICONS[iconKey]) {
-                items.push({
-                    x: center,
-                    width: size,
-                    drawFn: (finalX) => drawAmenityIcon(ctx, finalX, y, iconKey, size)
-                });
-            }
-        };
+    renderLayoutForParts(ctx, scaledCoaches, 100, (part, items) => {
+        groupConsecutiveCoaches(
+            part,
+            coach => coach.open !== false && Array.isArray(coach.amenities) && coach.amenities.length > 0,
+            (prev, curr) => arraysAreEqual(prev.amenities, curr.amenities),
+            group => {
+                const firstCoach = group[0];
+                const lastCoach = group[group.length - 1];
+                const center = (firstCoach.start + lastCoach.start + lastCoach.length) / 2;
+                const { iconKey, size } = getAmenityIconProps(firstCoach.amenities);
 
-        for (const coach of part) {
-            const coachAmenities = coach.amenities || [];
-            if (coach.open === false) {
-                processGroup(currentGroup);
-                currentGroup = [];
-            } else if (currentGroup.length > 0 && arraysAreEqual(coachAmenities, currentGroup[0].amenities || [])) {
-                currentGroup.push(coach);
-            } else {
-                processGroup(currentGroup);
-                currentGroup = [coach];
+                if (iconKey && ICONS[iconKey]) {
+                    items.push({
+                        x: center,
+                        width: size,
+                        drawFn: (finalX) => drawAmenityIcon(ctx, finalX, y, iconKey, size)
+                    });
+                }
             }
-        }
-        processGroup(currentGroup);
-        
-        const safeStart = part[0].start;
-        const safeEnd = part[part.length - 1].start + part[part.length - 1].length;
-        drawLayoutItems(ctx, items, safeStart, safeEnd, 100);
-    }
+        );
+    });
 }
 
 export function drawCompactWagonNumbers(ctx, scaledCoaches, y) {
-    if (!scaledCoaches || scaledCoaches.length === 0) return;
-    const parts = getTrainParts(scaledCoaches);
-    
-    for (const part of parts) {
-        const items = [];
-        let currentGroup = [];
-        
-        const processGroup = (group) => {
-            if (group.length === 0) return;
-            const firstCoach = group[0];
-            const lastCoach = group[group.length - 1];
-            const center = (firstCoach.start + lastCoach.start + lastCoach.length) / 2;
-            
-            const firstNumber = firstCoach.wagonIdentificationNumber;
-            const lastNumber = lastCoach.wagonIdentificationNumber;
-            const numberText = firstNumber === lastNumber ? firstNumber.toString() : `${firstNumber} - ${lastNumber}`;
-            
-            ctx.font = FONTS.regular(40);
-            items.push({
-                x: center,
-                width: ctx.measureText(numberText).width,
-                drawFn: (finalX) => {
-                    ctx.fillStyle = COLORS.WHITE;
-                    ctx.font = FONTS.regular(40);
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(numberText, finalX, y + 44);
-                }
-            });
-        };
+    renderLayoutForParts(ctx, scaledCoaches, 100, (part, items) => {
+        groupConsecutiveCoaches(
+            part,
+            coach => coach.open !== false && coach.wagonIdentificationNumber != null && coach.wagonIdentificationNumber !== 0,
+            () => true,
+            group => {
+                const firstCoach = group[0];
+                const lastCoach = group[group.length - 1];
+                const center = (firstCoach.start + lastCoach.start + lastCoach.length) / 2;
 
-        for (const coach of part) {
-            if (coach.open !== false && coach.wagonIdentificationNumber != null && coach.wagonIdentificationNumber !== 0) {
-                currentGroup.push(coach);
-            } else {
-                processGroup(currentGroup);
-                currentGroup = [];
+                const firstNumber = firstCoach.wagonIdentificationNumber;
+                const lastNumber = lastCoach.wagonIdentificationNumber;
+                const numberText = firstNumber === lastNumber ? firstNumber.toString() : `${firstNumber} - ${lastNumber}`;
+
+                ctx.font = FONTS.regular(40);
+                items.push({
+                    x: center,
+                    width: ctx.measureText(numberText).width,
+                    drawFn: (finalX) => {
+                        ctx.fillStyle = COLORS.WHITE;
+                        ctx.font = FONTS.regular(40);
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(numberText, finalX, y + 44);
+                    }
+                });
             }
-        }
-        processGroup(currentGroup);
-        
-        const safeStart = part[0].start;
-        const safeEnd = part[part.length - 1].start + part[part.length - 1].length;
-        drawLayoutItems(ctx, items, safeStart, safeEnd, 100);
-    }
+        );
+    });
 }
 
 // ==========================================
