@@ -2,6 +2,8 @@ import { StationService } from '../features/station/stationService.js';
 import { audioModules } from './audioModules.js';
 import { ansagenStore } from './ansagenStore.svelte.js';
 import { parseTrack } from '../core/utils/trackUtils.js';
+import { journeyStore } from '../core/state/stores.js';
+import { getSimulatedTime } from '../core/utils/config.js';
 
 export class AnsagenGenerator {
     constructor() {
@@ -398,7 +400,7 @@ export class AnsagenGenerator {
         const sections = parsed.sections;
         const hasSections = sections && sections.length > 0 && sections[0] !== '*';
 
-        const numberPitch = pitch || (hasSections || prefixModule === 'GLEIS' ? 'hoch' : 'tief');
+        const numberPitch = pitch || (hasSections  ? 'tief' : 'hoch');
         this._number(playlist, parsed.base, numberPitch);
 
         if (!hasSections) {
@@ -632,10 +634,290 @@ export class AnsagenGenerator {
         return p;
     }
 
-    generateAnschluesse(journey) {
+    /**
+     * Ermittelt den Zeitstempel (ms) einer Fahrt für die gegebene Simulationszeit.
+     * @param {object} journey - Das Journey-Objekt
+     * @param {Date} simTimeDate - Die aktuelle Simulationszeit
+     * @param {boolean} [useEffective=true] - Bevorzugt Echtzeit/Erwartete Zeit
+     * @returns {number} Zeitstempel in Millisekunden
+     */
+    _getJourneyTimeMs(journey, simTimeDate, useEffective = true) {
+        if (!journey) return simTimeDate.getTime();
+        if (useEffective && journey._effectiveTimeMs) {
+            return journey._effectiveTimeMs;
+        }
+        if (useEffective && journey.countdownTimeMs) {
+            return journey.countdownTimeMs;
+        }
+        const timeStr = (useEffective && journey.expectedTime) ? journey.expectedTime : journey.scheduledTime;
+        if (!timeStr) return simTimeDate.getTime();
+
+        const [sh, sm] = timeStr.split(':').map(Number);
+        if (isNaN(sh) || isNaN(sm)) return simTimeDate.getTime();
+
+        const d = new Date(simTimeDate.getTime());
+        d.setHours(sh, sm, 0, 0);
+
+        // Behandle Tagesüberträge (z.B. kurz vor/nach Mitternacht)
+        const diff = d.getTime() - simTimeDate.getTime();
+        if (diff < -12 * 3600 * 1000) {
+            d.setDate(d.getDate() + 1);
+        } else if (diff > 12 * 3600 * 1000) {
+            d.setDate(d.getDate() - 1);
+        }
+        return d.getTime();
+    }
+
+    /**
+     * Prüft, ob zwei Gleise einander direkt gegenüberliegen (selber Mittelbahnsteig).
+     * Nutzt zuerst benutzerspezifische Gleispaare aus dem ansagenStore,
+     * und fällt sonst auf die DB-Standardheuristik für Mittelbahnsteige zurück (z.B. 2 ↔ 3, 4 ↔ 5).
+     *
+     * @param {string} trackA - Erstes Gleis (z.B. "2" oder "2 A-C")
+     * @param {string} trackB - Zweites Gleis (z.B. "3")
+     * @param {string|null} [stationId=null] - Optionale Bahnhofs-ID
+     * @returns {boolean}
+     */
+    isOppositeTrack(trackA, trackB, stationId = null) {
+        if (!trackA || !trackB) return false;
+        const baseA = parseTrack(trackA).base;
+        const baseB = parseTrack(trackB).base;
+        if (!baseA || !baseB || baseA === baseB) return false;
+
+        const stId = stationId || journeyStore.stationContext.stationId || 'default';
+        const hasStationConfig = Boolean(
+            (ansagenStore.oppositeTrackPairs && ansagenStore.oppositeTrackPairs[stId] && ansagenStore.oppositeTrackPairs[stId].length > 0) ||
+            (ansagenStore.oppositeTrackPairs && ansagenStore.oppositeTrackPairs['default'] && ansagenStore.oppositeTrackPairs['default'].length > 0)
+        );
+
+        if (hasStationConfig) {
+            const customPairs = ansagenStore.getOppositeTrackPairs(stId);
+            return customPairs.some(([a, b]) => {
+                const pA = parseTrack(a).base;
+                const pB = parseTrack(b).base;
+                return (pA === baseA && pB === baseB) || (pA === baseB && pB === baseA);
+            });
+        }
+
+        // DB-Standardheuristik für Insel-/Mittelbahnsteige (z.B. 2/3, 4/5, 6/7, ...)
+        const numA = parseInt(baseA, 10);
+        const numB = parseInt(baseB, 10);
+        if (!isNaN(numA) && !isNaN(numB) && String(numA) === baseA && String(numB) === baseB) {
+            const min = Math.min(numA, numB);
+            const max = Math.max(numA, numB);
+            if (min % 2 === 0 && max === min + 1) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Prüft, ob für eine Fahrt relevante Haltabweichungen vorliegen.
+     * @param {object} journey
+     * @returns {boolean}
+     */
+    _hasRelevantDeviations(journey) {
+        if (!journey || journey.ankunft || !journey.stops || journey.stops.length === 0) return false;
+        const startIndex = journey._currentStopIndex >= 0 ? journey._currentStopIndex + 1 : 0;
+        const futureStops = journey.stops.slice(startIndex);
+        if (futureStops.length === 0) return false;
+        return futureStops.some(s => s.cancelled || s.isCancelled || s.additional || s.isAdditional);
+    }
+
+    /**
+     * Ermittelt die nächsten erreichbaren Anschlusszüge für eine Fahrt oder den aktuellen Bahnhof.
+     * Filtert Ausfälle, die eigene Fahrt und verknüpfte Züge heraus und prüft Mindestumsteigezeiten.
+     *
+     * @param {object|null} [referenceJourney=null] - Die Bezugsfahrt (Ankunft oder Abfahrt)
+     * @param {string|null} [stationId=null] - Optionale Stations-ID
+     * @returns {Array<object>} Liste passender Anschluss-Journeys
+     */
+    _findConnections(referenceJourney = null, stationId = null) {
+        const journeys = journeyStore.journeys || [];
+        if (journeys.length === 0) return [];
+
+        const simTimeDate = getSimulatedTime();
+        const stId = stationId || referenceJourney?.stationId || journeyStore.stationContext.stationId || 'default';
+
+        // 1. Bezugszeit und Bezugsgleis ermitteln
+        let refTimeMs;
+        let refTrack = null;
+
+        if (referenceJourney) {
+            refTrack = referenceJourney.ezGleis || referenceJourney.platform;
+            if (referenceJourney.ankunft) {
+                refTimeMs = this._getJourneyTimeMs(referenceJourney, simTimeDate, true);
+            } else {
+                // Bei Abfahrt: Prüfen, ob verknüpfte Ankunft vorliegt
+                const linkedArrival = referenceJourney.linkedArrivalJourneyId
+                    ? (journeyStore.getLinkedJourney(referenceJourney.id) || journeys.find(j => j.id === referenceJourney.linkedArrivalJourneyId))
+                    : null;
+                if (linkedArrival) {
+                    refTimeMs = this._getJourneyTimeMs(linkedArrival, simTimeDate, true);
+                } else {
+                    refTimeMs = this._getJourneyTimeMs(referenceJourney, simTimeDate, true);
+                }
+            }
+        } else {
+            refTimeMs = simTimeDate.getTime();
+        }
+
+        // 2. Auszuschließende IDs sammeln (eigene Fahrt, Wende-/Flügelpartner)
+        const excludeIds = new Set();
+        const excludeJourneyIds = new Set();
+
+        if (referenceJourney) {
+            excludeIds.add(referenceJourney.id);
+            if (referenceJourney.journeyId) excludeJourneyIds.add(referenceJourney.journeyId);
+            if (referenceJourney.linkedArrivalJourneyId) excludeIds.add(referenceJourney.linkedArrivalJourneyId);
+
+            const linkedPartner = journeyStore.getLinkedJourney(referenceJourney.id);
+            if (linkedPartner) {
+                excludeIds.add(linkedPartner.id);
+                if (linkedPartner.journeyId) excludeJourneyIds.add(linkedPartner.journeyId);
+            }
+
+            if (referenceJourney.couplingGroupId) {
+                const coupled = journeyStore.getCouplingGroup(referenceJourney.couplingGroupId);
+                coupled.forEach(c => {
+                    excludeIds.add(c.id);
+                    if (c.journeyId) excludeJourneyIds.add(c.journeyId);
+                });
+            }
+        }
+
+        // 3. Kandidaten filtern
+        const maxWindowMs = (ansagenStore.anschluesseTimeWindow || 30) * 60 * 1000;
+        const candidates = [];
+
+        for (const candidate of journeys) {
+            if (excludeIds.has(candidate.id)) continue;
+            if (candidate.journeyId && excludeJourneyIds.has(candidate.journeyId)) continue;
+            if (candidate.ankunft) continue; // Nur Abfahrten sind Anschlüsse
+            if (candidate.ausfall) continue; // Ausgefallene Züge werden nicht als Anschluss empfohlen
+            if (!candidate.destination || !candidate.scheduledTime) continue;
+
+            const connTrack = candidate.ezGleis || candidate.platform;
+            const isOpposite = Boolean(refTrack && connTrack && this.isOppositeTrack(refTrack, connTrack, stId));
+            const minTransferMin = isOpposite 
+                ? (ansagenStore.anschluesseMinTransferOpposite ?? 2)
+                : (ansagenStore.anschluesseMinTransfer ?? 4);
+            const minTransferMs = minTransferMin * 60 * 1000;
+
+            const candidateEffectiveMs = this._getJourneyTimeMs(candidate, simTimeDate, true);
+            const candidateScheduledMs = this._getJourneyTimeMs(candidate, simTimeDate, false);
+
+            const transferTimeMs = candidateEffectiveMs - refTimeMs;
+
+            // Ist die Umsteigezeit ausreichend?
+            if (transferTimeMs < minTransferMs) continue;
+
+            // Liegt die Abfahrt im definierten Zeitfenster?
+            if (transferTimeMs > maxWindowMs) continue;
+
+            candidates.push({
+                journey: candidate,
+                effectiveMs: candidateEffectiveMs,
+                scheduledMs: candidateScheduledMs,
+                isOpposite: isOpposite
+            });
+        }
+
+        // 4. Sortieren: nach effektiver Abfahrtszeit, dann nach Fahrplanzzeit, dann Name
+        candidates.sort((a, b) => {
+            if (a.effectiveMs !== b.effectiveMs) return a.effectiveMs - b.effectiveMs;
+            if (a.scheduledMs !== b.scheduledMs) return a.scheduledMs - b.scheduledMs;
+            return (a.journey.name || '').localeCompare(b.journey.name || '');
+        });
+
+        const maxCount = ansagenStore.anschluesseMaxCount || 3;
+        return candidates.slice(0, maxCount).map(c => c.journey);
+    }
+
+    /**
+     * Prüft, ob mindestens ein erreichbarer Anschluss existiert.
+     * @param {object|null} [referenceJourney=null]
+     * @returns {boolean}
+     */
+    hasReachableConnections(referenceJourney = null) {
+        const conns = this._findConnections(referenceJourney);
+        return conns.length > 0;
+    }
+
+    /**
+     * Generiert die Anschlussansage ("Ihre nächsten Anschlüsse...").
+     * @param {object|null} [journey=null] - Die Referenzfahrt oder null
+     * @returns {Array} Audiowiedergabe-Playlist
+     */
+    generateAnschluesse(journey = null) {
+        const connections = this._findConnections(journey);
+        if (!connections || connections.length === 0) {
+            return [];
+        }
+
         const p = [];
         this._gong(p);
         this._module(p, 'ANSCHLUESSE');
+
+        const total = connections.length;
+        const stationId = journey?.stationId || journeyStore.stationContext.stationId || 'default';
+        const refTrack = journey ? (journey.ezGleis || journey.platform) : null;
+
+        for (let i = 0; i < total; i++) {
+            const conn = connections[i];
+
+            // "und" vor dem letzten Anschluss (bei mehr als 1 Anschluss)
+            if (i === total - 1 && total > 1) {
+                this._module(p, 'UND');
+            }
+
+            // 1. Zugname (z.B. "RE 6")
+            this._train(p, conn.name);
+
+            // 2. NACH + Ziel + über Vias
+            this._module(p, 'NACH');
+            const targetObj = {
+                name: conn.destination,
+                extId: conn.destinationIbnr
+            };
+            this._targetWithVia(p, targetObj, conn.audioVias, false);
+
+            // 3. Abfahrtszeit
+            this._module(p, 'ABFAHRT');
+            this._time(p, conn.scheduledTime);
+
+            // 4. Gleis (VON_GLEIS oder HEUTE_VON_GLEIS)
+            const hasTrackChange = Boolean(conn.ezGleis && conn.ezGleis !== conn.platform);
+            const prefixModule = hasTrackChange ? 'HEUTE_VON_GLEIS' : 'VON_GLEIS';
+            const connTrack = conn.ezGleis || conn.platform;
+            const isOpposite = Boolean(refTrack && connTrack && this.isOppositeTrack(refTrack, connTrack, stationId));
+
+            const delay = ansagenStore.anschluesseIncludeDelays ? this._calculateDelay(conn) : 0;
+
+            this._appendPlatform(p, conn, prefixModule);
+
+            // 5. DIREKT_GEGENUEBER
+            if (isOpposite) {
+                this._module(p, 'DIREKT_GEGENUEBER');
+            }
+
+            // 6. Verspätung (falls konfiguriert & >= 5 Min)
+            if (delay >= 5) {
+                const delayStr = String(delay).padStart(3, '0');
+                p.push({
+                    file: `${this.lang}/zeiten/verspaetung_heute/${delayStr}`,
+                    text: `heute ca. ${delay} Minuten später`
+                });
+            }
+
+            // 7. Haltabweichungen (falls konfiguriert)
+            if (ansagenStore.anschluesseIncludeDeviations) {
+                this._generateDeviations(p, conn);
+            }
+        }
+
         return p;
     }
 }

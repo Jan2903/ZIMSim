@@ -259,6 +259,25 @@
         }
         e.target.value = ''; // Reset
     }
+
+    // Anschluss-Gleispaare State & Logik
+    let newTrackA = $state('');
+    let newTrackB = $state('');
+
+    let currentStationId = $derived(journeyStore.stationContext.stationId || 'default');
+    let currentStationTrackPairs = $derived(ansagenStore.getOppositeTrackPairs(currentStationId));
+    let stationTracks = $derived(journeyStore.getAllTracks());
+
+    function handleAddTrackPair() {
+        if (!newTrackA || !newTrackB) return;
+        ansagenStore.addOppositeTrackPair(currentStationId, newTrackA, newTrackB);
+        newTrackA = '';
+        newTrackB = '';
+    }
+
+    function handleRemoveTrackPair(index) {
+        ansagenStore.removeOppositeTrackPair(currentStationId, index);
+    }
 </script>
 
 <div class="settings-container {desktopViewMode === 'tabs' ? 'view-mode-tabs' : 'view-mode-split'}">
@@ -647,6 +666,92 @@
                         </button>
                         <!-- Fallback hidden file input for Safari/iOS or when File System Access API fails -->
                         <input type="file" bind:this={audioZipInput} style="display: none;" accept=".zip" onchange={handleWebZipUpload}>
+                    </div>
+                </CollapsibleSection>
+
+                <CollapsibleSection title="Anschluss-Ansagen" isOpen={true} isFrame={false}>
+                    <div class="form-row column-layout" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px;">
+                        <label style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span>Max. Anzahl Anschlüsse:</span>
+                            <input type="number" class="short-input" min="1" max="10" 
+                                   value={ansagenStore.anschluesseMaxCount} 
+                                   oninput={(e) => ansagenStore.setAnschluesseMaxCount(e.currentTarget.value)}>
+                        </label>
+                        <label style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span>Suchzeitfenster (Min.):</span>
+                            <input type="number" class="short-input" min="5" max="180" 
+                                   value={ansagenStore.anschluesseTimeWindow} 
+                                   oninput={(e) => ansagenStore.setAnschluesseTimeWindow(e.currentTarget.value)}>
+                        </label>
+                        <label style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span>Min. Umsteigezeit normal (Min.):</span>
+                            <input type="number" class="short-input" min="1" max="30" 
+                                   value={ansagenStore.anschluesseMinTransfer} 
+                                   oninput={(e) => ansagenStore.setAnschluesseMinTransfer(e.currentTarget.value)}>
+                        </label>
+                        <label style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span>Min. Umsteigezeit gegenüber (Min.):</span>
+                            <input type="number" class="short-input" min="0" max="20" 
+                                   value={ansagenStore.anschluesseMinTransferOpposite} 
+                                   oninput={(e) => ansagenStore.setAnschluesseMinTransferOpposite(e.currentTarget.value)}>
+                        </label>
+
+                        <div class="checkbox-group" style="margin-top: 10px; margin-bottom: 15px;">
+                            <label class="checkbox-label">
+                                <input type="checkbox" 
+                                       checked={ansagenStore.anschluesseIncludeDelays} 
+                                       onchange={(e) => ansagenStore.setAnschluesseIncludeDelays(e.currentTarget.checked)}>
+                                Verspätungen ansagen (ab 5 Min.)
+                            </label>
+                            <label class="checkbox-label" style="margin-top: 6px;">
+                                <input type="checkbox" 
+                                       checked={ansagenStore.anschluesseIncludeDeviations} 
+                                       onchange={(e) => ansagenStore.setAnschluesseIncludeDeviations(e.currentTarget.checked)}>
+                                Haltabweichungen ansagen
+                            </label>
+                        </div>
+
+                        <div class="opposite-tracks-section" style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px; margin-top: 5px;">
+                            <span style="display: block; font-weight: bold; font-size: 0.9em; margin-bottom: 4px;">
+                                Gleise direkt gegenüber (selber Bahnsteig):
+                            </span>
+                            <div style="font-size: 0.8em; opacity: 0.75; margin-bottom: 8px;">
+                                Station: <strong>{journeyStore.stationContext.stationName || 'Aktueller Bahnhof'}</strong>
+                                {#if currentStationId !== 'default'} ({currentStationId}){/if}
+                            </div>
+
+                            {#if currentStationTrackPairs.length > 0}
+                                <div class="track-pairs-list" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px;">
+                                    {#each currentStationTrackPairs as [tA, tB], idx}
+                                        <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.08); padding: 5px 8px; border-radius: 4px; font-size: 0.85em;">
+                                            <span>Gleis <strong>{tA}</strong> ↔ Gleis <strong>{tB}</strong></span>
+                                            <button class="btn-secondary btn-sm" onclick={() => handleRemoveTrackPair(idx)} title="Gleispaar entfernen" style="padding: 2px 6px;">
+                                                <ZimIcon name="close" size={12} />
+                                            </button>
+                                        </div>
+                                    {/each}
+                                </div>
+                            {:else}
+                                <div style="font-size: 0.8em; opacity: 0.7; margin-bottom: 10px; font-style: italic;">
+                                    Keine benutzerdefinierten Paare. DB-Standard für Mittelbahnsteige aktiv (2 ↔ 3, 4 ↔ 5 etc.).
+                                </div>
+                            {/if}
+
+                            <div style="display: flex; gap: 6px; align-items: center;">
+                                <input type="text" list="opposite-tracks-datalist" placeholder="Gleis A" bind:value={newTrackA} class="short-input" style="flex: 1;">
+                                <span style="opacity: 0.5;">↔</span>
+                                <input type="text" list="opposite-tracks-datalist" placeholder="Gleis B" bind:value={newTrackB} class="short-input" style="flex: 1;">
+                                <button class="btn-secondary btn-sm" onclick={handleAddTrackPair} title="Gleispaar hinzufügen" style="display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;">
+                                    <ZimIcon name="plus" size={14} />
+                                    <span>Paar</span>
+                                </button>
+                            </div>
+                            <datalist id="opposite-tracks-datalist">
+                                {#each stationTracks as tr}
+                                    <option value={tr}>{tr}</option>
+                                {/each}
+                            </datalist>
+                        </div>
                     </div>
                 </CollapsibleSection>
 

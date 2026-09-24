@@ -22,6 +22,9 @@
     let showReasonDropdown = $state(false);
     let reasonWrapperRef = $state();
     
+    // Prüfen, ob erreichbare Anschlüsse vorhanden sind
+    let hasConnections = $derived(ansagenGenerator.hasReachableConnections(journey));
+    
     // Initialen Text synchronisieren via Store-Methode
     $effect(() => {
         const linked = journeyStore.getLinkedJourney(journey.id);
@@ -306,7 +309,11 @@
                     <ZimIcon name="volume_high" size={14} />
                     <span>Info</span>
                 </button>
-                <button class="btn-secondary btn-sm" onclick={() => playAnsage('Anschluesse')} title="Ansage Anschlüsse generieren" style="display: inline-flex; align-items: center; gap: 6px;">
+                <button class="btn-secondary btn-sm" 
+                        onclick={() => playAnsage('Anschluesse')} 
+                        title={hasConnections ? "Ansage Anschlüsse generieren" : "Keine erreichbaren Anschlüsse im Zeitfenster vorhanden"} 
+                        disabled={!hasConnections}
+                        style="display: inline-flex; align-items: center; gap: 6px;">
                     <ZimIcon name="volume_high" size={14} />
                     <span>Anschlüsse</span>
                 </button>

@@ -14,6 +14,15 @@ export class AnsagenStore {
     variantVias = $state(1);
     variantZugteilung = $state(2);
 
+    // Anschlüsse Einstellungen (voll konfigurierbar)
+    anschluesseMaxCount = $state(3);
+    anschluesseTimeWindow = $state(30); // Suchfenster in Minuten
+    anschluesseMinTransfer = $state(4); // Mindestumsteigezeit normal (Minuten)
+    anschluesseMinTransferOpposite = $state(2); // Mindestumsteigezeit direkt gegenüber (Minuten)
+    anschluesseIncludeDelays = $state(true);
+    anschluesseIncludeDeviations = $state(true);
+    oppositeTrackPairs = $state({}); // { [stationIdOrKey]: [ [trackA, trackB], ... ] }
+
     constructor() {
         this.init();
     }
@@ -41,6 +50,33 @@ export class AnsagenStore {
 
             const sZug = localStorage.getItem('ansagen_variant_zugteilung');
             if (sZug !== null) this.variantZugteilung = parseInt(sZug, 10);
+
+            const sMaxCount = localStorage.getItem('ansagen_anschluesse_max_count');
+            if (sMaxCount !== null) this.anschluesseMaxCount = parseInt(sMaxCount, 10);
+
+            const sTimeWindow = localStorage.getItem('ansagen_anschluesse_time_window');
+            if (sTimeWindow !== null) this.anschluesseTimeWindow = parseInt(sTimeWindow, 10);
+
+            const sMinTransfer = localStorage.getItem('ansagen_anschluesse_min_transfer');
+            if (sMinTransfer !== null) this.anschluesseMinTransfer = parseInt(sMinTransfer, 10);
+
+            const sMinTransferOpp = localStorage.getItem('ansagen_anschluesse_min_transfer_opposite');
+            if (sMinTransferOpp !== null) this.anschluesseMinTransferOpposite = parseInt(sMinTransferOpp, 10);
+
+            const sIncDelays = localStorage.getItem('ansagen_anschluesse_include_delays');
+            if (sIncDelays !== null) this.anschluesseIncludeDelays = sIncDelays === 'true';
+
+            const sIncDevs = localStorage.getItem('ansagen_anschluesse_include_deviations');
+            if (sIncDevs !== null) this.anschluesseIncludeDeviations = sIncDevs === 'true';
+
+            const sPairs = localStorage.getItem('ansagen_opposite_track_pairs');
+            if (sPairs) {
+                try {
+                    this.oppositeTrackPairs = JSON.parse(sPairs);
+                } catch (e) {
+                    console.error("Error parsing oppositeTrackPairs:", e);
+                }
+            }
 
             // If window.__TAURI__ exists, we are running in Tauri
             if (window.__TAURI__ || window.__TAURI_INTERNALS__) {
@@ -134,6 +170,119 @@ export class AnsagenStore {
                 console.error("Error deleting web handle", e);
             }
         }
+    }
+
+    /**
+     * Liefert die konfigurierten Gleispaare für eine Station.
+     * @param {string|null} stationId - Die Bahnhofs-IBNR oder ID
+     * @returns {Array<[string, string]>} Liste von Gleispaaren
+     */
+    getOppositeTrackPairs(stationId = null) {
+        const key = stationId || 'default';
+        return this.oppositeTrackPairs[key] || this.oppositeTrackPairs['default'] || [];
+    }
+
+    /**
+     * Speichert die Gleispaare für eine Station.
+     * @param {string|null} stationId - Die Bahnhofs-IBNR oder ID
+     * @param {Array<[string, string]>} pairs - Liste von Gleispaaren
+     */
+    setOppositeTrackPairs(stationId, pairs) {
+        const key = stationId || 'default';
+        this.oppositeTrackPairs[key] = pairs;
+        localStorage.setItem('ansagen_opposite_track_pairs', JSON.stringify(this.oppositeTrackPairs));
+    }
+
+    /**
+     * Fügt ein neues Gleispaar für eine Station hinzu.
+     * @param {string|null} stationId - Die Bahnhofs-IBNR oder ID
+     * @param {string} trackA - Erstes Gleis
+     * @param {string} trackB - Zweites Gleis
+     */
+    addOppositeTrackPair(stationId, trackA, trackB) {
+        if (!trackA || !trackB) return;
+        const key = stationId || 'default';
+        const list = [...(this.getOppositeTrackPairs(key))];
+        const a = String(trackA).trim();
+        const b = String(trackB).trim();
+        if (a === b) return;
+        const exists = list.some(([x, y]) => (x === a && y === b) || (x === b && y === a));
+        if (!exists) {
+            list.push([a, b]);
+            this.setOppositeTrackPairs(key, list);
+        }
+    }
+
+    /**
+     * Entfernt ein Gleispaar anhand des Index.
+     * @param {string|null} stationId - Die Bahnhofs-IBNR oder ID
+     * @param {number} index - Index des zu entfernenden Paares
+     */
+    removeOppositeTrackPair(stationId, index) {
+        const key = stationId || 'default';
+        const list = [...(this.getOppositeTrackPairs(key))];
+        if (index >= 0 && index < list.length) {
+            list.splice(index, 1);
+            this.setOppositeTrackPairs(key, list);
+        }
+    }
+
+    /**
+     * Setzt die maximale Anzahl an angesagten Anschlüssen.
+     * @param {number|string} val
+     */
+    setAnschluesseMaxCount(val) {
+        const num = Math.max(1, Math.min(10, parseInt(val, 10) || 3));
+        this.anschluesseMaxCount = num;
+        localStorage.setItem('ansagen_anschluesse_max_count', String(num));
+    }
+
+    /**
+     * Setzt das Suchzeitfenster für Anschlüsse in Minuten.
+     * @param {number|string} val
+     */
+    setAnschluesseTimeWindow(val) {
+        const num = Math.max(5, Math.min(180, parseInt(val, 10) || 30));
+        this.anschluesseTimeWindow = num;
+        localStorage.setItem('ansagen_anschluesse_time_window', String(num));
+    }
+
+    /**
+     * Setzt die Mindestumsteigezeit (normal) in Minuten.
+     * @param {number|string} val
+     */
+    setAnschluesseMinTransfer(val) {
+        const num = Math.max(1, Math.min(30, parseInt(val, 10) || 4));
+        this.anschluesseMinTransfer = num;
+        localStorage.setItem('ansagen_anschluesse_min_transfer', String(num));
+    }
+
+    /**
+     * Setzt die Mindestumsteigezeit für gegenüberliegende Gleise in Minuten.
+     * @param {number|string} val
+     */
+    setAnschluesseMinTransferOpposite(val) {
+        const num = Math.max(0, Math.min(20, parseInt(val, 10) || 2));
+        this.anschluesseMinTransferOpposite = num;
+        localStorage.setItem('ansagen_anschluesse_min_transfer_opposite', String(num));
+    }
+
+    /**
+     * Schaltet die Ansage von Verspätungen bei Anschlüssen ein/aus.
+     * @param {boolean} val
+     */
+    setAnschluesseIncludeDelays(val) {
+        this.anschluesseIncludeDelays = Boolean(val);
+        localStorage.setItem('ansagen_anschluesse_include_delays', String(this.anschluesseIncludeDelays));
+    }
+
+    /**
+     * Schaltet die Ansage von Haltabweichungen bei Anschlüssen ein/aus.
+     * @param {boolean} val
+     */
+    setAnschluesseIncludeDeviations(val) {
+        this.anschluesseIncludeDeviations = Boolean(val);
+        localStorage.setItem('ansagen_anschluesse_include_deviations', String(this.anschluesseIncludeDeviations));
     }
 }
 
