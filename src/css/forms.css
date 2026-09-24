@@ -23,10 +23,51 @@ input[type="text"], input[type="number"], input[type="datetime-local"], select {
     background-color: var(--bg-input); color: var(--text-main); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; font-size: 0.95rem; outline: none; transition: all 0.2s ease; box-sizing: border-box; min-width: 140px;
 }
 @media (max-width: 768px) {
-    .form-row label, input[type="text"], input[type="number"], input[type="datetime-local"] { width: 100%; max-width: none; }
-    button, input[type="text"], input[type="number"], input[type="datetime-local"], select { min-height: 44px; }
-    .btn-sm { min-height: 44px; padding: 8px 12px; }
-    .checkbox-label, .radio-card { min-height: 44px; padding-top: 10px; padding-bottom: 10px; }
+    .form-row label, 
+    .form-row input[type="text"]:not(.short-input):not(.jfield):not(.s-prop), 
+    .form-row input[type="number"]:not(.short-input):not(.jfield):not(.s-prop), 
+    .form-row input[type="datetime-local"] { 
+        width: 100%; 
+        max-width: none; 
+    }
+    
+    /* Standard-Buttons & Formularfelder touchfreundlich gestalten, aber kompakte Icon-/Tabellen-Buttons ausnehmen */
+    button:not(.btn-icon):not(.btn-icon-tiny):not(.arrow-btn):not(.segment-compact-btn):not(.amenity-chip):not(.modal-close):not(.action-btn):not(.track-pill):not(.tab-btn):not(.display-toolbar-btn),
+    input[type="text"]:not(.short-input):not(.s-prop):not(.jfield):not(.coach-input):not(.group-field),
+    input[type="number"]:not(.short-input):not(.s-prop):not(.jfield):not(.coach-input):not(.group-field),
+    input[type="datetime-local"],
+    select:not(.coach-select):not(.s-prop):not(.toolbar-select):not(.wr-select) {
+        min-height: 40px;
+    }
+
+    .btn-sm {
+        min-height: 34px;
+        padding: 6px 10px;
+        font-size: 0.82rem;
+    }
+
+    .btn-icon {
+        min-height: 28px;
+        min-width: 28px;
+        padding: 2px 4px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .arrow-btn {
+        min-height: 18px;
+        min-width: 20px;
+        padding: 1px 2px;
+    }
+
+    .btn-icon-tiny {
+        min-height: 20px;
+        min-width: 20px;
+        padding: 1px;
+    }
+
+    .checkbox-label, .radio-card { min-height: 38px; padding-top: 8px; padding-bottom: 8px; }
 }
 input[type="text"]:focus, input[type="number"]:focus, input[type="datetime-local"]:focus, select:focus {
     border-color: var(--accent); box-shadow: 0 0 0 3px rgba(226, 0, 26, 0.2);
@@ -57,6 +98,8 @@ button:active { transform: translateY(1px); }
 .btn-sm { padding: 4px 12px; font-size: 0.85em; }
 .btn-icon { background: none; border: none; color: var(--text-main); cursor: pointer; font-size: 1.1em; padding: 2px 6px; border-radius: 4px; transition: background 0.15s; }
 .btn-icon:hover { background: rgba(255,255,255,0.1); }
+.btn-icon-tiny { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 2px 4px; border-radius: 3px; display: inline-flex; align-items: center; justify-content: center; }
+.btn-icon-tiny:hover:not(:disabled) { color: var(--text-main); background: rgba(255, 255, 255, 0.1); }
 
 .audio-action-bar { display: flex; gap: 5px; margin-top: 15px; flex-wrap: wrap; }
 .button-group-vertical { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }

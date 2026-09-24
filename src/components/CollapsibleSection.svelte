@@ -23,19 +23,17 @@
 </script>
 
 <div class="collapsible-wrapper" class:is-frame={isFrame}>
-    <button type="button" class="collapsible-header" onclick={toggle} aria-expanded={isOpen}>
-        <div class="collapsible-title">
+    <div class="collapsible-header" class:is-open={isOpen}>
+        <button type="button" class="collapsible-trigger" onclick={toggle} aria-expanded={isOpen}>
             <span class="chevron" class:open={isOpen}><ZimIcon name="chevron_right" size={16} /></span>
             <h3>{title}</h3>
-        </div>
+        </button>
         {#if headerActions}
-            <!-- svelte-ignore a11y_click_events_have_key_events -->
-            <!-- svelte-ignore a11y_no_static_element_interactions -->
-            <div class="collapsible-actions" onclick={(e) => e.stopPropagation()}>
+            <div class="collapsible-actions">
                 {@render headerActions()}
             </div>
         {/if}
-    </button>
+    </div>
     
     {#if isOpen}
         <div class="collapsible-content" transition:slide={{ duration: 250 }}>
@@ -74,47 +72,53 @@
         margin-bottom: 0;
     }
 
-    /* Header Button Styles */
+    /* Header Container Styles */
     .collapsible-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
         width: 100%;
-        text-align: left;
-        background: transparent;
-        border: none;
-        color: inherit;
-        cursor: pointer;
+        box-sizing: border-box;
+        flex-wrap: wrap;
+        gap: 10px;
         transition: background-color 0.2s;
     }
     
     .collapsible-wrapper.is-frame .collapsible-header {
-        padding: 24px;
+        padding: 20px 24px;
         border-bottom: 1px solid transparent;
     }
     .collapsible-wrapper:not(.is-frame) .collapsible-header {
         padding: 8px 0;
     }
     
-    /* Hover Effekt nur für Frame-Mode (sieht bei Non-Frame ggf. unsauber aus) */
+    /* Hover Effekt nur für Frame-Mode */
     .collapsible-wrapper.is-frame .collapsible-header:hover {
         background-color: rgba(255, 255, 255, 0.02);
     }
     
-    /* Separator Line when open (only in Frame mode, to match original styling) */
-    .collapsible-wrapper.is-frame .collapsible-header[aria-expanded="true"] {
+    /* Separator Line when open */
+    .collapsible-wrapper.is-frame .collapsible-header.is-open {
         border-bottom: 1px solid var(--border);
         padding-bottom: 16px;
         margin-bottom: 16px;
     }
 
-    /* Title & Chevron */
-    .collapsible-title {
+    /* Title & Chevron Trigger Button */
+    .collapsible-trigger {
         display: flex;
         align-items: center;
         gap: 10px;
+        background: transparent;
+        border: none;
+        color: inherit;
+        cursor: pointer;
+        padding: 0;
+        text-align: left;
+        flex: 1;
+        min-width: 140px;
     }
-    .collapsible-title h3 {
+    .collapsible-trigger h3 {
         margin: 0;
         font-size: 1.1rem;
         color: var(--text-main);
@@ -137,7 +141,9 @@
     /* Actions Wrapper */
     .collapsible-actions {
         display: flex;
+        align-items: center;
         gap: 8px;
+        flex-wrap: wrap;
     }
 
     /* Content Area */
@@ -146,5 +152,15 @@
     }
     .collapsible-wrapper:not(.is-frame) .collapsible-content-inner {
         padding: 10px 0 20px 0;
+    }
+
+    @media (max-width: 600px) {
+        .collapsible-wrapper.is-frame .collapsible-header {
+            padding: 14px 16px;
+        }
+        .collapsible-actions {
+            width: 100%;
+            justify-content: flex-start;
+        }
     }
 </style>

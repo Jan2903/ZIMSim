@@ -116,14 +116,14 @@
                 </select>
             </div>
 
-            <!-- 3. Wagenreihungs-Modus (nur sichtbar wenn Zuganzeiger aktiv) -->
+            <!-- 3. Wagenreihungs-Modus (auf allen Geräten umschaltbar: Desktop als Buttons, Mobil/Tablet als Dropdown) -->
             {#if displayConfigStore.layoutType === 'zuganzeiger'}
-                <div class="toolbar-control-group feature-segment-group" title="Wagenreihungs-Anzeige wählen">
+                <div class="toolbar-control-group feature-control-group" title="Wagenreihungs-Anzeige wählen">
                     <span class="toolbar-label">
                         <ZimIcon name="train_fast" size={14} />
                         <span class="label-text">WR:</span>
                     </span>
-                    <div class="segment-switch-compact">
+                    <div class="segment-switch-compact feature-segment-desktop">
                         <button 
                             type="button" 
                             class="segment-compact-btn" 
@@ -160,6 +160,20 @@
                         >
                             Rotierend
                         </button>
+                    </div>
+
+                    <div class="feature-select-mobile">
+                        <select 
+                            class="toolbar-select wr-select" 
+                            value={activeFeature}
+                            onchange={(e) => handleFeatureChange(e.currentTarget.value)}
+                            aria-label="Wagenreihungs-Modus wählen"
+                        >
+                            <option value="wagennummern">WR: Nummern</option>
+                            <option value="ausstattung">WR: Icons</option>
+                            <option value="klasse">WR: Klasse</option>
+                            <option value="rotierend">WR: Rotierend</option>
+                        </select>
                     </div>
                 </div>
             {/if}
@@ -460,9 +474,16 @@
         color: #fff;
     }
 
+    .feature-select-mobile {
+        display: none;
+    }
+
     @media (max-width: 1024px) {
-        .feature-segment-group {
+        .feature-segment-desktop {
             display: none !important;
+        }
+        .feature-select-mobile {
+            display: inline-flex !important;
         }
     }
 
@@ -471,10 +492,21 @@
             display: none !important;
         }
         .toolbar-select {
-            max-width: 150px;
+            max-width: 130px;
+            font-size: 0.8rem;
+            padding: 4px 6px;
+        }
+        .wr-select {
+            max-width: 115px;
         }
         .label-text {
             display: none;
+        }
+        .display-toolbar-btn {
+            min-height: 36px;
+            min-width: 36px;
+            padding: 6px 8px;
+            justify-content: center;
         }
         .display-toolbar-btn span {
             display: none;

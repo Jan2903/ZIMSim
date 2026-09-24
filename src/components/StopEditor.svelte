@@ -72,17 +72,17 @@
              onfinalize={handleDndFinalize}>
             {#each journey.stops as stop, i (stop.id)}
                 <div animate:flip={{duration: flipDurationMs}} class="stop-editor-item" style="display: flex; flex-direction: column; margin-bottom: 5px; padding: 5px; background: var(--bg-input); border-radius: 5px; border: 1px solid var(--border); {stop.cancelled ? 'opacity: 0.5; text-decoration: line-through;' : ''} {i === journey._currentStopIndex ? 'border-left: 3px solid #ff6b6b;' : ''}">
-                    <div class="stop-editor-row-main" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 24px;">
+                    <div class="stop-editor-row-main">
+                        <div class="arrow-col">
                             {#if uiState.enableDragAndDrop}
                                 <span class="stop-drag-handle" title="Drag & Drop" style="cursor: move; margin-bottom: 2px;">
                                     <ZimIcon name="drag_handle" size={14} />
                                 </span>
                             {/if}
-                            <button class="btn-icon" style="padding: 0;" onclick={() => moveUp(stop)} title="Hoch">
+                            <button class="btn-icon arrow-btn" onclick={() => moveUp(stop)} title="Hoch">
                                 <ZimIcon name="arrow_up" size={11} />
                             </button>
-                            <button class="btn-icon" style="padding: 0;" onclick={() => moveDown(stop)} title="Runter">
+                            <button class="btn-icon arrow-btn" onclick={() => moveDown(stop)} title="Runter">
                                 <ZimIcon name="arrow_down" size={11} />
                             </button>
                         </div>
@@ -95,7 +95,7 @@
                             <ZimIcon name={stop.audioVia ? 'volume_high' : 'volume_mute'} size={16} color={stop.audioVia ? 'var(--text-main)' : 'var(--text-muted)'} />
                         </button>
                         
-                        <div style="flex: 2; min-width: 120px; position: relative;">
+                        <div class="stop-picker-wrap" style="flex: 2; min-width: 120px; position: relative;">
                             <StationPicker 
                                 bind:value={stop.name} 
                                 placeholder="Name" 
@@ -104,22 +104,22 @@
                             />
                         </div>
                         
-                        <input type="text" class="s-prop short-input" bind:value={stop.nameKurz} oninput={triggerUpdate} placeholder="Kurz" title="Kurzname (Via)" style="flex: 1; min-width: 80px;">
+                        <input type="text" class="s-prop short-input" bind:value={stop.nameKurz} oninput={triggerUpdate} placeholder="Kurz" title="Kurzname (Via)" style="flex: 1; min-width: 70px;">
                         
-                        <input type="number" class="s-prop short-input" bind:value={stop.stationCategory} oninput={triggerUpdate} placeholder="Kat" title="Bahnhofskategorie" style="width: 50px;">
+                        <input type="number" class="s-prop short-input" bind:value={stop.stationCategory} oninput={triggerUpdate} placeholder="Kat" title="Bahnhofskategorie" style="width: 48px;">
                         
-                        <select class="s-prop short-input" bind:value={stop.boardingType} onchange={triggerUpdate} title="Ein-/Ausstieg" style="width: 70px;">
+                        <select class="s-prop short-input" bind:value={stop.boardingType} onchange={triggerUpdate} title="Ein-/Ausstieg" style="width: 72px;">
                             <option value={null}>—</option>
                             <option value="ein">Nur Ein</option>
                             <option value="aus">Nur Aus</option>
                         </select>
                         
-                        <label title="Ausfall" style="display: flex; align-items: center; gap: 4px; cursor: pointer; margin-left: 4px;">
+                        <label title="Ausfall" style="display: flex; align-items: center; gap: 4px; cursor: pointer; margin-left: 2px;">
                             <input type="checkbox" class="s-prop" bind:checked={stop.cancelled} onchange={triggerUpdate}>
                             <ZimIcon name="cancelled" size={14} color={stop.cancelled ? '#ff6b6b' : 'var(--text-muted)'} />
                         </label>
                         
-                        <button class="btn-icon" title="Halt entfernen" onclick={() => removeStop(stop)} style="display: flex; align-items: center; justify-content: center;">
+                        <button class="btn-icon remove-stop-btn" title="Halt entfernen" onclick={() => removeStop(stop)} style="display: flex; align-items: center; justify-content: center;">
                             <ZimIcon name="close" size={14} />
                         </button>
                     </div>
@@ -128,3 +128,48 @@
         </div>
     </div>
 {/if}
+
+<style>
+    .stop-editor-row-main {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    .arrow-col {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        flex-shrink: 0;
+    }
+    .arrow-btn {
+        min-height: 18px !important;
+        height: 18px;
+        width: 22px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .s-prop {
+        box-sizing: border-box;
+    }
+    .remove-stop-btn:hover {
+        color: #ef4444 !important;
+    }
+    @media (max-width: 768px) {
+        .stop-editor-row-main {
+            gap: 6px;
+        }
+        .s-prop.short-input {
+            min-height: 34px !important;
+            padding: 4px 6px !important;
+            font-size: 0.85rem !important;
+        }
+        .stop-picker-wrap {
+            flex: 1 1 140px !important;
+        }
+    }
+</style>

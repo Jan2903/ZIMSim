@@ -1,11 +1,14 @@
 <script>
     import { irisPollingService, irisConfig } from '../js/core/services/irisPollingService.svelte.js';
     import { announcementQueueService } from '../js/audio/announcementQueueService.svelte.js';
+    import { ansagenPlayer } from '../js/audio/ansagenPlayer.svelte.js';
     import ZimIcon from './ZimIcon.svelte';
 
     let isMinimized = $state(false);
     let isHidden = $state(false);
     let activeTab = $state('live'); // 'live' | 'history'
+
+    let isAudioActive = $derived(ansagenPlayer.isPlaying || ansagenPlayer.playlist.length > 0);
 
     $effect(() => {
         if (irisPollingService.isActive) {
@@ -38,7 +41,7 @@
 </script>
 
 {#if irisPollingService.isActive && !isHidden}
-    <div class="status-overlay" class:minimized={isMinimized}>
+    <div class="status-overlay" class:minimized={isMinimized} class:audio-overlay-active={isAudioActive}>
         <div class="overlay-header">
             <div class="overlay-header-left">
                 <span class="dot {irisConfig.autoUpdateInterval > 0 ? 'active' : 'inactive'}"></span>
@@ -526,6 +529,10 @@
             left: 12px;
             width: auto;
             bottom: 12px;
+            transition: bottom 0.25s ease;
+        }
+        .status-overlay.audio-overlay-active {
+            bottom: 140px;
         }
         .status-overlay.minimized {
             left: auto;

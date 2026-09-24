@@ -519,15 +519,15 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
             <h4>Zuglauf (Halte)</h4>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <button class="btn-secondary" onclick={toggleAllStops} style="display: inline-flex; align-items: center; gap: 6px;">
+                <button class="btn-secondary btn-sm" onclick={toggleAllStops} style="display: inline-flex; align-items: center; gap: 6px;">
                     <ZimIcon name="eye" size={15} />
                     <span>Alle umschalten</span>
                 </button>
-                <button class="btn-secondary" onclick={autoGenVias} style="display: inline-flex; align-items: center; gap: 6px;">
+                <button class="btn-secondary btn-sm" onclick={autoGenVias} style="display: inline-flex; align-items: center; gap: 6px;">
                     <ZimIcon name="bolt" size={15} />
                     <span>Auto-Vias</span>
                 </button>
-                <button class="btn-secondary" onclick={addStop} style="display: inline-flex; align-items: center; gap: 6px;">
+                <button class="btn-secondary btn-sm" onclick={addStop} style="display: inline-flex; align-items: center; gap: 6px;">
                     <ZimIcon name="plus" size={14} />
                     <span>Halt hinzufügen</span>
                 </button>
@@ -543,4 +543,17 @@
 @media (max-width: 900px) { .details-grid { grid-template-columns: 1fr; } }
 .detail-section h4 { margin: 0 0 8px 0; color: var(--text-muted); font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.05em; }
 .details-actions { display: flex; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
+
+@media (max-width: 768px) {
+    .audio-action-bar {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(75px, 1fr));
+        gap: 6px;
+    }
+    .audio-action-bar button {
+        min-height: 34px;
+        padding: 4px 6px;
+        font-size: 0.8rem;
+    }
+}
 </style>

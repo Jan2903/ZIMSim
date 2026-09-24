@@ -140,20 +140,24 @@
                         class="btn-secondary btn-sm" 
                         onclick={fetchIrisData} 
                         disabled={isFetchingIris || irisPollingService.isFetching}
+                        title="Live-Daten abrufen"
                         style="display: inline-flex; align-items: center; gap: 6px;"
                     >
                         <ZimIcon name="api" size={14} />
-                        <span>{isFetchingIris || irisPollingService.isFetching ? 'Lädt...' : 'Live-Daten abrufen'}</span>
+                        <span class="btn-text-full">{isFetchingIris || irisPollingService.isFetching ? 'Lädt...' : 'Live-Daten abrufen'}</span>
+                        <span class="btn-text-short">{isFetchingIris || irisPollingService.isFetching ? 'Lädt...' : 'Live-Daten'}</span>
                     </button>
                     <button 
                         type="button"
                         id="add_journey_btn" 
                         class="btn-primary btn-sm" 
                         onclick={addManualJourney} 
+                        title="Fahrt hinzufügen"
                         style="display: inline-flex; align-items: center; gap: 6px;"
                     >
                         <ZimIcon name="plus" size={14} />
-                        <span>Fahrt hinzufügen</span>
+                        <span class="btn-text-full">Fahrt hinzufügen</span>
+                        <span class="btn-text-short">Fahrt +</span>
                     </button>
                 {/snippet}
 
@@ -172,7 +176,7 @@
                 <SettingsStationTime />
             </div>
 
-        <!-- Tab 3: Live-Daten (IRIS & DB Navigator Vorbereitung) -->
+        <!-- Tab 3: Live-Daten (IRIS & DB Navigator) -->
         {:else if activeTab === 'livedata'}
             <div class="tab-pane">
                 <SettingsLiveData {modalsComp} />
@@ -270,18 +274,35 @@
         }
     }
 
+    .btn-text-short {
+        display: none;
+    }
+
     @media (max-width: 768px) {
         .settings-container {
             padding: 0 10px;
             margin: 12px auto 30px auto;
         }
+        .dashboard-nav-wrapper {
+            position: relative;
+        }
         .dashboard-tabs {
             justify-content: flex-start;
+            scrollbar-width: thin;
         }
         .tab-btn {
             min-width: 110px;
             font-size: 0.8rem;
             padding: 6px 10px;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .btn-text-full {
+            display: none;
+        }
+        .btn-text-short {
+            display: inline;
         }
     }
 </style>
