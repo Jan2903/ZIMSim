@@ -95,6 +95,7 @@ export class Journey {
     zugattribute = $state([]);
     hasFormationAvailable = $state(false);
     dbNavMeta = $state(null);
+    dbWebMeta = $state(null);
     isFetchingFormation = $state(false);
 
     constructor(data = {}) {
@@ -103,6 +104,7 @@ export class Journey {
         this.journeyId = data.journeyId || '';     // DB API Journey-ID
         this.hasFormationAvailable = Boolean(data.hasFormationAvailable ?? data.hasFormation);
         this.dbNavMeta = data.dbNavMeta || null;
+        this.dbWebMeta = data.dbWebMeta || null;
         this.isFetchingFormation = false;
 
         // === Zug-Identifikation ===
@@ -248,7 +250,9 @@ export class Journey {
             messages: this.messages,
             stops: this.stops,
             _currentStopIndex: this._currentStopIndex,
-            zugattribute: this.zugattribute
+            zugattribute: this.zugattribute,
+            dbNavMeta: this.dbNavMeta,
+            dbWebMeta: this.dbWebMeta
         };
     }
 

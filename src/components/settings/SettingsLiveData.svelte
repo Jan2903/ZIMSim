@@ -35,7 +35,7 @@
                 {:else if selectedDataSource === 'db_navigator'}
                     DB Navigator Optionen (Fahrplan & Wagenreihung)
                 {:else if selectedDataSource === 'dbweb'}
-                    DBweb Optionen (In Vorbereitung)
+                    DBweb Optionen (bahn.de Web API)
                 {:else}
                     Live-Daten Konfiguration
                 {/if}

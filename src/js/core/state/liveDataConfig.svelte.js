@@ -38,9 +38,17 @@ export const liveDataConfig = $state({
     },
 
     /**
-     * DBweb spezifische Optionen (Zukunft / In Vorbereitung)
+     * DBweb spezifische Optionen (bahn.de Web API)
      */
     dbWeb: {
-        isAvailable: false
+        isAvailable: true,
+        queryType: 'departures', // 'departures' | 'arrivals'
+        maxVias: 5,
+        fetchFormation: true,
+        clearBeforeSync: false,
+        verkehrsmittel: [
+            'ICE', 'EC_IC', 'IR', 'REGIONAL', 'SBAHN',
+            'BUS', 'SCHIFF', 'UBAHN', 'TRAM', 'ANRUFPFLICHTIG'
+        ]
     }
 });

@@ -5,7 +5,7 @@
     import { lineColorService } from '../js/features/journey/services/lineColorService.svelte.js';
     import JourneyDetails from './JourneyDetails.svelte';
     import ZimIcon from './ZimIcon.svelte';
-    import { JourneyDbNavSyncService } from '../js/features/journey/services/journeyDbNavSyncService.js';
+    import { FormationService } from '../js/features/formation/formationService.js';
 
     let { journey = $bindable(), index = -1 } = $props();
 
@@ -17,7 +17,7 @@
 
     async function fetchWagenreihung(e) {
         e.stopPropagation();
-        const res = await JourneyDbNavSyncService.fetchFormationForJourney(journey);
+        const res = await FormationService.fetchFormationForJourney(journey);
         if (!res.success) {
             alert(res.message || 'Wagenreihung konnte nicht geladen werden.');
         }

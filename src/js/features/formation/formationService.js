@@ -3,12 +3,41 @@ import { Formation, FormationGroup } from './formationModel.svelte.js';
 import { Coach } from './coachModel.svelte.js';
 import { FormationParser } from './formationParser.js';
 import { Platform } from '../station/platform.svelte.js';
+import { liveDataConfig } from '../../core/state/liveDataConfig.svelte.js';
+import { JourneyDbWebSyncService } from '../journey/services/journeyDbWebSyncService.js';
+import { JourneyDbNavSyncService } from '../journey/services/journeyDbNavSyncService.js';
 
 /**
  * Service für Operationen auf Wagenreihungen (Gruppen und Wagen).
  * Hält Fachlogik außerhalb von UI-Komponenten (Separation of Concerns & DRY).
  */
 export class FormationService {
+    /**
+     * Ruft die Wagenreihung für eine Journey anhand der aktiven Datenquelle (DBweb oder DB Navigator) ab.
+     * @param {import('../journey/journey.svelte.js').Journey} journey
+     * @returns {Promise<{ success: boolean, message?: string }>}
+     */
+    static async fetchFormationForJourney(journey) {
+        if (!journey) return { success: false, message: 'Keine Fahrt ausgewählt.' };
+
+        // Bevorzuge explizit vorhandene Metadaten
+        if (journey.dbWebMeta && !journey.dbNavMeta) {
+            return JourneyDbWebSyncService.fetchFormationForJourney(journey);
+        }
+        if (journey.dbNavMeta && !journey.dbWebMeta) {
+            return JourneyDbNavSyncService.fetchFormationForJourney(journey);
+        }
+
+        // Ansonsten anhand der konfigurierten Quelle
+        if (liveDataConfig.formationSource === 'dbweb') {
+            return JourneyDbWebSyncService.fetchFormationForJourney(journey);
+        }
+        if (liveDataConfig.formationSource === 'db_navigator') {
+            return JourneyDbNavSyncService.fetchFormationForJourney(journey);
+        }
+
+        return { success: false, message: 'Keine aktive Wagenreihungs-Schnittstelle konfiguriert.' };
+    }
     /**
      * Erstellt einen neuen Standardwagen mit sinnvollen Standardwerten.
      * @param {string} [type='middle_car'] - 'middle_car', 'control_car' oder 'locomotive'

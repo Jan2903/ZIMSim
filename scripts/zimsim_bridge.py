@@ -130,7 +130,11 @@ class ZimSimBridgeHandler(BaseHTTPRequestHandler):
             return
 
         if self.path.startswith('/mob/'):
-            self._forward_request('GET')
+            self._forward_request('GET', 'https://app.services-bahn.de')
+            return
+
+        if self.path.startswith('/web/'):
+            self._forward_request('GET', 'https://www.bahn.de')
             return
 
         self._send_cors_headers(404)
@@ -140,16 +144,20 @@ class ZimSimBridgeHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         """Behandelt Weiterleitungen an die Vendo APIs."""
         if self.path.startswith('/mob/'):
-            self._forward_request('POST')
+            self._forward_request('POST', 'https://app.services-bahn.de')
+            return
+
+        if self.path.startswith('/web/'):
+            self._forward_request('POST', 'https://www.bahn.de')
             return
 
         self._send_cors_headers(404)
         self.end_headers()
         self.wfile.write(b'{"error": "Not Found"}')
 
-    def _forward_request(self, method):
-        """Leitet eine Anfrage an die echte DB Navigator API weiter."""
-        target_url = f"{REMOTE_BASE_URL}{self.path}"
+    def _forward_request(self, method, remote_base=REMOTE_BASE_URL):
+        """Leitet eine Anfrage an die echte DB API weiter."""
+        target_url = f"{remote_base}{self.path}"
         req_content_type = self.headers.get('Content-Type')
         accept_type = self.headers.get('Accept')
 
@@ -159,7 +167,20 @@ class ZimSimBridgeHandler(BaseHTTPRequestHandler):
             if content_length > 0:
                 body_data = self.rfile.read(content_length)
 
-        spoofed_headers = get_spoofed_headers(req_content_type, accept_type)
+        if 'bahn.de' in remote_base and not 'services-bahn.de' in remote_base:
+            # Browser-Header für bahn.de Web API
+            u1 = str(uuid.uuid4())
+            u2 = str(uuid.uuid4())
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+                'Accept': accept_type or 'application/json',
+                'Accept-Language': 'de-DE,de;q=0.9',
+                'x-correlation-id': f'{u1}_{u2}'
+            }
+            if req_content_type:
+                headers['Content-Type'] = req_content_type
+        else:
+            headers = get_spoofed_headers(req_content_type, accept_type)
         enforce_time_lock()
 
         start_time = time.time()

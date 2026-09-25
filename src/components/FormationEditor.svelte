@@ -11,7 +11,6 @@
     import ZimIcon from './ZimIcon.svelte';
     import FormationPresetModal from './FormationPresetModal.svelte';
     import FormationRuleEditorModal from './FormationRuleEditorModal.svelte';
-    import { JourneyDbNavSyncService } from '../js/features/journey/services/journeyDbNavSyncService.js';
 
     let { journey = $bindable() } = $props();
 
@@ -21,7 +20,7 @@
     let isRulesModalOpen = $state(false);
 
     async function fetchFromDbNav() {
-        const res = await JourneyDbNavSyncService.fetchFormationForJourney(journey);
+        const res = await FormationService.fetchFormationForJourney(journey);
         if (!res.success) {
             alert(res.message || 'Wagenreihung konnte nicht geladen werden.');
         }

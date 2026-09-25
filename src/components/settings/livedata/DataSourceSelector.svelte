@@ -103,10 +103,10 @@
                         <ZimIcon name="api" size={16} />
                         <strong>DBweb (bahn.de Web)</strong>
                     </div>
-                    <span class="source-badge badge-prep">In Vorbereitung</span>
+                    <span class="source-badge badge-web">Live-Fahrplan & Wagenreihung</span>
                 </div>
                 <div class="source-desc">
-                    Künftige Direktanbindung über bahn.de Web-Endpunkte für Fahrplandaten und Wagenreihung.
+                    Moderne bahn.de Reiselösungs-API für Echtzeit-Abfahrten, Zwischenhalte und detaillierte Wagenreihungen.
                 </div>
             </label>
         </div>
@@ -292,6 +292,12 @@
         background: rgba(59, 130, 246, 0.15);
         color: #60a5fa;
         border: 1px solid rgba(96, 165, 250, 0.25);
+    }
+
+    .badge-web {
+        background: rgba(168, 85, 247, 0.15);
+        color: #c084fc;
+        border: 1px solid rgba(192, 132, 252, 0.25);
     }
 
     .badge-prep {
