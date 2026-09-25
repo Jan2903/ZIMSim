@@ -398,7 +398,8 @@ export class AnsagenSpeechFormatter {
         const sections = parsed.sections;
         const hasSections = sections && sections.length > 0 && sections[0] !== '*';
 
-        const numberPitch = pitch || (hasSections ? 'tief' : 'hoch');
+        const isNotGleis = !prefixModule || prefixModule.toUpperCase() !== 'GLEIS';
+        const numberPitch = pitch || ((hasSections || isNotGleis) ? 'tief' : 'hoch');
         this.number(playlist, parsed.base, numberPitch);
 
         if (!hasSections) {

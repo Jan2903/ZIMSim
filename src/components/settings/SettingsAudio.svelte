@@ -184,6 +184,23 @@
         applyViaChanges();
     }
 
+    /**
+     * Stellt sicher, dass das Feld beim Verlassen einen gültigen Wert hat.
+     * @param {Event} e
+     * @returns {void}
+     */
+    function handleViaBlur(e) {
+        let val = parseInt(e.target.value, 10);
+        if (isNaN(val)) {
+            val = ansagenStore.maxVias;
+        } else {
+            val = Math.max(0, Math.min(128, val));
+        }
+        e.target.value = val;
+        ansagenStore.setMaxVias(val);
+        applyViaChanges();
+    }
+
     $effect(() => {
         return () => {
             stopHold();
@@ -275,6 +292,7 @@
                                 max="128" 
                                 value={ansagenStore.maxVias} 
                                 oninput={handleViaInput}
+                                onblur={handleViaBlur}
                             />
                             <span class="stepper-unit-label">{ansagenStore.maxVias === 1 ? 'Halt' : 'Halte'}</span>
                         {/if}
