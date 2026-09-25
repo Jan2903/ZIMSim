@@ -2,6 +2,7 @@
 <script>
     import { journeyStore } from '../../../js/core/state/stores.js';
     import { irisPollingService, irisConfig } from '../../../js/core/services/irisPollingService.svelte.js';
+    import { liveDataConfig } from '../../../js/core/state/liveDataConfig.svelte.js';
     import { isTauri, proxyConfig } from '../../../js/core/services/apiClient.js';
     import { JourneyDbNavSyncService } from '../../../js/features/journey/services/journeyDbNavSyncService.js';
     import ZimIcon from '../../ZimIcon.svelte';
@@ -9,10 +10,9 @@
     // Lade-Status für manuelle IRIS-Abfrage
     let isFetchingIris = $state(false);
 
-    // Status für DBNav Hybrid-Sync
+    // Status für DBNav Wagenreihungs-Sync
     let isSyncingDbNav = $state(false);
     let dbNavSyncResult = $state(null);
-    let autoFetchActiveFormations = $state(false);
 
     /**
      * Führt eine sofortige Aktualisierung der IRIS-Daten aus.
@@ -65,7 +65,7 @@
                 maxChunks: 2
             });
             let extraMsg = '';
-            if (autoFetchActiveFormations && res.matchedCount > 0) {
+            if (liveDataConfig.autoFetchActiveFormations && res.matchedCount > 0) {
                 const fetched = await JourneyDbNavSyncService.autoFetchActiveFormations(2);
                 if (fetched > 0) {
                     extraMsg = ` (${fetched} Wagenreihung(en) für Anzeige geladen)`;
@@ -156,12 +156,18 @@
         </button>
     </div>
 
-    <!-- DB Navigator Wagenreihungs-Abgleich (Hybrid) -->
+    <!-- Wagenreihungs-Anreicherung (Formationen) -->
     <div class="sub-section" style="margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px;">
-        <div class="field-label">DB Navigator Wagenreihungs-Abgleich (Hybrid):</div>
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+            <div class="field-label" style="margin-bottom: 0;">Wagenreihungs-Anreicherung:</div>
+            <span class="provider-pill">via DB Navigator</span>
+        </div>
+        <p class="sub-desc" style="font-size: 0.76rem; color: var(--text-muted); margin: 0 0 10px 0; line-height: 1.4;">
+            DB IRIS liefert reine Fahrplandaten. Wagenreihungen ([W]) und Formationen werden modular über den DB Navigator bezogen.
+        </p>
         <div class="checkbox-group" style="margin-bottom: 10px;">
             <label class="checkbox-label">
-                <input type="checkbox" bind:checked={autoFetchActiveFormations}>
+                <input type="checkbox" bind:checked={liveDataConfig.autoFetchActiveFormations}>
                 <span>Wagenreihung für angezeigten Zug automatisch nachladen</span>
             </label>
         </div>
@@ -173,7 +179,7 @@
             disabled={isSyncingDbNav}
         >
             <ZimIcon name="train_fast" size={14} />
-            <span>{isSyncingDbNav ? 'Gleiche mit DB Navigator ab...' : 'Wagenreihungs-Verfügbarkeit ermitteln ([W])'}</span>
+            <span>{isSyncingDbNav ? 'Gleiche mit DB Navigator ab...' : 'Wagenreihungen ermitteln ([W])'}</span>
         </button>
         {#if dbNavSyncResult}
             <div class="sync-result-msg" class:is-success={dbNavSyncResult.success} style="margin-top: 8px; font-size: 0.8rem;">
@@ -190,6 +196,16 @@
         font-weight: 600;
         color: var(--text-muted, #94a3b8);
         margin-bottom: 6px;
+    }
+
+    .provider-pill {
+        font-size: 0.7rem;
+        background: rgba(59, 130, 246, 0.15);
+        color: #60a5fa;
+        border: 1px solid rgba(96, 165, 250, 0.25);
+        padding: 1px 6px;
+        border-radius: 4px;
+        font-weight: 500;
     }
 
     .form-input,

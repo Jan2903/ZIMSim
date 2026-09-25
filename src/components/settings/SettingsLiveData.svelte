@@ -1,10 +1,11 @@
 <!-- src/components/settings/SettingsLiveData.svelte -->
 <script>
+    import { liveDataConfig } from '../../js/core/state/liveDataConfig.svelte.js';
     import ZimIcon from '../ZimIcon.svelte';
     import DataSourceSelector from './livedata/DataSourceSelector.svelte';
     import IrisSection from './livedata/IrisSection.svelte';
     import DbNavSection from './livedata/DbNavSection.svelte';
-    import ManualSection from './livedata/ManualSection.svelte';
+    import DbWebSection from './livedata/DbWebSection.svelte';
 
     /**
      * @typedef {Object} Props
@@ -12,8 +13,12 @@
      */
     let { modalsComp = null } = $props();
 
-    // Aktive Datenquelle: 'iris' | 'db_navigator' | 'manual'
-    let selectedDataSource = $state('iris');
+    // Aktive Datenquelle: 'iris' | 'db_navigator' | 'dbweb'
+    let selectedDataSource = $state(liveDataConfig.timetableSource || 'iris');
+
+    $effect(() => {
+        liveDataConfig.timetableSource = selectedDataSource;
+    });
 </script>
 
 <div class="settings-tab-grid">
@@ -26,11 +31,13 @@
             <ZimIcon name="settings" size={18} />
             <h3>
                 {#if selectedDataSource === 'iris'}
-                    DB IRIS Einstellungen
+                    DB IRIS Einstellungen (Fahrplan & Echtzeit)
                 {:else if selectedDataSource === 'db_navigator'}
-                    DB Navigator / bahn.de Optionen
+                    DB Navigator Optionen (Fahrplan & Wagenreihung)
+                {:else if selectedDataSource === 'dbweb'}
+                    DBweb Optionen (In Vorbereitung)
                 {:else}
-                    Manuelle Daten-Werkzeuge
+                    Live-Daten Konfiguration
                 {/if}
             </h3>
         </div>
@@ -39,8 +46,8 @@
                 <IrisSection />
             {:else if selectedDataSource === 'db_navigator'}
                 <DbNavSection />
-            {:else}
-                <ManualSection {modalsComp} />
+            {:else if selectedDataSource === 'dbweb'}
+                <DbWebSection />
             {/if}
         </div>
     </div>

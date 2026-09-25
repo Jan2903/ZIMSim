@@ -1,11 +1,12 @@
 <!-- src/components/settings/livedata/DataSourceSelector.svelte -->
 <script>
     import { isTauri, isGitHubPages, proxyConfig, checkProxyHealth } from '../../../js/core/services/apiClient.js';
+    import { liveDataConfig } from '../../../js/core/state/liveDataConfig.svelte.js';
     import ZimIcon from '../../ZimIcon.svelte';
 
     /**
      * @typedef {Object} Props
-     * @property {string} selectedDataSource - Aktive Datenquelle ('iris' | 'db_navigator' | 'manual')
+     * @property {string} selectedDataSource - Aktive Datenquelle ('iris' | 'db_navigator' | 'dbweb')
      * @property {(source: string) => void} [onSelectSource] - Optionaler Callback bei Wechsel der Datenquelle
      */
     let { selectedDataSource = $bindable('iris'), onSelectSource } = $props();
@@ -53,6 +54,7 @@
      */
     function handleSelect(source) {
         selectedDataSource = source;
+        liveDataConfig.timetableSource = source;
         onSelectSource?.(source);
     }
 </script>
@@ -64,13 +66,16 @@
     </div>
     <div class="card-body">
         <!-- Datenquellen-Segment -->
-        <div class="field-label">Aktive Schnittstelle:</div>
+        <div class="field-label">Aktive Schnittstelle / Profil:</div>
         <div class="source-selector">
             <label class="source-card" class:active={selectedDataSource === 'iris'}>
                 <input type="radio" name="data_source" value="iris" bind:group={selectedDataSource} onchange={() => handleSelect('iris')}>
                 <div class="source-title">
-                    <ZimIcon name="train" size={16} />
-                    <strong>DB IRIS (Timetable API)</strong>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <ZimIcon name="train" size={16} />
+                        <strong>DB IRIS (Timetable API)</strong>
+                    </div>
+                    <span class="source-badge badge-rec">Standard / Empfohlen</span>
                 </div>
                 <div class="source-desc">
                     Offizielle Echtzeit-Fahrplandaten für DB Fern- und Regionalverkehr. Direkt im Browser und Desktop verfügbar.
@@ -80,22 +85,28 @@
             <label class="source-card" class:active={selectedDataSource === 'db_navigator'}>
                 <input type="radio" name="data_source" value="db_navigator" bind:group={selectedDataSource} onchange={() => handleSelect('db_navigator')}>
                 <div class="source-title">
-                    <ZimIcon name="train_fast" size={16} />
-                    <strong>DB Navigator / bahn.de API</strong>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <ZimIcon name="train_fast" size={16} />
+                        <strong>DB Navigator (Vendo API)</strong>
+                    </div>
+                    <span class="source-badge badge-nav">Wagenreihung & ÖPNV</span>
                 </div>
                 <div class="source-desc">
-                    Erweiterte Fahrplandetails, Zwischenhalte, Ankunft & Abfahrt kombiniert sowie Wagenreihung (Formationen).
+                    Erweiterte Fahrplandetails, Zwischenhalte, Ankunft & Abfahrt kombiniert sowie Wagenreihungen (Formationen).
                 </div>
             </label>
 
-            <label class="source-card" class:active={selectedDataSource === 'manual'}>
-                <input type="radio" name="data_source" value="manual" bind:group={selectedDataSource} onchange={() => handleSelect('manual')}>
+            <label class="source-card" class:active={selectedDataSource === 'dbweb'}>
+                <input type="radio" name="data_source" value="dbweb" bind:group={selectedDataSource} onchange={() => handleSelect('dbweb')}>
                 <div class="source-title">
-                    <ZimIcon name="save" size={16} />
-                    <strong>Manuell / Offline</strong>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <ZimIcon name="api" size={16} />
+                        <strong>DBweb (bahn.de Web)</strong>
+                    </div>
+                    <span class="source-badge badge-prep">In Vorbereitung</span>
                 </div>
                 <div class="source-desc">
-                    Keine automatischen Netzwerkanfragen. Fahrten manuell anlegen oder per JSON-Datei laden.
+                    Künftige Direktanbindung über bahn.de Web-Endpunkte für Fahrplandaten und Wagenreihung.
                 </div>
             </label>
         </div>
@@ -153,12 +164,12 @@
 
                 <div style="display: flex; gap: 6px; align-items: center;">
                     <input 
-                        type="text" 
-                        class="form-input" 
-                        style="font-size: 0.8rem; padding: 6px 10px;"
-                        bind:value={proxyUrl} 
-                        onchange={() => { proxyConfig.url = proxyUrl; }}
-                        placeholder="http://127.0.0.1:8765"
+                    type="text" 
+                    class="form-input" 
+                    style="font-size: 0.8rem; padding: 6px 10px;"
+                    bind:value={proxyUrl} 
+                    onchange={() => { proxyConfig.url = proxyUrl; }}
+                    placeholder="http://127.0.0.1:8765"
                     >
                     <button 
                         type="button" 
@@ -250,6 +261,7 @@
     .source-title {
         display: flex;
         align-items: center;
+        justify-content: space-between;
         gap: 8px;
         font-size: 0.88rem;
         color: var(--text-main, #f8fafc);
@@ -262,13 +274,36 @@
         line-height: 1.4;
     }
 
-    .badge-status {
+    .source-badge {
         font-size: 0.68rem;
-        background: rgba(245, 158, 11, 0.15);
-        color: #f59e0b;
         padding: 2px 6px;
         border-radius: 4px;
         font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .badge-rec {
+        background: rgba(16, 185, 129, 0.15);
+        color: #34d399;
+        border: 1px solid rgba(52, 211, 153, 0.25);
+    }
+
+    .badge-nav {
+        background: rgba(59, 130, 246, 0.15);
+        color: #60a5fa;
+        border: 1px solid rgba(96, 165, 250, 0.25);
+    }
+
+    .badge-prep {
+        background: rgba(245, 158, 11, 0.15);
+        color: #f59e0b;
+        border: 1px solid rgba(245, 158, 11, 0.25);
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 4px;
     }
 
     .platform-status-box {

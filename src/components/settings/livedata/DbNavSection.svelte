@@ -202,9 +202,12 @@
         </button>
     </div>
 
-    <!-- Hybrid-Sync Sektion -->
+    <!-- Formations-Abgleich für bestehende Fahrten -->
     <div class="sub-section" style="margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px;">
-        <div class="field-label">Hybrid-Sync für bestehende Fahrten:</div>
+        <div class="field-label">Formations-Abgleich für bestehende Fahrten:</div>
+        <p style="font-size: 0.76rem; color: var(--text-muted); margin: 0 0 10px 0; line-height: 1.4;">
+            Gleicht alle aktuell in ZIMSim vorhandenen Fahrten mit DB Navigator ab, um Wagenreihungen ([W]) und Formationen verfügbar zu machen.
+        </p>
         <button 
             type="button" 
             class="btn-secondary" 
@@ -213,7 +216,7 @@
             disabled={isSyncingDbNav}
         >
             <ZimIcon name="restart" size={14} />
-            <span>{isSyncingDbNav ? 'Gleiche ab...' : 'Bestehende Fahrten mit DB Navigator abgleichen'}</span>
+            <span>{isSyncingDbNav ? 'Gleiche ab...' : 'Formations-Verfügbarkeit abgleichen ([W])'}</span>
         </button>
         {#if dbNavSyncResult}
             <div class="sync-result-msg" class:is-success={dbNavSyncResult.success} style="margin-top: 8px; font-size: 0.8rem;">
