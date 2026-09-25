@@ -4,7 +4,7 @@ export class AnsagenStore {
     status = $state('none'); // 'none' | 'loaded'
     fileName = $state('');
     fileRef = $state(null); // String (Tauri path), FileSystemFileHandle, or File object
-    maxVias = $state(4); // 0-5, 6 means 'All' (jetzt 0-128, allVias steuert 'Alle')
+    maxVias = $state(4); // 0-128 (feste Anzahl; allVias steuert 'Alle')
     allVias = $state(false);
     effectiveMaxVias = $derived(this.allVias ? -1 : this.maxVias);
     viaSortMode = $state(1); // 1 = Priorisiert, 2 = Standard
@@ -35,16 +35,9 @@ export class AnsagenStore {
 
             if (savedAll !== null) {
                 this.allVias = savedAll === 'true';
-                if (savedVias !== null) {
-                    this.maxVias = Math.max(0, Math.min(128, parseInt(savedVias, 10) || 0));
-                }
-            } else if (savedVias === '6') {
-                // Legacy: Wert 6 bedeutete früher "Alle Halte"
-                this.allVias = true;
-                this.maxVias = 4;
-            } else if (savedVias !== null) {
+            }
+            if (savedVias !== null) {
                 this.maxVias = Math.max(0, Math.min(128, parseInt(savedVias, 10) || 0));
-                this.allVias = false;
             }
 
             const sSort = localStorage.getItem('ansagen_via_sort_mode');

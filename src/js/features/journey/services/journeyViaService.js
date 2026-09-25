@@ -102,7 +102,7 @@ export class JourneyViaService {
     /**
      * Setzt die "audioVia" Flags der Halte automatisch basierend auf sortMode (1 = Priorisiert, 2 = Standard).
      * @param {object} journey - Die Journey
-     * @param {number|string} maxCount - Maximale Anzahl (0-128, wobei 6 früher alle bedeutete, jetzt -1 oder allStops)
+     * @param {number|string} maxCount - Maximale Anzahl (0-128, oder -1 / 'all' für alle Halte)
      * @param {number} sortMode - 1 = Nach Priorität (Kategorie), 2 = Chronologisch
      * @param {boolean} [allStops=false] - Wenn true, werden alle Halte als Audio-Vias markiert
      */
