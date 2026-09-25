@@ -166,8 +166,8 @@ export class AnsagenSpeechFormatter {
             }
         }
 
-        // Maximal 6 Zwischenhalte für die Ansage zulassen
-        const activeVias = validVias.slice(0, 6);
+        // Maximal 6 Zwischenhalte für die Ansage zulassen (jetzt bis zu 128 für alle Halte bzw. Testzwecke)
+        const activeVias = validVias.slice(0, 128);
 
         if (activeVias.length > 0) {
             playlist.push({

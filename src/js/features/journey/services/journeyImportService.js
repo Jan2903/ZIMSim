@@ -159,7 +159,7 @@ export class JourneyImportService {
 
         // Auto-Generate Vias für den importierten Zuglauf
         journey.autoGenerateVias();
-        journey.autoGenerateAudioVias(ansagenStore.maxVias, ansagenStore.viaSortMode);
+        journey.autoGenerateAudioVias(ansagenStore.effectiveMaxVias, ansagenStore.viaSortMode, ansagenStore.allVias);
 
         // Auto-sync wenn Station-ID bekannt
         if (stationId) {
@@ -186,7 +186,7 @@ export class JourneyImportService {
             
             // Audio-Vias für importierte IRIS Journeys generieren (Display Vias werden von der DB API geliefert)
             if (!isArrival) {
-                journey.autoGenerateAudioVias(ansagenStore.maxVias, ansagenStore.viaSortMode);
+                journey.autoGenerateAudioVias(ansagenStore.effectiveMaxVias, ansagenStore.viaSortMode, ansagenStore.allVias);
             }
 
             // Duplikate vermeiden: Selbe HAFAS journeyId + selbe Ankunft/Abfahrt-Rolle
@@ -380,7 +380,7 @@ export class JourneyImportService {
 
                 // Automatische Vias nur initial generieren, falls die Fahrt bisher noch keine Halte hatte
                 if (!hadStopsBefore && !existing.ankunft && existing.stops && existing.stops.length > 0) {
-                    existing.autoGenerateAudioVias(ansagenStore.maxVias, ansagenStore.viaSortMode);
+                    existing.autoGenerateAudioVias(ansagenStore.effectiveMaxVias, ansagenStore.viaSortMode, ansagenStore.allVias);
                     existing.autoGenerateVias();
                 }
                 
@@ -393,7 +393,7 @@ export class JourneyImportService {
                 const newJourney = onAddJourney(jData);
                 if (newJourney && !newJourney.ankunft && newJourney.stops && newJourney.stops.length > 0) {
                     newJourney.autoGenerateVias();
-                    newJourney.autoGenerateAudioVias(ansagenStore.maxVias, ansagenStore.viaSortMode);
+                    newJourney.autoGenerateAudioVias(ansagenStore.effectiveMaxVias, ansagenStore.viaSortMode, ansagenStore.allVias);
                 }
             }
         }

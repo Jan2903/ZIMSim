@@ -102,10 +102,11 @@ export class JourneyViaService {
     /**
      * Setzt die "audioVia" Flags der Halte automatisch basierend auf sortMode (1 = Priorisiert, 2 = Standard).
      * @param {object} journey - Die Journey
-     * @param {number} maxCount - Maximale Anzahl (0-6, wobei 6 = alle bedeutet)
+     * @param {number|string} maxCount - Maximale Anzahl (0-128, wobei 6 früher alle bedeutete, jetzt -1 oder allStops)
      * @param {number} sortMode - 1 = Nach Priorität (Kategorie), 2 = Chronologisch
+     * @param {boolean} [allStops=false] - Wenn true, werden alle Halte als Audio-Vias markiert
      */
-    static autoGenerateAudioVias(journey, maxCount, sortMode = 2) {
+    static autoGenerateAudioVias(journey, maxCount, sortMode = 2, allStops = false) {
         if (!journey || !journey.stops || journey.stops.length === 0) return;
 
         // Zurücksetzen
@@ -120,11 +121,16 @@ export class JourneyViaService {
         }
         // bei Standard (2) bleibt es chronologisch
 
-        let limit = maxCount;
-        if (limit === 6) {
-            limit = candidateStops.length;
-        } else if (limit < 0) {
+        const isAll = allStops === true || maxCount === -1 || maxCount === 'all' || maxCount === 'Alle';
+        let limit = parseInt(maxCount, 10);
+        if (isNaN(limit) || limit < 0) {
             limit = 0;
+        }
+
+        if (isAll) {
+            limit = candidateStops.length;
+        } else {
+            limit = Math.min(limit, candidateStops.length);
         }
 
         const selected = candidateStops.slice(0, limit);

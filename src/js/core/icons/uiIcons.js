@@ -196,6 +196,11 @@ export const UI_ICONS = {
         { d: "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" }
     ]),
 
+    // Minus für Verringern
+    minus: createUiIcon(24, [
+        { d: "M19 13H5v-2h14v2z" }
+    ]),
+
     // Vollbild aktivieren
     fullscreen: createUiIcon(24, [
         { d: "M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" }

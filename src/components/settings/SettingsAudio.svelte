@@ -87,6 +87,108 @@
     function handleRemoveTrackPair(index) {
         ansagenStore.removeOppositeTrackPair(currentStationId, index);
     }
+
+    // --- Via-Steuerung & Hold-to-Repeat Logik ---
+    let holdTimer = null;
+    let holdInterval = null;
+    let holdStartTime = 0;
+
+    /**
+     * Wendet Änderungen der Via-Einstellungen sofort auf alle Fahrten im Store an.
+     * @returns {void}
+     */
+    function applyViaChanges() {
+        journeyStore.journeys.forEach(j => {
+            j.autoGenerateAudioVias(ansagenStore.effectiveMaxVias, ansagenStore.viaSortMode, ansagenStore.allVias);
+        });
+        trainDisplay.updateAll();
+    }
+
+    /**
+     * Ändert die Anzahl der Vias schrittweise.
+     * @param {number} delta - Schrittweite
+     * @returns {void}
+     */
+    function stepVia(delta) {
+        if (ansagenStore.allVias) {
+            ansagenStore.setAllVias(false);
+        }
+        const current = ansagenStore.maxVias;
+        const next = Math.max(0, Math.min(128, current + delta));
+        if (next !== current || ansagenStore.allVias) {
+            ansagenStore.setMaxVias(next);
+            applyViaChanges();
+        }
+    }
+
+    /**
+     * Startet den Hold-to-Repeat-Modus bei PointerDown (unterstützt Maus & Mobile-Touch).
+     * @param {number} delta - Schrittweite
+     * @param {PointerEvent} e
+     * @returns {void}
+     */
+    function startHold(delta, e) {
+        if (e && e.currentTarget && typeof e.currentTarget.setPointerCapture === 'function') {
+            try {
+                e.currentTarget.setPointerCapture(e.pointerId);
+            } catch (_) {}
+        }
+        stopHold();
+        stepVia(delta);
+        holdStartTime = Date.now();
+
+        holdTimer = setTimeout(() => {
+            holdInterval = setInterval(() => {
+                const elapsed = Date.now() - holdStartTime;
+                // Nach 1,5s kontinuierlichem Halten Sprünge in 5er-Schritten (Beschleunigung)
+                const stepDelta = elapsed > 1500 ? delta * 5 : delta;
+                stepVia(stepDelta);
+            }, 60);
+        }, 350);
+    }
+
+    /**
+     * Beendet den Hold-to-Repeat-Timer sicher.
+     * @returns {void}
+     */
+    function stopHold() {
+        if (holdTimer) {
+            clearTimeout(holdTimer);
+            holdTimer = null;
+        }
+        if (holdInterval) {
+            clearInterval(holdInterval);
+            holdInterval = null;
+        }
+    }
+
+    /**
+     * Schaltet zwischen "Alle Halte" und der eingestellten festen Zahl um.
+     * @returns {void}
+     */
+    function toggleAllVias() {
+        ansagenStore.setAllVias(!ansagenStore.allVias);
+        applyViaChanges();
+    }
+
+    /**
+     * Verarbeitet manuelle Tastatur-Eingaben im Zahlenfeld.
+     * @param {Event} e
+     * @returns {void}
+     */
+    function handleViaInput(e) {
+        let val = parseInt(e.target.value, 10);
+        if (isNaN(val)) return;
+        val = Math.max(0, Math.min(128, val));
+        ansagenStore.setMaxVias(val);
+        applyViaChanges();
+    }
+
+    $effect(() => {
+        return () => {
+            stopHold();
+        };
+    });
 </script>
 
 <div class="settings-tab-grid">
@@ -134,26 +236,74 @@
 
             <!-- Via-Halte in Ansagen -->
             <div class="sub-section" style="margin-top: 18px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                    <label for="ansagen_vias_slider" class="field-label" style="margin: 0;">Anzahl Vias in Ansage:</label>
-                    <strong style="color: var(--accent); font-size: 0.85rem;">
-                        {ansagenStore.maxVias === 6 ? 'Alle Halte' : `${ansagenStore.maxVias} Halte`}
-                    </strong>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <label for="ansagen_vias_input" class="field-label" style="margin: 0;">Anzahl Vias in Ansage:</label>
+                    <button 
+                        type="button" 
+                        class="via-all-btn {ansagenStore.allVias ? 'active' : ''}"
+                        onclick={toggleAllVias}
+                        title={ansagenStore.allVias ? 'Klicken für feste Anzahl' : 'Klicken für alle Halte'}
+                    >
+                        {ansagenStore.allVias ? '✓ Alle Halte' : 'Alle Halte'}
+                    </button>
                 </div>
-                <input 
-                    type="range" 
-                    id="ansagen_vias_slider" 
-                    min="0" 
-                    max="6" 
-                    step="1" 
-                    style="width: 100%;" 
-                    bind:value={ansagenStore.maxVias} 
-                    onchange={() => {
-                        localStorage.setItem('ansagen_max_vias', ansagenStore.maxVias);
-                        journeyStore.journeys.forEach(j => j.autoGenerateAudioVias(ansagenStore.maxVias, ansagenStore.viaSortMode));
-                        trainDisplay.updateAll();
-                    }}
-                >
+
+                <div class="via-stepper-box">
+                    <button 
+                        type="button" 
+                        class="stepper-action-btn" 
+                        disabled={ansagenStore.allVias || ansagenStore.maxVias <= 0}
+                        onpointerdown={(e) => startHold(-1, e)}
+                        onpointerup={stopHold}
+                        onpointerleave={stopHold}
+                        onpointercancel={stopHold}
+                        aria-label="Anzahl verringern"
+                        title="Verringern (gedrückt halten für schnellen Durchlauf)"
+                    >
+                        <ZimIcon name="arrow_down" size={15} />
+                    </button>
+
+                    <div class="stepper-center">
+                        {#if ansagenStore.allVias}
+                            <div class="stepper-all-badge">Alle Halte</div>
+                        {:else}
+                            <input 
+                                type="number" 
+                                id="ansagen_vias_input" 
+                                class="stepper-num-input" 
+                                min="0" 
+                                max="128" 
+                                value={ansagenStore.maxVias} 
+                                oninput={handleViaInput}
+                            />
+                            <span class="stepper-unit-label">{ansagenStore.maxVias === 1 ? 'Halt' : 'Halte'}</span>
+                        {/if}
+                    </div>
+
+                    <button 
+                        type="button" 
+                        class="stepper-action-btn" 
+                        disabled={ansagenStore.allVias || ansagenStore.maxVias >= 128}
+                        onpointerdown={(e) => startHold(1, e)}
+                        onpointerup={stopHold}
+                        onpointerleave={stopHold}
+                        onpointercancel={stopHold}
+                        aria-label="Anzahl erhöhen"
+                        title="Erhöhen (gedrückt halten für schnellen Durchlauf)"
+                    >
+                        <ZimIcon name="arrow_up" size={15} />
+                    </button>
+                </div>
+
+                <div class="via-hint-text">
+                    {#if ansagenStore.allVias}
+                        Alle Zwischenhalte mit aktivem Audio-Symbol werden abgespielt.
+                    {:else if ansagenStore.maxVias === 0}
+                        Keine Zwischenhalte in der Ansage (nur Start & Ziel).
+                    {:else}
+                        Bis zu {ansagenStore.maxVias} Zwischenhalt{ansagenStore.maxVias === 1 ? '' : 'e'} (0–128) werden automatisch markiert.
+                    {/if}
+                </div>
             </div>
 
             <div class="sub-section" style="margin-top: 14px;">
@@ -166,8 +316,7 @@
                             value={1} 
                             onchange={() => {
                                 localStorage.setItem('ansagen_via_sort_mode', 1);
-                                journeyStore.journeys.forEach(j => j.autoGenerateAudioVias(ansagenStore.maxVias, ansagenStore.viaSortMode));
-                                trainDisplay.updateAll();
+                                applyViaChanges();
                             }}
                         >
                         <span>Priorisiert (Kategorie)</span>
@@ -179,8 +328,7 @@
                             value={2} 
                             onchange={() => {
                                 localStorage.setItem('ansagen_via_sort_mode', 2);
-                                journeyStore.journeys.forEach(j => j.autoGenerateAudioVias(ansagenStore.maxVias, ansagenStore.viaSortMode));
-                                trainDisplay.updateAll();
+                                applyViaChanges();
                             }}
                         >
                         <span>Standard (Chronologisch)</span>
@@ -553,5 +701,125 @@
     .short-input {
         width: 60px;
         text-align: center;
+    }
+
+    /* Via Stepper */
+    .via-all-btn {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid var(--border, #334155);
+        color: var(--text-muted, #94a3b8);
+        border-radius: 4px;
+        padding: 3px 10px;
+        font-size: 0.78rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        touch-action: manipulation;
+        user-select: none;
+        -webkit-user-select: none;
+    }
+
+    .via-all-btn:hover {
+        background: rgba(255, 255, 255, 0.12);
+        color: var(--text-main, #f8fafc);
+    }
+
+    .via-all-btn.active {
+        background: var(--accent, #3b82f6);
+        border-color: var(--accent, #3b82f6);
+        color: #ffffff;
+        font-weight: 600;
+    }
+
+    .via-stepper-box {
+        display: flex;
+        align-items: center;
+        background: var(--bg-input, #0f172a);
+        border: 1px solid var(--border, #334155);
+        border-radius: 6px;
+        overflow: hidden;
+        height: 42px;
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    .stepper-action-btn {
+        width: 48px;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.04);
+        border: none;
+        color: var(--text-main, #f8fafc);
+        cursor: pointer;
+        transition: background 0.15s ease, color 0.15s ease;
+        touch-action: none; /* Verhindert Gesten/Scrollen auf Mobile beim Gedrückthalten */
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none; /* Verhindert iOS-Kontextmenü */
+    }
+
+    .stepper-action-btn:hover:not(:disabled) {
+        background: rgba(255, 255, 255, 0.12);
+        color: var(--accent, #3b82f6);
+    }
+
+    .stepper-action-btn:active:not(:disabled) {
+        background: var(--accent, #3b82f6);
+        color: #ffffff;
+    }
+
+    .stepper-action-btn:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+    }
+
+    .stepper-center {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        height: 100%;
+        border-left: 1px solid rgba(255, 255, 255, 0.06);
+        border-right: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .stepper-all-badge {
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: var(--accent, #3b82f6);
+        letter-spacing: 0.02em;
+    }
+
+    .stepper-num-input {
+        width: 52px;
+        background: transparent;
+        border: none;
+        outline: none;
+        color: var(--text-main, #f8fafc);
+        font-size: 0.95rem;
+        font-weight: 600;
+        text-align: right;
+        -moz-appearance: textfield;
+    }
+
+    .stepper-num-input::-webkit-outer-spin-button,
+    .stepper-num-input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+    .stepper-unit-label {
+        font-size: 0.82rem;
+        color: var(--text-muted, #94a3b8);
+        user-select: none;
+    }
+
+    .via-hint-text {
+        font-size: 0.76rem;
+        color: var(--text-muted, #94a3b8);
+        margin-top: 6px;
+        line-height: 1.35;
     }
 </style>

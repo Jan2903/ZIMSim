@@ -4,8 +4,9 @@ export class AnsagenStore {
     status = $state('none'); // 'none' | 'loaded'
     fileName = $state('');
     fileRef = $state(null); // String (Tauri path), FileSystemFileHandle, or File object
-    isTauri = $state(false);
-    maxVias = $state(4); // 0-5, 6 means 'All'
+    maxVias = $state(4); // 0-5, 6 means 'All' (jetzt 0-128, allVias steuert 'Alle')
+    allVias = $state(false);
+    effectiveMaxVias = $derived(this.allVias ? -1 : this.maxVias);
     viaSortMode = $state(1); // 1 = Priorisiert, 2 = Standard
     
     // Varianten (1 = kurz, 2 = lang)
@@ -30,8 +31,20 @@ export class AnsagenStore {
     async init() {
         try {
             const savedVias = localStorage.getItem('ansagen_max_vias');
-            if (savedVias !== null) {
-                this.maxVias = parseInt(savedVias, 10);
+            const savedAll = localStorage.getItem('ansagen_all_vias');
+
+            if (savedAll !== null) {
+                this.allVias = savedAll === 'true';
+                if (savedVias !== null) {
+                    this.maxVias = Math.max(0, Math.min(128, parseInt(savedVias, 10) || 0));
+                }
+            } else if (savedVias === '6') {
+                // Legacy: Wert 6 bedeutete früher "Alle Halte"
+                this.allVias = true;
+                this.maxVias = 4;
+            } else if (savedVias !== null) {
+                this.maxVias = Math.max(0, Math.min(128, parseInt(savedVias, 10) || 0));
+                this.allVias = false;
             }
 
             const sSort = localStorage.getItem('ansagen_via_sort_mode');
@@ -283,6 +296,25 @@ export class AnsagenStore {
     setAnschluesseIncludeDeviations(val) {
         this.anschluesseIncludeDeviations = Boolean(val);
         localStorage.setItem('ansagen_anschluesse_include_deviations', String(this.anschluesseIncludeDeviations));
+    }
+
+    /**
+     * Setzt die maximale Anzahl an Zwischenhalten in Ansagen (0-128).
+     * @param {number|string} val
+     */
+    setMaxVias(val) {
+        const num = Math.max(0, Math.min(128, parseInt(val, 10) || 0));
+        this.maxVias = num;
+        localStorage.setItem('ansagen_max_vias', String(num));
+    }
+
+    /**
+     * Schaltet den "Alle Halte"-Modus für Ansagen ein oder aus.
+     * @param {boolean} val
+     */
+    setAllVias(val) {
+        this.allVias = Boolean(val);
+        localStorage.setItem('ansagen_all_vias', String(this.allVias));
     }
 }
 

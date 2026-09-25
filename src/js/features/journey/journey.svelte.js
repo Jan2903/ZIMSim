@@ -437,7 +437,7 @@ export class Journey {
             this.autoGenerateVias();
         }
         if (!hasAudioVias && !this.ankunft) {
-            this.autoGenerateAudioVias(viaOptions.maxVias ?? 6, viaOptions.sortMode ?? 2);
+            this.autoGenerateAudioVias(viaOptions.maxVias ?? 4, viaOptions.sortMode ?? 2, viaOptions.allVias ?? false);
         }
 
         // Halt-basierte Zugnummer übernehmen
@@ -469,11 +469,12 @@ export class Journey {
     /**
      * Setzt die "audioVia" Flags der Halte automatisch.
      * Delegiert an JourneyViaService.
-     * @param {number} [maxCount=6]
+     * @param {number|string} [maxCount=4]
      * @param {number} [sortMode=2]
+     * @param {boolean} [allStops=false]
      */
-    autoGenerateAudioVias(maxCount = 6, sortMode = 2) {
-        JourneyViaService.autoGenerateAudioVias(this, maxCount, sortMode);
+    autoGenerateAudioVias(maxCount = 4, sortMode = 2, allStops = false) {
+        JourneyViaService.autoGenerateAudioVias(this, maxCount, sortMode, allStops);
     }
 
     /**

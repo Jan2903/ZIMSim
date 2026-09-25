@@ -118,7 +118,7 @@
     function autoGenVias() {
         if (!journey.ankunft) {
             journey.autoGenerateVias();
-            journey.autoGenerateAudioVias(ansagenStore.maxVias, ansagenStore.viaSortMode);
+            journey.autoGenerateAudioVias(ansagenStore.effectiveMaxVias, ansagenStore.viaSortMode, ansagenStore.allVias);
         }
         triggerUpdate();
     }

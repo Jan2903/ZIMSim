@@ -44,7 +44,7 @@ export class StationService {
                     }
                     if (!j.ankunft && j.stops && j.stops.length > 0) {
                         if (!j.stops.some(s => s.audioVia)) {
-                            j.autoGenerateAudioVias(ansagenStore.maxVias, ansagenStore.viaSortMode);
+                            j.autoGenerateAudioVias(ansagenStore.effectiveMaxVias, ansagenStore.viaSortMode, ansagenStore.allVias);
                         }
                         if (!j.stops.some(s => s.showAsVia)) {
                             j.autoGenerateVias();
