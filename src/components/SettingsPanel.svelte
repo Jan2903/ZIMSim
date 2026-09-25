@@ -2,6 +2,7 @@
 <script>
     import { journeyStore } from '../js/core/state/stores.js';
     import { irisPollingService, irisConfig } from '../js/core/services/irisPollingService.svelte.js';
+    import { uiState } from '../js/core/state/uiState.svelte.js';
     import JourneyList from './JourneyList.svelte';
     import CollapsibleSection from './CollapsibleSection.svelte';
     import ZimIcon from './ZimIcon.svelte';
@@ -17,9 +18,6 @@
      * @property {object} [modalsComp] - Referenz auf die Modals-Komponente für Dialog-Aufrufe
      */
     let { modalsComp } = $props();
-
-    // Aktiver Tab: 'fahrten' | 'station' | 'livedata' | 'audio' | 'system'
-    let activeTab = $state('fahrten');
 
     // Status für manuellen IRIS-Schnellabruf
     let isFetchingIris = $state(false);
@@ -39,7 +37,7 @@
     async function fetchIrisData() {
         if (!journeyStore.stationContext.stationId) {
             alert('Bitte zuerst eine Station auswählen!');
-            activeTab = 'station';
+            uiState.activeTab = 'station';
             return;
         }
         isFetchingIris = true;
@@ -66,10 +64,10 @@
             <button 
                 type="button" 
                 class="tab-btn" 
-                class:active={activeTab === 'fahrten'}
-                onclick={() => activeTab = 'fahrten'}
+                class:active={uiState.activeTab === 'fahrten'}
+                onclick={() => uiState.activeTab = 'fahrten'}
                 role="tab"
-                aria-selected={activeTab === 'fahrten'}
+                aria-selected={uiState.activeTab === 'fahrten'}
             >
                 <ZimIcon name="train" size={16} />
                 <span>Fahrten ({journeyStore.journeys.length})</span>
@@ -79,10 +77,10 @@
             <button 
                 type="button" 
                 class="tab-btn" 
-                class:active={activeTab === 'station'}
-                onclick={() => activeTab = 'station'}
+                class:active={uiState.activeTab === 'station'}
+                onclick={() => uiState.activeTab = 'station'}
                 role="tab"
-                aria-selected={activeTab === 'station'}
+                aria-selected={uiState.activeTab === 'station'}
             >
                 <ZimIcon name="station" size={16} />
                 <span>Bahnhof & Zeit</span>
@@ -92,10 +90,10 @@
             <button 
                 type="button" 
                 class="tab-btn" 
-                class:active={activeTab === 'livedata'}
-                onclick={() => activeTab = 'livedata'}
+                class:active={uiState.activeTab === 'livedata'}
+                onclick={() => uiState.activeTab = 'livedata'}
                 role="tab"
-                aria-selected={activeTab === 'livedata'}
+                aria-selected={uiState.activeTab === 'livedata'}
             >
                 <ZimIcon name="api" size={16} />
                 <span>Live-Daten</span>
@@ -105,10 +103,10 @@
             <button 
                 type="button" 
                 class="tab-btn" 
-                class:active={activeTab === 'audio'}
-                onclick={() => activeTab = 'audio'}
+                class:active={uiState.activeTab === 'audio'}
+                onclick={() => uiState.activeTab = 'audio'}
                 role="tab"
-                aria-selected={activeTab === 'audio'}
+                aria-selected={uiState.activeTab === 'audio'}
             >
                 <ZimIcon name="volume_high" size={16} />
                 <span>Ansagen</span>
@@ -118,10 +116,10 @@
             <button 
                 type="button" 
                 class="tab-btn" 
-                class:active={activeTab === 'system'}
-                onclick={() => activeTab = 'system'}
+                class:active={uiState.activeTab === 'system'}
+                onclick={() => uiState.activeTab = 'system'}
                 role="tab"
-                aria-selected={activeTab === 'system'}
+                aria-selected={uiState.activeTab === 'system'}
             >
                 <ZimIcon name="settings" size={16} />
                 <span>Anzeige & System</span>
@@ -132,7 +130,7 @@
     <!-- Tab-Inhalte -->
     <div class="dashboard-content">
         <!-- Tab 1: Fahrten (Züge) -->
-        {#if activeTab === 'fahrten'}
+        {#if uiState.activeTab === 'fahrten'}
             <div class="tab-pane">
                 {#snippet journeyActions()}
                     <button 
@@ -171,25 +169,25 @@
             </div>
 
         <!-- Tab 2: Bahnhof & Zeit -->
-        {:else if activeTab === 'station'}
+        {:else if uiState.activeTab === 'station'}
             <div class="tab-pane">
                 <SettingsStationTime />
             </div>
 
         <!-- Tab 3: Live-Daten (IRIS & DB Navigator) -->
-        {:else if activeTab === 'livedata'}
+        {:else if uiState.activeTab === 'livedata'}
             <div class="tab-pane">
                 <SettingsLiveData {modalsComp} />
             </div>
 
         <!-- Tab 4: Ansagen & Audio -->
-        {:else if activeTab === 'audio'}
+        {:else if uiState.activeTab === 'audio'}
             <div class="tab-pane">
                 <SettingsAudio />
             </div>
 
         <!-- Tab 5: Anzeige & System -->
-        {:else if activeTab === 'system'}
+        {:else if uiState.activeTab === 'system'}
             <div class="tab-pane">
                 <SettingsDisplaySystem {modalsComp} />
             </div>

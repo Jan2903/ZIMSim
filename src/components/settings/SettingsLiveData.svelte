@@ -49,9 +49,16 @@
 <style>
     .settings-tab-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-        gap: 20px;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 16px;
         align-items: start;
+    }
+
+    @media (max-width: 600px) {
+        .settings-tab-grid {
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
     }
 
     .settings-card {

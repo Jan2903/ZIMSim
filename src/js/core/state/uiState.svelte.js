@@ -1,5 +1,6 @@
 // js/models/uiState.svelte.js
 export const uiState = $state({
+    activeTab: 'fahrten',
     expandedJourneyId: null,
     expandedGroups: [],
     manualTracks: [],

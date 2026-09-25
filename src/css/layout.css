@@ -11,14 +11,14 @@
     display: flex; 
     justify-content: space-between; 
     align-items: center; 
-    padding: 15px 40px; 
+    padding: 8px 24px; 
     background-color: var(--bg-card); 
     border-bottom: 1px solid var(--border); 
-    margin-bottom: 20px; 
+    margin-bottom: 0; 
 }
-.page-header h2 { 
+.page-header h1, .page-header h2 { 
     margin: 0; 
-    font-size: 1.8rem; 
+    font-size: 1.25rem; 
     font-weight: 600; 
     color: var(--text-main); 
 }
@@ -111,25 +111,15 @@
         border-radius: 8px; 
     }
     .page-header {
-        padding: 8px 15px;
+        padding: 6px 12px;
         flex-direction: row;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 10px;
+        margin-bottom: 0;
     }
-    .page-header h2 {
-        font-size: 1.25rem;
+    .page-header h1, .page-header h2 {
+        font-size: 1.1rem;
         text-align: left;
         margin: 0;
-    }
-    .header-actions #download-btn {
-        padding: 8px 12px;
-        min-height: 44px;
-        min-width: 44px;
-        border-radius: var(--radius-md, 6px);
-        justify-content: center;
-    }
-    .header-actions #download-btn span {
-        display: none;
     }
 }

@@ -2,31 +2,21 @@
 <script>
     import ZimIcon from './ZimIcon.svelte';
     import { displayConfigStore } from '../js/displays/core/displayConfigStore.svelte.js';
-    import { MONITOR_PROFILES, LAYOUT_TYPES } from '../js/displays/core/displayLayoutService.js';
+    import { LAYOUT_TYPES } from '../js/displays/core/displayLayoutService.js';
     import { trainDisplay } from '../js/core/state/stores.js';
+    import { uiState } from '../js/core/state/uiState.svelte.js';
 
     /**
      * @typedef {Object} Props
      * @property {string} displayScaleMode - 'fit' oder 'scroll'
      * @property {string|null} targetScreen - Zielmonitor für Pop-Outs
-     * @property {() => void} onToggleBezel - Schaltet das Gehäuse-Overlay um
-     * @property {() => void} onScreenshot - Löst den Screenshot-Download aus
      * @property {() => void} onToggleScaleMode - Wechselt zwischen Fit und 1:1 Scroll
-     * @property {() => void} onToggleFullscreen - Schaltet Vollbildmodus um
-     * @property {(screenIndex: number|string, use4k?: boolean) => void} onOpenScreen - Öffnet einen Popout-Monitor
      */
     let {
         displayScaleMode = 'fit',
         targetScreen = null,
-        onToggleBezel,
-        onScreenshot,
-        onToggleScaleMode,
-        onToggleFullscreen,
-        onOpenScreen
+        onToggleScaleMode
     } = $props();
-
-    // Zustand für das Monitore-Dropdown-Menü
-    let monitorMenuOpen = $state(false);
 
     // Aktiver Wagenreihungs-Modus ('rotierend' | 'wagennummern' | 'ausstattung' | 'klasse')
     let activeFeature = $state('wagennummern');
@@ -43,17 +33,6 @@
     }
 
     /**
-     * Behandelt den Wechsel des Hardware-Monitor-Profils.
-     * @param {string} monitorId
-     * @returns {void}
-     */
-    function handleMonitorChange(monitorId) {
-        displayConfigStore.setMonitorId(monitorId);
-        trainDisplay.updateAll();
-        window.dispatchEvent(new Event('resize'));
-    }
-
-    /**
      * Schaltet den Wagenreihungs-Anzeigemodus um.
      * @param {string} featureVal
      * @returns {void}
@@ -64,23 +43,23 @@
     }
 
     /**
-     * Schließt Dropdowns beim Klick außerhalb.
-     * @param {MouseEvent} e
+     * Öffnet den Tab 'Anzeige & System' in den Einstellungen.
+     * @returns {void}
      */
-    function onWindowClick(e) {
-        if (monitorMenuOpen && !e.target.closest('.display-toolbar-dropdown-container')) {
-            monitorMenuOpen = false;
+    function openDisplaySettings() {
+        uiState.activeTab = 'system';
+        const el = document.querySelector('.settings-container');
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
     }
 </script>
 
-<svelte:window onclick={onWindowClick} />
-
 <div class="display-toolbar-wrapper">
     <div class="display-toolbar">
-        <!-- Linker Bereich: Fachliche Direktsteuerung (Board, Hardware, Wagenreihung) -->
+        <!-- Linker Bereich: Tafel-Auswahl & Wagenreihungs-Modus -->
         <div class="display-toolbar-direct-controls">
-            <!-- 1. DB-Board Schnellwahl -->
+            <!-- DB-Board Schnellwahl -->
             <div class="toolbar-control-group" title="DB-Anzeigetyp wählen">
                 <span class="toolbar-label">
                     <ZimIcon name="board" size={14} />
@@ -98,31 +77,15 @@
                 </select>
             </div>
 
-            <!-- 2. Hardware-Monitor Profil -->
-            <div class="toolbar-control-group" title="Monitor-Hardwareprofil wählen">
-                <span class="toolbar-label">
-                    <ZimIcon name="monitors" size={14} />
-                    <span class="label-text">Hardware:</span>
-                </span>
-                <select 
-                    class="toolbar-select monitor-select" 
-                    value={displayConfigStore.monitorId}
-                    onchange={(e) => handleMonitorChange(e.currentTarget.value)}
-                    aria-label="Hardware-Monitorprofil auswählen"
-                >
-                    {#each MONITOR_PROFILES as prof}
-                        <option value={prof.id}>{prof.name}</option>
-                    {/each}
-                </select>
-            </div>
-
-            <!-- 3. Wagenreihungs-Modus (auf allen Geräten umschaltbar: Desktop als Buttons, Mobil/Tablet als Dropdown) -->
+            <!-- Wagenreihungs-Modus (nur beim Zuganzeiger aktiv) -->
             {#if displayConfigStore.layoutType === 'zuganzeiger'}
                 <div class="toolbar-control-group feature-control-group" title="Wagenreihungs-Anzeige wählen">
                     <span class="toolbar-label">
                         <ZimIcon name="train_fast" size={14} />
                         <span class="label-text">WR:</span>
                     </span>
+                    
+                    <!-- Desktop: Segment-Buttons -->
                     <div class="segment-switch-compact feature-segment-desktop">
                         <button 
                             type="button" 
@@ -162,6 +125,7 @@
                         </button>
                     </div>
 
+                    <!-- Mobile: Kompaktes Dropdown -->
                     <div class="feature-select-mobile">
                         <select 
                             class="toolbar-select wr-select" 
@@ -179,37 +143,12 @@
             {/if}
         </div>
 
-        <!-- Rechter Bereich: Display- & Fenster-Aktionen -->
+        <!-- Rechter Bereich: Display-Ansicht & Schnelleinstieg -->
         <div class="display-toolbar-actions">
             <!-- Status-Tag bei Pop-Out Monitor -->
             {#if targetScreen}
                 <span class="target-screen-tag">Monitor {targetScreen}</span>
             {/if}
-
-            <!-- Gehäuse-Toggle (Rahmen & Steg) -->
-            <button 
-                type="button" 
-                class="display-toolbar-btn"
-                class:active-btn={displayConfigStore.showBezel}
-                onclick={onToggleBezel}
-                title={displayConfigStore.showBezel ? 'Gehäuse-Simulation ausblenden (Reiner Canvas)' : 'Gehäuse-Simulation einblenden'}
-                aria-label="Gehäuse umschalten"
-            >
-                <ZimIcon name="eye" size={14} />
-                <span>Gehäuse: {displayConfigStore.showBezel ? 'An' : 'Aus'}</span>
-            </button>
-
-            <!-- Screenshot Download -->
-            <button 
-                type="button" 
-                class="display-toolbar-btn"
-                onclick={onScreenshot}
-                title="Screenshot des Monitors herunterladen"
-                aria-label="Screenshot herunterladen"
-            >
-                <ZimIcon name="camera" size={14} />
-                <span>Screenshot</span>
-            </button>
 
             <!-- Fit / Scroll Toggle -->
             <button 
@@ -223,58 +162,17 @@
                 <span>{displayScaleMode === 'fit' ? 'Fit' : '1:1'}</span>
             </button>
 
-            <!-- Vollbild-Modus -->
+            <!-- Schnelleinstieg: Hardware & Gehäuse in Einstellungen anpassen -->
             <button 
                 type="button" 
-                class="display-toolbar-btn btn-fullscreen"
-                onclick={onToggleFullscreen}
-                title="In den Vollbildmodus wechseln (F11 / Esc)"
-                aria-label="Vollbildmodus"
+                class="display-toolbar-btn btn-settings-shortcut"
+                onclick={openDisplaySettings}
+                title="Hardware-Profil & Gehäuse-Optionen in den Einstellungen anpassen"
+                aria-label="Hardware und Gehäuse konfigurieren"
             >
-                <ZimIcon name="fullscreen" size={14} />
-                <span>Vollbild</span>
+                <ZimIcon name="settings" size={14} />
+                <span class="shortcut-text">Hardware...</span>
             </button>
-
-            <!-- Multi-Monitor Pop-Out Dropdown (nur Desktop) -->
-            <div class="display-toolbar-dropdown-container desktop-only">
-                <button 
-                    type="button" 
-                    class="display-toolbar-btn"
-                    onclick={() => monitorMenuOpen = !monitorMenuOpen}
-                    title="Monitore in separaten Vollbild-/Kiosk-Fenstern öffnen"
-                    aria-expanded={monitorMenuOpen}
-                >
-                    <ZimIcon name="monitors" size={14} />
-                    <span>Monitore ▾</span>
-                </button>
-                {#if monitorMenuOpen}
-                    <div class="display-toolbar-dropdown-menu" role="menu">
-                        <div class="dropdown-header">Full-HD (1080p)</div>
-                        <button type="button" class="dropdown-item" onclick={() => { monitorMenuOpen = false; onOpenScreen(1, false); }}>
-                            <ZimIcon name="popout" size={14} />
-                            <span>Monitor 1 (Hauptmonitor)</span>
-                        </button>
-                        <button type="button" class="dropdown-item" onclick={() => { monitorMenuOpen = false; onOpenScreen(2, false); }}>
-                            <ZimIcon name="popout" size={14} />
-                            <span>Monitor 2 (Nebenmonitore)</span>
-                        </button>
-                        <button type="button" class="dropdown-item" onclick={() => { monitorMenuOpen = false; onOpenScreen(3, false); }}>
-                            <ZimIcon name="popout" size={14} />
-                            <span>Monitor 3 (Zusatzanzeiger)</span>
-                        </button>
-                        <div class="dropdown-divider"></div>
-                        <div class="dropdown-header">4K Ultra-HD (2160p)</div>
-                        <button type="button" class="dropdown-item" onclick={() => { monitorMenuOpen = false; onOpenScreen(1, true); }}>
-                            <ZimIcon name="popout" size={14} />
-                            <span>Monitor 1 (4K)</span>
-                        </button>
-                        <button type="button" class="dropdown-item" onclick={() => { monitorMenuOpen = false; onOpenScreen(2, true); }}>
-                            <ZimIcon name="popout" size={14} />
-                            <span>Monitor 2 (4K)</span>
-                        </button>
-                    </div>
-                {/if}
-            </div>
         </div>
     </div>
 </div>
@@ -292,18 +190,19 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        flex-wrap: wrap;
         gap: 10px;
         max-width: 1600px;
         margin: 0 auto;
         padding: 6px 16px;
+        box-sizing: border-box;
     }
 
     .display-toolbar-direct-controls {
         display: flex;
         align-items: center;
         gap: 12px;
-        flex-wrap: wrap;
+        flex: 1;
+        min-width: 0;
     }
 
     .toolbar-control-group {
@@ -320,6 +219,7 @@
         color: var(--text-muted, #94a3b8);
         font-weight: 600;
         user-select: none;
+        white-space: nowrap;
     }
 
     .toolbar-select {
@@ -359,6 +259,7 @@
         border-radius: 3px;
         cursor: pointer;
         transition: all 0.15s ease;
+        white-space: nowrap;
     }
 
     .segment-compact-btn:hover {
@@ -375,8 +276,8 @@
     .display-toolbar-actions {
         display: flex;
         align-items: center;
-        gap: 6px;
-        flex-wrap: wrap;
+        gap: 8px;
+        flex-shrink: 0;
     }
 
     .display-toolbar-btn {
@@ -386,7 +287,7 @@
         background: var(--bg-input, #1e293b);
         color: var(--text-muted, #94a3b8);
         border: 1px solid var(--border, #334155);
-        padding: 5px 9px;
+        padding: 5px 10px;
         border-radius: var(--radius-sm, 4px);
         font-size: 0.8rem;
         font-weight: 500;
@@ -402,12 +303,6 @@
         border-color: rgba(255, 255, 255, 0.2);
     }
 
-    .display-toolbar-btn.active-btn {
-        background: rgba(59, 130, 246, 0.15);
-        border-color: var(--accent, #3b82f6);
-        color: var(--accent, #3b82f6);
-    }
-
     .target-screen-tag {
         font-size: 0.75rem;
         font-weight: 700;
@@ -415,70 +310,13 @@
         color: #fff;
         padding: 2px 6px;
         border-radius: 4px;
-        margin-right: 4px;
-    }
-
-    .display-toolbar-dropdown-container {
-        position: relative;
-    }
-
-    .display-toolbar-dropdown-menu {
-        position: absolute;
-        top: calc(100% + 4px);
-        right: 0;
-        background: var(--bg-card, #1e293b);
-        border: 1px solid var(--border, #334155);
-        border-radius: 6px;
-        padding: 6px;
-        min-width: 220px;
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
-        z-index: 100;
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-    }
-
-    .dropdown-header {
-        font-size: 0.7rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        color: var(--text-muted, #94a3b8);
-        font-weight: 700;
-        padding: 4px 8px;
-    }
-
-    .dropdown-divider {
-        height: 1px;
-        background: var(--border, #334155);
-        margin: 4px 0;
-    }
-
-    .dropdown-item {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        background: transparent;
-        border: none;
-        color: var(--text-main, #f8fafc);
-        padding: 6px 8px;
-        font-size: 0.82rem;
-        border-radius: 4px;
-        cursor: pointer;
-        text-align: left;
-        width: 100%;
-        transition: background 0.15s ease;
-    }
-
-    .dropdown-item:hover {
-        background: rgba(255, 255, 255, 0.08);
-        color: #fff;
     }
 
     .feature-select-mobile {
         display: none;
     }
 
-    @media (max-width: 1024px) {
+    @media (max-width: 900px) {
         .feature-segment-desktop {
             display: none !important;
         }
@@ -487,29 +325,43 @@
         }
     }
 
-    @media (max-width: 768px) {
-        .desktop-only {
-            display: none !important;
+    @media (max-width: 640px) {
+        .display-toolbar {
+            padding: 5px 10px;
+            gap: 6px;
+        }
+        .display-toolbar-direct-controls {
+            gap: 6px;
         }
         .toolbar-select {
-            max-width: 130px;
+            max-width: 140px;
             font-size: 0.8rem;
             padding: 4px 6px;
         }
         .wr-select {
-            max-width: 115px;
+            max-width: 110px;
         }
         .label-text {
             display: none;
         }
+        .shortcut-text {
+            display: none;
+        }
         .display-toolbar-btn {
-            min-height: 36px;
-            min-width: 36px;
-            padding: 6px 8px;
+            min-height: 34px;
+            padding: 5px 8px;
             justify-content: center;
         }
-        .display-toolbar-btn span {
-            display: none;
+    }
+
+    @media (max-width: 400px) {
+        .toolbar-select {
+            max-width: 115px;
+            font-size: 0.76rem;
+        }
+        .wr-select {
+            max-width: 95px;
+            font-size: 0.76rem;
         }
     }
 </style>

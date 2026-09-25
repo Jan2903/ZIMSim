@@ -361,7 +361,12 @@
 </script>
 
 {#if !isKiosk}
-    <Header onScreenshot={downloadScreenshot} />
+    <Header 
+        onScreenshot={downloadScreenshot} 
+        onToggleFullscreen={toggleFullscreen}
+        {isFullscreen}
+        onOpenScreen={openScreen}
+    />
 {/if}
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -428,11 +433,7 @@
 <DisplayToolbar 
     {displayScaleMode}
     {targetScreen}
-    onToggleBezel={toggleBezel}
-    onScreenshot={downloadScreenshot}
     onToggleScaleMode={toggleScaleMode}
-    onToggleFullscreen={toggleFullscreen}
-    onOpenScreen={openScreen}
 />
 
 <SettingsPanel {modalsComp} />
