@@ -171,16 +171,16 @@ class ZimSimBridgeHandler(BaseHTTPRequestHandler):
             # Browser-Header für bahn.de Web API
             u1 = str(uuid.uuid4())
             u2 = str(uuid.uuid4())
-            headers = {
+            spoofed_headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
                 'Accept': accept_type or 'application/json',
                 'Accept-Language': 'de-DE,de;q=0.9',
                 'x-correlation-id': f'{u1}_{u2}'
             }
             if req_content_type:
-                headers['Content-Type'] = req_content_type
+                spoofed_headers['Content-Type'] = req_content_type
         else:
-            headers = get_spoofed_headers(req_content_type, accept_type)
+            spoofed_headers = get_spoofed_headers(req_content_type, accept_type)
         enforce_time_lock()
 
         start_time = time.time()
