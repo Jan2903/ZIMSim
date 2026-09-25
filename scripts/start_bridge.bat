@@ -1,13 +1,16 @@
 @echo off
+chcp 65001 >nul
 setlocal
 title ZIMSim DB Navigator Bridge
 
 echo ========================================================
 echo   ZIMSim DB Navigator Bridge (Local Proxy)
-echo   Fuer GitHub Pages und Web-Browser
+echo   Für GitHub Pages und Web-Browser
 echo ========================================================
 echo.
 
+set "PYTHONIOENCODING=utf-8"
+set "PYTHONUTF8=1"
 set "PY_CMD="
 
 where python >nul 2>nul
@@ -23,7 +26,7 @@ if %errorlevel% equ 0 (
 if not defined PY_CMD (
     echo [-] Fehler: Python wurde auf diesem System nicht gefunden.
     echo     Bitte installieren Sie Python: https://www.python.org
-    echo     oder fuegen Sie python.exe zum System-PATH hinzu.
+    echo     oder fügen Sie python.exe zum System-PATH hinzu.
     echo.
     pause
     exit /b 1

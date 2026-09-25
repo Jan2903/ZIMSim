@@ -3,13 +3,13 @@
 """
 ZIMSim DB Navigator Bridge
 ==========================
-Lokaler, leichtgewichtiger CORS- & Private-Network-Access (PNA) Proxy fuer die
+Lokaler, leichtgewichtiger CORS- & Private-Network-Access (PNA) Proxy für die
 DB Navigator / bahn.de Vendo APIs.
 
-Ermoeglicht die Nutzung von Live-Wagenreihungen und DB-Navigator-Fahrplandaten
+Ermöglicht die Nutzung von Live-Wagenreihungen und DB-Navigator-Fahrplandaten
 auf GitHub Pages (https://jan2903.github.io/ZIMSim) ohne Node.js/Vite/Tauri.
 
-Zero Dependencies: Nutzt ausschliesslich die Python Standardbibliothek!
+Zero Dependencies: Nutzt ausschließlich die Python-Standardbibliothek!
 """
 
 import sys
@@ -23,11 +23,19 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
+# Windows UTF-8 Terminal-Unterstützung erzwingen
+if sys.platform == 'win32':
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
+    except AttributeError:
+        pass
+
 PORT = 8765
 HOST = '127.0.0.1'
 REMOTE_BASE_URL = 'https://app.services-bahn.de'
 
-# Device-Profile fuer konsistentes Spoofing innerhalb einer Session
+# Device-Profile für konsistentes Spoofing innerhalb einer Session
 DEVICE_MODELS = [
     'Google Pixel 6', 'Google Pixel 7 Pro', 'Google Pixel 8',
     'Samsung Galaxy S21', 'Samsung Galaxy S22', 'Samsung Galaxy S23', 'OnePlus 9'
@@ -80,22 +88,22 @@ def get_spoofed_headers(req_content_type=None, accept_type=None):
     return headers
 
 class ZimSimBridgeHandler(BaseHTTPRequestHandler):
-    """HTTP-Handler mit CORS- und Private-Network-Access-Unterstuetzung."""
+    """HTTP-Handler mit CORS- und Private-Network-Access-Unterstützung."""
 
     def _send_cors_headers(self, status=200):
-        """Setzt CORS- und PNA-Header fuer den Browser."""
+        """Setzt CORS- und PNA-Header für den Browser."""
         self.send_response(status)
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
         
-        # Dynamisch angeforderte Header spiegeln oder vollstaendige Whitelist senden
+        # Dynamisch angeforderte Header spiegeln oder vollständige Whitelist senden
         req_headers = self.headers.get('Access-Control-Request-Headers') if self.headers else None
         if req_headers:
             self.send_header('Access-Control-Allow-Headers', req_headers)
         else:
             self.send_header('Access-Control-Allow-Headers', 'Content-Type, Accept, User-Agent, user-agent, X-App-Version, X-Device-Os-Name, X-Device-Os-Version, X-Device-Model, X-Correlation-ID, X-INSTANA-ANDROID, Accept-Language, X-Requested-With, Authorization, *')
 
-        # Wichtig fuer Chromium & Firefox Private Network Access (PNA) Preflights von HTTPS-Websites
+        # Wichtig für Chromium & Firefox Private Network Access (PNA) Preflights von HTTPS-Websites
         self.send_header('Access-Control-Allow-Private-Network', 'true')
         self.send_header('Access-Control-Max-Age', '86400')
 
@@ -192,7 +200,7 @@ class ZimSimBridgeHandler(BaseHTTPRequestHandler):
             self.wfile.write(err_json.encode('utf-8'))
 
     def log_message(self, format, *args):
-        # Standard-Logging von BaseHTTPRequestHandler unterdruecken fuer saubere Konsolenausgabe
+        # Standard-Logging von BaseHTTPRequestHandler unterdrücken für saubere Konsolenausgabe
         return
 
 def main():
@@ -202,13 +210,13 @@ def main():
     print("=" * 60)
     print("   ZIMSim DB Navigator Bridge (Local Proxy)")
     print("=" * 60)
-    print(f" * Server laeuft auf : http://{HOST}:{PORT}")
+    print(f" * Server läuft auf  : http://{HOST}:{PORT}")
     print(f" * Health-Check URL  : http://{HOST}:{PORT}/health")
     print(f" * Device-Profil     : {SELECTED_DEVICE} (Android {SELECTED_OS})")
     print(f" * Time-Lock         : 1.0s - 1.8s Mindestabstand (Akamai-Schutz)")
     print("=" * 60)
-    print("Bereit fuer Anfragen aus ZIMSim (GitHub Pages oder lokal).")
-    print("Druecke Strg + C zum Beenden.\n")
+    print("Bereit für Anfragen aus ZIMSim (GitHub Pages oder lokal).")
+    print("Drücke Strg + C zum Beenden.\n")
 
     try:
         httpd.serve_forever()
