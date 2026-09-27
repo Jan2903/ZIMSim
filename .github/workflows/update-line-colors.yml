@@ -1,0 +1,31 @@
+name: Update Line Colors from Traewelling
+
+on:
+  schedule:
+    # Wöchentlich jeden Montag um 03:00 Uhr UTC
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-colors:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Fetch and Process Traewelling Line Colors
+        run: node scripts/process-line-colors.js
+
+      - name: Commit and Push if changed
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(colors): auto-update line colors from traewelling"
+          file_pattern: "public/data/line-colors.json"

@@ -240,6 +240,7 @@ function drawTrainRow(ctx, train, x, y, width, height, isAlt, isPortrait = false
 
     const font = FONTS.bold(isPortrait ? 24 : 34);
     const badgeStyle = lineColorService.resolveStyle(displayName, {
+        operator: train.operator,
         defaultBgColor: '#1e293b',
         defaultTextColor: COLORS.WHITE
     });

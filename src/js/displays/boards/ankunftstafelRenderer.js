@@ -209,6 +209,7 @@ function drawAnkunftRow(ctx, train, x, y, width, height, isAlt, isPortrait) {
 
     const font = FONTS.bold(isPortrait ? 26 : 28);
     const badgeStyle = lineColorService.resolveStyle(trainName, {
+        operator: train.operator,
         defaultBgColor: '#1e293b',
         defaultTextColor: COLORS.WHITE
     });

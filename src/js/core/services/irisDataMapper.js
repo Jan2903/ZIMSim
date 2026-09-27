@@ -88,7 +88,7 @@ export class IrisDataMapper {
             journeyId: raw.id,
             name: formattedName,
             produktGattung: raw.class,
-            operator: raw.operator,
+            operator: raw.operator || raw.type || '',
             isReplacementTrain: raw.tripType === 'e',
             destination: destName,
             destinationLang: destLang,

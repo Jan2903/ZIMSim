@@ -284,7 +284,7 @@ export class IrisApiService {
 
     static _parsePlan(xml, journeys = new Map()) {
         const sNodes = xml.querySelectorAll('s');
-        const planAttrs = ['pt', 'pp', 'pde', 'ppth', 'wings', 'l'];
+        const planAttrs = ['pt', 'pp', 'pde', 'ppth', 'wings', 'l', 'fb'];
 
         for (const s of sNodes) {
             const id = s.getAttribute('id');

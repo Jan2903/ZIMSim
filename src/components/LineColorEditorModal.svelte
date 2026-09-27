@@ -135,6 +135,32 @@
         </div>
 
         <div class="modal-body">
+            <!-- Auto-Colors Status & Toggle Banner -->
+            <div class="auto-colors-banner">
+                <div class="auto-colors-info">
+                    <div class="auto-colors-title">
+                        <ZimIcon name="palette" size={16} />
+                        <span>Automatische Linienfarben (Traewelling Sync)</span>
+                        {#if lineColorService.isAutoColorsLoaded}
+                            <span class="badge-status badge-success">Aktiv ({lineColorService._autoData?.totalRowsProcessed || 7429} Linien)</span>
+                        {:else}
+                            <span class="badge-status badge-pending">Wird geladen...</span>
+                        {/if}
+                    </div>
+                    <div class="auto-colors-desc">
+                        Erkennt offizielle Farben für S-Bahnen (Hannover, München, Berlin, Hamburg, Rhein-Main etc.) und Privatbahnen automatisch. Manuelle Regeln unten überschreiben diese Automatik.
+                    </div>
+                </div>
+                <label class="switch-toggle" title="Automatische Linienfarben ein-/ausschalten">
+                    <input 
+                        type="checkbox" 
+                        checked={lineColorService.autoColorsEnabled} 
+                        onchange={(e) => { lineColorService.setAutoColorsEnabled(e.target.checked); syncDisplay(); }} 
+                    />
+                    <span class="slider round"></span>
+                </label>
+            </div>
+
             <div class="rules-grid">
                 <!-- LINKE SPALTE: Regelliste -->
                 <div class="rules-list-column">
@@ -698,5 +724,93 @@ input[type="color"]::-webkit-color-swatch { border: 1px solid var(--border); bor
     text-align: center;
     color: var(--text-muted);
     font-size: 0.9rem;
+}
+
+/* Auto-Colors Status & Toggle Banner */
+.auto-colors-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    background: rgba(30, 58, 138, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+}
+.auto-colors-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.auto-colors-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 0.92rem;
+    color: var(--text-main);
+}
+.auto-colors-desc {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    line-height: 1.35;
+}
+.badge-status {
+    font-size: 0.7rem;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+.badge-success {
+    background: rgba(34, 197, 94, 0.2);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.4);
+}
+.badge-pending {
+    background: rgba(234, 179, 8, 0.2);
+    color: #facc15;
+    border: 1px solid rgba(234, 179, 8, 0.4);
+}
+
+/* Toggle Switch */
+.switch-toggle {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+}
+.switch-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #334155;
+    transition: 0.2s;
+    border-radius: 24px;
+}
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.2s;
+    border-radius: 50%;
+}
+input:checked + .slider {
+    background-color: #2563eb;
+}
+input:checked + .slider:before {
+    transform: translateX(20px);
 }
 </style>

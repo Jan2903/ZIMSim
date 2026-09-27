@@ -116,7 +116,7 @@ function drawZoomRow(ctx, train, x, y, width, height, renderCtx = {}, screenOpti
 
     // 3. Spalte 1: Badge oben, Zeit & Verspätung unten
     const col1X = x + 40;
-    drawZoomBadge(ctx, train.displayTitle, col1X, upperY, isAusfall);
+    drawZoomBadge(ctx, train.displayTitle, col1X, upperY, isAusfall, train.operator);
     drawZoomTimeAndDelay(ctx, train.scheduledTime, train.expectedTime, col1X, lowerY, isAusfall);
 
     // 4. Spalte 3: Gleis & Qualitätsmerkmale (Rechts)
@@ -162,7 +162,7 @@ function drawZoomRow(ctx, train, x, y, width, height, renderCtx = {}, screenOpti
  * @param {number} y - Y-Koordinate
  * @param {boolean} isAusfall - Ob die Zeile vollflächig invertiert ist
  */
-function drawZoomBadge(ctx, displayName, x, y, isAusfall) {
+function drawZoomBadge(ctx, displayName, x, y, isAusfall, operator = '') {
     const font = FONTS.bold(40);
     ctx.font = font;
     const textWidth = ctx.measureText(displayName).width;
@@ -172,6 +172,7 @@ function drawZoomBadge(ctx, displayName, x, y, isAusfall) {
     const badgeY = y - 38;
 
     const style = lineColorService.resolveStyle(displayName, {
+        operator,
         isAusfall,
         defaultBgColor: '#1f3d47',
         defaultTextColor: COLORS.WHITE

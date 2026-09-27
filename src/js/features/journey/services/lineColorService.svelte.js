@@ -1,5 +1,6 @@
 // js/features/journey/services/lineColorService.svelte.js
 import { COLORS } from '../../../displays/core/constants.js';
+import { journeyStore, trainDisplay } from '../../../core/state/stores.js';
 
 /**
  * @typedef {Object} LineBadgeRule
@@ -105,6 +106,7 @@ export const DEFAULT_LINE_RULES = [
 ];
 
 const STORAGE_KEY = 'zimsim_line_badge_rules';
+const AUTO_COLORS_ENABLED_KEY = 'zimsim_auto_line_colors_enabled';
 
 /**
  * Zentraler reaktiver Svelte 5 Service für Linienfarben und Badge-Formen.
@@ -112,6 +114,15 @@ const STORAGE_KEY = 'zimsim_line_badge_rules';
 class LineColorService {
     /** @type {LineBadgeRule[]} */
     rules = $state([]);
+
+    /** @type {boolean} Ob automatische Linienfarben aus der Traewelling-Datenbank aktiv sind */
+    autoColorsEnabled = $state(true);
+
+    /** @type {boolean} Ob die Traewelling-Datenbank erfolgreich geladen wurde */
+    isAutoColorsLoaded = $state(false);
+
+    /** @type {object|null} Rohdaten aus line-colors.json */
+    _autoData = null;
 
     /** @type {Map<string, object>} Interner Cache für aufgelöste Styles (60 FPS Performance) */
     _resolveCache = new Map();
@@ -121,6 +132,61 @@ class LineColorService {
 
     constructor() {
         this.loadRules();
+        this.loadAutoColorsSettings();
+        this.loadAutoColors();
+    }
+
+    /**
+     * Lädt die Einstellung für automatische Linienfarben aus dem LocalStorage.
+     */
+    loadAutoColorsSettings() {
+        try {
+            const raw = localStorage.getItem(AUTO_COLORS_ENABLED_KEY);
+            if (raw !== null) {
+                this.autoColorsEnabled = raw === 'true';
+            }
+        } catch (e) {
+            console.warn('[LineColorService] Fehler beim Laden der Auto-Farben-Einstellung:', e);
+        }
+    }
+
+    /**
+     * Aktiviert oder deaktiviert automatische Linienfarben.
+     * @param {boolean} enabled
+     */
+    setAutoColorsEnabled(enabled) {
+        this.autoColorsEnabled = Boolean(enabled);
+        try {
+            localStorage.setItem(AUTO_COLORS_ENABLED_KEY, String(this.autoColorsEnabled));
+        } catch (e) {
+            console.warn('[LineColorService] Fehler beim Speichern der Auto-Farben-Einstellung:', e);
+        }
+        this.clearCache();
+        if (typeof trainDisplay !== 'undefined' && trainDisplay?.updateAll) {
+            trainDisplay.updateAll();
+        }
+    }
+
+    /**
+     * Lädt die aufbereiteten Linienfarben aus public/data/line-colors.json (Non-Blocking).
+     */
+    async loadAutoColors() {
+        if (this.isAutoColorsLoaded) return;
+        try {
+            const baseUrl = import.meta.env.BASE_URL || './';
+            const url = `${baseUrl.endsWith('/') ? baseUrl : baseUrl + '/'}data/line-colors.json`;
+            const res = await fetch(url);
+            if (res.ok) {
+                this._autoData = await res.json();
+                this.isAutoColorsLoaded = true;
+                this.clearCache();
+                if (typeof trainDisplay !== 'undefined' && trainDisplay?.updateAll) {
+                    trainDisplay.updateAll();
+                }
+            }
+        } catch (e) {
+            console.warn('[LineColorService] Konnte line-colors.json nicht laden:', e);
+        }
     }
 
     /**
@@ -267,97 +333,284 @@ class LineColorService {
      *   rule: LineBadgeRule | null
      * }}
      */
+    /**
+     * Normalisiert eine Linienbezeichnung in Varianten mit und ohne Leerzeichen (z.B. "S 5" und "S5").
+     * @private
+     * @param {string} line
+     * @returns {string[]}
+     */
+    _normalizeLineVariants(line) {
+        const cleaned = (line || '').trim();
+        if (!cleaned) return [];
+        const variants = [cleaned];
+        const m1 = cleaned.match(/^([A-Za-z]+)(\d+.*)$/);
+        if (m1) {
+            const spaced = `${m1[1]} ${m1[2]}`;
+            if (!variants.includes(spaced)) variants.push(spaced);
+        }
+        const m2 = cleaned.match(/^([A-Za-z]+)\s+(\d+.*)$/);
+        if (m2) {
+            const unspaced = `${m2[1]}${m2[2]}`;
+            if (!variants.includes(unspaced)) variants.push(unspaced);
+        }
+        return variants;
+    }
+
+    /**
+     * Versucht, eine automatische Linienfarbe aus der Traewelling-Datenbank aufzulösen.
+     * @param {string} trainName - Formatierter Zugname oder Linienname (z.B. "S 5 / 34533", "S5", "RE 70", "MEX 13")
+     * @param {object} [context={}] - Kontext-Optionen inklusive operator und stationContext
+     * @returns {{ bg: string, fg: string, shape: string, border?: string } | null}
+     */
+    getAutoColor(trainName, context = {}) {
+        if (!this._autoData || !this.autoColorsEnabled) return null;
+
+        const raw = (trainName || '').trim();
+        if (!raw) return null;
+
+        // Linienteil vor dem Schrägstrich nehmen (z.B. "S 5 / 34533" -> "S 5")
+        const linePart = raw.split('/')[0].trim();
+        const lineVariants = this._normalizeLineVariants(linePart);
+
+        // 1. Betreiber-Ermittlung
+        let op = (context.operator || '').trim();
+        let matchedOp = null;
+
+        // A. IRIS Alias Prüfung (EVU-Kürzel oder Zuggattung)
+        if (op && this._autoData.irisAliases && this._autoData.irisAliases[op]) {
+            matchedOp = this._autoData.irisAliases[op];
+        } else if (op && this._autoData.operators && this._autoData.operators[op]) {
+            matchedOp = op;
+        }
+
+        // B. Falls Betreiber noch unbekannt: Prüfe Präfix des Linientextes (z.B. "SBH 5", "ENO 83506")
+        if (!matchedOp && this._autoData.irisAliases) {
+            const prefixMatch = linePart.match(/^([A-Za-z]+)\b/);
+            if (prefixMatch && this._autoData.irisAliases[prefixMatch[1]]) {
+                matchedOp = this._autoData.irisAliases[prefixMatch[1]];
+            }
+        }
+
+        // C. S-Bahn ohne expliziten Betreiber: Über DS100-Regionskürzel ermitteln
+        const isSbahn = /^S\s*\d+/i.test(linePart);
+        const ds100 = (context.stationContext?.ds100 || journeyStore?.stationContext?.ds100 || '').trim().toUpperCase();
+        if (!matchedOp && isSbahn && ds100) {
+            const prefix = ds100[0];
+            if (this._autoData.sbahnNetworksByDs100Prefix && this._autoData.sbahnNetworksByDs100Prefix[prefix]) {
+                matchedOp = this._autoData.sbahnNetworksByDs100Prefix[prefix];
+            }
+        }
+
+        // 2. Suche im ermittelten Betreiber-Katalog
+        if (matchedOp && this._autoData.operators && this._autoData.operators[matchedOp]) {
+            const opCatalog = this._autoData.operators[matchedOp];
+            for (const variant of lineVariants) {
+                if (opCatalog[variant]) {
+                    return opCatalog[variant];
+                }
+            }
+        }
+
+        // 3. Suche in uniqueLines (bundesweit eindeutige Linien wie MEX 13, RE 90 etc.)
+        if (this._autoData.uniqueLines) {
+            for (const variant of lineVariants) {
+                if (this._autoData.uniqueLines[variant]) {
+                    return this._autoData.uniqueLines[variant];
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Löst das Style-Objekt für einen gegebenen Zugnamen/Linientext auf.
+     * Nutzt internen Cache zur Schonung der Render-Performance bei 60 FPS.
+     *
+     * @param {string} trainName - Formatierter Zugname (z.B. "ICE 543", "IC 2441", "FLX 10", "RE 1")
+     * @param {object} [context={}] - Kontext-Optionen
+     * @param {boolean} [context.isAusfall=false] - Ob ein Ausfall (Zeilen-Inversion) vorliegt
+     * @param {boolean} [context.inverted=false] - Ob Nebenmonitor-Invertierung aktiv ist
+     * @param {boolean} [context.fullScreen=false] - Ob Hauptmonitor gezeichnet wird
+     * @param {string} [context.defaultBgColor] - Fallback-Hintergrundfarbe
+     * @param {string} [context.defaultTextColor] - Fallback-Textfarbe
+     * @param {string} [context.operator] - Optionaler Betreiber-Code (z.B. "TDHS", "W3", "ag")
+     * @param {object} [context.stationContext] - Optionaler Stationskontext mit ds100
+     * @returns {{
+     *   backgroundColor: string,
+     *   textColor: string,
+     *   borderColor: string,
+     *   borderWidth: number,
+     *   shape: 'pill' | 'rounded' | 'rectangle' | 'outline',
+     *   cornerRadius: number,
+     *   hasMatchedRule: boolean,
+     *   rule: LineBadgeRule | null
+     * }}
+     */
     resolveStyle(trainName = '', context = {}) {
         const name = (trainName || '').trim();
         const isInverted = Boolean(context.isAusfall || context.inverted);
+        const opKey = context.operator || '';
+        const dsKey = context.stationContext?.ds100 || journeyStore?.stationContext?.ds100 || '';
 
-        const cacheKey = `${name}|${isInverted}|${Boolean(context.isAusfall)}|${context.defaultBgColor || ''}|${context.defaultTextColor || ''}`;
+        const cacheKey = `${name}|${isInverted}|${Boolean(context.isAusfall)}|${opKey}|${dsKey}|${context.defaultBgColor || ''}|${context.defaultTextColor || ''}`;
         if (this._resolveCache.has(cacheKey)) {
             return this._resolveCache.get(cacheKey);
         }
 
-        // 1. Suche nach passender Regel (First-Match-Wins)
-        let matchedRule = null;
+        // 1. Suche nach passender Regel (Custom-Regeln haben Vorrang vor Automatik)
+        let matchedCustomRule = null;
+        let matchedDefaultRule = null;
         for (const rule of this.rules) {
             if (this.matchesRule(name, rule)) {
-                matchedRule = rule;
-                break;
+                if (rule.isDefault) {
+                    if (!matchedDefaultRule) matchedDefaultRule = rule;
+                } else {
+                    matchedCustomRule = rule;
+                    break;
+                }
             }
         }
 
         let result;
 
-        // 2. Regel anwenden falls gefunden
-        if (matchedRule) {
-            if (isInverted && matchedRule.hasInvertOverride) {
-                const invShape = matchedRule.invertedShape || matchedRule.shape || 'rounded';
-                const defaultInvBg = invShape === 'outline' ? 'transparent' : matchedRule.backgroundColor;
-                result = {
-                    backgroundColor: matchedRule.invertedBgColor !== undefined && matchedRule.invertedBgColor !== '' ? matchedRule.invertedBgColor : defaultInvBg,
-                    textColor: matchedRule.invertedTextColor || matchedRule.textColor,
-                    borderColor: matchedRule.invertedBorderColor || matchedRule.borderColor || 'transparent',
-                    borderWidth: matchedRule.borderWidth || 2,
-                    shape: invShape,
-                    cornerRadius: matchedRule.cornerRadius || 6,
-                    hasMatchedRule: true,
-                    rule: matchedRule
-                };
-            } else if (context.isAusfall) {
-                // Bei Ausfall im Zoom-Board: Kontrastfarbe sicherstellen
-                result = {
-                    backgroundColor: matchedRule.backgroundColor || '#e2e8f0',
-                    textColor: matchedRule.textColor || COLORS.NAVY,
-                    borderColor: matchedRule.borderColor || 'rgba(0, 0, 0, 0.18)',
-                    borderWidth: matchedRule.borderWidth || 1,
-                    shape: matchedRule.shape || 'rounded',
-                    cornerRadius: matchedRule.cornerRadius || 6,
-                    hasMatchedRule: true,
-                    rule: matchedRule
-                };
-            } else {
-                result = {
-                    backgroundColor: matchedRule.backgroundColor,
-                    textColor: matchedRule.textColor,
-                    borderColor: matchedRule.borderColor || 'transparent',
-                    borderWidth: matchedRule.borderWidth || 1,
-                    shape: matchedRule.shape || 'rounded',
-                    cornerRadius: matchedRule.cornerRadius || 6,
-                    hasMatchedRule: true,
-                    rule: matchedRule
-                };
-            }
+        if (matchedCustomRule) {
+            result = this._formatRuleResult(matchedCustomRule, context, isInverted);
         } else {
-            // 3. Fallback-Verhalten (Standard ZIM)
-            if (context.isAusfall) {
-                result = {
-                    backgroundColor: '#e2e8f0',
-                    textColor: COLORS.NAVY,
-                    borderColor: 'rgba(0, 0, 0, 0.18)',
-                    borderWidth: 1,
-                    shape: 'rounded',
-                    cornerRadius: 6,
-                    hasMatchedRule: false,
-                    rule: null
-                };
+            // 2. Traewelling Auto-Linienfarben (z.B. S-Bahnen, MEX, FLX)
+            const autoColor = this.getAutoColor(name, context);
+            if (autoColor) {
+                result = this._formatAutoColorResult(autoColor, context, isInverted);
+            } else if (matchedDefaultRule) {
+                // 3. System-Standardregeln (IC-Pille, FlixTrain, generischer S-Bahn-Fallback)
+                result = this._formatRuleResult(matchedDefaultRule, context, isInverted);
             } else {
-                const fallbackBg = context.defaultBgColor || '#1f3d47';
-                const fallbackText = context.defaultTextColor || COLORS.WHITE;
-
-                result = {
-                    backgroundColor: fallbackBg,
-                    textColor: fallbackText,
-                    borderColor: 'rgba(255, 255, 255, 0.18)',
-                    borderWidth: 1,
-                    shape: 'rounded',
-                    cornerRadius: 6,
-                    hasMatchedRule: false,
-                    rule: null
-                };
+                // 4. Fallback-Verhalten (Standard ZIM)
+                result = this._formatFallbackResult(context);
             }
         }
 
         this._resolveCache.set(cacheKey, result);
         return result;
+    }
+
+    /**
+     * @private
+     */
+    _formatRuleResult(rule, context, isInverted) {
+        if (isInverted && rule.hasInvertOverride) {
+            const invShape = rule.invertedShape || rule.shape || 'rounded';
+            const defaultInvBg = invShape === 'outline' ? 'transparent' : rule.backgroundColor;
+            return {
+                backgroundColor: rule.invertedBgColor !== undefined && rule.invertedBgColor !== '' ? rule.invertedBgColor : defaultInvBg,
+                textColor: rule.invertedTextColor || rule.textColor,
+                borderColor: rule.invertedBorderColor || rule.borderColor || 'transparent',
+                borderWidth: rule.borderWidth || 2,
+                shape: invShape,
+                cornerRadius: rule.cornerRadius || 6,
+                hasMatchedRule: true,
+                rule
+            };
+        } else if (context.isAusfall) {
+            return {
+                backgroundColor: rule.backgroundColor || '#e2e8f0',
+                textColor: rule.textColor || COLORS.NAVY,
+                borderColor: rule.borderColor || 'rgba(0, 0, 0, 0.18)',
+                borderWidth: rule.borderWidth || 1,
+                shape: rule.shape || 'rounded',
+                cornerRadius: rule.cornerRadius || 6,
+                hasMatchedRule: true,
+                rule
+            };
+        } else {
+            return {
+                backgroundColor: rule.backgroundColor,
+                textColor: rule.textColor,
+                borderColor: rule.borderColor || 'transparent',
+                borderWidth: rule.borderWidth || 1,
+                shape: rule.shape || 'rounded',
+                cornerRadius: rule.cornerRadius || 6,
+                hasMatchedRule: true,
+                rule
+            };
+        }
+    }
+
+    /**
+     * @private
+     */
+    _formatAutoColorResult(autoColor, context, isInverted) {
+        const shape = autoColor.shape || 'rounded';
+        const cornerRadius = shape === 'pill' ? 15 : (shape === 'rectangle' ? 0 : 6);
+        const hasBorder = Boolean(autoColor.border && autoColor.border !== 'transparent');
+
+        if (isInverted) {
+            const invShape = shape === 'pill' ? 'pill' : 'outline';
+            return {
+                backgroundColor: invShape === 'outline' ? 'transparent' : autoColor.bg,
+                textColor: autoColor.fg,
+                borderColor: autoColor.border || autoColor.fg || 'transparent',
+                borderWidth: hasBorder ? 2 : 1,
+                shape: invShape,
+                cornerRadius,
+                hasMatchedRule: true,
+                rule: null
+            };
+        } else if (context.isAusfall) {
+            return {
+                backgroundColor: '#e2e8f0',
+                textColor: autoColor.bg || COLORS.NAVY,
+                borderColor: 'rgba(0, 0, 0, 0.18)',
+                borderWidth: 1,
+                shape,
+                cornerRadius,
+                hasMatchedRule: true,
+                rule: null
+            };
+        } else {
+            return {
+                backgroundColor: autoColor.bg,
+                textColor: autoColor.fg,
+                borderColor: autoColor.border || 'transparent',
+                borderWidth: hasBorder ? 2 : 1,
+                shape,
+                cornerRadius,
+                hasMatchedRule: true,
+                rule: null
+            };
+        }
+    }
+
+    /**
+     * @private
+     */
+    _formatFallbackResult(context) {
+        if (context.isAusfall) {
+            return {
+                backgroundColor: '#e2e8f0',
+                textColor: COLORS.NAVY,
+                borderColor: 'rgba(0, 0, 0, 0.18)',
+                borderWidth: 1,
+                shape: 'rounded',
+                cornerRadius: 6,
+                hasMatchedRule: false,
+                rule: null
+            };
+        } else {
+            const fallbackBg = context.defaultBgColor || '#1f3d47';
+            const fallbackText = context.defaultTextColor || COLORS.WHITE;
+
+            return {
+                backgroundColor: fallbackBg,
+                textColor: fallbackText,
+                borderColor: 'rgba(255, 255, 255, 0.18)',
+                borderWidth: 1,
+                shape: 'rounded',
+                cornerRadius: 6,
+                hasMatchedRule: false,
+                rule: null
+            };
+        }
     }
 
     /**

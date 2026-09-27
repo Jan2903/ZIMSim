@@ -274,6 +274,8 @@ export function drawTextInRectangle(ctx, text, x, y, font, textAlign, textHeight
         if (isLineBadge) {
             // Zentral aufgelöster Stil aus LineColorService
             const resolved = lineColorService.resolveStyle(text, {
+                operator: renderCtx?.operator,
+                stationContext: renderCtx?.stationContext,
                 inverted,
                 fullScreen,
                 defaultBgColor: rectColor,

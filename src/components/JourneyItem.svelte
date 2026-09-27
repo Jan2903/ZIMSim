@@ -29,6 +29,7 @@
 
     let lineBadgeStyle = $derived(
         lineColorService.resolveStyle(formattedDisplayName || journey.effectiveDisplayName, {
+            operator: journey.operator,
             isAusfall: journey.ausfall
         })
     );
