@@ -55,16 +55,48 @@ export function parseTrainName(name, linienNummer, langText) {
 }
 
 /**
- * Generiert den endgültigen Anzeigenamen unter Berücksichtigung des NRW-Modus.
+ * Prüft, ob es sich bei dem Namen um ein rein linienbasiertes Verkehrsmittel handelt,
+ * das auf DB-Anzeigen standardmäßig nie eine Zugnummer führt (z.B. S-Bahn, U-Bahn, Tram).
+ * 
+ * @param {string} lineName - Der Linienteil (z.B. "S 7", "S7", "U 2")
+ * @returns {boolean}
+ */
+export function isLineOnlyProduct(lineName) {
+    if (!lineName) return false;
+    const clean = lineName.trim();
+    // 1. S-Bahnen (z.B. "S 1", "S 7", "S 28", "S 31", "S1", "SBH 5")
+    if (/^(?:S\s*\d+|S\d+|SBH\s*\d+|SBH\d+)/i.test(clean)) return true;
+    // 2. Städtischer Nahverkehr (U-Bahn, Tram, Bus, SEV)
+    if (/^(?:U\s*\d+|U\d+|STR\s*\d+|Tram\s*\d+|Bus\s*\d+|SEV)/i.test(clean)) return true;
+    return false;
+}
+
+/**
+ * Generiert den endgültigen Anzeigenamen unter Berücksichtigung des NRW-Modus
+ * und der bundesweiten DB-Konvention für S-Bahnen und Nahverkehr.
  * 
  * @param {string} parsedName 
- * @param {boolean} isNrwMode 
+ * @param {boolean} [isNrwMode=false] 
  * @returns {string}
  */
-export function formatDisplayName(parsedName, isNrwMode) {
+export function formatDisplayName(parsedName, isNrwMode = false) {
     if (!parsedName) return '';
-    if (isNrwMode && parsedName.includes('/')) {
-        return parsedName.split('/')[0].trim();
+
+    // Falls S-Bahn ohne Leerzeichen übergeben wurde (z.B. "S7" oder "S7 / 12345"), Leerzeichen einfügen: "S 7"
+    let cleanName = parsedName.replace(/^(S)(\d+)/i, '$1 $2');
+
+    const parts = cleanName.split('/');
+    const linePart = parts[0].trim();
+
+    // 1. NRW-Modus: Alle Nahverkehrszüge zeigen nur die Linie (z.B. "RE 1" statt "RE 1 / 10123")
+    if (isNrwMode) {
+        return linePart;
     }
-    return parsedName;
+
+    // 2. S-Bahnen & städtischer Nahverkehr: Bundesweit grundsätzlich ohne interne Zugnummer
+    if (isLineOnlyProduct(linePart)) {
+        return linePart;
+    }
+
+    return cleanName;
 }

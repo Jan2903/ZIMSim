@@ -270,6 +270,13 @@ export function drawTextInRectangle(ctx, text, x, y, font, textAlign, textHeight
         let boxBorderWidth = 0;
         let boxRadius = cornerRadius;
         let isOutline = false;
+        let textDrawX = x;
+        let textDrawAlign = textAlign;
+
+        let boxWidth = textWidth + 2 * rectPadding;
+        let boxHeight = textHeight + rectPadding;
+        let boxX = textAlign === 'right' ? (x - textWidth - rectPadding) : (x - rectPadding);
+        let boxY = y - textHeight / 2 - rectPadding;
 
         if (isLineBadge) {
             // Zentral aufgelöster Stil aus LineColorService
@@ -289,16 +296,39 @@ export function drawTextInRectangle(ctx, text, x, y, font, textAlign, textHeight
                 boxBorderWidth = resolved.borderWidth || 1;
                 isOutline = resolved.shape === 'outline';
 
-                const boxWidthTemp = textWidth + 2 * rectPadding;
-                const boxHeightTemp = textHeight + rectPadding;
+                // Vertikale Einpassung um die Text-Mittelachse
+                const vertPadding = Math.max(8, Math.round(textHeight * 0.10));
+                boxHeight = textHeight + 2 * vertPadding;
+                boxY = y - boxHeight / 2;
 
                 if (resolved.shape === 'pill') {
-                    boxRadius = Math.min(boxWidthTemp, boxHeightTemp) / 2;
+                    // Echte Pille (Kapsel):
+                    // Die Halbkreis-Kappen links und rechts haben den Radius R = boxHeight / 2.
+                    // Links und rechts neben dem Text beginnt die Rundung erst nach einem definierten Abstand.
+                    boxRadius = boxHeight / 2;
+                    const gapToCurve = Math.max(14, Math.round(textHeight * 0.16));
+                    const sidePadding = boxRadius + gapToCurve;
+                    boxWidth = textWidth + 2 * sidePadding;
                 } else if (resolved.shape === 'rectangle') {
                     boxRadius = 0;
-                } else if (resolved.shape === 'rounded' || resolved.shape === 'outline') {
-                    boxRadius = resolved.cornerRadius || Math.max(4, Math.round(boxHeightTemp * 0.12));
+                    const sidePadding = Math.max(rectPadding + 8, Math.round(textHeight * 0.22));
+                    boxWidth = textWidth + 2 * sidePadding;
+                } else {
+                    // rounded oder outline
+                    boxRadius = resolved.cornerRadius || Math.max(6, Math.round(boxHeight * 0.15));
+                    const sidePadding = Math.max(rectPadding + 8, Math.round(textHeight * 0.22));
+                    boxWidth = textWidth + 2 * sidePadding;
                 }
+
+                // Text horizontal zentriert im Badge platzieren
+                if (textAlign === 'right') {
+                    const rightEdge = x + rectPadding;
+                    boxX = rightEdge - boxWidth;
+                } else {
+                    boxX = x - rectPadding;
+                }
+                textDrawX = boxX + boxWidth / 2;
+                textDrawAlign = 'center';
             } else {
                 // Kein Regel-Treffer: Standard ZIM (z.B. DIM_GREY auf Zuganzeiger ohne Zwangsrahmen)
                 boxBg = rectColor;
@@ -306,11 +336,6 @@ export function drawTextInRectangle(ctx, text, x, y, font, textAlign, textHeight
                 boxRadius = cornerRadius;
             }
         }
-
-        const boxWidth = textWidth + 2 * rectPadding;
-        const boxHeight = textHeight + rectPadding;
-        const boxX = textAlign === 'right' ? (x - textWidth - rectPadding) : (x - rectPadding);
-        const boxY = y - textHeight / 2 - rectPadding;
 
         ctx.beginPath();
         ctx.roundRect(boxX, boxY, boxWidth, boxHeight, boxRadius);
@@ -346,7 +371,7 @@ export function drawTextInRectangle(ctx, text, x, y, font, textAlign, textHeight
                 boxTextColor, font
             );
         } else {
-            drawText(ctx, text, x, y, font, boxTextColor, textAlign);
+            drawText(ctx, text, textDrawX, y, font, boxTextColor, textDrawAlign);
         }
     }
 }

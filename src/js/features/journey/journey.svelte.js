@@ -4,6 +4,7 @@ import { JourneyViaService } from './services/journeyViaService.js';
 import { DynamicTextService } from './services/dynamicTextService.js';
 import { JourneyImportService } from './services/journeyImportService.js';
 import { measureTextLines } from '../../displays/core/textUtils.js';
+import { formatDisplayName } from './trainNumberFormatter.js';
 
 /**
  * Hilfsfunktion zur Migration alter Vias-Arrays in Dummy-Stop-Objekte (DRY).
@@ -305,7 +306,8 @@ export class Journey {
 
     /** Sicherer Anzeigename für Render-Komponenten (Fallback: 'Zug') */
     get displayTitle() {
-        return this.displayNameOverride || this.effectiveDisplayName || this.name || 'Zug';
+        if (this.displayNameOverride) return this.displayNameOverride;
+        return formatDisplayName(this.effectiveDisplayName || this.name) || 'Zug';
     }
 
     /** Effektives Ziel: Override oder auto-generiert */
