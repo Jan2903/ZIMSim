@@ -21,6 +21,7 @@ export class JourneyStorageService {
             },
             journeys: store.journeys,
             nrwMode: store.nrwMode,
+            formatOptions: store.formatOptions,
             activeTracks: store.activeTracks,
             platforms: store.platforms,
             customStations: store.customStations,
@@ -45,6 +46,10 @@ export class JourneyStorageService {
         if (!data) return;
 
         store.nrwMode = data.nrwMode || false;
+        if (data.formatOptions && typeof data.formatOptions === 'object') {
+            store.formatOptions = { ...store.formatOptions, ...data.formatOptions };
+        }
+        store.saveSettings?.();
         store.activeTracks = data.activeTracks || [];
         store.customStations = data.customStations || [];
 

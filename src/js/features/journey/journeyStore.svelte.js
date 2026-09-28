@@ -11,6 +11,7 @@ import { JourneyImportService } from './services/journeyImportService.js';
 import { JourneyStorageService } from './services/journeyStorageService.js';
 import { JourneyConnectionService } from './services/journeyConnectionService.js';
 import { formationRuleService } from '../formation/formationRuleService.svelte.js';
+import { setFormatOptionsProvider } from './trainNumberFormatter.js';
 
 /**
  * Zentrale Datenverwaltung (Façade & reaktiver Svelte 5 Store).
@@ -36,6 +37,14 @@ export class JourneyStore {
 
     // NRW-Modus (global)
     nrwMode = $state(false);
+
+    // Formatierungsoptionen für Linien- und Zugnummern
+    formatOptions = $state({
+        hideSbahnTrainNumbers: true,      // S-Bahnen bundesweit ohne Zugnummer ("S 7")
+        hideRegionalTrainNumbers: false,  // Regionalverkehr nur Linie ("RE 1")
+        stripBusPrefix: true,             // "Bus 100" -> "100"
+        harmonizeSpacing: true            // "S7" -> "S 7", "RE1" -> "RE 1", "X10" -> "X 10"
+    });
 
     // Verkehrsmittel Filter
     activeMots = $state([...MOT_ALL_KEYS]);
@@ -74,7 +83,64 @@ export class JourneyStore {
         return map;
     });
 
-    constructor() {}
+    constructor() {
+        this.loadSettings();
+        setFormatOptionsProvider(() => ({
+            ...this.formatOptions,
+            nrwMode: this.nrwMode
+        }));
+    }
+
+    /**
+     * Lädt persistierte Einstellungen (NRW-Modus, Formatierungsoptionen) aus dem LocalStorage.
+     */
+    loadSettings() {
+        try {
+            const rawNrw = localStorage.getItem('zimsim_nrw_mode');
+            if (rawNrw !== null) {
+                this.nrwMode = rawNrw === 'true';
+            }
+            const rawOpts = localStorage.getItem('zimsim_format_options');
+            if (rawOpts) {
+                const parsed = JSON.parse(rawOpts);
+                if (parsed && typeof parsed === 'object') {
+                    this.formatOptions = { ...this.formatOptions, ...parsed };
+                }
+            }
+        } catch (e) {
+            console.warn('[JourneyStore] Fehler beim Laden der Einstellungen:', e);
+        }
+    }
+
+    /**
+     * Speichert persistierte Einstellungen im LocalStorage.
+     */
+    saveSettings() {
+        try {
+            localStorage.setItem('zimsim_nrw_mode', String(this.nrwMode));
+            localStorage.setItem('zimsim_format_options', JSON.stringify(this.formatOptions));
+        } catch (e) {
+            console.warn('[JourneyStore] Fehler beim Speichern der Einstellungen:', e);
+        }
+    }
+
+    /**
+     * Aktualisiert die Formatierungsoptionen und persistiert sie.
+     * @param {Partial<{hideSbahnTrainNumbers: boolean, hideRegionalTrainNumbers: boolean, stripBusPrefix: boolean, harmonizeSpacing: boolean}>} updates 
+     */
+    updateFormatOptions(updates) {
+        this.formatOptions = { ...this.formatOptions, ...updates };
+        this.saveSettings();
+    }
+
+    /**
+     * Setzt den NRW-Modus und persistiert ihn.
+     * @param {boolean} val
+     */
+    setNrwMode(val) {
+        this.nrwMode = Boolean(val);
+        this.saveSettings();
+    }
 
     /**
      * Fügt eine neue benutzerdefinierte Station hinzu.

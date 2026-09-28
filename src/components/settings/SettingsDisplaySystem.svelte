@@ -143,11 +143,59 @@
                 <label class="checkbox-label">
                     <input 
                         type="checkbox" 
+                        id="sbahn_line_only_checkbox" 
+                        bind:checked={journeyStore.formatOptions.hideSbahnTrainNumbers} 
+                        onchange={() => {
+                            journeyStore.saveSettings();
+                            trainDisplay.updateAll();
+                        }}
+                    >
+                    <span>S-Bahnen ohne interne Zugnummer (z. B. 'S 7')</span>
+                </label>
+            </div>
+
+            <div class="checkbox-group" style="margin-top: 8px;">
+                <label class="checkbox-label">
+                    <input 
+                        type="checkbox" 
                         id="nrw_mode_checkbox" 
                         bind:checked={journeyStore.nrwMode} 
-                        onchange={() => trainDisplay.updateAll()}
+                        onchange={() => {
+                            journeyStore.saveSettings();
+                            trainDisplay.updateAll();
+                        }}
                     >
-                    <span>Nur Liniennummern anzeigen (NRW-Nahverkehrsmodus)</span>
+                    <span>Regionalverkehr: nur Linie anzeigen (NRW-Modus, z. B. 'RE 1')</span>
+                </label>
+            </div>
+
+            <div class="checkbox-group" style="margin-top: 8px;">
+                <label class="checkbox-label">
+                    <input 
+                        type="checkbox" 
+                        id="strip_bus_checkbox" 
+                        bind:checked={journeyStore.formatOptions.stripBusPrefix} 
+                        onchange={() => {
+                            journeyStore.saveSettings();
+                            trainDisplay.updateAll();
+                        }}
+                    >
+                    <span>Wort 'Bus' vor Liniennummer entfernen (z. B. '100' statt 'Bus 100')</span>
+                </label>
+            </div>
+
+            <div class="checkbox-group" style="margin-top: 8px;">
+                <label class="checkbox-label">
+                    <input 
+                        type="checkbox" 
+                        id="harmonize_spacing_checkbox" 
+                        bind:checked={journeyStore.formatOptions.harmonizeSpacing} 
+                        onchange={() => {
+                            journeyStore.saveSettings();
+                            trainDisplay.updateAll();
+                        }}
+                    >
+                    <span>Leerzeichen zwischen Gattung & Nummer (z. B. 'S 7', 'X 10')</span>
                 </label>
             </div>
 
