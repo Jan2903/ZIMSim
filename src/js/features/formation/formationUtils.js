@@ -101,5 +101,66 @@ export function getSectorsForCoaches(coaches, platform) {
     const sectorArr = Array.from(activeSectors).sort();
     if (sectorArr.length === 0) return "";
     if (sectorArr.length === 1) return sectorArr[0];
-    return `${sectorArr[0]}-${sectorArr[sectorArr.length - 1]}`;
+}
+
+/**
+ * Ermittelt die Bahnsteigabschnitte für eine Journey.
+ * Priorität:
+ * 1. targetJourney.sectors (manueller Override)
+ * 2. coach.platformPosition.sector (statischer Sektor aus Fahrplandaten)
+ * 3. Metrische Berechnung über calculateCoachPositions und getSectorsForCoaches
+ *
+ * @param {object} targetJourney - Die betroffene Fahrt
+ * @param {Array<object>} allJourneys - Alle Fahrten des aktuellen Gleises (für Flügelzug-Positionierung)
+ * @param {import('../station/platform.svelte.js').Platform} platform - Das Bahnsteig-Objekt
+ * @returns {string} Sektoren als String (z.B. "C-E", "B" oder "")
+ */
+export function getPlatformSectors(targetJourney, allJourneys, platform) {
+    if (!targetJourney) return "";
+    if (targetJourney.sectors) return targetJourney.sectors;
+    if (!targetJourney.formation || !targetJourney.formation.groups) return "";
+    
+    const sectors = new Set();
+    let hasStaticSectorInfo = false;
+    for (const group of targetJourney.formation.groups) {
+        if (!group.coaches) continue;
+        for (const coach of group.coaches) {
+            const pos = coach.platformPosition;
+            if (pos) {
+                if (pos.sector) {
+                    sectors.add(pos.sector);
+                    hasStaticSectorInfo = true;
+                } else if (pos.name && pos.name.length === 1) {
+                    sectors.add(pos.name);
+                    hasStaticSectorInfo = true;
+                }
+            }
+        }
+    }
+    
+    if (hasStaticSectorInfo) {
+        const sectorArr = Array.from(sectors).sort();
+        if (sectorArr.length === 0) return "";
+        if (sectorArr.length === 1) return sectorArr[0];
+        return `${sectorArr[0]}-${sectorArr[sectorArr.length - 1]}`;
+    }
+
+    if (allJourneys && platform) {
+        const { allCoaches } = calculateCoachPositions(allJourneys);
+        const targetGroups = new Set(targetJourney.formation.groups);
+        
+        const targetCoaches = [];
+        
+        for (const item of allCoaches) {
+            if (targetGroups.has(item.group)) {
+                targetCoaches.push(item);
+            }
+        }
+        
+        if (targetCoaches.length > 0) {
+            return getSectorsForCoaches(targetCoaches, platform);
+        }
+    }
+
+    return "";
 }

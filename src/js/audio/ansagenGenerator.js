@@ -1,10 +1,11 @@
 // src/js/audio/ansagenGenerator.js
 import { ansagenStore } from './ansagenStore.svelte.js';
-import { isOppositeTrack } from '../core/utils/trackUtils.js';
+import { isOppositeTrack, parseTrack, getSectionLetters } from '../core/utils/trackUtils.js';
 import { journeyStore } from '../core/state/stores.js';
 import { getSimulatedTime } from '../core/utils/config.js';
 import { calculateDelayMinutes } from '../core/utils/dateUtils.js';
 import { JourneyConnectionService } from '../features/journey/services/journeyConnectionService.js';
+import { getPlatformSectors } from '../features/formation/formationUtils.js';
 import { AnsagenSpeechFormatter } from './ansagenSpeechFormatter.js';
 
 /**
@@ -91,6 +92,41 @@ export class AnsagenGenerator {
         this.formatter.delayReason(playlist, journey.delayReason, journey.delayReasonCode);
     }
 
+    /**
+     * Fügt die Ansage der Bahnsteigabschnitte zur Playlist hinzu,
+     * sofern Abschnitte für das Gleis und Wagenreihung/Override für die Fahrt existieren.
+     * @param {Array} playlist - Die Playlist
+     * @param {object} journey - Das Journey-Objekt
+     */
+    _appendSectors(playlist, journey) {
+        if (!ansagenStore.ansageAbschnitte) return;
+        if (!journey) return;
+
+        const trackStr = journey.ezGleis || journey.platform;
+        if (!trackStr) return;
+
+        const parsed = parseTrack(trackStr);
+        const platform = journeyStore.platforms[parsed.base] ||
+                         journeyStore.platforms[trackStr] ||
+                         journeyStore.stationContext.platform;
+
+        if (!platform || !platform.sections || platform.sections.length === 0) {
+            return;
+        }
+
+        const sectorsStr = getPlatformSectors(journey, journeyStore.journeys, platform);
+        if (!sectorsStr) return;
+
+        const rawLetters = getSectionLetters(sectorsStr).filter(l => l !== '*');
+        if (rawLetters.length === 0) return;
+
+        const platformSectorNames = new Set(platform.sections.map(s => s.name.toUpperCase()));
+        const validLetters = rawLetters.filter(l => platformSectorNames.has(l)).sort();
+        if (validLetters.length === 0) return;
+
+        this.formatter.sections(playlist, validLetters);
+    }
+
     // --- Fach- und Domainprüfungen ---
 
     /**
@@ -166,6 +202,21 @@ export class AnsagenGenerator {
             (journey.journeyId !== linkedJourney.journeyId || (!journey.journeyId && !linkedJourney.journeyId)) &&
             ((journey.ankunft && !linkedJourney.ankunft) || (!journey.ankunft && linkedJourney.ankunft))
         );
+    }
+
+    /**
+     * Prüft, ob es sich um eine reine Ankunft (ohne Weiterfahrt/Wende) handelt.
+     * @param {object} journey - Das Journey-Objekt
+     * @param {object|null} [linkedJourney=null] - Verknüpfter Partner-Zug
+     * @returns {boolean}
+     */
+    _isPureArrival(journey, linkedJourney = null) {
+        if (!journey || !journey.ankunft) return false;
+        if (journey.isThroughTrain) return false;
+        if (this._isWende(journey, linkedJourney)) return false;
+        if (linkedJourney && !linkedJourney.ankunft) return false;
+        if (journey.linkedArrivalJourneyId) return false;
+        return true;
     }
 
     /**
@@ -284,9 +335,18 @@ export class AnsagenGenerator {
         this._appendPlatform(p, journey);
         this._module(p, 'EINFAHRT');
         this._appendRoute(p, journey);
+
+        if (!journey.ankunft && !isWende) {
+            this._appendSectors(p, journey);
+        }
+
         this._appendTimeInfo(p, journey, journey.ankunft ? 'ANKUNFT' : 'ABFAHRT');
         this._generateDeviations(p, journey);
         this._module(p, 'VORSICHT_BEI_DER_EINFAHRT');
+
+        if (this._isPureArrival(journey, linkedJourney) && ansagenStore.einfahrtBitteNichtEinsteigen) {
+            this._module(p, 'BITTE_NICHT_EINSTEIGEN');
+        }
 
         return p;
     }
@@ -303,6 +363,10 @@ export class AnsagenGenerator {
         
         this._module(p, 'STEHT');
         this._appendRoute(p, journey);
+
+        if (!journey.ankunft) {
+            this._appendSectors(p, journey);
+        }
         
         this._module(p, journey.ankunft ? 'ANKUNFT' : 'ABFAHRT');
         this._time(p, journey.scheduledTime);

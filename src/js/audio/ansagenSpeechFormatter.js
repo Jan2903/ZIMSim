@@ -500,4 +500,37 @@ export class AnsagenSpeechFormatter {
             });
         }
     }
+
+    /**
+     * Fügt die Ansage der Bahnsteigabschnitte zur Playlist hinzu:
+     * - 1 Abschnitt: "im Abschnitt B"
+     * - 2 Abschnitte: "in den Abschnitten A und B"
+     * - >= 3 Abschnitte: "in den Abschnitten C bis E"
+     *
+     * @param {Array} playlist - Die Playlist
+     * @param {string[]} sectorLetters - Array von Abschnittsbuchstaben (z.B. ['A', 'B'])
+     */
+    sections(playlist, sectorLetters) {
+        if (!sectorLetters || sectorLetters.length === 0) return;
+
+        if (sectorLetters.length === 1) {
+            this.module(playlist, 'IM_ABSCHNITT');
+            const sec = sectorLetters[0].toLowerCase();
+            this.pushAudio(playlist, `${this.lang}/abschnitte/hoch/${sec}`, sectorLetters[0]);
+        } else if (sectorLetters.length === 2) {
+            this.module(playlist, 'IN_ABSCHNITTEN');
+            const first = sectorLetters[0].toLowerCase();
+            const second = sectorLetters[1].toLowerCase();
+            this.pushAudio(playlist, `${this.lang}/abschnitte/tief/${first}`, sectorLetters[0]);
+            this.module(playlist, 'UND');
+            this.pushAudio(playlist, `${this.lang}/abschnitte/hoch/${second}`, sectorLetters[1]);
+        } else {
+            this.module(playlist, 'IN_ABSCHNITTEN');
+            const first = sectorLetters[0].toLowerCase();
+            const last = sectorLetters[sectorLetters.length - 1].toLowerCase();
+            this.pushAudio(playlist, `${this.lang}/abschnitte/tief/${first}`, sectorLetters[0]);
+            this.module(playlist, 'BIS');
+            this.pushAudio(playlist, `${this.lang}/abschnitte/hoch/${last}`, sectorLetters[sectorLetters.length - 1]);
+        }
+    }
 }

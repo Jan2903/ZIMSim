@@ -22,6 +22,8 @@ export class AnsagenStore {
     anschluesseMinTransferOpposite = $state(2); // Mindestumsteigezeit direkt gegenüber (Minuten)
     anschluesseIncludeDelays = $state(true);
     anschluesseIncludeDeviations = $state(true);
+    einfahrtBitteNichtEinsteigen = $state(true); // "Bitte nicht einsteigen" bei reinen Ankünften
+    ansageAbschnitte = $state(true); // "in den Abschnitten..." bei Einfahrt und Steht
     oppositeTrackPairs = $state({}); // { [stationIdOrKey]: [ [trackA, trackB], ... ] }
 
     constructor() {
@@ -74,6 +76,16 @@ export class AnsagenStore {
 
             const sIncDevs = localStorage.getItem('ansagen_anschluesse_include_deviations');
             if (sIncDevs !== null) this.anschluesseIncludeDeviations = sIncDevs === 'true';
+
+            const sBitteNichtEinsteigen = localStorage.getItem('ansagen_einfahrt_bitte_nicht_einsteigen');
+            if (sBitteNichtEinsteigen !== null) {
+                this.einfahrtBitteNichtEinsteigen = sBitteNichtEinsteigen === 'true';
+            }
+
+            const sAbschnitte = localStorage.getItem('ansagen_abschnitte');
+            if (sAbschnitte !== null) {
+                this.ansageAbschnitte = sAbschnitte === 'true';
+            }
 
             const sPairs = localStorage.getItem('ansagen_opposite_track_pairs');
             if (sPairs) {
@@ -308,6 +320,26 @@ export class AnsagenStore {
     setAllVias(val) {
         this.allVias = Boolean(val);
         localStorage.setItem('ansagen_all_vias', String(this.allVias));
+    }
+
+    /**
+     * Schaltet die Ansage "Bitte nicht einsteigen" bei reinen Ankünften ein oder aus.
+     * @param {boolean} val
+     * @returns {void}
+     */
+    setEinfahrtBitteNichtEinsteigen(val) {
+        this.einfahrtBitteNichtEinsteigen = Boolean(val);
+        localStorage.setItem('ansagen_einfahrt_bitte_nicht_einsteigen', String(this.einfahrtBitteNichtEinsteigen));
+    }
+
+    /**
+     * Schaltet die Ansage der Bahnsteigabschnitte ("in den Abschnitten...") bei Einfahrt und Steht-Ansagen ein oder aus.
+     * @param {boolean} val
+     * @returns {void}
+     */
+    setAnsageAbschnitte(val) {
+        this.ansageAbschnitte = Boolean(val);
+        localStorage.setItem('ansagen_abschnitte', String(this.ansageAbschnitte));
     }
 }
 

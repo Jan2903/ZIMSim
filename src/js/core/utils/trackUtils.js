@@ -73,31 +73,38 @@ export function parseTrack(trackStr) {
 /**
  * Extrahiert Buchstaben aus einem Abschnitts-String.
  * z.B. "A-C" -> ["A", "B", "C"]
- * z.B. "C, E" -> ["C", "E"]
+ * z.B. "C bis E" -> ["C", "D", "E"]
+ * z.B. "A, B" -> ["A", "B"]
+ * z.B. "B" -> ["B"]
+ *
+ * @param {string} sectionStr - Der Abschnitts-String
+ * @returns {string[]} Sortiertes Array von Großbuchstaben oder ['*']
  */
 export function getSectionLetters(sectionStr) {
     if (!sectionStr) return ['*'];
     
     let letters = new Set();
     
-    // Ranges wie "A-C"
-    const rangeMatch = sectionStr.match(/([A-Z])\s*-\s*([A-Z])/i);
+    // Ranges wie "A-C", "A bis C", "A to C"
+    const rangeMatch = String(sectionStr).match(/\b([A-Za-z])\s*(?:-|\bbis\b|\bto\b)\s*([A-Za-z])\b/i);
     if (rangeMatch) {
         const start = rangeMatch[1].toUpperCase().charCodeAt(0);
         const end = rangeMatch[2].toUpperCase().charCodeAt(0);
-        for (let c = start; c <= end; c++) {
+        const minChar = Math.min(start, end);
+        const maxChar = Math.max(start, end);
+        for (let c = minChar; c <= maxChar; c++) {
             letters.add(String.fromCharCode(c));
         }
     } else {
-        // Sonstige Buchstaben aufsammeln
-        const matches = sectionStr.match(/[a-z]/ig);
+        // Sonstige einzelne Buchstaben aufsammeln (z.B. "A, B", "B" oder "A und B")
+        const matches = String(sectionStr).match(/\b[A-Za-z]\b/g);
         if (matches) {
             matches.forEach(m => letters.add(m.toUpperCase()));
         }
     }
     
     if (letters.size === 0) return ['*'];
-    return Array.from(letters);
+    return Array.from(letters).sort();
 }
 
 /**

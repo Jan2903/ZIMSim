@@ -514,6 +514,14 @@
 
                 <div class="settings-divider"></div>
 
+                <!-- Abschnitte (Override / Manuell) -->
+                <div class="form-group" style="justify-content: center; min-width: 80px; flex: 1 1 80px;">
+                    <span class="form-group-label center">Abschnitte</span>
+                    <input type="text" class="jfield" bind:value={journey.sectors} oninput={triggerUpdate} style="width: 100%; min-width: 0; text-align: center;" placeholder="z.B. A-C">
+                </div>
+
+                <div class="settings-divider"></div>
+
                 <!-- Skalierung -->
                 <div class="form-group" style="justify-content: center; min-width: 120px; flex: 1 1 auto;">
                     <span class="form-group-label">Skalierung (Zoom)</span>

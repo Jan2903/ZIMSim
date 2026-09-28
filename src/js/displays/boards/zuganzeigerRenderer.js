@@ -2,7 +2,7 @@
 import { COLORS, FONTS, INFO } from '../core/constants.js';
 import { drawText, drawWrappedText, drawInfoTopText, drawTextInRectangle } from '../core/textUtils.js';
 import { drawPictograms } from '../primitives/pictogramRenderer.js';
-import { calculateCoachPositions, getSectorsForCoaches } from '../../features/formation/formationUtils.js';
+import { calculateCoachPositions, getSectorsForCoaches, getPlatformSectors } from '../../features/formation/formationUtils.js';
 import { formatDisplayName } from '../../features/journey/trainNumberFormatter.js';
 import { journeyStore } from '../../core/state/stores.js';
 
@@ -17,54 +17,6 @@ function areJourneysMerged(journeys) {
         if ((journeys[i].scheduledTime || "").trim() !== firstTime) return false;
     }
     return true;
-}
-
-function getPlatformSectors(targetJourney, allJourneys, platform) {
-    if (targetJourney.sectors) return targetJourney.sectors;
-    if (!targetJourney || !targetJourney.formation || !targetJourney.formation.groups) return "";
-    
-    const sectors = new Set();
-    let hasStaticSectorInfo = false;
-    for (const group of targetJourney.formation.groups) {
-        for (const coach of group.coaches) {
-            const pos = coach.platformPosition;
-            if (pos) {
-                if (pos.sector) {
-                    sectors.add(pos.sector);
-                    hasStaticSectorInfo = true;
-                } else if (pos.name && pos.name.length === 1) {
-                    sectors.add(pos.name);
-                    hasStaticSectorInfo = true;
-                }
-            }
-        }
-    }
-    
-    if (hasStaticSectorInfo) {
-        const sectorArr = Array.from(sectors).sort();
-        if (sectorArr.length === 0) return "";
-        if (sectorArr.length === 1) return sectorArr[0];
-        return `${sectorArr[0]}-${sectorArr[sectorArr.length - 1]}`;
-    }
-
-    if (allJourneys && platform) {
-        const { allCoaches } = calculateCoachPositions(allJourneys);
-        const targetGroups = new Set(targetJourney.formation.groups);
-        
-        const targetCoaches = [];
-        
-        for (const item of allCoaches) {
-            if (targetGroups.has(item.group)) {
-                targetCoaches.push(item);
-            }
-        }
-        
-        if (targetCoaches.length > 0) {
-            return getSectorsForCoaches(targetCoaches, platform);
-        }
-    }
-
-    return "";
 }
 
 /**

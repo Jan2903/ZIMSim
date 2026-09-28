@@ -416,6 +416,34 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Zusätzliche Ansagenelemente -->
+            <div class="sub-section" style="margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px;">
+                <span class="field-label" style="margin-bottom: 8px;">Zusätzliche Ansagenelemente:</span>
+                <label class="checkbox-label">
+                    <input 
+                        type="checkbox" 
+                        checked={ansagenStore.ansageAbschnitte} 
+                        onchange={(e) => ansagenStore.setAnsageAbschnitte(e.currentTarget.checked)}
+                    >
+                    <span>Bahnsteigabschnitte („in den Abschnitten...“)</span>
+                </label>
+                <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px; margin-left: 24px; margin-bottom: 12px;">
+                    Sagt bei Einfahrt und Steht-Ansagen die Abschnitte an (z. B. „in den Abschnitten C bis E“), sofern Wagenreihung oder Abschnitte vorhanden sind.
+                </div>
+
+                <label class="checkbox-label">
+                    <input 
+                        type="checkbox" 
+                        checked={ansagenStore.einfahrtBitteNichtEinsteigen} 
+                        onchange={(e) => ansagenStore.setEinfahrtBitteNichtEinsteigen(e.currentTarget.checked)}
+                    >
+                    <span>„Bitte nicht einsteigen“ bei reinen Ankünften</span>
+                </label>
+                <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px; margin-left: 24px;">
+                    Hängt den Hinweis ans Ende der Einfahrtsansage von Zügen an, die am Bahnhof enden.
+                </div>
+            </div>
         </div>
     </div>
 
