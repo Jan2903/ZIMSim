@@ -3,6 +3,7 @@ import { StationService } from '../features/station/stationService.js';
 import { audioModules } from './audioModules.js';
 import { ansagenStore } from './ansagenStore.svelte.js';
 import { parseTrack } from '../core/utils/trackUtils.js';
+import { resolveDelayReasonAudio } from './audioReasonMapping.js';
 
 /**
  * Formatiert Fahrplandaten und Audiobausteine in das Dateisystem- und Sprachformat
@@ -470,5 +471,33 @@ export class AnsagenSpeechFormatter {
             file: `${this.lang}/zeiten/verspaetung_heute/${delayStr}`,
             text: `heute ca. ${delay} Minuten später`
         });
+    }
+
+    /**
+     * Fügt den Verspätungsgrund zur Playlist hinzu.
+     * @param {Array} playlist - Die Playlist
+     * @param {string} [delayReasonText=''] - Der textuelle Verspätungsgrund
+     * @param {string|number} [delayReasonCode=''] - Der RIS-Code oder die 900er Legacy-ID
+     */
+    delayReason(playlist, delayReasonText = '', delayReasonCode = '') {
+        if (!delayReasonText && !delayReasonCode) return;
+
+        // Audio-Datei und passenden Grammatik-Text auflösen (Audiodateien enthalten "Grund dafür..." bereits nativ)
+        const resolved = resolveDelayReasonAudio(delayReasonCode, delayReasonText);
+        const reasonText = resolved.text || delayReasonText;
+
+        if (resolved.file) {
+            const basename = resolved.file.replace(/\.(wav|opus)$/i, '');
+            playlist.push({
+                file: `${this.lang}/gruende/grund_dafuer/${basename}`,
+                text: reasonText
+            });
+        } else {
+            // Text-to-Speech Fallback
+            playlist.push({
+                file: `${this.lang}/gruende/grund_dafuer/tts_${delayReasonCode || 'custom'}`,
+                text: reasonText
+            });
+        }
     }
 }

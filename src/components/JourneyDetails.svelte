@@ -7,6 +7,7 @@
     import StationPicker from './StationPicker.svelte';
     import { portalDropdown } from '../js/core/utils/portal.js';
     import { RisTextService } from '../js/core/services/risTextService.js';
+    import { LEGACY_AUDIO_REASONS } from '../js/audio/audioReasonMapping.js';
     import { ansagenGenerator } from '../js/audio/ansagenGenerator.js';
     import { ansagenPlayer } from '../js/audio/ansagenPlayer.svelte.js';
     import ZimIcon from './ZimIcon.svelte';
@@ -57,9 +58,26 @@
         return list;
     });
 
-    // Filter-Logik für Autocomplete Verspätungsgrund
+    // Filter-Logik für Autocomplete Verspätungsgrund (inkl. 900er Legacy-Audio-Gründe)
     let delayReasonPresets = $derived.by(() => {
-        const all = RisTextService.getPresetsByType('R');
+        const ris = RisTextService.getPresetsByType('R').filter(p => p.text && p.text.trim());
+        const legacy = LEGACY_AUDIO_REASONS.map(l => ({
+            code: String(l.id),
+            text: l.grund,
+            type: 'R'
+        }));
+
+        // Deduplizierung: RIS-Gründe haben Vorrang, Legacy-Gründe ergänzen einzigartige Texte
+        const seenTexts = new Set();
+        const all = [];
+        for (const item of [...ris, ...legacy]) {
+            const key = item.text.trim().toLowerCase();
+            if (!seenTexts.has(key)) {
+                seenTexts.add(key);
+                all.push(item);
+            }
+        }
+
         const query = (journey.delayReason || '').toLowerCase();
         if (!query) return all;
         return all.filter(p => 
@@ -80,9 +98,22 @@
         triggerUpdate();
     }
 
-    function setDelayReason(text) {
+    function setDelayReason(text, code = '') {
         journey.delayReason = text;
+        journey.delayReasonCode = code ? String(code) : '';
         showReasonDropdown = false;
+        triggerUpdate();
+    }
+
+    function onDelayReasonInput() {
+        const query = (journey.delayReason || '').trim().toLowerCase();
+        if (!query) {
+            journey.delayReasonCode = '';
+        } else {
+            // Prüfen, ob der eingetippte Text genau einem Preset entspricht
+            const matched = delayReasonPresets.find(p => p.text.toLowerCase() === query);
+            journey.delayReasonCode = matched ? String(matched.code) : '';
+        }
         triggerUpdate();
     }
 
@@ -267,7 +298,7 @@
                     <input type="text" class="jfield" style="width: 100%; margin: 0;"
                            placeholder="Suchen oder eigenen Text eingeben"
                            bind:value={journey.delayReason}
-                           oninput={triggerUpdate}
+                           oninput={onDelayReasonInput}
                            onfocus={() => showReasonDropdown = true}
                            onblur={() => setTimeout(() => showReasonDropdown = false, 200)}>
                            
@@ -275,11 +306,11 @@
                         <ul use:portalDropdown={reasonWrapperRef} class="autocomplete-list active" style="max-height: 200px; overflow-y: auto; background-color: var(--bg-panel, #2b2b2b); border: 1px solid var(--border-color, #444); list-style: none; padding: 0; margin: 0; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
                             <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
                             <!-- svelte-ignore a11y_click_events_have_key_events -->
-                            <li class="autocomplete-item" style="padding: 8px; cursor: pointer; border-bottom: 1px solid var(--border-color, #444);" onclick={() => setDelayReason('')}>-- Kein Grund --</li>
+                            <li class="autocomplete-item" style="padding: 8px; cursor: pointer; border-bottom: 1px solid var(--border-color, #444);" onclick={() => setDelayReason('', '')}>-- Kein Grund --</li>
                             {#each delayReasonPresets as preset}
                                 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
                                 <!-- svelte-ignore a11y_click_events_have_key_events -->
-                                <li class="autocomplete-item" style="padding: 8px; cursor: pointer; border-bottom: 1px solid var(--border-color, #444);" onclick={() => setDelayReason(preset.text)}>
+                                <li class="autocomplete-item" style="padding: 8px; cursor: pointer; border-bottom: 1px solid var(--border-color, #444);" onclick={() => setDelayReason(preset.text, preset.code)}>
                                     {preset.code} - {preset.text}
                                 </li>
                             {/each}

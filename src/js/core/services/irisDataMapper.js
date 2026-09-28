@@ -77,7 +77,31 @@ export class IrisDataMapper {
             }
         }
 
-        const { delayReason, qosMessages } = this._processMessages(raw.rt.messages, effectiveTimeMs || simTimeMs);
+        // Relevante Meldungen ermitteln: Vorrang für stationsspezifische ar/dp-Meldungen, ergänzt um s-Meldungen
+        let relevantMessages = [];
+        if (isArrival && raw.rt?.arMessages) {
+            relevantMessages = [...raw.rt.arMessages, ...(raw.rt.sMessages || [])];
+        } else if (!isArrival && raw.rt?.dpMessages) {
+            relevantMessages = [...raw.rt.dpMessages, ...(raw.rt.sMessages || [])];
+        } else if (raw.rt?.messages) {
+            relevantMessages = raw.rt.messages;
+        }
+
+        const { delayReason, delayReasonCode, infoTexts, qosMessages, messages: processedMessages } = this._processMessages(
+            relevantMessages, 
+            effectiveTimeMs || simTimeMs
+        );
+
+        // Fallback: Wenn Abfahrt keinen eigenen Verspätungsgrund hat, aber Ankunft einen hatte (z.B. verspätete Ankunft aus Vorfahrt)
+        let finalDelayReason = delayReason;
+        let finalDelayReasonCode = delayReasonCode;
+        if (!isArrival && !finalDelayReason && raw.rt?.arMessages) {
+            const arResult = this._processMessages(raw.rt.arMessages, effectiveTimeMs || simTimeMs);
+            if (arResult.delayReason) {
+                finalDelayReason = arResult.delayReason;
+                finalDelayReasonCode = arResult.delayReasonCode;
+            }
+        }
         
         const stops = this._processStops(primaryNode, rtNode);
         const { destName, destLang, destKurz, destIbnr, destKategorie } = this._resolveDestination(primaryNode, stops, isArrival);
@@ -102,7 +126,10 @@ export class IrisDataMapper {
             ausfall: (rtNode && rtNode.cs === 'c'),
             ankunft: isArrival,
             stops: stops,
-            delayReason: delayReason,
+            delayReason: finalDelayReason,
+            delayReasonCode: finalDelayReasonCode,
+            infoTexts: infoTexts,
+            messages: processedMessages,
             qosMessages: qosMessages,
             couplingGroupId: primaryNode.wings || null,
             _effectiveTimeMs: effectiveTimeMs // Für internen Gebrauch (Autoplay Ticker)
@@ -245,7 +272,7 @@ export class IrisDataMapper {
      * @returns {number|null} Timestamp in Millisekunden
      */
     static parseIrisDateTime(irisTimeStr) {
-        if (!irisTimeStr || irisTimeStr.length !== 10) return null;
+        if (!irisTimeStr || irisTimeStr.length < 10) return null;
         const yy = 2000 + parseInt(irisTimeStr.slice(0, 2), 10);
         const mm = parseInt(irisTimeStr.slice(2, 4), 10) - 1;
         const dd = parseInt(irisTimeStr.slice(4, 6), 10);
@@ -265,23 +292,29 @@ export class IrisDataMapper {
 
     /**
      * Verarbeitet die rohen IRIS-Meldungen, filtert ungültige heraus und trennt sie
-     * in den primären Verspätungsgrund und eine Liste von weiteren gültigen QoS-Messages.
+     * in den primären Verspätungsgrund, Qualitätsmeldungen (Lauftexte) und eine strukturierte Meldungsliste.
      * @param {Array<Object>} messages 
      * @param {number} simulatedTimeMs 
-     * @returns {Object} { delayReason, qosMessages }
+     * @returns {Object} { delayReason, delayReasonCode, infoTexts, qosMessages, messages }
      */
     static _processMessages(messages, simulatedTimeMs) {
-        if (!messages || messages.length === 0) return { delayReason: '', qosMessages: [] };
+        if (!messages || messages.length === 0) {
+            return { delayReason: '', delayReasonCode: '', infoTexts: [], qosMessages: [], messages: [] };
+        }
         
         const validMessages = [];
         
         for (const msg of messages) {
+            // Stornierte/gelöschte Meldungen ignorieren
+            if (msg.del === '1') continue;
+
             // Gültigkeitsprüfung (validFrom / validTo)
-            if (msg.from && msg.to) {
+            if (msg.from) {
                 const fromMs = this._parseIrisDateTime(msg.from);
-                const toMs = this._parseIrisDateTime(msg.to);
-                
                 if (fromMs && simulatedTimeMs < fromMs) continue; // Noch nicht gültig
+            }
+            if (msg.to) {
+                const toMs = this._parseIrisDateTime(msg.to);
                 if (toMs && simulatedTimeMs > toMs) continue; // Nicht mehr gültig
             }
             
@@ -295,20 +328,61 @@ export class IrisDataMapper {
             return tsB - tsA;
         });
 
-        // 1. Primären Verspätungsgrund ermitteln
         let delayReason = '';
-        if (RisTextService.isLoaded) {
-            for (const msg of validMessages) {
-                const preset = typeof RisTextService.getPresetByCode === 'function'
-                    ? RisTextService.getPresetByCode(msg.c)
-                    : RisTextService.presets.find(p => p.code === msg.c);
-                if (preset) {
-                    delayReason = preset.text;
-                    break; 
+        let delayReasonCode = '';
+        const infoTexts = [];
+        const allMessages = [];
+        const seenTexts = new Set();
+
+        for (const msg of validMessages) {
+            const preset = RisTextService.isLoaded ? RisTextService.getPresetByCode(msg.c) : null;
+            const isDelayType = (preset && preset.type === 'R') || msg.t === 'd';
+            
+            let messageText = preset?.text || msg.ext || msg.text || '';
+            if (!messageText && msg.cat) {
+                messageText = `Information: ${msg.cat}`;
+            }
+
+            if (!messageText) continue;
+
+            // 1. Für den Details-Inspektor (alle Meldungen)
+            allMessages.push({
+                priority: msg.pr ? parseInt(msg.pr, 10) : (isDelayType ? 1 : 2),
+                text: messageText,
+                type: msg.t || preset?.type || (isDelayType ? 'R' : 'Q')
+            });
+
+            // 2. Verspätungsgrund ermitteln
+            if (isDelayType) {
+                // Code "0" ("Keine Verspätungsbegründung") unterdrücken
+                if (msg.c === '0') continue;
+
+                if (!delayReason) {
+                    delayReason = messageText;
+                    delayReasonCode = String(msg.c || '');
+                }
+            } else {
+                // 3. Qualitätsabweichungen / Lauftexte für Monitore (Typ Q, Freitexte t='f', HIM t='h', etc.)
+                const cleanText = messageText.replace(/^Information:\s*/i, '').trim();
+                if (cleanText && !seenTexts.has(cleanText)) {
+                    seenTexts.add(cleanText);
+                    infoTexts.push({
+                        id: crypto.randomUUID(),
+                        text: cleanText,
+                        visible: true,
+                        type: 'Q',
+                        code: msg.c || null
+                    });
                 }
             }
         }
         
-        return { delayReason, qosMessages: validMessages };
+        return { 
+            delayReason, 
+            delayReasonCode, 
+            infoTexts, 
+            qosMessages: validMessages, 
+            messages: allMessages 
+        };
     }
 }

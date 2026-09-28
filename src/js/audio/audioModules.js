@@ -108,11 +108,6 @@ export const audioModules = {
         en: { file: "020", text: "Information on" },
         fr: { file: "042", text: "" }
     },
-    GRUND_ODER_VERSPAETUNG: {
-        de: { file: "021", text: "Grund / Verspätung Einleitung" },
-        en: { file: "011", text: "Delay / Reason intro" },
-        fr: { file: "042", text: "" }
-    },
     FAELLT_HEUTE_AUS: {
         de: { file: "014", text: "fällt heute aus" },
         en: { file: "021", text: "is cancelled today" },

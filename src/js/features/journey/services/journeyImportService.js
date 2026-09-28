@@ -20,6 +20,7 @@ export class JourneyImportService {
     static _extractDelayReasonAndInfoTexts(rawMeldungen, checkAusfall = false) {
         const infoTexts = [];
         let delayReason = '';
+        let delayReasonCode = '';
         let ausfall = false;
         const rPresets = RisTextService.getPresetsByType('R');
 
@@ -29,8 +30,12 @@ export class JourneyImportService {
                 return;
             }
 
-            if (rPresets.some(p => p.text === m.text)) {
-                if (!delayReason) delayReason = m.text;
+            const matchingPreset = rPresets.find(p => p.text === m.text);
+            if (matchingPreset) {
+                if (!delayReason) {
+                    delayReason = m.text;
+                    delayReasonCode = matchingPreset.code ? String(matchingPreset.code) : '';
+                }
             } else {
                 infoTexts.push({
                     id: crypto.randomUUID(),
@@ -41,7 +46,7 @@ export class JourneyImportService {
             }
         });
 
-        return { infoTexts, delayReason, ausfall };
+        return { infoTexts, delayReason, delayReasonCode, ausfall };
     }
 
     /**
@@ -55,7 +60,7 @@ export class JourneyImportService {
         const parsedName = parseTrainName(vm.name, vm.linienNummer, vm.langText);
 
         const rawMeldungen = entry.meldungen || [];
-        const { infoTexts, delayReason, ausfall } = this._extractDelayReasonAndInfoTexts(rawMeldungen, true);
+        const { infoTexts, delayReason, delayReasonCode, ausfall } = this._extractDelayReasonAndInfoTexts(rawMeldungen, true);
 
         let viasArray = entry.vias || entry.zuglauf || entry.route || entry.ueber || [];
         const fallbackDestination = viasArray.length > 0 ? viasArray[viasArray.length - 1] : '';
@@ -98,7 +103,8 @@ export class JourneyImportService {
                 text: m.text
             })),
             infoTexts: infoTexts,
-            delayReason: delayReason
+            delayReason: delayReason,
+            delayReasonCode: delayReasonCode
         });
 
         // Wenn durch Migration Dummy-Stops aus den Vias erzeugt wurden, reichern wir sie an
@@ -118,7 +124,7 @@ export class JourneyImportService {
         const parsedName = parseTrainName(vm.name, vm.linienNummer, vm.langText);
 
         const rawMeldungen = data.priorisierteMeldungen || [];
-        const { infoTexts, delayReason } = this._extractDelayReasonAndInfoTexts(rawMeldungen, false);
+        const { infoTexts, delayReason, delayReasonCode } = this._extractDelayReasonAndInfoTexts(rawMeldungen, false);
 
         const journey = new Journey({
             name: parsedName,
@@ -138,6 +144,7 @@ export class JourneyImportService {
             })),
             infoTexts: infoTexts,
             delayReason: delayReason,
+            delayReasonCode: delayReasonCode,
             stops: (data.halte || []).map(halt => new Stop({
                 name: halt.name,
                 extId: halt.extId,
@@ -351,8 +358,24 @@ export class JourneyImportService {
                 if (existing.expectedTime !== jData.expectedTime) existing.expectedTime = jData.expectedTime;
                 if (existing.ezGleis !== jData.ezGleis) existing.ezGleis = jData.ezGleis;
                 if (existing.delayReason !== jData.delayReason) existing.delayReason = jData.delayReason;
+                if (existing.delayReasonCode !== jData.delayReasonCode) existing.delayReasonCode = jData.delayReasonCode;
                 if (existing.ausfall !== jData.ausfall) existing.ausfall = jData.ausfall;
                 if (existing._effectiveTimeMs !== jData._effectiveTimeMs) existing._effectiveTimeMs = jData._effectiveTimeMs;
+
+                // Infotexte (Qualitätsmeldungen/Lauftexte) reaktiv und schonend aktualisieren
+                const currentQTexts = (existing.infoTexts || []).filter(t => t.type === 'Q').map(t => t.text).join('|');
+                const newQTexts = (jData.infoTexts || []).map(t => t.text).join('|');
+                if (currentQTexts !== newQTexts) {
+                    const nonQTexts = (existing.infoTexts || []).filter(t => t.type !== 'Q');
+                    existing.infoTexts = [...nonQTexts, ...(jData.infoTexts || [])];
+                }
+
+                // Meldungsliste (für Details-Inspektor) synchronisieren
+                const currentMsgsStr = (existing.messages || []).map(m => `${m.priority}:${m.text}`).join('|');
+                const newMsgsStr = (jData.messages || []).map(m => `${m.priority}:${m.text}`).join('|');
+                if (currentMsgsStr !== newMsgsStr) {
+                    existing.messages = jData.messages || [];
+                }
                 
                 // Semantic compare of stops to avoid Svelte reactivity spam
                 const hadStopsBefore = existing.stops && existing.stops.length > 0;

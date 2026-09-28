@@ -41,16 +41,14 @@ export class RisTextService {
         }
     }
 
-    static _codeMap = new Map();
-
     /**
      * Sucht ein Preset anhand seines Codes ($O(1)$).
-     * @param {string} code
+     * @param {string|number} code
      * @returns {object|null}
      */
     static getPresetByCode(code) {
-        if (!code) return null;
-        return this._codeMap.get(code) || null;
+        if (code === undefined || code === null || code === '') return null;
+        return this._codeMap.get(String(code)) || null;
     }
 
     /**

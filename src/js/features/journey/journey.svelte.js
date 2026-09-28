@@ -70,6 +70,7 @@ export class Journey {
     sectors = $state('');
     infoTexts = $state([]);
     delayReason = $state('');
+    delayReasonCode = $state('');
     direction = $state(1);
     startMeter = $state(0);
     skalieren = $state(false);
@@ -144,6 +145,7 @@ export class Journey {
         
         // === Verspätungsgrund ===
         this.delayReason = data.delayReason || '';
+        this.delayReasonCode = data.delayReasonCode ? String(data.delayReasonCode) : '';
 
         // === Formation / Wagenreihung ===
         this.direction = data.direction !== undefined ? data.direction : 1; // 0=Links, 1=Rechts
@@ -229,6 +231,7 @@ export class Journey {
             sectors: this.sectors,
             infoTexts: this.infoTexts,
             delayReason: this.delayReason,
+            delayReasonCode: this.delayReasonCode,
             direction: this.direction,
             startMeter: this.startMeter,
             skalieren: this.skalieren,

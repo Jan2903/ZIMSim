@@ -233,6 +233,54 @@ export class IrisApiService {
     }
 
     /**
+     * Extrahiert und aktualisiert Nachrichten-Objekte aus <m>-XML-Knoten unter Beachtung von del="1".
+     * @param {Array<Object>} existingList Bestehende Meldungen
+     * @param {NodeList|Array<Element>} newNodes Neue <m>-Knoten
+     * @returns {Array<Object>}
+     */
+    static _mergeMessageList(existingList = [], newNodes = []) {
+        const msgMap = new Map();
+        for (const m of existingList) {
+            const key = m?.id || `${m?.t}_${m?.c}_${m?.ts}`;
+            if (key) msgMap.set(key, m);
+        }
+
+        for (let i = 0; i < newNodes.length; i++) {
+            const node = newNodes[i];
+            const id = node.getAttribute('id');
+            const del = node.getAttribute('del');
+            if (del === '1') {
+                if (id) msgMap.delete(id);
+                continue;
+            }
+
+            const code = node.getAttribute('c');
+            const ext = node.getAttribute('ext') || node.textContent?.trim() || '';
+            const intText = node.getAttribute('int') || '';
+            const cat = node.getAttribute('cat') || '';
+
+            if (!code && !ext && !cat && !intText) continue;
+
+            const msgObj = {
+                id: id || '',
+                c: code || '',
+                t: node.getAttribute('t') || '',
+                ts: node.getAttribute('ts') || '',
+                from: node.getAttribute('from') || '',
+                to: node.getAttribute('to') || '',
+                pr: node.getAttribute('pr') || '',
+                cat: cat,
+                ext: ext,
+                int: intText
+            };
+            const key = id || `${msgObj.t}_${msgObj.c}_${msgObj.ts}`;
+            msgMap.set(key, msgObj);
+        }
+
+        return Array.from(msgMap.values());
+    }
+
+    /**
      * Wendet die abgerufenen Echtzeitdaten (XML) auf die bestehenden Fahrplandaten (Map) an.
      * Gibt ein Set der geänderten Zug-IDs zurück für selektives Re-Mapping (Dirty-Tracking).
      * @param {Map} journeys 
@@ -249,33 +297,45 @@ export class IrisApiService {
             if (!journeys.has(id)) continue;
             
             const journey = journeys.get(id);
+            if (!journey.rt) journey.rt = {};
+
             let ar = null;
             let dp = null;
-            const msgs = [];
+            const sMsgs = [];
             const children = s.children;
             for (let i = 0; i < children.length; i++) {
                 const child = children[i];
                 const nodeName = child.nodeName;
                 if (nodeName === 'ar') ar = child;
                 else if (nodeName === 'dp') dp = child;
-                else if (nodeName === 'm') msgs.push(child);
+                else if (nodeName === 'm') sMsgs.push(child);
             }
 
             if (ar) {
-                journey.rt.ar = this._extractNodeAttributes(ar, ['ct', 'cp', 'pp', 'cs', 'cpth']);
+                const arAttrs = this._extractNodeAttributes(ar, ['ct', 'cp', 'pp', 'cs', 'cpth']);
+                if (arAttrs) {
+                    journey.rt.ar = { ...(journey.rt.ar || {}), ...arAttrs };
+                }
+                const arMNodes = ar.querySelectorAll('m');
+                journey.rt.arMessages = this._mergeMessageList(journey.rt.arMessages || [], arMNodes);
             }
             if (dp) {
-                journey.rt.dp = this._extractNodeAttributes(dp, ['ct', 'cp', 'pp', 'cs', 'cpth']);
+                const dpAttrs = this._extractNodeAttributes(dp, ['ct', 'cp', 'pp', 'cs', 'cpth']);
+                if (dpAttrs) {
+                    journey.rt.dp = { ...(journey.rt.dp || {}), ...dpAttrs };
+                }
+                const dpMNodes = dp.querySelectorAll('m');
+                journey.rt.dpMessages = this._mergeMessageList(journey.rt.dpMessages || [], dpMNodes);
             }
             
-            journey.rt.messages = msgs.map(m => ({
-                id: m.getAttribute('id'),
-                c: m.getAttribute('c'),
-                t: m.getAttribute('t'),
-                ts: m.getAttribute('ts'),
-                from: m.getAttribute('from'),
-                to: m.getAttribute('to')
-            })).filter(m => m.c);
+            journey.rt.sMessages = this._mergeMessageList(journey.rt.sMessages || [], sMsgs);
+
+            // Alle aktiven Meldungen für Rückwärtskompatibilität und globale Ansicht zusammenführen
+            journey.rt.messages = [
+                ...(journey.rt.sMessages || []),
+                ...(journey.rt.arMessages || []),
+                ...(journey.rt.dpMessages || [])
+            ];
 
             changedIds.add(id);
         }

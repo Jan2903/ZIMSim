@@ -81,6 +81,16 @@ export class AnsagenGenerator {
         this.formatter.delay(playlist, delay);
     }
 
+    /**
+     * Fügt den Verspätungsgrund zur Playlist hinzu.
+     * @param {Array} playlist - Die Playlist
+     * @param {object} journey - Das Journey-Objekt
+     */
+    _appendDelayReason(playlist, journey) {
+        if (!journey || !journey.delayReason) return;
+        this.formatter.delayReason(playlist, journey.delayReason, journey.delayReasonCode);
+    }
+
     // --- Fach- und Domainprüfungen ---
 
     /**
@@ -407,8 +417,16 @@ export class AnsagenGenerator {
 
         let delay = this._calculateDelay(journey);
         this._appendDelay(p, delay);
+
+        if (delay >= 5 && journey.delayReason) {
+            this._appendDelayReason(p, journey);
+        }
         
         this._generateDeviations(p, journey);
+
+        if (delay >= 30) {
+            this._module(p, 'ENTSCHULDIGUNG');
+        }
 
         return p;
     }
