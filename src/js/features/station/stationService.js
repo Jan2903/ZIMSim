@@ -12,29 +12,45 @@ export class StationService {
     static _lookupCache = new Map();
 
     /**
-     * Lädt die stations.csv asynchron und parst sie in den Speicher.
+     * Lädt die Stationsdaten asynchron (bevorzugt aus vorkompilierter stations.json, Fallback auf CSVs).
      */
     static async loadStations() {
         if (this.isLoaded) return;
         try {
-            const [baseRes, extRes] = await Promise.all([
-                fetch(import.meta.env.BASE_URL + 'stations/stations.csv'),
-                fetch(import.meta.env.BASE_URL + 'stations/stations_ext.csv').catch(() => null)
-            ]);
-
-            if (baseRes && baseRes.ok) {
-                const csvText = await baseRes.text();
-                this.parseCSV(csvText);
+            let loadedFromJson = false;
+            try {
+                const jsonRes = await fetch(import.meta.env.BASE_URL + 'data/stations.json');
+                if (jsonRes.ok) {
+                    const data = await jsonRes.json();
+                    if (Array.isArray(data) && data.length > 0) {
+                        this.parseStationsJson(data);
+                        loadedFromJson = true;
+                    }
+                }
+            } catch (jsonErr) {
+                console.warn('[StationService] data/stations.json nicht geladen, verwende CSV-Fallback:', jsonErr);
             }
 
-            if (extRes && extRes.ok) {
-                const extCsvText = await extRes.text();
-                this.parseCSV(extCsvText);
+            if (!loadedFromJson) {
+                const [baseRes, extRes] = await Promise.all([
+                    fetch(import.meta.env.BASE_URL + 'stations/stations.csv'),
+                    fetch(import.meta.env.BASE_URL + 'stations/stations_ext.csv').catch(() => null)
+                ]);
+
+                if (baseRes && baseRes.ok) {
+                    const csvText = await baseRes.text();
+                    this.parseCSV(csvText);
+                }
+
+                if (extRes && extRes.ok) {
+                    const extCsvText = await extRes.text();
+                    this.parseCSV(extCsvText);
+                }
             }
 
             this.isLoaded = true;
             this.clearCache();
-            console.log(`[StationService] Erfolgreich ${this.stations.length} Stationen geladen (DB & Extended).`);
+            console.log(`[StationService] Erfolgreich ${this.stations.length} Stationen geladen (${loadedFromJson ? 'kompiliertes JSON' : 'CSV-Fallback'}).`);
 
             // Nachträgliches Anreichern bereits existierender Züge (z.B. Demo-Daten oder Preset)
             if (journeyStore && journeyStore.journeys) {
@@ -54,6 +70,33 @@ export class StationService {
             }
         } catch (error) {
             console.error('[StationService] Fehler beim Laden der Stationsdaten:', error);
+        }
+    }
+
+    /**
+     * Parst das vorkompilierte, kompakte Tupel-Format [ibnr, name, ds100, kategorie, nameKurz?, aliases?].
+     * @param {Array[]} data - Kompakte Stations-Tupel
+     */
+    static parseStationsJson(data) {
+        for (let i = 0; i < data.length; i++) {
+            const row = data[i];
+            const ibnr = row[0];
+            const name = row[1];
+            const ds100 = row[2];
+            const kategorie = row[3];
+            const nameKurz = row[4] || name;
+            const aliases = (row[5] && Array.isArray(row[5])) ? row[5] : [name];
+
+            const stationObj = {
+                ibnr,
+                name,
+                aliases,
+                nameKurz,
+                ds100,
+                kategorie
+            };
+            this.stations.push(stationObj);
+            this._indexStation(stationObj);
         }
     }
 
@@ -105,7 +148,9 @@ export class StationService {
 
         // Pre-Normalisierung am Objekt für O(1)- und schnelle Teilstring-Vergleiche
         station.normName = this.normalizeName(station.name);
-        station.normKurz = station.nameKurz ? this.normalizeName(station.nameKurz) : '';
+        station.normKurz = (station.nameKurz && station.nameKurz !== station.name)
+            ? this.normalizeName(station.nameKurz)
+            : station.normName;
 
         if (station.ibnr) {
             this._ibnrMap.set(station.ibnr, station);
@@ -121,8 +166,9 @@ export class StationService {
 
         if (station.aliases && station.aliases.length > 0) {
             for (const alias of station.aliases) {
+                if (alias === station.name) continue;
                 const normAlias = this.normalizeName(alias);
-                if (normAlias) {
+                if (normAlias && normAlias !== station.normName) {
                     const existing = this._nameMap.get(normAlias);
                     if (!existing || station.kategorie < existing.kategorie) {
                         this._nameMap.set(normAlias, station);

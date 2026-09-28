@@ -1,27 +1,16 @@
 // js/utils/risTextService.js
+import { RIS_PRESETS } from '../constants/risPresets.js';
 
 export class RisTextService {
-    static presets = [];
-    static isLoaded = false;
+    static presets = RIS_PRESETS;
+    static isLoaded = true;
+    static _codeMap = new Map(RIS_PRESETS.map(p => [p.code, p]));
 
     /**
-     * Lädt die RIS_Texte.csv asynchron und parst sie in den Speicher.
+     * Lädt die RIS_Texte (synchron über vorkompilierte Konstanten verfügbar, rückwärtskompatible Signatur).
      */
     static async load() {
-        if (this.isLoaded) return;
-        try {
-            const response = await fetch(import.meta.env.BASE_URL + 'stations/RIS_Texte.csv');
-            const arrayBuffer = await response.arrayBuffer();
-            // Windows-1252 / ISO-8859-1 decoding for ANSI
-            const decoder = new TextDecoder('windows-1252');
-            const csvText = decoder.decode(arrayBuffer);
-            
-            this.parseCSV(csvText);
-            this.isLoaded = true;
-            console.log(`[RisTextService] Erfolgreich ${this.presets.length} Presets geladen.`);
-        } catch (error) {
-            console.error('[RisTextService] Fehler beim Laden der RIS_Texte.csv:', error);
-        }
+        return Promise.resolve();
     }
 
     /**
