@@ -4,6 +4,7 @@
     import { FormationPresetService } from '../js/features/formation/formationPresetService.js';
     import { journeyStore, trainDisplay } from '../js/core/state/stores.js';
     import ZimIcon from './ZimIcon.svelte';
+    import { downloadJsonFile, parseBundle } from '../js/core/utils/bundleUtils.js';
 
     /**
      * @typedef {Object} Props
@@ -15,6 +16,7 @@
 
     const presets = FormationPresetService.getPresets();
     let selectedRuleId = $state(null);
+    let pendingImport = $state(null);
 
     // Live-Test-Felder
     let testTrainName = $state('RE 1');
@@ -99,13 +101,7 @@
 
     function exportRules() {
         const json = formationRuleService.exportRules();
-        const blob = new Blob([json], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `zimsim_formation_rules_${Date.now()}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
+        downloadJsonFile(json, `zimsim_formation_rules_${Date.now()}.json`);
     }
 
     function handleImport(e) {
@@ -114,16 +110,43 @@
 
         const reader = new FileReader();
         reader.onload = (event) => {
-            const success = formationRuleService.importRules(event.target.result);
-            if (success) {
-                selectedRuleId = formationRuleService.rules[0]?.id || null;
-                alert('Regeln wurden erfolgreich importiert!');
+            const raw = event.target.result;
+            const parsed = parseBundle(raw, 'zimsim-formation-rules');
+            if (!parsed.success) {
+                alert(parsed.error || 'Fehler beim Parsen der Datei.');
+                return;
+            }
+
+            const count = Array.isArray(parsed.payload) ? parsed.payload.length : 0;
+            if (count === 0) {
+                alert('Die ausgewählte Datei enthält keine Wagenreihungs-Regeln.');
+                return;
+            }
+
+            if (formationRuleService.rules.length > 0) {
+                pendingImport = {
+                    raw,
+                    count,
+                    fileName: file.name
+                };
             } else {
-                alert('Fehler beim Importieren der Datei. Ungültiges Format.');
+                executeImport(raw, 'overwrite');
             }
         };
         reader.readAsText(file);
         e.target.value = '';
+    }
+
+    function executeImport(raw, mode) {
+        const res = formationRuleService.importRules(raw, mode);
+        if (res.success) {
+            selectedRuleId = formationRuleService.rules[0]?.id || null;
+            pendingImport = null;
+            const actionText = mode === 'merge' ? 'zusammengeführt' : 'ersetzt';
+            alert(`${res.count} Wagenreihungs-Regeln erfolgreich ${actionText}.`);
+        } else {
+            alert(res.error || 'Fehler beim Importieren der Datei.');
+        }
     }
 </script>
 
@@ -510,6 +533,31 @@
                 {/if}
             </div>
         </div>
+
+        {#if pendingImport}
+        <div class="import-confirm-banner">
+            <div class="import-confirm-content">
+                <div class="import-confirm-title">
+                    <ZimIcon name="import" size={16} />
+                    <span>Wagenreihungs-Regeln importieren: <strong>{pendingImport.fileName}</strong> ({pendingImport.count} Regeln)</span>
+                </div>
+                <p class="import-confirm-desc">
+                    Möchtest du die neuen Regeln zu deinen bisherigen Regeln hinzufügen oder alle bestehenden Regeln ersetzen?
+                </p>
+                <div class="import-confirm-actions">
+                    <button type="button" class="btn-primary btn-sm" onclick={() => executeImport(pendingImport.raw, 'merge')}>
+                        Zusammenführen (Merge)
+                    </button>
+                    <button type="button" class="btn-danger btn-sm" onclick={() => executeImport(pendingImport.raw, 'overwrite')}>
+                        Alles ersetzen (Overwrite)
+                    </button>
+                    <button type="button" class="btn-secondary btn-sm" onclick={() => { pendingImport = null; }}>
+                        Abbrechen
+                    </button>
+                </div>
+            </div>
+        </div>
+        {/if}
 
         <!-- Footer -->
         <div class="modal-footer">
@@ -956,5 +1004,33 @@
     .rules-main-grid {
         grid-template-columns: 1fr;
     }
+}
+
+/* Import Confirmation Banner */
+.import-confirm-banner {
+    background: var(--bg-panel, #1e293b);
+    border-top: 1px solid var(--accent, #e2001a);
+    border-bottom: 1px solid var(--border, #334155);
+    padding: 12px 18px;
+    box-sizing: border-box;
+}
+.import-confirm-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    color: var(--text-primary, #f8fafc);
+    margin-bottom: 4px;
+    font-size: 0.95rem;
+}
+.import-confirm-desc {
+    margin: 0 0 10px 0;
+    font-size: 0.85rem;
+    color: var(--text-muted, #94a3b8);
+}
+.import-confirm-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 </style>

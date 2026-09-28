@@ -1,6 +1,8 @@
 // js/features/journey/services/lineColorService.svelte.js
 import { COLORS } from '../../../displays/core/constants.js';
 import { journeyStore, trainDisplay } from '../../../core/state/stores.js';
+import { StorageService } from '../../../core/services/storageService.js';
+import { createBundle, parseBundle, mergeRuleList } from '../../../core/utils/bundleUtils.js';
 
 /**
  * @typedef {Object} LineBadgeRule
@@ -134,6 +136,17 @@ class LineColorService {
         this.loadRules();
         this.loadAutoColorsSettings();
         this.loadAutoColors();
+
+        // Asynchrone Spiegelung & Wiederherstellung aus IndexedDB (ausfallsicher)
+        StorageService.syncFromIndexedDB(STORAGE_KEY, (restored) => {
+            if (Array.isArray(restored) && restored.length > 0) {
+                this.rules = restored;
+                this.clearCache();
+                if (typeof trainDisplay !== 'undefined' && trainDisplay?.updateAll) {
+                    trainDisplay.updateAll();
+                }
+            }
+        });
     }
 
     /**
@@ -203,45 +216,42 @@ class LineColorService {
      */
     loadRules() {
         try {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            if (raw) {
-                const parsed = JSON.parse(raw);
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                    // Sanfte Migration: Veraltete fehlerhafte Standardregeln (z.B. contains: 'IC') heilen
-                    this.rules = parsed.map(rule => {
-                        if (rule.id === 'default-ic' && rule.matchType === 'contains' && rule.pattern === 'IC') {
-                            return {
-                                ...rule,
-                                name: 'Intercity (IC)',
-                                pattern: '^IC(?:\\s|\\d|$)',
-                                matchType: 'regex',
-                                textColor: '#000080',
-                                invertedTextColor: '#000080',
-                                invertedBorderColor: '#000080'
-                            };
-                        }
-                        if (rule.id === 'default-ec' && rule.pattern === 'EC' && rule.matchType === 'startsWith') {
-                            return {
-                                ...rule,
-                                pattern: '^EC(?:\\s|\\d|$)',
-                                matchType: 'regex',
-                                textColor: '#000080',
-                                invertedTextColor: '#000080',
-                                invertedBorderColor: '#000080'
-                            };
-                        }
-                        if (rule.id === 'default-sbahn' && rule.pattern === 'S ') {
-                            return {
-                                ...rule,
-                                pattern: '^S(?:\\s*\\d|\\s|$)',
-                                matchType: 'regex'
-                            };
-                        }
-                        return rule;
-                    });
-                    this.saveRules();
-                    return;
-                }
+            const parsed = StorageService.getItem(STORAGE_KEY, null);
+            if (parsed && Array.isArray(parsed) && parsed.length > 0) {
+                // Sanfte Migration: Veraltete fehlerhafte Standardregeln (z.B. contains: 'IC') heilen
+                this.rules = parsed.map(rule => {
+                    if (rule.id === 'default-ic' && rule.matchType === 'contains' && rule.pattern === 'IC') {
+                        return {
+                            ...rule,
+                            name: 'Intercity (IC)',
+                            pattern: '^IC(?:\\s|\\d|$)',
+                            matchType: 'regex',
+                            textColor: '#000080',
+                            invertedTextColor: '#000080',
+                            invertedBorderColor: '#000080'
+                        };
+                    }
+                    if (rule.id === 'default-ec' && rule.pattern === 'EC' && rule.matchType === 'startsWith') {
+                        return {
+                            ...rule,
+                            pattern: '^EC(?:\\s|\\d|$)',
+                            matchType: 'regex',
+                            textColor: '#000080',
+                            invertedTextColor: '#000080',
+                            invertedBorderColor: '#000080'
+                        };
+                    }
+                    if (rule.id === 'default-sbahn' && rule.pattern === 'S ') {
+                        return {
+                            ...rule,
+                            pattern: '^S(?:\\s*\\d|\\s|$)',
+                            matchType: 'regex'
+                        };
+                    }
+                    return rule;
+                });
+                this.saveRules();
+                return;
             }
         } catch (e) {
             console.warn('[LineColorService] Fehler beim Laden der Regeln:', e);
@@ -250,12 +260,12 @@ class LineColorService {
     }
 
     /**
-     * Persistiert die aktuellen Regeln im LocalStorage und leert den Cache.
+     * Persistiert die aktuellen Regeln resilient in LocalStorage und IndexedDB und leert den Cache.
      */
     saveRules() {
         this.clearCache();
         try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(this.rules));
+            StorageService.setItem(STORAGE_KEY, this.rules);
         } catch (e) {
             console.error('[LineColorService] Fehler beim Speichern der Regeln:', e);
         }
@@ -721,33 +731,44 @@ class LineColorService {
     }
 
     /**
-     * Exportiert alle Regeln als JSON-String.
+     * Exportiert alle Regeln im standardisierten ZIMSim-Container.
      * @returns {string}
      */
     exportRules() {
-        return JSON.stringify(this.rules, null, 2);
+        return JSON.stringify(createBundle('zimsim-line-colors', this.rules), null, 2);
     }
 
     /**
-     * Importiert Regeln aus einem JSON-String oder Array.
-     * @param {string | LineBadgeRule[]} jsonOrArray 
-     * @returns {boolean} true bei Erfolg
+     * Importiert Regeln aus einem JSON-String, Container oder Array.
+     * Unterstützt 'overwrite' (vollständig ersetzen) und 'merge' (zusammenführen).
+     * 
+     * @param {string | object} jsonOrArray 
+     * @param {'overwrite' | 'merge'} [mode='overwrite'] 
+     * @returns {{ success: boolean, count?: number, error?: string }}
      */
-    importRules(jsonOrArray) {
-        try {
-            const data = typeof jsonOrArray === 'string' ? JSON.parse(jsonOrArray) : jsonOrArray;
-            if (Array.isArray(data) && data.length > 0) {
-                this.rules = data.map(r => ({
-                    ...r,
-                    id: r.id || crypto.randomUUID()
-                }));
-                this.saveRules();
-                return true;
-            }
-        } catch (e) {
-            console.error('[LineColorService] Import fehlgeschlagen:', e);
+    importRules(jsonOrArray, mode = 'overwrite') {
+        const parsed = parseBundle(jsonOrArray, 'zimsim-line-colors');
+        if (!parsed.success) {
+            console.error('[LineColorService] Import fehlgeschlagen:', parsed.error);
+            return { success: false, error: parsed.error };
         }
-        return false;
+
+        const incoming = Array.isArray(parsed.payload) ? parsed.payload : [];
+        if (incoming.length === 0) {
+            return { success: false, error: 'Die Datei enthält keine Regeln zum Importieren.' };
+        }
+
+        if (mode === 'merge') {
+            this.rules = mergeRuleList(this.rules, incoming, r => r.pattern || r.id);
+        } else {
+            this.rules = incoming.map(r => ({
+                ...r,
+                id: r.id || crypto.randomUUID()
+            }));
+        }
+
+        this.saveRules();
+        return { success: true, count: incoming.length };
     }
 
     /**

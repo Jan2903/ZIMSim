@@ -4,11 +4,14 @@
     import { ScreenSyncService } from '../js/core/services/screenSyncService.js';
     import ZimIcon from './ZimIcon.svelte';
 
+    import { downloadJsonFile, parseBundle } from '../js/core/utils/bundleUtils.js';
+
     let { isOpen = $bindable(false) } = $props();
 
     let selectedRuleId = $state(null);
     let previewTestText = $state('');
     let fileInputRef = $state();
+    let pendingImport = $state(null);
 
     // Initiale Auswahl
     $effect(() => {
@@ -90,13 +93,7 @@
 
     function exportJson() {
         const json = lineColorService.exportRules();
-        const blob = new Blob([json], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `zimsim_line_colors_${Date.now()}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
+        downloadJsonFile(json, `zimsim_line_colors_${Date.now()}.json`);
     }
 
     function handleImportFile(e) {
@@ -105,17 +102,44 @@
 
         const reader = new FileReader();
         reader.onload = (event) => {
-            const success = lineColorService.importRules(event.target.result);
-            if (success) {
-                selectedRuleId = lineColorService.rules[0]?.id || null;
-                syncDisplay();
-                alert('Linienfarben erfolgreich importiert.');
+            const raw = event.target.result;
+            const parsed = parseBundle(raw, 'zimsim-line-colors');
+            if (!parsed.success) {
+                alert(parsed.error || 'Fehler beim Parsen der Datei.');
+                return;
+            }
+
+            const count = Array.isArray(parsed.payload) ? parsed.payload.length : 0;
+            if (count === 0) {
+                alert('Die ausgewählte Datei enthält keine Linien-Regeln.');
+                return;
+            }
+
+            if (lineColorService.rules.length > 0) {
+                pendingImport = {
+                    raw,
+                    count,
+                    fileName: file.name
+                };
             } else {
-                alert('Fehler beim Importieren der JSON-Datei.');
+                executeImport(raw, 'overwrite');
             }
         };
         reader.readAsText(file);
         e.target.value = '';
+    }
+
+    function executeImport(raw, mode) {
+        const res = lineColorService.importRules(raw, mode);
+        if (res.success) {
+            selectedRuleId = lineColorService.rules[0]?.id || null;
+            syncDisplay();
+            pendingImport = null;
+            const actionText = mode === 'merge' ? 'zusammengeführt' : 'ersetzt';
+            alert(`${res.count} Linien-Regeln erfolgreich ${actionText}.`);
+        } else {
+            alert(res.error || 'Fehler beim Importieren der Datei.');
+        }
     }
 </script>
 
@@ -370,6 +394,31 @@
                 </div>
             </div>
         </div>
+
+        {#if pendingImport}
+        <div class="import-confirm-banner">
+            <div class="import-confirm-content">
+                <div class="import-confirm-title">
+                    <ZimIcon name="import" size={16} />
+                    <span>Regeln importieren: <strong>{pendingImport.fileName}</strong> ({pendingImport.count} Regeln)</span>
+                </div>
+                <p class="import-confirm-desc">
+                    Möchtest du die neuen Regeln zu deinen bisherigen Regeln hinzufügen oder alle bestehenden Regeln ersetzen?
+                </p>
+                <div class="import-confirm-actions">
+                    <button type="button" class="btn-primary btn-sm" onclick={() => executeImport(pendingImport.raw, 'merge')}>
+                        Zusammenführen (Merge)
+                    </button>
+                    <button type="button" class="btn-danger btn-sm" onclick={() => executeImport(pendingImport.raw, 'overwrite')}>
+                        Alles ersetzen (Overwrite)
+                    </button>
+                    <button type="button" class="btn-secondary btn-sm" onclick={() => { pendingImport = null; }}>
+                        Abbrechen
+                    </button>
+                </div>
+            </div>
+        </div>
+        {/if}
 
         <div class="modal-footer">
             <div style="display: flex; gap: 8px;">
@@ -812,5 +861,34 @@ input:checked + .slider {
 }
 input:checked + .slider:before {
     transform: translateX(20px);
+}
+
+/* Import Confirmation Banner */
+.import-confirm-banner {
+    background: var(--bg-panel, #1e293b);
+    border-top: 1px solid var(--primary, #3b82f6);
+    border-bottom: 1px solid var(--border, #334155);
+    padding: 12px 20px;
+    box-sizing: border-box;
+    animation: fadeIn 0.2s ease;
+}
+.import-confirm-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    color: var(--text-primary, #f8fafc);
+    margin-bottom: 4px;
+    font-size: 0.95rem;
+}
+.import-confirm-desc {
+    margin: 0 0 10px 0;
+    font-size: 0.85rem;
+    color: var(--text-muted, #94a3b8);
+}
+.import-confirm-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 </style>

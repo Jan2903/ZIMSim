@@ -8,6 +8,7 @@
     import LineColorEditorModal from '../LineColorEditorModal.svelte';
     import FormationRuleEditorModal from '../FormationRuleEditorModal.svelte';
     import ZimIcon from '../ZimIcon.svelte';
+    import { createBundle, parseBundle, downloadJsonFile } from '../../js/core/utils/bundleUtils.js';
 
     /**
      * @typedef {Object} Props
@@ -28,18 +29,16 @@
     });
 
     /**
-     * Exportiert das gesamte aktuelle Szenario als JSON-Datei.
+     * Exportiert das gesamte aktuelle Szenario im standardisierten ZIMSim-Container als JSON-Datei.
      * @returns {void}
      */
     function exportConfig() {
         const data = journeyStore.exportAll();
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `zimsim_export_${new Date().getTime()}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
+        const bundle = createBundle('zimsim-full-backup', data, {
+            stationName: journeyStore.stationContext.stationName,
+            journeyCount: journeyStore.journeys.length
+        });
+        downloadJsonFile(bundle, `zimsim_backup_${Date.now()}.json`);
     }
 
     let fileInput;
@@ -54,13 +53,19 @@
         if (!file) return;
         const reader = new FileReader();
         reader.onload = (event) => {
+            const parsed = parseBundle(event.target.result, 'zimsim-full-backup');
+            if (!parsed.success) {
+                alert(parsed.error || 'Fehler beim Importieren der Datei.');
+                return;
+            }
+
             try {
-                const data = JSON.parse(event.target.result);
-                journeyStore.importAll(data);
+                journeyStore.importAll(parsed.payload);
                 trainDisplay.updateAll();
+                alert('Szenario-Backup erfolgreich geladen!');
             } catch (err) {
                 console.error('[SettingsDisplaySystem] Fehler beim Import:', err);
-                alert('Fehler beim Importieren der Datei.');
+                alert('Fehler beim Importieren der Datei: ' + (err?.message || err));
             }
         };
         reader.readAsText(file);

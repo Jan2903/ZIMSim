@@ -12,6 +12,7 @@ import { JourneyStorageService } from './services/journeyStorageService.js';
 import { JourneyConnectionService } from './services/journeyConnectionService.js';
 import { formationRuleService } from '../formation/formationRuleService.svelte.js';
 import { setFormatOptionsProvider } from './trainNumberFormatter.js';
+import { StorageService } from '../../core/services/storageService.js';
 
 /**
  * Zentrale Datenverwaltung (Façade & reaktiver Svelte 5 Store).
@@ -89,23 +90,34 @@ export class JourneyStore {
             ...this.formatOptions,
             nrwMode: this.nrwMode
         }));
+
+        // Asynchrone Spiegelung & Wiederherstellung aus IndexedDB (ausfallsicher)
+        StorageService.syncFromIndexedDB('zimsim_custom_stations', (restored) => {
+            if (Array.isArray(restored) && restored.length > 0) {
+                this.customStations = restored;
+                import('../station/stationService.js').then(({ StationService }) => {
+                    StationService.clearCache();
+                }).catch(() => {});
+            }
+        });
     }
 
     /**
-     * Lädt persistierte Einstellungen (NRW-Modus, Formatierungsoptionen) aus dem LocalStorage.
+     * Lädt persistierte Einstellungen (NRW-Modus, Formatierungsoptionen, Custom Stations) aus dem Storage.
      */
     loadSettings() {
         try {
-            const rawNrw = localStorage.getItem('zimsim_nrw_mode');
+            const rawNrw = StorageService.getItem('zimsim_nrw_mode', null);
             if (rawNrw !== null) {
-                this.nrwMode = rawNrw === 'true';
+                this.nrwMode = Boolean(rawNrw);
             }
-            const rawOpts = localStorage.getItem('zimsim_format_options');
-            if (rawOpts) {
-                const parsed = JSON.parse(rawOpts);
-                if (parsed && typeof parsed === 'object') {
-                    this.formatOptions = { ...this.formatOptions, ...parsed };
-                }
+            const rawOpts = StorageService.getItem('zimsim_format_options', null);
+            if (rawOpts && typeof rawOpts === 'object') {
+                this.formatOptions = { ...this.formatOptions, ...rawOpts };
+            }
+            const savedStations = StorageService.getItem('zimsim_custom_stations', null);
+            if (Array.isArray(savedStations) && savedStations.length > 0) {
+                this.customStations = savedStations;
             }
         } catch (e) {
             console.warn('[JourneyStore] Fehler beim Laden der Einstellungen:', e);
@@ -113,14 +125,28 @@ export class JourneyStore {
     }
 
     /**
-     * Speichert persistierte Einstellungen im LocalStorage.
+     * Speichert persistierte Einstellungen im resilienten Storage.
      */
     saveSettings() {
         try {
-            localStorage.setItem('zimsim_nrw_mode', String(this.nrwMode));
-            localStorage.setItem('zimsim_format_options', JSON.stringify(this.formatOptions));
+            StorageService.setItem('zimsim_nrw_mode', this.nrwMode);
+            StorageService.setItem('zimsim_format_options', this.formatOptions);
         } catch (e) {
             console.warn('[JourneyStore] Fehler beim Speichern der Einstellungen:', e);
+        }
+    }
+
+    /**
+     * Speichert benutzerdefinierte Stationen im resilienten Storage.
+     */
+    saveCustomStations() {
+        try {
+            StorageService.setItem('zimsim_custom_stations', this.customStations);
+            import('../station/stationService.js').then(({ StationService }) => {
+                StationService.clearCache();
+            }).catch(() => {});
+        } catch (e) {
+            console.warn('[JourneyStore] Fehler beim Speichern der Custom Stations:', e);
         }
     }
 
@@ -143,25 +169,61 @@ export class JourneyStore {
     }
 
     /**
-     * Fügt eine neue benutzerdefinierte Station hinzu.
-     * @param {string} name
-     * @returns {object}
+     * Fügt eine neue benutzerdefinierte Station hinzu und persistiert sie dauerhaft.
+     * @param {string} name - Stationsname
+     * @param {object} [options={}] - Optionale Zusatzattribute
+     * @returns {object} Die erstellte Station
      */
-    addCustomStation(name) {
-        const id = 'custom-' + crypto.randomUUID().split('-')[0];
+    addCustomStation(name, options = {}) {
+        const id = options.ibnr || 'custom-' + crypto.randomUUID().split('-')[0];
+        const nameTrim = (name || '').trim();
+        const smartShort = nameTrim
+            .replace(/\s+Hauptbahnhof/i, ' Hbf')
+            .replace(/\s+Krankenhaus/i, ' Krankenh.')
+            .replace(/\s+Bahnhof/i, ' Bf')
+            .replace(/\s+Stra(?:ß|ss)e/i, ' Str.')
+            .replace(/\s+Gewerbegebiet/i, ' Gew.')
+            .trim();
+        const shortName = options.nameKurz || (smartShort.length <= 15 ? smartShort : smartShort.substring(0, 15));
+
         const newStation = {
             ibnr: id,
-            name: name,
-            aliases: [],
-            nameKurz: name.substring(0, 15),
-            ds100: 'X' + name.substring(0, 3).toUpperCase(),
-            kategorie: 7
+            name: nameTrim,
+            aliases: Array.isArray(options.aliases) ? options.aliases : [],
+            nameKurz: shortName,
+            ds100: options.ds100 || ('X' + nameTrim.substring(0, 3).toUpperCase().replace(/[^A-Z]/g, 'X')),
+            kategorie: options.kategorie !== undefined ? options.kategorie : 7,
+            stationType: options.stationType || 'bus',
+            notes: options.notes || ''
         };
         this.customStations.push(newStation);
-        import('../station/stationService.js').then(({ StationService }) => {
-            StationService.clearCache();
-        }).catch(() => {});
+        this.saveCustomStations();
         return newStation;
+    }
+
+    /**
+     * Aktualisiert eine bestehende benutzerdefinierte Station.
+     * @param {string} id - IBNR der Station
+     * @param {object} updates 
+     * @returns {boolean}
+     */
+    updateCustomStation(id, updates) {
+        const idx = this.customStations.findIndex(s => s.ibnr === id);
+        if (idx >= 0) {
+            this.customStations[idx] = { ...this.customStations[idx], ...updates };
+            this.saveCustomStations();
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Löscht eine benutzerdefinierte Station dauerhaft.
+     * @param {string} id - IBNR der Station
+     */
+    deleteCustomStation(id) {
+        this.customStations = this.customStations.filter(s => s.ibnr !== id);
+        this.saveCustomStations();
     }
 
     // ==========================================

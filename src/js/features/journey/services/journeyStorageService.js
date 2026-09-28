@@ -52,6 +52,7 @@ export class JourneyStorageService {
         store.saveSettings?.();
         store.activeTracks = data.activeTracks || [];
         store.customStations = data.customStations || [];
+        store.saveCustomStations?.();
 
         if (data.platforms && Object.keys(data.platforms).length > 0) {
             store.platforms = {};

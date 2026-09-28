@@ -1,6 +1,8 @@
 // js/features/formation/formationRuleService.svelte.js
 import { FormationPresetService } from './formationPresetService.js';
 import { getSimulatedTime } from '../../core/utils/config.js';
+import { StorageService } from '../../core/services/storageService.js';
+import { createBundle, parseBundle, mergeRuleList } from '../../core/utils/bundleUtils.js';
 
 /**
  * @typedef {Object} FormationRule
@@ -145,6 +147,14 @@ class FormationRuleService {
     constructor() {
         this.loadSettings();
         this.loadRules();
+
+        // Asynchrone Spiegelung & Wiederherstellung aus IndexedDB (ausfallsicher)
+        StorageService.syncFromIndexedDB(STORAGE_KEY, (restored) => {
+            if (Array.isArray(restored) && restored.length > 0) {
+                this.rules = restored;
+                this._regexCache.clear();
+            }
+        });
     }
 
     /**
@@ -179,13 +189,10 @@ class FormationRuleService {
      */
     loadRules() {
         try {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            if (raw) {
-                const parsed = JSON.parse(raw);
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                    this.rules = parsed;
-                    return;
-                }
+            const parsed = StorageService.getItem(STORAGE_KEY, null);
+            if (parsed && Array.isArray(parsed) && parsed.length > 0) {
+                this.rules = parsed;
+                return;
             }
         } catch (e) {
             console.warn('[FormationRuleService] Fehler beim Laden der Regeln:', e);
@@ -194,12 +201,12 @@ class FormationRuleService {
     }
 
     /**
-     * Speichert die Regeln im LocalStorage.
+     * Persistiert die Regeln resilient in LocalStorage und IndexedDB.
      */
     saveRules() {
         this._regexCache.clear();
         try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(this.rules));
+            StorageService.setItem(STORAGE_KEY, this.rules);
         } catch (e) {
             console.error('[FormationRuleService] Fehler beim Speichern der Regeln:', e);
         }
@@ -485,33 +492,44 @@ class FormationRuleService {
     }
 
     /**
-     * Exportiert alle Regeln als JSON-String.
+     * Exportiert alle Regeln im standardisierten ZIMSim-Container.
      * @returns {string}
      */
     exportRules() {
-        return JSON.stringify(this.rules, null, 2);
+        return JSON.stringify(createBundle('zimsim-formation-rules', this.rules), null, 2);
     }
 
     /**
-     * Importiert Regeln aus einem JSON-String oder Array.
-     * @param {string | FormationRule[]} jsonOrArray
-     * @returns {boolean} true bei Erfolg
+     * Importiert Regeln aus einem JSON-String, Container oder Array.
+     * Unterstützt 'overwrite' (vollständig ersetzen) und 'merge' (zusammenführen).
+     * 
+     * @param {string | object} jsonOrArray
+     * @param {'overwrite' | 'merge'} [mode='overwrite']
+     * @returns {{ success: boolean, count?: number, error?: string }}
      */
-    importRules(jsonOrArray) {
-        try {
-            const data = typeof jsonOrArray === 'string' ? JSON.parse(jsonOrArray) : jsonOrArray;
-            if (Array.isArray(data) && data.length > 0) {
-                this.rules = data.map(r => ({
-                    ...r,
-                    id: r.id || crypto.randomUUID()
-                }));
-                this.saveRules();
-                return true;
-            }
-        } catch (e) {
-            console.error('[FormationRuleService] Import fehlgeschlagen:', e);
+    importRules(jsonOrArray, mode = 'overwrite') {
+        const parsed = parseBundle(jsonOrArray, 'zimsim-formation-rules');
+        if (!parsed.success) {
+            console.error('[FormationRuleService] Import fehlgeschlagen:', parsed.error);
+            return { success: false, error: parsed.error };
         }
-        return false;
+
+        const incoming = Array.isArray(parsed.payload) ? parsed.payload : [];
+        if (incoming.length === 0) {
+            return { success: false, error: 'Die Datei enthält keine Regeln zum Importieren.' };
+        }
+
+        if (mode === 'merge') {
+            this.rules = mergeRuleList(this.rules, incoming, r => r.linePattern || r.id);
+        } else {
+            this.rules = incoming.map(r => ({
+                ...r,
+                id: r.id || crypto.randomUUID()
+            }));
+        }
+
+        this.saveRules();
+        return { success: true, count: incoming.length };
     }
 
     /**
