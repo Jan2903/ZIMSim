@@ -80,6 +80,25 @@ function parseCSV(text) {
     return results;
 }
 
+/**
+ * Vergleicht zwei Objekte oder Werte rekursiv auf inhaltliche Gleichheit (unabhängig von der Schlüssel-Reihenfolge).
+ * @param {any} a - Erster Wert
+ * @param {any} b - Zweiter Wert
+ * @returns {boolean} true bei identischem Inhalt
+ */
+function isDeepEqual(a, b) {
+    if (a === b) return true;
+    if (typeof a !== 'object' || a === null || typeof b !== 'object' || b === null) return false;
+    const keysA = Object.keys(a);
+    const keysB = Object.keys(b);
+    if (keysA.length !== keysB.length) return false;
+    for (const key of keysA) {
+        if (!Object.prototype.hasOwnProperty.call(b, key)) return false;
+        if (!isDeepEqual(a[key], b[key])) return false;
+    }
+    return true;
+}
+
 async function main() {
     const rootDir = path.resolve(__dirname, '..');
     const aliasesPath = path.join(__dirname, 'operator-aliases.json');
@@ -181,6 +200,22 @@ async function main() {
         operators: operatorsData,
         uniqueLines
     };
+
+    // Inhaltliche Integritätsprüfung: Nicht überschreiben, wenn sich die fachlichen Daten nicht geändert haben
+    if (fs.existsSync(outPath)) {
+        try {
+            const existing = JSON.parse(fs.readFileSync(outPath, 'utf-8'));
+            const { updatedAt: _oldTs, ...oldData } = existing;
+            const { updatedAt: _newTs, ...newData } = output;
+
+            if (isDeepEqual(oldData, newData)) {
+                console.log(`No data changes detected in line-colors. Upstream is up to date (kept timestamp: ${existing.updatedAt}).`);
+                return;
+            }
+        } catch (e) {
+            console.warn('Could not read existing line-colors.json for comparison, proceeding with write:', e.message);
+        }
+    }
 
     fs.writeFileSync(outPath, JSON.stringify(output), 'utf-8');
     const sizeKb = (fs.statSync(outPath).size / 1024).toFixed(1);

@@ -157,6 +157,19 @@ def main():
         "uniqueLines": unique_lines
     }
 
+    # Inhaltliche Integritätsprüfung: Nicht überschreiben, wenn sich die fachlichen Daten nicht geändert haben
+    if os.path.exists(out_path):
+        try:
+            with open(out_path, "r", encoding="utf-8") as f:
+                existing = json.load(f)
+            old_data = {k: v for k, v in existing.items() if k != "updatedAt"}
+            new_data = {k: v for k, v in output.items() if k != "updatedAt"}
+            if old_data == new_data:
+                print(f"No data changes detected in line-colors. Upstream is up to date (kept timestamp: {existing.get('updatedAt')}).")
+                return
+        except Exception as e:
+            print(f"Could not read existing line-colors.json for comparison, proceeding with write: {e}")
+
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, separators=(",", ":"))
 
