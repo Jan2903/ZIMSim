@@ -13,6 +13,7 @@ function createDemoData() {
     const j1 = journeyStore.addJourney({
         name: 'ICE 543',
         destination: 'Düsseldorf Hbf',
+        platform: '1',
         scheduledTime: '14:30',
         expectedTime: '14:32',
         vias: ['Hamm (Westf) Hbf', 'Dortmund Hbf', 'Bochum Hbf'],
@@ -43,6 +44,7 @@ function createDemoData() {
     const j2 = journeyStore.addJourney({
         name: 'ICE 553',
         destination: 'Köln Hbf',
+        platform: '1',
         scheduledTime: '14:30',
         expectedTime: '14:32',
         vias: ['Hamm (Westf) Hbf', 'Wuppertal Hbf', 'Solingen Hbf'],
@@ -77,6 +79,7 @@ function createDemoData() {
     journeyStore.addJourney({
         name: 'ICE 2310',
         destination: 'Westerland(Sylt)',
+        platform: '2',
         scheduledTime: '15:15',
         expectedTime: '15:15',
         vias: ['Hamburg Hbf', 'Husum', 'Niebüll'],

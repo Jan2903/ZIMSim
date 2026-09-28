@@ -5,6 +5,7 @@ import { journeyStore } from '../core/state/stores.js';
 import { getSimulatedTime } from '../core/utils/config.js';
 import { calculateDelayMinutes } from '../core/utils/dateUtils.js';
 import { JourneyConnectionService } from '../features/journey/services/journeyConnectionService.js';
+import { JourneyCouplingService } from '../features/journey/services/journeyCouplingService.js';
 import { getPlatformSectors } from '../features/formation/formationUtils.js';
 import { AnsagenSpeechFormatter } from './ansagenSpeechFormatter.js';
 
@@ -103,18 +104,17 @@ export class AnsagenGenerator {
         if (!journey) return;
 
         const trackStr = journey.ezGleis || journey.platform;
-        if (!trackStr) return;
-
-        const parsed = parseTrack(trackStr);
-        const platform = journeyStore.platforms[parsed.base] ||
-                         journeyStore.platforms[trackStr] ||
+        const parsed = trackStr ? parseTrack(trackStr) : null;
+        const platform = (parsed && journeyStore.platforms[parsed.base]) ||
+                         (trackStr && journeyStore.platforms[trackStr]) ||
                          journeyStore.stationContext.platform;
 
         if (!platform || !platform.sections || platform.sections.length === 0) {
             return;
         }
 
-        const sectorsStr = getPlatformSectors(journey, journeyStore.journeys, platform);
+        const coupledJourneys = JourneyCouplingService.expandCoupling(journeyStore.journeys, journey);
+        const sectorsStr = getPlatformSectors(journey, coupledJourneys, platform);
         if (!sectorsStr) return;
 
         const rawLetters = getSectionLetters(sectorsStr).filter(l => l !== '*');
