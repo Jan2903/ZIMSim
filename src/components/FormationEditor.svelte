@@ -23,10 +23,15 @@
         const res = await FormationService.fetchFormationForJourney(journey);
         if (!res.success) {
             alert(res.message || 'Wagenreihung konnte nicht geladen werden.');
+        } else {
+            triggerUpdate();
         }
     }
 
     function triggerUpdate() {
+        if (journey) {
+            journeyStore.updateJourneySectors(journey);
+        }
         trainDisplay.updateAll();
     }
 

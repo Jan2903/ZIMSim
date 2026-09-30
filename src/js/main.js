@@ -117,6 +117,9 @@ function createDemoData() {
             }]
         }
     });
+
+    // Abschnitte aller Demo-Fahrten dynamisch berechnen
+    journeyStore.updateAllJourneySectors();
 }
 
 // Warten, bis das DOM vollständig geladen ist

@@ -129,12 +129,20 @@
     }
 
     /**
+     * Triggert Aktualisierung der dynamischen Abschnitte aller Fahrten und Display-Neurender.
+     */
+    function onPlatformChanged() {
+        journeyStore.updateAllJourneySectors();
+        trainDisplay.updateAll();
+    }
+
+    /**
      * Fügt einen neuen Abschnitt hinzu.
      */
     function addSection() {
         if (!platform) return;
         platform.addSection();
-        trainDisplay.updateAll();
+        onPlatformChanged();
     }
 
     /**
@@ -144,7 +152,7 @@
     function removeSection(idx) {
         if (!platform || platform.sections.length <= 1) return;
         platform.removeSection(idx);
-        trainDisplay.updateAll();
+        onPlatformChanged();
     }
 
     /**
@@ -153,7 +161,7 @@
     function distributeEvenly() {
         if (!platform) return;
         platform.distributeEvenly();
-        trainDisplay.updateAll();
+        onPlatformChanged();
     }
 
     /**
@@ -162,7 +170,7 @@
     function alignSeamlessly() {
         if (!platform) return;
         platform.alignSeamlessly();
-        trainDisplay.updateAll();
+        onPlatformChanged();
     }
 
     /**
@@ -171,7 +179,7 @@
     function resetToDefault() {
         if (!platform) return;
         platform.resetToDefault();
-        trainDisplay.updateAll();
+        onPlatformChanged();
     }
 
     /**
@@ -293,7 +301,7 @@
                 step="10"
                 class="form-input" 
                 bind:value={platform.length} 
-                oninput={() => trainDisplay.updateAll()}
+                oninput={onPlatformChanged}
             >
         </label>
         <label class="field-label">
@@ -436,7 +444,7 @@
                                     class="form-input form-input-compact" 
                                     min="0"
                                     bind:value={sec.startMeter} 
-                                    oninput={() => trainDisplay.updateAll()}
+                                    oninput={onPlatformChanged}
                                 />
                             </td>
 
@@ -447,7 +455,7 @@
                                     class="form-input form-input-compact" 
                                     min="0"
                                     bind:value={sec.endMeter} 
-                                    oninput={() => trainDisplay.updateAll()}
+                                    oninput={onPlatformChanged}
                                 />
                             </td>
 

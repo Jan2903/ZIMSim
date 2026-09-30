@@ -11,6 +11,7 @@ import { JourneyImportService } from './services/journeyImportService.js';
 import { JourneyStorageService } from './services/journeyStorageService.js';
 import { JourneyConnectionService } from './services/journeyConnectionService.js';
 import { formationRuleService } from '../formation/formationRuleService.svelte.js';
+import { calculatePlatformSectors, getPlatformForJourney } from '../formation/formationUtils.js';
 import { setFormatOptionsProvider } from './trainNumberFormatter.js';
 import { StorageService } from '../../core/services/storageService.js';
 
@@ -241,6 +242,9 @@ export class JourneyStore {
             formationRuleService.applyRulesToJourney(journey);
         }
         this.journeys.push(journey);
+        if (!data.sectors) {
+            this.updateJourneySectors(journey);
+        }
         return journey;
     }
 
@@ -431,7 +435,12 @@ export class JourneyStore {
      * @param {string} id2 - ID der zweiten Journey
      */
     coupleJourneys(id1, id2) {
-        return JourneyCouplingService.couple(this.journeys, id1, id2);
+        const result = JourneyCouplingService.couple(this.journeys, id1, id2);
+        const j1 = this.journeys.find(j => j.id === id1);
+        if (j1) {
+            this.updateJourneySectors(j1);
+        }
+        return result;
     }
 
     /**
@@ -439,7 +448,19 @@ export class JourneyStore {
      * @param {string} id
      */
     uncoupleJourney(id) {
-        return JourneyCouplingService.uncouple(this.journeys, id);
+        const j = this.journeys.find(item => item.id === id);
+        const oldGroupId = j?.couplingGroupId;
+        const result = JourneyCouplingService.uncouple(this.journeys, id);
+        if (j) {
+            this.updateJourneySectors(j);
+        }
+        if (oldGroupId) {
+            const remaining = this.journeys.find(item => item.couplingGroupId === oldGroupId);
+            if (remaining) {
+                this.updateJourneySectors(remaining);
+            }
+        }
+        return result;
     }
 
     /**
@@ -576,6 +597,7 @@ export class JourneyStore {
         if (!journey) return;
         
         JourneyImportService.importFormation(journey, data, this.platforms, this.stationContext);
+        this.updateJourneySectors(journey);
         this.syncDynamicTexts();
     }
 
@@ -631,6 +653,7 @@ export class JourneyStore {
         }
         this.stationContext.activePlatformName = name;
         this.stationContext.platform = this.platforms[name];
+        this.updateAllJourneySectors();
     }
 
     /**
@@ -687,6 +710,7 @@ export class JourneyStore {
         const keys = Object.keys(this.platforms);
         if (keys.length <= 1) {
             this.platforms[name].resetToDefault();
+            this.updateAllJourneySectors();
             return false;
         }
 
@@ -695,6 +719,8 @@ export class JourneyStore {
         if (this.stationContext.activePlatformName === name) {
             const nextKey = this.platforms['default'] ? 'default' : Object.keys(this.platforms)[0];
             this.selectPlatform(nextKey);
+        } else {
+            this.updateAllJourneySectors();
         }
 
         return true;
@@ -721,8 +747,48 @@ export class JourneyStore {
         if (this.stationContext.activePlatformName === oldName) {
             this.stationContext.activePlatformName = trimmed;
         }
+        this.updateAllJourneySectors();
 
         return true;
+    }
+
+    // ==========================================
+    // Dynamische Bahnsteigabschnitte (Sektoren)
+    // ==========================================
+
+    /**
+     * Berechnet und aktualisiert die Bahnsteigabschnitte für eine Journey
+     * sowie eventuell damit gekoppelte Fahrten (Flügelzüge).
+     * Schreibt das dynamische Ergebnis in journey.sectors.
+     *
+     * @param {Journey} journey - Die zu aktualisierende Fahrt
+     * @returns {void}
+     */
+    updateJourneySectors(journey) {
+        if (!journey) return;
+        const group = JourneyCouplingService.expandCoupling(this.journeys, journey);
+        const platform = getPlatformForJourney(journey, this.platforms, this.stationContext);
+
+        for (const j of group) {
+            const sectors = calculatePlatformSectors(j, group, platform);
+            j.sectors = sectors || '';
+        }
+    }
+
+    /**
+     * Berechnet und aktualisiert die Bahnsteigabschnitte für alle Fahrten im Store.
+     * @returns {void}
+     */
+    updateAllJourneySectors() {
+        const processedCouplingGroups = new Set();
+
+        for (const journey of this.journeys) {
+            if (journey.couplingGroupId) {
+                if (processedCouplingGroups.has(journey.couplingGroupId)) continue;
+                processedCouplingGroups.add(journey.couplingGroupId);
+            }
+            this.updateJourneySectors(journey);
+        }
     }
 
     // ==========================================

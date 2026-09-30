@@ -6,7 +6,7 @@ import { getSimulatedTime } from '../core/utils/config.js';
 import { calculateDelayMinutes } from '../core/utils/dateUtils.js';
 import { JourneyConnectionService } from '../features/journey/services/journeyConnectionService.js';
 import { JourneyCouplingService } from '../features/journey/services/journeyCouplingService.js';
-import { getPlatformSectors } from '../features/formation/formationUtils.js';
+import { getPlatformSectors, getPlatformForJourney } from '../features/formation/formationUtils.js';
 import { AnsagenSpeechFormatter } from './ansagenSpeechFormatter.js';
 
 /**
@@ -103,11 +103,7 @@ export class AnsagenGenerator {
         if (!ansagenStore.ansageAbschnitte) return;
         if (!journey) return;
 
-        const trackStr = journey.ezGleis || journey.platform;
-        const parsed = trackStr ? parseTrack(trackStr) : null;
-        const platform = (parsed && journeyStore.platforms[parsed.base]) ||
-                         (trackStr && journeyStore.platforms[trackStr]) ||
-                         journeyStore.stationContext.platform;
+        const platform = getPlatformForJourney(journey, journeyStore.platforms, journeyStore.stationContext);
 
         if (!platform || !platform.sections || platform.sections.length === 0) {
             return;

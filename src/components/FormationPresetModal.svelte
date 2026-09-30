@@ -1,7 +1,7 @@
 <script>
     import { FORMATION_PRESETS, getPresetCategories } from '../js/features/formation/formationPresets.js';
     import { FormationPresetService } from '../js/features/formation/formationPresetService.js';
-    import { trainDisplay } from '../js/core/state/stores.js';
+    import { trainDisplay, journeyStore } from '../js/core/state/stores.js';
     import FormationRuleEditorModal from './FormationRuleEditorModal.svelte';
     import ZimIcon from './ZimIcon.svelte';
 
@@ -58,6 +58,7 @@
             offsetWagons
         });
 
+        journeyStore.updateJourneySectors(journey);
         trainDisplay.updateAll();
         if (onApplied) onApplied();
         closeModal();

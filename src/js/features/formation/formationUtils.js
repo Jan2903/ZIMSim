@@ -1,4 +1,5 @@
 // js/utils/formationUtils.js
+import { parseTrack } from '../../core/utils/trackUtils.js';
 
 /**
  * Berechnet die absoluten Meter-Positionen (startM, endM) für alle Wagen einer oder mehrerer Journeys.
@@ -101,23 +102,42 @@ export function getSectorsForCoaches(coaches, platform) {
     const sectorArr = Array.from(activeSectors).sort();
     if (sectorArr.length === 0) return "";
     if (sectorArr.length === 1) return sectorArr[0];
+    return `${sectorArr[0]}-${sectorArr[sectorArr.length - 1]}`;
 }
 
 /**
- * Ermittelt die Bahnsteigabschnitte für eine Journey.
- * Priorität:
- * 1. targetJourney.sectors (manueller Override)
- * 2. coach.platformPosition.sector (statischer Sektor aus Fahrplandaten)
- * 3. Metrische Berechnung über calculateCoachPositions und getSectorsForCoaches
+ * Ermittelt das am besten passende Bahnsteig-Objekt für eine Journey.
+ * Berücksichtigt Gleisbezeichnungen, Basenummern, Präfixe und Fallback auf stationContext.platform.
+ *
+ * @param {object} journey - Die betroffene Fahrt
+ * @param {object} [platforms={}] - Map von Bahnsteig-Objekten nach Name
+ * @param {object} [stationContext=null] - Stations-Kontext mit aktivem Bahnsteig
+ * @returns {import('../station/platform.svelte.js').Platform|null}
+ */
+export function getPlatformForJourney(journey, platforms = {}, stationContext = null) {
+    if (!journey) return stationContext?.platform || null;
+    const trackStr = journey.ezGleis || journey.platform;
+    if (!trackStr) return stationContext?.platform || null;
+    const parsed = parseTrack(trackStr);
+    return (parsed && platforms[parsed.base]) ||
+           platforms[trackStr] ||
+           (parsed && platforms[`Gleis ${parsed.base}`]) ||
+           platforms[`Gleis ${trackStr}`] ||
+           stationContext?.platform ||
+           null;
+}
+
+/**
+ * Berechnet rein dynamisch die Bahnsteigabschnitte für eine Journey basierend auf Formation und Bahnsteig.
+ * Ignoriert eventuelle manuelle Overrides in targetJourney.sectors.
  *
  * @param {object} targetJourney - Die betroffene Fahrt
  * @param {Array<object>} allJourneys - Alle Fahrten des aktuellen Gleises (für Flügelzug-Positionierung)
  * @param {import('../station/platform.svelte.js').Platform} platform - Das Bahnsteig-Objekt
- * @returns {string} Sektoren als String (z.B. "C-E", "B" oder "")
+ * @returns {string} Berechnete Sektoren als String (z.B. "A-C", "D-E" oder "")
  */
-export function getPlatformSectors(targetJourney, allJourneys, platform) {
-    if (!targetJourney) return "";
-    if (targetJourney.sectors) return targetJourney.sectors;
+export function calculatePlatformSectors(targetJourney, allJourneys, platform) {
+    if (!targetJourney || !platform) return "";
     if (!targetJourney.formation || !targetJourney.formation.groups) return "";
     
     const sectors = new Set();
@@ -163,4 +183,22 @@ export function getPlatformSectors(targetJourney, allJourneys, platform) {
     }
 
     return "";
+}
+
+/**
+ * Ermittelt die Bahnsteigabschnitte für eine Journey.
+ * Priorität:
+ * 1. targetJourney.sectors (manueller Override)
+ * 2. coach.platformPosition.sector (statischer Sektor aus Fahrplandaten)
+ * 3. Metrische Berechnung über calculateCoachPositions und getSectorsForCoaches
+ *
+ * @param {object} targetJourney - Die betroffene Fahrt
+ * @param {Array<object>} allJourneys - Alle Fahrten des aktuellen Gleises (für Flügelzug-Positionierung)
+ * @param {import('../station/platform.svelte.js').Platform} platform - Das Bahnsteig-Objekt
+ * @returns {string} Sektoren als String (z.B. "C-E", "B" oder "")
+ */
+export function getPlatformSectors(targetJourney, allJourneys, platform) {
+    if (!targetJourney) return "";
+    if (targetJourney.sectors) return targetJourney.sectors;
+    return calculatePlatformSectors(targetJourney, allJourneys, platform);
 }

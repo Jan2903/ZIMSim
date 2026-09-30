@@ -121,6 +121,23 @@
         trainDisplay.updateAll();
     }
 
+    function onTrackChanged() {
+        journeyStore.updateJourneySectors(journey);
+        triggerUpdate();
+    }
+
+    function onStartMeterChanged() {
+        journeyStore.updateJourneySectors(journey);
+        triggerUpdate();
+    }
+
+    // Sicherstellen, dass Abschnitte dynamisch initialisiert werden, falls leer
+    $effect(() => {
+        if (journey && !journey.sectors) {
+            journeyStore.updateJourneySectors(journey);
+        }
+    });
+
     function toggleCoupling() {
         if (journey.couplingGroupId) {
             journeyStore.uncoupleJourney(journey.id);
@@ -238,11 +255,11 @@
                 <div class="form-group" style="flex-direction: row; gap: 10px; flex-wrap: nowrap; flex: 1 1 160px; min-width: 0;">
                     <div class="form-group" style="min-width: 0;">
                         <span class="form-group-label center">Gleis/Plattf.</span>
-                        <input type="text" class="jfield" bind:value={journey.platform} oninput={triggerUpdate} placeholder="z.B. 4" style="width: 100%; min-width: 0; text-align: center;">
+                        <input type="text" class="jfield" bind:value={journey.platform} oninput={onTrackChanged} placeholder="z.B. 4" style="width: 100%; min-width: 0; text-align: center;">
                     </div>
                     <div class="form-group" style="min-width: 0;">
                         <span class="form-group-label center">Echtzeit</span>
-                        <input type="text" class="jfield" bind:value={journey.ezGleis} oninput={triggerUpdate} placeholder="optional" style="width: 100%; min-width: 0; text-align: center; color: var(--error-color, #ff6b6b); font-weight: bold;">
+                        <input type="text" class="jfield" bind:value={journey.ezGleis} oninput={onTrackChanged} placeholder="optional" style="width: 100%; min-width: 0; text-align: center; color: var(--error-color, #ff6b6b); font-weight: bold;">
                     </div>
                 </div>
             </div>
@@ -478,6 +495,7 @@
                                 checked={journey.direction === 0} 
                                 onchange={() => {
                                     journey.direction = 0;
+                                    journeyStore.updateJourneySectors(journey);
                                     triggerUpdate();
                                 }}
                             >
@@ -493,6 +511,7 @@
                                 checked={journey.direction === 1} 
                                 onchange={() => {
                                     journey.direction = 1;
+                                    journeyStore.updateJourneySectors(journey);
                                     triggerUpdate();
                                 }}
                             >
@@ -509,7 +528,7 @@
                 <!-- Startmeter -->
                 <div class="form-group" style="justify-content: center; min-width: 70px; flex: 1 1 70px;">
                     <span class="form-group-label center">Startmeter</span>
-                    <input type="number" class="jfield" bind:value={journey.startMeter} oninput={triggerUpdate} style="width: 100%; min-width: 0; text-align: center;" placeholder="z.B. 50">
+                    <input type="number" class="jfield" bind:value={journey.startMeter} oninput={onStartMeterChanged} style="width: 100%; min-width: 0; text-align: center;" placeholder="z.B. 50">
                 </div>
 
                 <div class="settings-divider"></div>

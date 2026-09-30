@@ -92,5 +92,6 @@ export class JourneyStorageService {
         }
 
         store.journeys = (data.journeys || []).map(j => new Journey(j));
+        store.updateAllJourneySectors?.();
     }
 }
