@@ -5,6 +5,7 @@
     import { RisTextService } from '../js/core/services/risTextService.js';
     import { dndzone } from 'svelte-dnd-action';
     import { safeFlip as flip } from '../js/core/utils/animationUtils.js';
+    import { portalDropdown } from '../js/core/utils/portal.js';
     import ZimIcon from './ZimIcon.svelte';
 
     let { journey } = $props();
@@ -13,6 +14,7 @@
     let inputText = $state('');
     let showDropdown = $state(false);
     let inputRef = $state();
+    let inputWrapperRef = $state();
 
     // We only load presets on mount or when module evaluates
     $effect(() => {
@@ -125,7 +127,7 @@
     {/if}
 
     <div style="display: flex; gap: 5px; margin-top: 10px; position: relative;">
-        <div style="position: relative; flex: 1; display: flex;">
+        <div bind:this={inputWrapperRef} style="position: relative; flex: 1; display: flex;">
             <input type="text" class="jfield" style="flex: 1; margin: 0; padding-right: 30px;"
                    placeholder="Suchen oder eigenen Text eingeben."
                    bind:this={inputRef}
@@ -145,14 +147,14 @@
         <button class="btn-secondary btn-sm" onclick={addText}>Hinzufügen</button>
         
         {#if showDropdown}
-            <ul class="autocomplete-list active" style="position: absolute; top: 100%; left: 0; right: 80px; z-index: 1000; max-height: 200px; overflow-y: auto; background: var(--bg-panel); border: 1px solid var(--border-color); list-style: none; padding: 0; margin: 0; border-radius: 4px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+            <ul use:portalDropdown={inputWrapperRef} class="autocomplete-list active" style="max-height: 200px; overflow-y: auto; background-color: var(--bg-panel, #2b2b2b); border: 1px solid var(--border-color, #444); list-style: none; padding: 0; margin: 0; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
                 {#if filteredPresets.length === 0}
-                    <li class="autocomplete-item" style="padding: 8px; color: #888;">Keine Presets gefunden. Drücke Enter für manuellen Text.</li>
+                    <li class="autocomplete-item" style="padding: 8px; color: var(--text-muted, #888);">Keine Presets gefunden. Drücke Enter für manuellen Text.</li>
                 {:else}
                     {#each filteredPresets as p}
                         <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-                        <li class="autocomplete-item" style="padding: 8px; cursor: pointer; border-bottom: 1px solid var(--border-color);" onmousedown={(e) => { e.preventDefault(); selectPreset(p.text); }}>
-                            <strong style="color: var(--text-primary);">{p.code}</strong>: {p.text}
+                        <li class="autocomplete-item" style="padding: 8px; cursor: pointer; border-bottom: 1px solid var(--border-color, #444);" onmousedown={(e) => { e.preventDefault(); selectPreset(p.text); }}>
+                            <strong style="color: var(--text-primary, #f8fafc);">{p.code}:</strong> {p.text}
                         </li>
                     {/each}
                 {/if}
