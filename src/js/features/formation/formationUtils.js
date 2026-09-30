@@ -202,3 +202,104 @@ export function getPlatformSectors(targetJourney, allJourneys, platform) {
     if (targetJourney.sectors) return targetJourney.sectors;
     return calculatePlatformSectors(targetJourney, allJourneys, platform);
 }
+
+/**
+ * Prüft, ob ein Wagen ein 1.-Klasse-Wagen ist (Klasse 1 oder gemischt 1/2).
+ * @param {object} coach - Das Wagen-Objekt
+ * @returns {boolean}
+ */
+export function isCoachFirstClass(coach) {
+    if (!coach) return false;
+    return coach.coachClass === 1 || 
+           coach.coachClass === '1' || 
+           coach.coachClass === '1/2' || 
+           (typeof coach.isFirstClass === 'function' && coach.isFirstClass());
+}
+
+/**
+ * Berechnet rein dynamisch die Bahnsteigabschnitte der 1. Klasse für eine Journey.
+ * Ignoriert eventuelle manuelle Overrides in targetJourney.sectorsFirstClass.
+ * Gibt die Abschnitte einzeln als kommagetrennte Liste zurück (z.B. "A", "A, B" oder "").
+ *
+ * @param {object} targetJourney - Die betroffene Fahrt
+ * @param {Array<object>} allJourneys - Alle Fahrten des aktuellen Gleises (für Flügelzug-Positionierung)
+ * @param {import('../station/platform.svelte.js').Platform} platform - Das Bahnsteig-Objekt
+ * @returns {string} Berechnete 1.-Klasse-Sektoren als String (z.B. "A", "A, B" oder "")
+ */
+export function calculatePlatformFirstClassSectors(targetJourney, allJourneys, platform) {
+    if (!targetJourney || !platform) return "";
+    if (!targetJourney.formation || !targetJourney.formation.groups) return "";
+
+    const sectors = new Set();
+    let hasStaticSectorInfo = false;
+    for (const group of targetJourney.formation.groups) {
+        if (!group.coaches) continue;
+        for (const coach of group.coaches) {
+            if (!isCoachFirstClass(coach)) continue;
+
+            const pos = coach.platformPosition;
+            if (pos) {
+                if (pos.sector) {
+                    sectors.add(pos.sector);
+                    hasStaticSectorInfo = true;
+                } else if (pos.name && pos.name.length === 1) {
+                    sectors.add(pos.name);
+                    hasStaticSectorInfo = true;
+                }
+            }
+        }
+    }
+
+    if (hasStaticSectorInfo) {
+        const sectorArr = Array.from(sectors).sort();
+        return sectorArr.join(', ');
+    }
+
+    if (allJourneys && platform && platform.sections && platform.sections.length > 0) {
+        const { allCoaches } = calculateCoachPositions(allJourneys);
+        const targetGroups = new Set(targetJourney.formation.groups);
+
+        const targetCoaches = [];
+        for (const item of allCoaches) {
+            if (targetGroups.has(item.group) && isCoachFirstClass(item.coach)) {
+                targetCoaches.push(item);
+            }
+        }
+
+        if (targetCoaches.length > 0) {
+            const activeSectors = new Set();
+            for (const item of targetCoaches) {
+                if (typeof item.startM !== 'number' || typeof item.endM !== 'number') continue;
+                const centerM = (item.startM + item.endM) / 2;
+                for (const sec of platform.sections) {
+                    if (centerM >= sec.startMeter && centerM <= sec.endMeter) {
+                        activeSectors.add(sec.name);
+                        break;
+                    }
+                }
+            }
+            const sectorArr = Array.from(activeSectors).sort();
+            return sectorArr.join(', ');
+        }
+    }
+
+    return "";
+}
+
+/**
+ * Ermittelt die 1.-Klasse-Bahnsteigabschnitte für eine Journey.
+ * Priorität:
+ * 1. targetJourney.sectorsFirstClass (manueller Override)
+ * 2. coach.platformPosition.sector (statischer Sektor aus Fahrplandaten)
+ * 3. Metrische Berechnung über calculateCoachPositions und Platform-Sektoren
+ *
+ * @param {object} targetJourney - Die betroffene Fahrt
+ * @param {Array<object>} allJourneys - Alle Fahrten des aktuellen Gleises (für Flügelzug-Positionierung)
+ * @param {import('../station/platform.svelte.js').Platform} platform - Das Bahnsteig-Objekt
+ * @returns {string} Sektoren als String (z.B. "A", "A, B" oder "")
+ */
+export function getPlatformFirstClassSectors(targetJourney, allJourneys, platform) {
+    if (!targetJourney) return "";
+    if (targetJourney.sectorsFirstClass) return targetJourney.sectorsFirstClass;
+    return calculatePlatformFirstClassSectors(targetJourney, allJourneys, platform);
+}

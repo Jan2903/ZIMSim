@@ -11,7 +11,7 @@ import { JourneyImportService } from './services/journeyImportService.js';
 import { JourneyStorageService } from './services/journeyStorageService.js';
 import { JourneyConnectionService } from './services/journeyConnectionService.js';
 import { formationRuleService } from '../formation/formationRuleService.svelte.js';
-import { calculatePlatformSectors, getPlatformForJourney } from '../formation/formationUtils.js';
+import { calculatePlatformSectors, calculatePlatformFirstClassSectors, getPlatformForJourney } from '../formation/formationUtils.js';
 import { setFormatOptionsProvider } from './trainNumberFormatter.js';
 import { StorageService } from '../../core/services/storageService.js';
 
@@ -242,8 +242,10 @@ export class JourneyStore {
             formationRuleService.applyRulesToJourney(journey);
         }
         this.journeys.push(journey);
-        if (!data.sectors) {
+        if (!data.sectors || !data.sectorsFirstClass) {
             this.updateJourneySectors(journey);
+            if (data.sectors) journey.sectors = data.sectors;
+            if (data.sectorsFirstClass) journey.sectorsFirstClass = data.sectorsFirstClass;
         }
         return journey;
     }
@@ -772,6 +774,9 @@ export class JourneyStore {
         for (const j of group) {
             const sectors = calculatePlatformSectors(j, group, platform);
             j.sectors = sectors || '';
+
+            const sectors1st = calculatePlatformFirstClassSectors(j, group, platform);
+            j.sectorsFirstClass = sectors1st || '';
         }
     }
 

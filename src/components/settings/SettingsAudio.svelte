@@ -435,6 +435,18 @@
                 <label class="checkbox-label">
                     <input 
                         type="checkbox" 
+                        checked={ansagenStore.ansageErsteKlasse} 
+                        onchange={(e) => ansagenStore.setAnsageErsteKlasse(e.currentTarget.checked)}
+                    >
+                    <span>1. Klasse Abschnitte („Heute 1. Klasse in Abschnitt...“)</span>
+                </label>
+                <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px; margin-left: 24px; margin-bottom: 12px;">
+                    Sagt bei Einfahrt und Steht-Ansagen die Abschnitte der 1. Klasse an (z. B. „Heute 1. Klasse in Abschnitt A und B“).
+                </div>
+
+                <label class="checkbox-label">
+                    <input 
+                        type="checkbox" 
                         checked={ansagenStore.einfahrtBitteNichtEinsteigen} 
                         onchange={(e) => ansagenStore.setEinfahrtBitteNichtEinsteigen(e.currentTarget.checked)}
                     >

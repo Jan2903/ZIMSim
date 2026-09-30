@@ -68,6 +68,7 @@ export class Journey {
     expectedTime = $state('');
     platform = $state('');
     sectors = $state('');
+    sectorsFirstClass = $state('');
     infoTexts = $state([]);
     delayReason = $state('');
     delayReasonCode = $state('');
@@ -128,6 +129,7 @@ export class Journey {
         this.expectedTime = data.expectedTime || '';
         this.platform = data.platform || '';
         this.sectors = data.sectors || '';
+        this.sectorsFirstClass = data.sectorsFirstClass || '';
         
         // === Infotexte / Lauftext ===
         this.infoTexts = [];
@@ -229,6 +231,7 @@ export class Journey {
             expectedTime: this.expectedTime,
             platform: this.platform,
             sectors: this.sectors,
+            sectorsFirstClass: this.sectorsFirstClass,
             infoTexts: this.infoTexts,
             delayReason: this.delayReason,
             delayReasonCode: this.delayReasonCode,

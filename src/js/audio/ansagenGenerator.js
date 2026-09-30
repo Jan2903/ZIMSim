@@ -6,7 +6,7 @@ import { getSimulatedTime } from '../core/utils/config.js';
 import { calculateDelayMinutes } from '../core/utils/dateUtils.js';
 import { JourneyConnectionService } from '../features/journey/services/journeyConnectionService.js';
 import { JourneyCouplingService } from '../features/journey/services/journeyCouplingService.js';
-import { getPlatformSectors, getPlatformForJourney } from '../features/formation/formationUtils.js';
+import { getPlatformSectors, getPlatformFirstClassSectors, getPlatformForJourney } from '../features/formation/formationUtils.js';
 import { AnsagenSpeechFormatter } from './ansagenSpeechFormatter.js';
 
 /**
@@ -121,6 +121,36 @@ export class AnsagenGenerator {
         if (validLetters.length === 0) return;
 
         this.formatter.sections(playlist, validLetters);
+    }
+
+    /**
+     * Fügt die Ansage der 1.-Klasse-Bahnsteigabschnitte zur Playlist hinzu,
+     * sofern Abschnitte für das Gleis und 1.-Klasse-Wagen/Override für die Fahrt existieren.
+     * @param {Array} playlist - Die Playlist
+     * @param {object} journey - Das Journey-Objekt
+     */
+    _appendFirstClassSectors(playlist, journey) {
+        if (!ansagenStore.ansageErsteKlasse) return;
+        if (!journey) return;
+
+        const platform = getPlatformForJourney(journey, journeyStore.platforms, journeyStore.stationContext);
+
+        if (!platform || !platform.sections || platform.sections.length === 0) {
+            return;
+        }
+
+        const coupledJourneys = JourneyCouplingService.expandCoupling(journeyStore.journeys, journey);
+        const sectorsStr = getPlatformFirstClassSectors(journey, coupledJourneys, platform);
+        if (!sectorsStr) return;
+
+        const rawLetters = getSectionLetters(sectorsStr).filter(l => l !== '*');
+        if (rawLetters.length === 0) return;
+
+        const platformSectorNames = new Set(platform.sections.map(s => s.name.toUpperCase()));
+        const validLetters = rawLetters.filter(l => platformSectorNames.has(l)).sort();
+        if (validLetters.length === 0) return;
+
+        this.formatter.firstClassSections(playlist, validLetters);
     }
 
     // --- Fach- und Domainprüfungen ---
@@ -334,6 +364,7 @@ export class AnsagenGenerator {
 
         if (!journey.ankunft && !isWende) {
             this._appendSectors(p, journey);
+            this._appendFirstClassSectors(p, journey);
         }
 
         this._appendTimeInfo(p, journey, journey.ankunft ? 'ANKUNFT' : 'ABFAHRT');
@@ -362,6 +393,7 @@ export class AnsagenGenerator {
 
         if (!journey.ankunft) {
             this._appendSectors(p, journey);
+            this._appendFirstClassSectors(p, journey);
         }
         
         this._module(p, journey.ankunft ? 'ANKUNFT' : 'ABFAHRT');

@@ -24,6 +24,7 @@ export class AnsagenStore {
     anschluesseIncludeDeviations = $state(true);
     einfahrtBitteNichtEinsteigen = $state(true); // "Bitte nicht einsteigen" bei reinen Ankünften
     ansageAbschnitte = $state(true); // "in den Abschnitten..." bei Einfahrt und Steht
+    ansageErsteKlasse = $state(true); // "Heute 1. Klasse in Abschnitt..." bei Einfahrt und Steht
     oppositeTrackPairs = $state({}); // { [stationIdOrKey]: [ [trackA, trackB], ... ] }
 
     constructor() {
@@ -85,6 +86,11 @@ export class AnsagenStore {
             const sAbschnitte = localStorage.getItem('ansagen_abschnitte');
             if (sAbschnitte !== null) {
                 this.ansageAbschnitte = sAbschnitte === 'true';
+            }
+
+            const sErsteKlasse = localStorage.getItem('ansagen_erste_klasse');
+            if (sErsteKlasse !== null) {
+                this.ansageErsteKlasse = sErsteKlasse === 'true';
             }
 
             const sPairs = localStorage.getItem('ansagen_opposite_track_pairs');
@@ -340,6 +346,16 @@ export class AnsagenStore {
     setAnsageAbschnitte(val) {
         this.ansageAbschnitte = Boolean(val);
         localStorage.setItem('ansagen_abschnitte', String(this.ansageAbschnitte));
+    }
+
+    /**
+     * Schaltet die Ansage der 1.-Klasse-Abschnitte ("Heute 1. Klasse in Abschnitt...") bei Einfahrt und Steht-Ansagen ein oder aus.
+     * @param {boolean} val
+     * @returns {void}
+     */
+    setAnsageErsteKlasse(val) {
+        this.ansageErsteKlasse = Boolean(val);
+        localStorage.setItem('ansagen_erste_klasse', String(this.ansageErsteKlasse));
     }
 }
 

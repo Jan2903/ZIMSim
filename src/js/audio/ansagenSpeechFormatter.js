@@ -533,4 +533,30 @@ export class AnsagenSpeechFormatter {
             this.pushAudio(playlist, `${this.lang}/abschnitte/hoch/${last}`, sectorLetters[sectorLetters.length - 1]);
         }
     }
+
+    /**
+     * Fügt die Ansage der 1.-Klasse-Abschnitte zur Playlist hinzu.
+     * Nutzt immer das Modul 'HEUTE_1_KLASSE_IN' und zählt alle Abschnitte einzeln auf (kein 'bis').
+     *
+     * @param {Array} playlist - Die Playlist
+     * @param {string[]} sectorLetters - Array von Abschnittsbuchstaben (z.B. ['A', 'B'])
+     */
+    firstClassSections(playlist, sectorLetters) {
+        if (!sectorLetters || sectorLetters.length === 0) return;
+
+        this.module(playlist, 'HEUTE_1_KLASSE_IN');
+
+        if (sectorLetters.length === 1) {
+            const sec = sectorLetters[0].toLowerCase();
+            this.pushAudio(playlist, `${this.lang}/abschnitte/hoch/${sec}`, sectorLetters[0]);
+        } else {
+            for (let i = 0; i < sectorLetters.length - 1; i++) {
+                const sec = sectorLetters[i].toLowerCase();
+                this.pushAudio(playlist, `${this.lang}/abschnitte/tief/${sec}`, sectorLetters[i]);
+            }
+            this.module(playlist, 'UND');
+            const last = sectorLetters[sectorLetters.length - 1].toLowerCase();
+            this.pushAudio(playlist, `${this.lang}/abschnitte/hoch/${last}`, sectorLetters[sectorLetters.length - 1]);
+        }
+    }
 }

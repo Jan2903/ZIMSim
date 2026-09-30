@@ -541,6 +541,14 @@
 
                 <div class="settings-divider"></div>
 
+                <!-- 1. Klasse Abschnitte (Override / Manuell) -->
+                <div class="form-group" style="justify-content: center; min-width: 80px; flex: 1 1 80px;">
+                    <span class="form-group-label center">1. Klasse</span>
+                    <input type="text" class="jfield" bind:value={journey.sectorsFirstClass} oninput={triggerUpdate} style="width: 100%; min-width: 0; text-align: center;" placeholder="z.B. A" title="Abschnitte der 1. Klasse">
+                </div>
+
+                <div class="settings-divider"></div>
+
                 <!-- Skalierung -->
                 <div class="form-group" style="justify-content: center; min-width: 120px; flex: 1 1 auto;">
                     <span class="form-group-label">Skalierung (Zoom)</span>
