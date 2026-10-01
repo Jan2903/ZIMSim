@@ -116,7 +116,7 @@ export const audioModules = {
 
     //Abschnitte
     HEUTE_1_KLASSE_IN: {
-        de: { file: "021", text: "Heute ersten Klasse in Abschnitt"},
+        de: { file: "018", text: "Heute erste Klasse in Abschnitt"},
         en: { file: "037", text: "First class coaches today in platform sections" },
         fr: { file: "042", text: "" }
     },
@@ -126,7 +126,7 @@ export const audioModules = {
         fr: { file: "042", text: "" }
     },
     IN_ABSCHNITTEN: {
-        de: { file: "028", text: "in den Abschnitten"},
+        de: { file: "029", text: "in den Abschnitten"},
         en: { file: "037", text: "in platform sections" },
         fr: { file: "042", text: "" }
     },

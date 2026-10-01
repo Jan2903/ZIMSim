@@ -516,21 +516,21 @@ export class AnsagenSpeechFormatter {
         if (sectorLetters.length === 1) {
             this.module(playlist, 'IM_ABSCHNITT');
             const sec = sectorLetters[0].toLowerCase();
-            this.pushAudio(playlist, `${this.lang}/abschnitte/hoch/${sec}`, sectorLetters[0]);
+            this.pushAudio(playlist, `${this.lang}/abschnitte/tief/${sec}`, sectorLetters[0]);
         } else if (sectorLetters.length === 2) {
             this.module(playlist, 'IN_ABSCHNITTEN');
             const first = sectorLetters[0].toLowerCase();
             const second = sectorLetters[1].toLowerCase();
             this.pushAudio(playlist, `${this.lang}/abschnitte/tief/${first}`, sectorLetters[0]);
             this.module(playlist, 'UND');
-            this.pushAudio(playlist, `${this.lang}/abschnitte/hoch/${second}`, sectorLetters[1]);
+            this.pushAudio(playlist, `${this.lang}/abschnitte/tief/${second}`, sectorLetters[1]);
         } else {
             this.module(playlist, 'IN_ABSCHNITTEN');
             const first = sectorLetters[0].toLowerCase();
             const last = sectorLetters[sectorLetters.length - 1].toLowerCase();
             this.pushAudio(playlist, `${this.lang}/abschnitte/tief/${first}`, sectorLetters[0]);
             this.module(playlist, 'BIS');
-            this.pushAudio(playlist, `${this.lang}/abschnitte/hoch/${last}`, sectorLetters[sectorLetters.length - 1]);
+            this.pushAudio(playlist, `${this.lang}/abschnitte/tief/${last}`, sectorLetters[sectorLetters.length - 1]);
         }
     }
 
@@ -548,7 +548,7 @@ export class AnsagenSpeechFormatter {
 
         if (sectorLetters.length === 1) {
             const sec = sectorLetters[0].toLowerCase();
-            this.pushAudio(playlist, `${this.lang}/abschnitte/hoch/${sec}`, sectorLetters[0]);
+            this.pushAudio(playlist, `${this.lang}/abschnitte/tief/${sec}`, sectorLetters[0]);
         } else {
             for (let i = 0; i < sectorLetters.length - 1; i++) {
                 const sec = sectorLetters[i].toLowerCase();
@@ -556,7 +556,7 @@ export class AnsagenSpeechFormatter {
             }
             this.module(playlist, 'UND');
             const last = sectorLetters[sectorLetters.length - 1].toLowerCase();
-            this.pushAudio(playlist, `${this.lang}/abschnitte/hoch/${last}`, sectorLetters[sectorLetters.length - 1]);
+            this.pushAudio(playlist, `${this.lang}/abschnitte/tief/${last}`, sectorLetters[sectorLetters.length - 1]);
         }
     }
 }
