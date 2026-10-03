@@ -109,24 +109,28 @@ export class TrainDisplay {
 
             for (const gapX of gaps) {
                 // DB Dunkelblau Grundfläche für den Steg (RAL 5022 Nachtblau / #08152b)
-                this.ctx.fillStyle = '#08152b';
+                this.ctx.fillStyle = '#071328';
                 this.ctx.fillRect(gapX, 0, gapW, canvas.height);
 
-                // Subtiler metallischer 3D-Verlauf
+                // Subtiler metallischer 3D-Verlauf (RAL 5022 DB-Nachtblau seidenmatt)
                 const grad = this.ctx.createLinearGradient(gapX, 0, gapX + gapW, 0);
-                grad.addColorStop(0, '#040b17');
-                grad.addColorStop(0.15, '#091833');
-                grad.addColorStop(0.5, '#102a57');
-                grad.addColorStop(0.85, '#091833');
-                grad.addColorStop(1, '#040b17');
+                grad.addColorStop(0, '#040a14');
+                grad.addColorStop(0.15, '#061224');
+                grad.addColorStop(0.5, '#0a1a38');
+                grad.addColorStop(0.85, '#061224');
+                grad.addColorStop(1, '#040a14');
                 this.ctx.fillStyle = grad;
                 this.ctx.fillRect(gapX, 0, gapW, canvas.height);
 
-                // Vertikale Akzentfuge im Steg
-                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-                this.ctx.fillRect(gapX + 24, 0, 2, canvas.height);
-                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.16)';
-                this.ctx.fillRect(gapX + 26, 0, 1, canvas.height);
+                // Subtile Schattenfuge zum Panelrand
+                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+                this.ctx.fillRect(gapX, 0, 3, canvas.height);
+                this.ctx.fillRect(gapX + gapW - 3, 0, 3, canvas.height);
+
+                // Feine 1px Lichtkanten
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+                this.ctx.fillRect(gapX + 3, 0, 1, canvas.height);
+                this.ctx.fillRect(gapX + gapW - 4, 0, 1, canvas.height);
             }
         }
     }

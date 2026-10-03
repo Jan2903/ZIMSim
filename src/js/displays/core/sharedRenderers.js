@@ -5,22 +5,39 @@ import { getSimulatedTime } from '../../core/utils/config.js';
 
 /**
  * Zeichnet das DB-Logo (abgerundetes Rechteck mit Text "DB")
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} x
+ * @param {number} y
+ * @param {number} [w=80]
+ * @param {number} [h=60]
+ * @returns {void}
  */
-export function drawDBLogo(ctx, x, y) {
+export function drawDBLogo(ctx, x, y, w = 80, h = 60) {
+    const scale = w / 80;
+    const lineWidth = Math.max(2, Math.round(4 * scale));
+    const fontSize = Math.round(45 * scale);
+    const radius = Math.round(8 * scale);
+
     ctx.strokeStyle = COLORS.WHITE;
-    ctx.lineWidth = 4;
+    ctx.lineWidth = lineWidth;
     ctx.beginPath();
-    ctx.roundRect(x, y - 43, 80, 60, 8);
+    ctx.roundRect(x, y - (43 * scale), w, h, radius);
     ctx.stroke();
-    drawText(ctx, "DB", x + 40, y + 3, FONTS.bold(45), COLORS.WHITE, 'center', 'middle');
+    drawText(ctx, "DB", x + (w / 2), y + (3 * scale), FONTS.bold(fontSize), COLORS.WHITE, 'center', 'middle');
 }
 
 /**
  * Zeichnet eine virtuelle analoge Uhr inkl. Stunden- und Minutenzeiger.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} x
+ * @param {number} y
+ * @param {number} [radius=35]
+ * @param {Date|null} [customTime=null]
+ * @returns {void}
  */
 export function drawAnalogClock(ctx, x, y, radius = 35, customTime = null) {
     ctx.strokeStyle = COLORS.WHITE;
-    ctx.lineWidth = 4;
+    ctx.lineWidth = Math.max(1.5, Math.round(radius * 0.1));
     ctx.beginPath();
     ctx.arc(x, y, radius, 0, Math.PI * 2);
     ctx.stroke();

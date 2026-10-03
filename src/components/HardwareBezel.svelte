@@ -70,11 +70,11 @@
 
             <!-- Metallischer Glanzverlauf für den Mittelsteg -->
             <linearGradient id="metal-accent" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="#040b17" />
-                <stop offset="15%" stop-color="#091833" />
-                <stop offset="50%" stop-color="#102a57" />
-                <stop offset="85%" stop-color="#091833" />
-                <stop offset="100%" stop-color="#040b17" />
+                <stop offset="0%" stop-color="#040a14" />
+                <stop offset="15%" stop-color="#061224" />
+                <stop offset="50%" stop-color="#0a1a38" />
+                <stop offset="85%" stop-color="#061224" />
+                <stop offset="100%" stop-color="#040a14" />
             </linearGradient>
 
             <!-- Weicher Display-Einbauschatten -->
@@ -182,11 +182,11 @@
             <!-- Vertikale 50px-Trennstege zwischen Monitoren -->
             {#each gapXPositions as gapX}
                 <g class="bezel-post">
-                    <rect x="{gapX}" y="{paddingY - 12}" width="50" height="{(layout.height || 1080) + 24}" fill="url(#metal-accent)" />
-                    <rect x="{gapX}" y="{paddingY - 12}" width="4" height="{(layout.height || 1080) + 24}" fill="rgba(0, 0, 0, 0.7)" />
-                    <rect x="{gapX + 46}" y="{paddingY - 12}" width="4" height="{(layout.height || 1080) + 24}" fill="rgba(0, 0, 0, 0.7)" />
-                    <rect x="{gapX + 24}" y="{paddingY - 12}" width="2" height="{(layout.height || 1080) + 24}" fill="rgba(0, 0, 0, 0.9)" />
-                    <rect x="{gapX + 26}" y="{paddingY - 12}" width="1" height="{(layout.height || 1080) + 24}" fill="rgba(255, 255, 255, 0.16)" />
+                    <rect x="{gapX}" y="{paddingY}" width="50" height="{layout.height || 1080}" fill="url(#metal-accent)" />
+                    <rect x="{gapX}" y="{paddingY}" width="3" height="{layout.height || 1080}" fill="rgba(0, 0, 0, 0.45)" />
+                    <rect x="{gapX + 47}" y="{paddingY}" width="3" height="{layout.height || 1080}" fill="rgba(0, 0, 0, 0.45)" />
+                    <rect x="{gapX + 3}" y="{paddingY}" width="1" height="{layout.height || 1080}" fill="rgba(255, 255, 255, 0.05)" />
+                    <rect x="{gapX + 46}" y="{paddingY}" width="1" height="{layout.height || 1080}" fill="rgba(255, 255, 255, 0.05)" />
                 </g>
             {/each}
 
