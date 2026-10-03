@@ -238,7 +238,7 @@
             <!-- Zeit & Gleis in einer Box zusammengefasst -->
             <div class="settings-box form-row-responsive align-stretch" style="margin-bottom: 20px;">
                 <!-- Zeit Block -->
-                <div class="form-group" style="flex-direction: row; gap: 10px; flex-wrap: nowrap; flex: 1 1 160px; min-width: 0;">
+                <div class="form-group" style="flex-direction: row; gap: 10px; flex-wrap: wrap; flex: 1 1 140px; min-width: 0;">
                     <div class="form-group" style="min-width: 0;">
                         <span class="form-group-label center">Zeit (Plan)</span>
                         <input type="text" class="jfield" bind:value={journey.scheduledTime} oninput={triggerUpdate} placeholder="z.B. 14:30" style="width: 100%; min-width: 0; text-align: center;">
@@ -252,7 +252,7 @@
                 <div class="settings-divider"></div>
                 
                 <!-- Gleis Block -->
-                <div class="form-group" style="flex-direction: row; gap: 10px; flex-wrap: nowrap; flex: 1 1 160px; min-width: 0;">
+                <div class="form-group" style="flex-direction: row; gap: 10px; flex-wrap: wrap; flex: 1 1 140px; min-width: 0;">
                     <div class="form-group" style="min-width: 0;">
                         <span class="form-group-label center">Gleis/Plattf.</span>
                         <input type="text" class="jfield" bind:value={journey.platform} oninput={onTrackChanged} placeholder="z.B. 4" style="width: 100%; min-width: 0; text-align: center;">
@@ -269,8 +269,8 @@
                 <span class="form-group-label">
                     {journey.ankunft ? 'Wird zu Abfahrt (Wende / Fahrzeugtausch)' : 'Kommt aus Ankunft (Wende / Fahrzeugtausch)'}
                 </span>
-                <div bind:this={linkWrapperRef} style="position: relative; width: 100%;">
-                    <input type="text" class="jfield" style="width: 100%; margin: 0;"
+                <div bind:this={linkWrapperRef} style="position: relative; width: 100%; min-width: 0; box-sizing: border-box;">
+                    <input type="text" class="jfield" style="width: 100%; margin: 0; min-width: 0; box-sizing: border-box;"
                            placeholder={journey.ankunft ? 'Abfahrt suchen (Name, Ziel, Zeit)...' : 'Ankunft suchen (Name, Herkunft, Zeit)...'}
                            bind:value={linkSearchText}
                            onfocus={() => showLinkDropdown = true}
@@ -311,8 +311,8 @@
             <!-- Verspätungsgrund -->
             <div class="form-group" style="margin-bottom: 15px;">
                 <span class="form-group-label">Verspätungsgrund</span>
-                <div bind:this={reasonWrapperRef} style="position: relative; width: 100%;">
-                    <input type="text" class="jfield" style="width: 100%; margin: 0;"
+                <div bind:this={reasonWrapperRef} style="position: relative; width: 100%; min-width: 0; box-sizing: border-box;">
+                    <input type="text" class="jfield" style="width: 100%; margin: 0; min-width: 0; box-sizing: border-box;"
                            placeholder="Suchen oder eigenen Text eingeben"
                            bind:value={journey.delayReason}
                            oninput={onDelayReasonInput}
@@ -465,8 +465,8 @@
             <!-- Row 3: Verkehrt heute ab -->
             <div class="form-group" style="margin-bottom: 20px;">
                 <span class="form-group-label">Verkehrt heute ab (Station)</span>
-                <div style="display: flex; gap: 8px; align-items: center;">
-                    <div style="flex-grow: 1;">
+                <div style="display: flex; gap: 8px; align-items: center; width: 100%; box-sizing: border-box;">
+                    <div style="flex-grow: 1; min-width: 0;">
                         <StationPicker 
                             value={journey.verkehrtAb === '0' ? '' : journey.verkehrtAb} 
                             onInput={(val) => { journey.verkehrtAb = val === '' ? '0' : val; triggerUpdate(); }}
@@ -475,7 +475,7 @@
                         />
                     </div>
                     {#if journey.verkehrtAb && journey.verkehrtAb !== '0'}
-                        <button class="btn-icon" onclick={() => { journey.verkehrtAb = '0'; triggerUpdate(); }} title="Zurücksetzen (Deaktivieren)" style="width: 32px; height: 32px; border-radius: 4px; background: rgba(255, 107, 107, 0.1); color: #ff6b6b; border: 1px solid rgba(255, 107, 107, 0.3); display: flex; align-items: center; justify-content: center;">
+                        <button class="btn-icon" onclick={() => { journey.verkehrtAb = '0'; triggerUpdate(); }} title="Zurücksetzen (Deaktivieren)" style="width: 32px; height: 32px; border-radius: 4px; background: rgba(255, 107, 107, 0.1); color: #ff6b6b; border: 1px solid rgba(255, 107, 107, 0.3); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                             <ZimIcon name="close" size={14} />
                         </button>
                     {/if}
@@ -604,22 +604,77 @@
 </div>
 
 <style>
-.journey-details { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
-.details-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px; }
-@media (max-width: 900px) { .details-grid { grid-template-columns: 1fr; } }
-.detail-section h4 { margin: 0 0 8px 0; color: var(--text-muted); font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.05em; }
-.details-actions { display: flex; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
+.journey-details {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
+}
+.details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 20px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
+}
+@media (max-width: 1024px) {
+    .details-grid {
+        grid-template-columns: 1fr;
+    }
+}
+.detail-section {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+.detail-section h4 {
+    margin: 0 0 8px 0;
+    color: var(--text-muted);
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.details-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
+}
 
 @media (max-width: 768px) {
+    .settings-box.form-row-responsive .form-group {
+        min-width: 0 !important;
+    }
     .audio-action-bar {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(75px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(95px, 1fr));
         gap: 6px;
     }
     .audio-action-bar button {
-        min-height: 34px;
-        padding: 4px 6px;
+        min-height: 36px;
+        padding: 4px 8px;
         font-size: 0.8rem;
+        width: 100%;
+        box-sizing: border-box;
+    }
+}
+
+@media (max-width: 480px) {
+    .audio-action-bar {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .audio-action-bar button:last-child:nth-child(odd) {
+        grid-column: span 2;
     }
 }
 </style>

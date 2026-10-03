@@ -135,6 +135,10 @@
         gap: 8px;
         align-items: center;
         flex-wrap: wrap;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        min-width: 0;
     }
     .arrow-col {
         display: flex;
@@ -163,13 +167,18 @@
         .stop-editor-row-main {
             gap: 6px;
         }
+        .stop-editor-row-main input.s-prop,
+        .stop-editor-row-main select.s-prop {
+            min-width: 0 !important;
+        }
         .s-prop.short-input {
             min-height: 34px !important;
             padding: 4px 6px !important;
             font-size: 0.85rem !important;
         }
         .stop-picker-wrap {
-            flex: 1 1 140px !important;
+            flex: 1 1 130px !important;
+            min-width: 0 !important;
         }
     }
 </style>

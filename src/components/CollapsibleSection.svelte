@@ -158,6 +158,9 @@
         .collapsible-wrapper.is-frame .collapsible-header {
             padding: 14px 16px;
         }
+        .collapsible-wrapper.is-frame .collapsible-content-inner {
+            padding: 0 10px 14px 10px;
+        }
         .collapsible-actions {
             width: 100%;
             justify-content: flex-start;

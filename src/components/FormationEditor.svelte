@@ -434,6 +434,10 @@
         flex-direction: column;
         gap: 12px;
         margin-top: 5px;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        min-width: 0;
     }
 
     .formation-header-actions {
@@ -634,11 +638,16 @@
         }
         .actions-buttons-wrap {
             width: 100%;
-            justify-content: space-between;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
         }
         .actions-buttons-wrap button {
-            flex: 1;
-            min-height: 40px;
+            flex: 1 1 calc(50% - 6px);
+            min-width: 90px;
+            min-height: 38px;
+            white-space: nowrap;
+            box-sizing: border-box;
         }
         .group-header {
             flex-direction: column;
@@ -647,10 +656,12 @@
         }
         .group-header-left {
             width: 100%;
+            min-width: 0;
         }
         .group-prop-inputs {
             width: 100%;
-            min-width: 100%;
+            min-width: 0;
+            box-sizing: border-box;
         }
         .group-field {
             min-height: 38px;

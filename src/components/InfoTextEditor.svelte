@@ -92,7 +92,7 @@
     <span style="font-size: 0.9em; color: var(--text-muted);">Lauftext / Info-Bausteine:</span>
 </div>
 
-<div class="info-editor-list" style="border: 1px solid var(--border); border-radius: 5px; background: transparent; padding: 5px; margin-bottom: 5px;">
+<div class="info-editor-list" style="border: 1px solid var(--border); border-radius: 5px; background: transparent; padding: 5px; margin-bottom: 5px; width: 100%; max-width: 100%; box-sizing: border-box; min-width: 0;">
     {#if !journey.infoTexts || journey.infoTexts.length === 0}
         <div class="info-empty" style="color: #ccc; margin-bottom: 5px;">Keine Lauftexte vorhanden.</div>
     {:else}
@@ -100,7 +100,7 @@
              onconsider={handleDndConsider}
              onfinalize={handleDndFinalize}>
             {#each journey.infoTexts as info (info.id)}
-                <div animate:flip={{duration: flipDurationMs}} class="info-editor-row" style="display: flex; gap: 5px; align-items: center; margin-bottom: 5px; padding: 5px; background: var(--bg-input); border-radius: 5px; border: 1px solid var(--border);">
+                <div animate:flip={{duration: flipDurationMs}} class="info-editor-row" style="display: flex; gap: 5px; align-items: center; margin-bottom: 5px; padding: 5px; background: var(--bg-input); border-radius: 5px; border: 1px solid var(--border); width: 100%; box-sizing: border-box; min-width: 0;">
                     <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 24px;">
                         {#if uiState.enableDragAndDrop}
                             <span class="drag-handle" style="cursor: move; margin-bottom: 2px;">
@@ -117,7 +117,7 @@
                     <button class="btn-icon" title={info.visible ? 'Sichtbar im Lauftext' : 'Versteckt'} onclick={() => toggleVisible(info)} style="display: flex; align-items: center; justify-content: center;">
                         <ZimIcon name={info.visible ? 'eye' : 'eye_off'} size={16} color={info.visible ? 'var(--text-main)' : 'var(--text-muted)'} />
                     </button>
-                    <input type="text" class="jfield info-text-input" bind:value={info.text} oninput={triggerUpdate} style="flex: 1; margin: 0;" placeholder="Text">
+                    <input type="text" class="jfield info-text-input" bind:value={info.text} oninput={triggerUpdate} style="flex: 1; margin: 0; min-width: 0;" placeholder="Text">
                     <button class="btn-icon" title="Entfernen" onclick={() => removeText(info)} style="display: flex; align-items: center; justify-content: center;">
                         <ZimIcon name="close" size={14} />
                     </button>
@@ -126,9 +126,9 @@
         </div>
     {/if}
 
-    <div style="display: flex; gap: 5px; margin-top: 10px; position: relative;">
-        <div bind:this={inputWrapperRef} style="position: relative; flex: 1; display: flex;">
-            <input type="text" class="jfield" style="flex: 1; margin: 0; padding-right: 30px;"
+    <div style="display: flex; gap: 6px; margin-top: 10px; position: relative; flex-wrap: wrap; width: 100%; box-sizing: border-box; min-width: 0;">
+        <div bind:this={inputWrapperRef} style="position: relative; flex: 1 1 180px; min-width: 0; display: flex;">
+            <input type="text" class="jfield" style="flex: 1; margin: 0; padding-right: 30px; min-width: 0;"
                    placeholder="Suchen oder eigenen Text eingeben."
                    bind:this={inputRef}
                    bind:value={inputText}
@@ -144,7 +144,7 @@
                 <ZimIcon name="chevron_down" size={14} />
             </button>
         </div>
-        <button class="btn-secondary btn-sm" onclick={addText}>Hinzufügen</button>
+        <button class="btn-secondary btn-sm" onclick={addText} style="white-space: nowrap;">Hinzufügen</button>
         
         {#if showDropdown}
             <ul use:portalDropdown={inputWrapperRef} class="autocomplete-list active" style="max-height: 200px; overflow-y: auto; background-color: var(--bg-panel, #2b2b2b); border: 1px solid var(--border-color, #444); list-style: none; padding: 0; margin: 0; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">

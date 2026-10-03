@@ -356,32 +356,57 @@
             align-items: stretch;
             gap: 10px;
             padding: 10px;
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+            min-width: 0;
         }
         .coach-main-controls {
             justify-content: space-between;
             width: 100%;
+            flex-wrap: wrap;
+            gap: 6px;
+            min-width: 0;
         }
         .coach-feature-controls {
             justify-content: space-between;
             width: 100%;
+            flex-wrap: wrap;
+            gap: 8px;
+            min-width: 0;
             border-top: 1px solid rgba(255, 255, 255, 0.05);
             padding-top: 8px;
         }
+        .amenity-badges {
+            flex-wrap: wrap;
+        }
         .amenity-chip {
-            min-width: 38px;
-            min-height: 38px;
-            font-size: 1.2rem;
+            min-width: 34px;
+            min-height: 34px;
+            font-size: 1.1rem;
         }
         .status-toggle-btn {
-            min-height: 38px;
-            padding: 6px 12px;
+            min-height: 34px;
+            padding: 4px 10px;
         }
         .remove-coach-btn {
-            min-height: 38px;
-            min-width: 38px;
+            min-height: 34px;
+            min-width: 34px;
         }
         .coach-type-select, .wagon-num-input, .coach-class-select, .length-input {
-            min-height: 38px;
+            min-height: 36px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .amenity-chip {
+            min-width: 30px;
+            min-height: 30px;
+            font-size: 1rem;
+            padding: 2px;
+        }
+        .coach-type-select {
+            min-width: 90px;
         }
     }
 </style>

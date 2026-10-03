@@ -204,9 +204,9 @@
 </div>
 
 <style>
-.journey-row { display: flex; flex-direction: column; align-items: stretch; background: var(--bg-input); border-radius: 6px; overflow: hidden; transition: background 0.15s, border 0.15s; border: 2px solid transparent; }
-.journey-row-content { display: flex; align-items: stretch; width: 100%; }
-.journey-details-fullwidth { padding: 0 12px 12px 12px; }
+.journey-row { display: flex; flex-direction: column; align-items: stretch; background: var(--bg-input); border-radius: 6px; overflow: hidden; transition: background 0.15s, border 0.15s; border: 2px solid transparent; width: 100%; max-width: 100%; box-sizing: border-box; min-width: 0; }
+.journey-row-content { display: flex; align-items: stretch; width: 100%; box-sizing: border-box; min-width: 0; }
+.journey-details-fullwidth { padding: 0 12px 12px 12px; width: 100%; max-width: 100%; box-sizing: border-box; min-width: 0; }
 .journey-row:hover { background: #1a2744; }
 .journey-row.journey-cancelled { opacity: 0.6; }
 .journey-row.mot-hidden { display: none !important; }
@@ -281,5 +281,6 @@
     .journey-name { font-size: 0.95em; }
     .journey-destination { font-size: 0.9em; min-width: 60px; }
     .expand-toggle { min-height: 36px; min-width: 32px; display: flex; align-items: center; justify-content: center; }
+    .journey-details-fullwidth { padding: 0 6px 10px 6px; }
 }
 </style>

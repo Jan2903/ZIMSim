@@ -57,7 +57,7 @@
     }
 </script>
 
-<div bind:this={wrapperRef} class="station-picker-wrapper" style="position: relative; display: inline-block; width: 100%;">
+<div bind:this={wrapperRef} class="station-picker-wrapper" style="position: relative; display: inline-block; width: 100%; min-width: 0; box-sizing: border-box;">
     <input type="text"
            class={cssClass}
            bind:this={inputRef}
@@ -76,7 +76,7 @@
                    }
                }
            }}
-           style="width: 100%; margin: 0; padding-right: 25px;">
+           style="width: 100%; margin: 0; padding-right: 25px; min-width: 0; box-sizing: border-box;">
            
     <button class="btn-icon" tabindex="-1"
             onmousedown={(e) => {
