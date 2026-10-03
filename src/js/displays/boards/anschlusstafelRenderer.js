@@ -4,6 +4,7 @@ import { drawText, drawWrappedText, truncateWithEllipsis, drawLineBadge } from '
 import { getSimulatedTime } from '../../core/utils/config.js';
 import { lineColorService } from '../../features/journey/services/lineColorService.svelte.js';
 import { drawDBLogo, drawAnalogClock } from '../core/sharedRenderers.js';
+import { drawQualityIcons, getMatchingPictogramRules } from '../primitives/pictogramRenderer.js';
 
 /**
  * Vollständiger dynamischer Renderer für Voranzeiger und Abfahrtstafeln (Anschlusstafel).
@@ -112,10 +113,28 @@ export function drawVoranzeigerBoard(ctx, journeys = [], width = 1920, height = 
             const train = visibleTrains[i];
 
             if (train) {
-                drawTrainRow(ctx, train, 0, rowY, width, trainRowHeight, i % 2 === 1, isPortrait);
+                const prevTrain = visibleTrains[i - 1];
+                const nextTrain = visibleTrains[i + 1];
+
+                const isCoupledWithPrev = !!(prevTrain && (
+                    (train.couplingGroupId && train.couplingGroupId === prevTrain.couplingGroupId) ||
+                    (train.coupled && prevTrain.coupled && train.platform === prevTrain.platform && train.scheduledTime === prevTrain.scheduledTime)
+                ));
+
+                const isCoupledWithNext = !!(nextTrain && (
+                    (train.couplingGroupId && train.couplingGroupId === nextTrain.couplingGroupId) ||
+                    (train.coupled && nextTrain.coupled && train.platform === nextTrain.platform && train.scheduledTime === nextTrain.scheduledTime)
+                ));
+
+                drawTrainRow(ctx, train, 0, rowY, width, trainRowHeight, i % 2 === 1, isPortrait, {
+                    isCoupledWithPrev,
+                    isCoupledWithNext,
+                    prevTrain,
+                    nextTrain
+                });
             } else {
-                // Leere Zeile bei dünnem Fahrplan (dezenter Hintergrund ohne Artefakte)
-                drawEmptyRow(ctx, 0, rowY, width, trainRowHeight, i % 2 === 1);
+                // Leere Zeilen bei dünnem Fahrplan auffüllen
+                drawEmptyRow(ctx, 0, rowY, width, trainRowHeight, i % 2 === 1, isPortrait);
             }
         }
     }
@@ -141,54 +160,93 @@ export function drawVoranzeigerBoard(ctx, journeys = [], width = 1920, height = 
 }
 
 /**
+ * Berechnet das einheitliche 4-Spalten-Raster für Header, Zeilen und leere Zeilen.
+ * Spalte 1: Zug / Train (oben) & Zeit / Time (unten)
+ * Spalte 2: Über / Via (oben) & Ziel / Destination (unten)
+ * Spalte 3: Gleis / Track
+ * Spalte 4: Symbole / Piktogramme
+ *
+ * @param {number} width - Gesamtbreite des Displays
+ * @param {boolean} isPortrait - Ob Hochformat aktiv ist
+ * @returns {{col1X: number, col1W: number, col2X: number, col2W: number, col3X: number, col3W: number, col4X: number, col4W: number}}
+ */
+function getColumnGeometry(width, isPortrait) {
+    if (isPortrait) {
+        const col1X = 24;
+        const col1W = 190;
+        const col2X = 240;
+        const col2W = width - col2X - 190;
+        const col3X = width - 170;
+        const col3W = 95;
+        const col4X = width - 65;
+        const col4W = 45;
+        return { col1X, col1W, col2X, col2W, col3X, col3W, col4X, col4W };
+    }
+
+    // Querformat (Standard 1920×1080):
+    // Rand links: 72px, Rand rechts: 28px (Spalten weiter rechts, schmaler rechter Rand)
+    const col1X = 72;
+    const col1W = 280;
+    const col2X = 388;
+    const col2W = 1140;
+    const col3X = 1560;
+    const col3W = 150;
+    const col4X = 1738;
+    const col4W = 154;
+
+    return { col1X, col1W, col2X, col2W, col3X, col3W, col4X, col4W };
+}
+
+/**
  * Zeichnet die Kopfzeile der Abfahrtstafel.
  * Originalgetreu nach DB-Voranzeiger:
- * - Analoge Uhr & digitale Uhrzeit (HH MM) oben links
+ * - Analoge Uhr & digitale Uhrzeit (HH:MM) oben links
  * - "Abfahrt Departure"
  * - DB-Logo oben rechts
  * - Zweisprachige Spaltenüberschriften ("Zug / Train", "Zeit / Time", "Über / Via", "Ziel / Destination", "Gleis / Track")
- * - Weiße horizontale Unterstriche unter den Spaltenköpfen
+ * - Kein abweichender Hintergrund (einheitliches DB-Blau über den gesamten Bildschirm)
+ * - Horizontale Trennstriche werden von den darunterliegenden Zeilen oben gerendert
  */
 function drawHeader(ctx, width, height, renderCtx, isPortrait) {
-    // Header-Hintergrund
-    ctx.fillStyle = COLORS.MIDNIGHT_BLUE_HEADER;
-    ctx.fillRect(0, 0, width, height);
+    // Spalten-Geometrie für Header und Zeilen einheitlich (4-Spalten-Raster)
+    const { col1X, col1W, col2X, col2W, col3X, col3W, col4X, col4W } = getColumnGeometry(width, isPortrait);
 
-    // 1. Oben links: Analoge Uhr + digitale Uhrzeit (HH:MM ohne Sekunden)
+    // 1. Oben links: Analoge Uhr + digitale Uhrzeit (HH:MM mit Doppelpunkt)
     const simTime = getSimulatedTime();
     const hours = simTime.getHours();
     const minutes = simTime.getMinutes();
-    const clockCenterX = isPortrait ? 30 : 44;
-    const clockCenterY = isPortrait ? 32 : 36;
-    const clockRadius = isPortrait ? 13 : 16;
+    const clockCenterX = isPortrait ? (col1X + 16) : (col1X + 22);
+    const clockCenterY = isPortrait ? 28 : 30;
+    const clockRadius = isPortrait ? 13 : 18;
 
     // Analoge Uhr aus sharedRenderers
     drawAnalogClock(ctx, clockCenterX, clockCenterY, clockRadius, simTime);
 
-    // Digitale Uhrzeit (HH MM)
-    const timeX = clockCenterX + clockRadius + (isPortrait ? 10 : 14);
-    const timeStr = `${String(hours).padStart(2, '0')} ${String(minutes).padStart(2, '0')}`;
+    // Digitale Uhrzeit (HH:MM)
+    const timeX = clockCenterX + clockRadius + (isPortrait ? 10 : 16);
+    const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
     ctx.fillStyle = COLORS.WHITE;
-    ctx.font = FONTS.bold(isPortrait ? 28 : 36);
+    ctx.font = FONTS.bold(isPortrait ? 28 : 42);
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     ctx.fillText(timeStr, timeX, clockCenterY);
 
-    // 2. Titel: "Abfahrt Departure"
-    const titleX = timeX + (isPortrait ? 80 : 110);
-    ctx.font = FONTS.bold(isPortrait ? 30 : 38);
+    // 2. Titel: "Abfahrt Departure" (bündig über der Über/Ziel-Spalte)
+    const titleX = isPortrait ? (timeX + 80) : col2X;
+    ctx.font = FONTS.bold(isPortrait ? 30 : 44);
+    ctx.fillStyle = COLORS.WHITE;
     ctx.fillText('Abfahrt', titleX, clockCenterY);
 
     const abfahrtW = ctx.measureText('Abfahrt').width;
-    ctx.font = FONTS.italic(isPortrait ? 24 : 32);
-    ctx.fillStyle = '#cbd5e1';
-    ctx.fillText('Departure', titleX + abfahrtW + 10, clockCenterY);
+    ctx.font = FONTS.italic(isPortrait ? 24 : 40);
+    ctx.fillStyle = COLORS.WHITE;
+    ctx.fillText('Departure', titleX + abfahrtW + 12, clockCenterY);
 
-    // 3. Oben rechts: DB-Logo aus sharedRenderers
-    const logoW = isPortrait ? 52 : 62;
-    const logoH = isPortrait ? 38 : 46;
-    const logoX = width - (isPortrait ? 24 : 40) - logoW;
-    const logoY = clockCenterY + (isPortrait ? 9 : 12);
+    // 3. Oben rechts: DB-Logo aus sharedRenderers (über der Symbol-Spalte rechtsbündig)
+    const logoW = isPortrait ? 52 : 72;
+    const logoH = isPortrait ? 38 : 50;
+    const logoX = col4X + col4W - logoW;
+    const logoY = clockCenterY;
     drawDBLogo(ctx, logoX, logoY, logoW, logoH);
 
     // Optionaler Seitenindikator bei Pagination links neben dem DB-Logo
@@ -199,39 +257,27 @@ function drawHeader(ctx, width, height, renderCtx, isPortrait) {
         ctx.fillText(`Seite ${(renderCtx.activeTrainPage || 0) + 1}/${renderCtx.totalTrainPages}`, logoX - 20, clockCenterY);
     }
 
-    // 4. Zweisprachige Spaltenbeschriftungen mit horizontalen Teilstrichen
+    // 4. Zweisprachige Spaltenbeschriftungen (Trennstriche werden von den Zeilen oben gerendert)
     ctx.textBaseline = 'alphabetic';
-    const subY1 = isPortrait ? 68 : 74;
-    const subY2 = isPortrait ? 86 : 94;
-    const lineY = isPortrait ? 96 : 104;
-    const subFont = FONTS.regular(isPortrait ? 14 : 17);
+    const subY1 = isPortrait ? 74 : 74;
+    const subY2 = isPortrait ? 94 : 96;
+    const subFont = FONTS.bold(isPortrait ? 14 : 19);
 
     ctx.font = subFont;
-    ctx.fillStyle = '#cbd5e1';
+    ctx.fillStyle = '#e2e8f0';
 
     // Spalte 1: Zug / Train & Zeit / Time
-    const col1X = isPortrait ? 24 : 40;
-    const col1W = isPortrait ? 190 : 260;
     ctx.textAlign = 'left';
     ctx.fillText('Zug / Train', col1X, subY1);
     ctx.fillText('Zeit / Time', col1X, subY2);
 
     // Spalte 2: Über / Via & Ziel / Destination
-    const col2X = isPortrait ? 240 : 340;
-    const col2W = width - col2X - (isPortrait ? 180 : 320);
     ctx.fillText('Über / Via', col2X, subY1);
     ctx.fillText('Ziel / Destination', col2X, subY2);
 
-    // Spalte 3: Gleis / Track
-    const col3X = width - (isPortrait ? 150 : 250);
-    const col3W = width - col3X - (isPortrait ? 24 : 40);
-    ctx.fillText('Gleis / Track', col3X, subY1);
-
-    // Horizontale weiße Teilstriche unter den Spaltenköpfen
-    ctx.fillStyle = COLORS.WHITE;
-    ctx.fillRect(col1X, lineY, col1W, 2);
-    ctx.fillRect(col2X, lineY, col2W, 2);
-    ctx.fillRect(col3X, lineY, col3W, 2);
+    // Spalte 3: Gleis / Track (zentriert über der Gleisspalte auf Grundlinie von Zeit & Ziel)
+    ctx.textAlign = 'center';
+    ctx.fillText('Gleis / Track', col3X + (col3W / 2), subY2);
 }
 
 /**
@@ -240,237 +286,287 @@ function drawHeader(ctx, width, height, renderCtx, isPortrait) {
  * - Bei Ausfall: Vollständige Zeileninvertierung (weißer Hintergrund, dunkelblaue Schrift aus COLORS.MIDNIGHT_BLUE, kein Rot)
  * - Vias ("Über / Via") oben, Fahrtziel ("Ziel / Destination") unten
  * - Zugnummer ("Zug / Train") oben, Abfahrtszeit ("Zeit / Time") unten
- * - Verspätung in weiß umrandetem Kasten [HH:MM] rechts neben der Planzeit
- * - Bei Gleiswechsel: Weißer Inverskasten mit reiner Gleisnummer in COLORS.MIDNIGHT_BLUE (ohne "Gl.")
+ * - Bei Flügelzug:
+ *   a) Keine Trennstriche zwischen beiden Zugteilen
+ *   b) Verbindungs-Klammer links vor den Zielen
+ *   c) Beim zweiten Teilzug keine Zeitanzeige, wenn Planzeit übereinstimmt
+ * - Trennstriche werden pro Zeile OBEN gerendert für absolut gleichmäßige Abstände
  * - Reine Gleisnummern (ohne "Gl.")
+ * @param {CanvasRenderingContext2D} ctx - Canvas Kontext
+ * @param {object} train - Zugfahrt-Daten
+ * @param {number} x - X-Position
+ * @param {number} y - Y-Position (oberer Rand der Zeile)
+ * @param {number} width - Zeilenbreite
+ * @param {number} height - Zeilenhöhe
+ * @param {boolean} isAlt - Alternierender Zeilenhintergrund
+ * @param {boolean} [isPortrait=false] - Ob Hochformat aktiv ist
+ * @param {object} [coupledInfo={}] - Kopplungs-Informationen (Flügelzug)
+ * @returns {void}
  */
-function drawTrainRow(ctx, train, x, y, width, height, isAlt, isPortrait = false) {
+function drawTrainRow(ctx, train, x, y, width, height, isAlt, isPortrait = false, coupledInfo = {}) {
     const isAusfall = !!train.ausfall;
     const hasTrackChange = !!train.hasTrackChange;
+    const isCoupledWithPrev = !!coupledInfo.isCoupledWithPrev;
+    const isCoupledWithNext = !!coupledInfo.isCoupledWithNext;
+    const prevTrain = coupledInfo.prevTrain;
 
-    // 1. Zeilenhintergrund: Normal DB-Blau, bei Ausfall VOLLSTÄNDIG WEISS INVERTIERT
+    // 1. Spaltengeometrie (exakt synchronisiert mit dem Header)
+    const { col1X, col1W, col2X, col2W, col3X, col3W, col4X, col4W } = getColumnGeometry(width, isPortrait);
+
+    // 1. Zeilenhintergrund: Bei Ausfall VOLLSTÄNDIG WEISS INVERTIERT
     if (isAusfall) {
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(x, y, width, height);
     } else {
-        ctx.fillStyle = COLORS.MIDNIGHT_BLUE;
-        ctx.fillRect(x, y, width, height);
-
-        // Trennlinie nach unten
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
-        ctx.fillRect(x + 40, y + height - 2, width - 80, 2);
+        // Segmentierte weiße Trennstriche nach OBEN pro Spalte (oben statt unten gerendert!)
+        // Bei Teilzug 2 eines Flügelzugs oder direkt unter einer Ausfallzeile: KEINE Trennstriche nach oben!
+        const prevWasAusfall = prevTrain && (prevTrain.ausfall || prevTrain.isCancelled);
+        if (!isCoupledWithPrev && !prevWasAusfall) {
+            ctx.fillStyle = COLORS.WHITE;
+            ctx.fillRect(col1X, y, col1W, 2);
+            ctx.fillRect(col2X, y, col2W, 2);
+            ctx.fillRect(col3X, y, col3W, 2);
+            ctx.fillRect(col4X, y, col4W, 2);
+        }
     }
 
     // Textfarben: Bei Invertierung das bekannte Dunkelblau (COLORS.MIDNIGHT_BLUE) als Textfarbe!
     const primaryColor = isAusfall ? COLORS.MIDNIGHT_BLUE : COLORS.WHITE;
-    const secondaryColor = isAusfall ? COLORS.MIDNIGHT_BLUE : '#cbd5e1';
+    const secondaryColor = isAusfall ? COLORS.MIDNIGHT_BLUE : COLORS.WHITE;
 
     // ----------------------------------------------------
     // SPALTE 1: ZUG / TRAIN (oben) & ZEIT / TIME (unten)
     // ----------------------------------------------------
-    const col1X = isPortrait ? 24 : 40;
     const displayName = train.displayTitle || '';
+    const badgeH = isPortrait ? 34 : 40;
+    const badgeY = y + (height * 0.14);
 
-    // A. Oberes Sub-Element: Zug / Gattung
-    const trainBoxW = isPortrait ? 115 : 150;
-    const trainBoxH = isPortrait ? 34 : 40;
-    const trainBoxY = y + (height * 0.16);
+    ctx.font = FONTS.bold(isPortrait ? 22 : 30);
+    const textW = ctx.measureText(displayName).width;
+    const badgePadding = isPortrait ? 16 : 24;
+    const badgeW = Math.max(isPortrait ? 60 : 72, Math.min(col1W, textW + badgePadding));
 
     if (isAusfall) {
-        // Bei Ausfall im weißen Balken: Kasten mit dunkelblauem Rahmen & Text
-        ctx.strokeStyle = COLORS.MIDNIGHT_BLUE;
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.roundRect(col1X, trainBoxY, trainBoxW, trainBoxH, 4);
-        ctx.stroke();
-
-        ctx.font = FONTS.bold(isPortrait ? 22 : 28);
-        ctx.fillStyle = COLORS.MIDNIGHT_BLUE;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(displayName, col1X + (trainBoxW / 2), trainBoxY + (trainBoxH / 2));
+        // Bei Ausfall im weißen Balken: Gattungs-/Linienbadge
+        const font = FONTS.bold(isPortrait ? 22 : 30);
+        let badgeStyle = lineColorService.resolveStyle(displayName, {
+            operator: train.operator,
+            isAusfall: true,
+            defaultBgColor: '#1c6276',
+            defaultTextColor: COLORS.WHITE
+        });
+        if (badgeStyle.backgroundColor === '#ffffff' || badgeStyle.shape === 'outline') {
+            badgeStyle = {
+                ...badgeStyle,
+                backgroundColor: '#1c6276',
+                textColor: COLORS.WHITE,
+                borderColor: 'transparent',
+                shape: 'rounded'
+            };
+        }
+        drawLineBadge(ctx, displayName, col1X, badgeY, badgeW, badgeH, {
+            font,
+            ...badgeStyle
+        });
     } else {
         // Reguläres Linien-/Gattungsbadge
-        const font = FONTS.bold(isPortrait ? 22 : 28);
+        const font = FONTS.bold(isPortrait ? 22 : 30);
         const badgeStyle = lineColorService.resolveStyle(displayName, {
             operator: train.operator,
             defaultBgColor: '#1e293b',
             defaultTextColor: COLORS.WHITE
         });
-        drawLineBadge(ctx, displayName, col1X, trainBoxY, trainBoxW, trainBoxH, {
+        drawLineBadge(ctx, displayName, col1X, badgeY, badgeW, badgeH, {
             font,
             ...badgeStyle
         });
     }
 
     // B. Unteres Sub-Element: Zeit & Status
-    ctx.textBaseline = 'alphabetic';
-    const timeY = y + (height * 0.76);
-    let timeTextX = col1X;
+    // Beim zweiten/unteren Flügelzug keine Anzeige der Uhrzeit (wenn Planzeit übereinstimmt)
+    const isSecondCoupledPart = isCoupledWithPrev && (prevTrain && train.scheduledTime === prevTrain.scheduledTime);
+    const timeY = y + (height * 0.78);
 
-    const hasStatusChange = isAusfall || hasTrackChange || (train.expectedTime && train.expectedTime !== train.scheduledTime);
-    if (hasStatusChange) {
-        // Weißer Statuspunkt (bzw. dunkelblau bei Ausfall) vor der Zeit
-        ctx.font = FONTS.bold(isPortrait ? 28 : 36);
+    if (!isSecondCoupledPart) {
+        ctx.textBaseline = 'alphabetic';
+
+        // Planabfahrtszeit: Bleibt IMMER linksbündig auf col1X (auch bei Ausfall nicht verschoben)
+        const schedTime = train.scheduledTime || '--:--';
+        ctx.font = FONTS.bold(isPortrait ? 34 : 60);
         ctx.fillStyle = primaryColor;
         ctx.textAlign = 'left';
-        ctx.fillText('•', timeTextX, timeY);
-        timeTextX += (isPortrait ? 18 : 24);
-    }
+        ctx.fillText(schedTime, col1X, timeY);
 
-    if (isAusfall) {
-        // Ausfall-Kreuz vor der Zeit
-        ctx.font = FONTS.bold(isPortrait ? 30 : 38);
-        ctx.fillStyle = COLORS.MIDNIGHT_BLUE;
-        ctx.textAlign = 'left';
-        ctx.fillText('×', timeTextX, timeY);
-        timeTextX += (isPortrait ? 22 : 28);
-    }
+        if (isAusfall) {
+            // Ausfall-Kreuz "×" im freien linken Randbereich links von col1X (Abfahrtszeit bleibt fest auf col1X)
+            const crossX = col1X - (isPortrait ? 18 : 28);
+            ctx.font = FONTS.bold(isPortrait ? 30 : 44);
+            ctx.fillStyle = COLORS.MIDNIGHT_BLUE;
+            ctx.textAlign = 'center';
+            ctx.fillText('×', crossX, timeY);
+        } else if (train.expectedTime && train.expectedTime !== train.scheduledTime) {
+            // Verspätungskasten: Invertierter, ausgefüllter weißer eckiger (nicht gerundeter) Kasten
+            const schedW = ctx.measureText(schedTime).width;
+            const delayBoxX = col1X + schedW + (isPortrait ? 10 : 12);
+            const delayBoxW = isPortrait ? 78 : 96;
+            const delayBoxH = isPortrait ? 30 : 40;
+            const delayBoxY = timeY - (isPortrait ? 24 : 36);
 
-    // Planabfahrtszeit
-    const schedTime = train.scheduledTime || '--:--';
-    ctx.font = FONTS.bold(isPortrait ? 34 : 46);
-    ctx.fillStyle = primaryColor;
-    ctx.textAlign = 'left';
-    ctx.fillText(schedTime, timeTextX, timeY);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(delayBoxX, delayBoxY, delayBoxW, delayBoxH);
 
-    if (isAusfall) {
-        // Zeit mit horizontaler Linie in Dunkelblau durchstreichen
-        const schedW = ctx.measureText(schedTime).width;
-        ctx.strokeStyle = COLORS.MIDNIGHT_BLUE;
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.moveTo(timeTextX - 2, timeY - (isPortrait ? 11 : 14));
-        ctx.lineTo(timeTextX + schedW + 2, timeY - (isPortrait ? 11 : 14));
-        ctx.stroke();
-    } else if (train.expectedTime && train.expectedTime !== train.scheduledTime) {
-        // Verspätungskasten [HH:MM] rechts neben der Planzeit
-        const schedW = ctx.measureText(schedTime).width;
-        const delayBoxX = timeTextX + schedW + (isPortrait ? 10 : 14);
-        const delayBoxW = isPortrait ? 78 : 96;
-        const delayBoxH = isPortrait ? 30 : 36;
-        const delayBoxY = timeY - (isPortrait ? 24 : 32);
-
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.roundRect(delayBoxX, delayBoxY, delayBoxW, delayBoxH, 4);
-        ctx.stroke();
-
-        ctx.font = FONTS.bold(isPortrait ? 22 : 28);
-        ctx.fillStyle = COLORS.WHITE;
-        ctx.textAlign = 'center';
-        ctx.fillText(train.expectedTime, delayBoxX + (delayBoxW / 2), timeY - 2);
+            ctx.font = FONTS.bold(isPortrait ? 22 : 32);
+            ctx.fillStyle = COLORS.MIDNIGHT_BLUE;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(train.expectedTime, delayBoxX + (delayBoxW / 2), delayBoxY + (delayBoxH / 2));
+        }
     }
 
     // ----------------------------------------------------
-    // SPALTE 2: ÜBER / VIA (oben) & ZIEL / DESTINATION (unten)
+    // SPALTE 2: ÜBER / VIA (oben) & ZIEL / DESTINATION (unten) + VERBINDUNGS-KLAMMER
     // ----------------------------------------------------
-    const destX = isPortrait ? 240 : 340;
 
     // A. Oberes Sub-Element: Vias / "Fahrt fällt aus"
-    const viaY = y + (height * 0.32);
+    const viaY = y + (height * 0.30);
     ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
 
     if (isAusfall) {
-        ctx.font = FONTS.regular(isPortrait ? 24 : 30);
+        ctx.font = FONTS.bold(isPortrait ? 24 : 32);
         ctx.fillStyle = COLORS.MIDNIGHT_BLUE;
-        ctx.fillText('Fahrt fällt aus', destX, viaY);
+        ctx.fillText('Fahrt fällt aus', col2X, viaY);
     } else {
-        ctx.font = FONTS.regular(isPortrait ? 20 : 26);
+        ctx.font = FONTS.bold(isPortrait ? 20 : 30);
         ctx.fillStyle = secondaryColor;
 
-        let viaStr = (train.vias && train.vias.length > 0) ? train.vias.join(' - ') : '';
+        let viaStr = (train.vias && train.vias.length > 0) ? train.vias.join(' – ') : '';
         if (train.verkehrtAb && train.verkehrtAb !== '0') {
-            viaStr = `Verkehrt ab ${train.verkehrtAb} - ${viaStr}`;
+            viaStr = `Verkehrt ab ${train.verkehrtAb} – ${viaStr}`;
         }
-        const rightMargin = isPortrait ? 180 : 320;
-        const maxViaWidth = width - destX - rightMargin;
-        viaStr = truncateWithEllipsis(ctx, viaStr, maxViaWidth);
-        ctx.fillText(viaStr, destX, viaY);
+        viaStr = truncateWithEllipsis(ctx, viaStr, col2W - 20);
+        ctx.fillText(viaStr, col2X, viaY);
     }
 
     // B. Unteres Sub-Element: Fahrtziel
-    const destY = y + (height * 0.76);
+    const destY = timeY;
     let destText = train.displayDestination || '';
     if (/flughafen|airport/i.test(destText) && !destText.includes('✈')) {
         destText = `✈ ${destText}`;
     }
 
-    ctx.font = FONTS.bold(isPortrait ? 34 : 46);
+    ctx.font = FONTS.bold(isPortrait ? 34 : 62);
     ctx.fillStyle = primaryColor;
-    ctx.fillText(destText, destX, destY);
+    ctx.fillText(destText, col2X, destY);
+
+    // C. Verbindungs-Klammer ("T" / Flügelzug-Symbol)
+    // Wenn dieser Zug mit dem nächsten gekoppelt ist: verbindet destY mit destY der nächsten Zeile
+    if (isCoupledWithNext) {
+        const dest1Y = destY;
+        const dest2Y = y + height + (height * 0.78);
+
+        const bracketX = col2X - (isPortrait ? 14 : 22);
+        const bracketArmRight = col2X - (isPortrait ? 4 : 8);
+        const bracketTopY = dest1Y - (isPortrait ? 12 : 20);
+        const bracketBottomY = dest2Y - (isPortrait ? 12 : 20);
+
+        ctx.strokeStyle = COLORS.WHITE;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(bracketArmRight, bracketTopY);
+        ctx.lineTo(bracketX, bracketTopY);
+        ctx.lineTo(bracketX, bracketBottomY);
+        ctx.lineTo(bracketArmRight, bracketBottomY);
+        ctx.stroke();
+    }
 
     // ----------------------------------------------------
     // SPALTE 3: GLEIS / TRACK
     // ----------------------------------------------------
-    const gleisX = width - (isPortrait ? 150 : 250);
-    const gleisY = y + (height * 0.76);
+    const gleisY = timeY;
     const rawTrack = train.platform || '-';
     const cleanTrack = String(rawTrack).replace(/^Gl\.\s*/i, '').trim();
 
     if (isAusfall) {
-        ctx.font = FONTS.bold(isPortrait ? 34 : 46);
+        ctx.font = FONTS.bold(isPortrait ? 38 : 70);
         ctx.fillStyle = COLORS.MIDNIGHT_BLUE;
-        ctx.textAlign = 'left';
-        ctx.fillText('-', gleisX, gleisY);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillText('-', col3X + (col3W / 2), gleisY);
     } else if (hasTrackChange) {
         // Gleiswechsel: Weißer Inverskasten mit neuer Gleisnummer in COLORS.MIDNIGHT_BLUE
         const newTrack = (train.ezGleis || cleanTrack).replace(/^Gl\.\s*/i, '').trim();
-        const boxW = isPortrait ? 85 : 110;
-        const boxH = isPortrait ? 44 : 52;
-        const boxY = gleisY - (isPortrait ? 34 : 40);
+        const boxW = isPortrait ? (col3W - 8) : 136;
+        const boxH = isPortrait ? 44 : 64;
+        const boxX = col3X + ((col3W - boxW) / 2);
+        const boxY = isPortrait ? (gleisY - 34) : (y + height - boxH - 4);
 
         ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.roundRect(gleisX - 6, boxY, boxW, boxH, 4);
-        ctx.fill();
+        ctx.fillRect(boxX, boxY, boxW, boxH);
 
-        ctx.font = FONTS.bold(isPortrait ? 34 : 46);
+        ctx.font = FONTS.bold(isPortrait ? 34 : 54);
         ctx.fillStyle = COLORS.MIDNIGHT_BLUE;
         ctx.textAlign = 'center';
-        ctx.fillText(newTrack, gleisX - 6 + (boxW / 2), gleisY);
+        ctx.textBaseline = 'middle';
+        ctx.fillText(newTrack, boxX + (boxW / 2), boxY + (boxH / 2));
     } else {
-        ctx.font = FONTS.bold(isPortrait ? 34 : 46);
+        ctx.font = FONTS.bold(isPortrait ? 38 : 70);
         ctx.fillStyle = COLORS.WHITE;
-        ctx.textAlign = 'left';
-        ctx.fillText(cleanTrack, gleisX, gleisY);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillText(cleanTrack, col3X + (col3W / 2), gleisY);
     }
 
     // ----------------------------------------------------
-    // SPALTE 4: PIKTOGRAMME (z.B. Fahrradmitnahme)
+    // SPALTE 4: PIKTOGRAMME (Qualitätsmerkmale aus pictogramRenderer, max. 2, linksbündig)
     // ----------------------------------------------------
-    const hasBike = train.hasBike || train.bike || (train.amenities && (train.amenities.includes('bike') || train.amenities.includes('bicycle')));
-    if (hasBike && !isAusfall) {
-        const bikeBoxSize = isPortrait ? 36 : 42;
-        const bikeBoxX = width - (isPortrait ? 50 : 85);
-        const bikeBoxY = gleisY - (isPortrait ? 28 : 34);
+    if (!isAusfall) {
+        let qualityText = train.scrollText || '';
+        if (train.infoTexts && Array.isArray(train.infoTexts)) {
+            const fullInfo = train.infoTexts.map(t => t.text || '').join(' ');
+            if (fullInfo) qualityText += (qualityText ? ' ' : '') + fullInfo;
+        }
+        if (train.hasReservation || train.needsReservation || /flx|flixtrain/i.test(train.displayTitle || '')) {
+            qualityText += ' Zug reservierungspflichtig';
+        }
+        if (train.hasBike || train.bike || (train.amenities && (train.amenities.includes('bike') || train.amenities.includes('bicycle')))) {
+            qualityText += ' Fahrradmitnahme reservierungspflichtig';
+        }
 
-        ctx.strokeStyle = COLORS.WHITE;
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.roundRect(bikeBoxX, bikeBoxY, bikeBoxSize, bikeBoxSize, 4);
-        ctx.stroke();
+        const iconSize = isPortrait ? 36 : 52;
+        const iconY = destY - (isPortrait ? 28 : 46);
 
-        ctx.font = FONTS.bold(isPortrait ? 20 : 24);
-        ctx.fillStyle = COLORS.WHITE;
-        ctx.textAlign = 'center';
-        ctx.fillText('🚲', bikeBoxX + (bikeBoxSize / 2), gleisY - 3);
-
-        ctx.font = FONTS.bold(isPortrait ? 9 : 11);
-        ctx.fillText('R', bikeBoxX + bikeBoxSize - 7, bikeBoxY + 11);
+        const matchingRules = getMatchingPictogramRules(qualityText, displayName, 2);
+        if (matchingRules.length > 0) {
+            const gap = 8;
+            const leftX = col4X;
+            drawQualityIcons(ctx, qualityText, displayName, leftX, iconY, iconSize, gap, 2, 'left');
+        }
     }
 }
 
 /**
- * Zeichnet eine saubere leere Zeile bei unvollständiger Belegung.
+ * Zeichnet eine saubere leere Zeile bei unvollständiger Belegung mit segmentierten Teilstrichen oben.
+ * @param {CanvasRenderingContext2D} ctx - Canvas Kontext
+ * @param {number} x - X-Position
+ * @param {number} y - Y-Position (oberer Rand)
+ * @param {number} width - Zeilenbreite
+ * @param {number} height - Zeilenhöhe
+ * @param {boolean} isAlt - Alternierender Zeilenhintergrund
+ * @param {boolean} [isPortrait=false] - Ob Hochformat aktiv ist
+ * @returns {void}
  */
-function drawEmptyRow(ctx, x, y, width, height, isAlt) {
+function drawEmptyRow(ctx, x, y, width, height, isAlt, isPortrait = false) {
     ctx.fillStyle = COLORS.MIDNIGHT_BLUE;
     ctx.fillRect(x, y, width, height);
 
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-    ctx.fillRect(x + 40, y + height - 2, width - 80, 2);
+    const { col1X, col1W, col2X, col2W, col3X, col3W, col4X, col4W } = getColumnGeometry(width, isPortrait);
+
+    ctx.fillStyle = COLORS.WHITE;
+    ctx.fillRect(col1X, y, col1W, 2);
+    ctx.fillRect(col2X, y, col2W, 2);
+    ctx.fillRect(col3X, y, col3W, 2);
+    ctx.fillRect(col4X, y, col4W, 2);
 }
 
 /**

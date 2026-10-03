@@ -47,38 +47,47 @@ const PICTOGRAM_RULES = [
         }
     },
     {
-        match: (info) => info.includes("Zug reservierungspflichtig"),
+        match: (info) => info.includes("Zug reservierungspflichtig") || info.includes("Platzreservierung"),
         draw: (ctx) => {
-            ctx.lineWidth = "4";
+            ctx.lineWidth = 4;
             ctx.strokeStyle = COLORS.WHITE;
-            ctx.strokeRect(2, 2, 96, 96);
+            ctx.strokeRect(4, 4, 92, 92);
+
+            // 3 Sitze nebeneinander (DB Reservierungs-Piktogramm)
+            const seats = [28, 50, 72];
             ctx.fillStyle = COLORS.WHITE;
-            ctx.font = FONTS.regular(48);
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText("R", 50, 50);
+            for (const cx of seats) {
+                // Kopf / Lehne oben
+                ctx.beginPath();
+                ctx.arc(cx, 34, 6.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Sitzrücken & Sitzfläche
+                ctx.beginPath();
+                ctx.roundRect(cx - 7, 46, 14, 22, 2);
+                ctx.fill();
+            }
         }
     },
     {
         match: (info) => info.includes("Fahrradmitnahme reservierungspflichtig"),
         draw: (ctx) => {
-            ctx.lineWidth = "4";
+            ctx.lineWidth = 4;
             ctx.strokeStyle = COLORS.WHITE;
-            ctx.strokeRect(2, 2, 96, 96);
+            ctx.strokeRect(4, 4, 92, 92);
             
             ctx.save();
-            ctx.save();
-            ctx.translate(50, 66);
-            ctx.scale(0.40, 0.40);
+            ctx.translate(46, 64);
+            ctx.scale(0.42, 0.42);
             ctx.translate(-50, -50);
             drawIcon(ctx, 'fahrrad', COLORS.WHITE);
             ctx.restore();
 
             ctx.fillStyle = COLORS.WHITE;
-            ctx.font = FONTS.regular(48);
+            ctx.font = FONTS.bold(44);
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText("R", 75, 28);
+            ctx.fillText("R", 76, 26);
         }
     },
     {
@@ -272,23 +281,24 @@ export function getMatchingPictogramRules(scrollText, trainNumber, maxCount = 2)
 }
 
 /**
- * Zeichnet bis zu `maxCount` Qualitätsmerkmal-Piktogramme rechtsbündig nebeneinander.
+ * Zeichnet bis zu `maxCount` Qualitätsmerkmal-Piktogramme (links- oder rechtsbündig) nebeneinander.
  * @param {CanvasRenderingContext2D} ctx - Canvas Kontext
  * @param {string} scrollText - Der Lauftext / Info-String
  * @param {string} trainNumber - Die Zugnummer
- * @param {number} rightX - Rechter Ankerpunkt für die Piktogramme
+ * @param {number} anchorX - Ankerpunkt X (links bei align='left', rechts bei align='right')
  * @param {number} y - Y-Position (oberer Rand der Boxen)
  * @param {number} [size=52] - Kantenlänge der quadratischen Box
  * @param {number} [gap=8] - Abstand zwischen zwei Piktogrammen
  * @param {number} [maxCount=2] - Maximale Anzahl darzustellender Piktogramme
+ * @param {'left' | 'right'} [align='right'] - Horizontale Ausrichtung
  * @returns {number} Gesamtbreite aller gezeichneten Piktogramme
  */
-export function drawQualityIcons(ctx, scrollText, trainNumber, rightX, y, size = 52, gap = 8, maxCount = 2) {
+export function drawQualityIcons(ctx, scrollText, trainNumber, anchorX, y, size = 52, gap = 8, maxCount = 2, align = 'right') {
     const rules = getMatchingPictogramRules(scrollText, trainNumber, maxCount);
     if (rules.length === 0) return 0;
 
     const totalWidth = (rules.length * size) + ((rules.length - 1) * gap);
-    let startX = rightX - totalWidth;
+    let startX = (align === 'left') ? anchorX : (anchorX - totalWidth);
 
     for (const rule of rules) {
         drawInNormalizedBox(ctx, startX, y, size, rule.draw);

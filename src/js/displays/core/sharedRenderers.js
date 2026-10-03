@@ -15,16 +15,25 @@ import { getSimulatedTime } from '../../core/utils/config.js';
 export function drawDBLogo(ctx, x, y, w = 80, h = 60) {
     const scale = w / 80;
     const lineWidth = Math.max(2, Math.round(4 * scale));
-    const fontSize = Math.round(45 * scale);
+    const fontSize = Math.round(44 * (h / 60));
     const radius = Math.round(8 * scale);
+    const boxY = y - (h / 2);
 
+    ctx.save();
     ctx.strokeStyle = COLORS.WHITE;
     ctx.lineWidth = lineWidth;
     ctx.beginPath();
-    ctx.roundRect(x, y - (43 * scale), w, h, radius);
+    ctx.roundRect(x, boxY, w, h, radius);
     ctx.stroke();
-    drawText(ctx, "DB", x + (w / 2), y + (3 * scale), FONTS.bold(fontSize), COLORS.WHITE, 'center', 'middle');
+
+    ctx.font = FONTS.bold(fontSize);
+    ctx.fillStyle = COLORS.WHITE;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText("DB", x + (w / 2), y);
+    ctx.restore();
 }
+
 
 /**
  * Zeichnet eine virtuelle analoge Uhr inkl. Stunden- und Minutenzeiger.
