@@ -364,10 +364,10 @@ export class AnsagenGenerator {
 
         if (!journey.ankunft && !isWende) {
             this._appendSectors(p, journey);
-            this._appendFirstClassSectors(p, journey);
         }
 
         this._appendTimeInfo(p, journey, journey.ankunft ? 'ANKUNFT' : 'ABFAHRT');
+        this._appendFirstClassSectors(p, journey);
         this._generateDeviations(p, journey);
         this._module(p, 'VORSICHT_BEI_DER_EINFAHRT');
 
@@ -393,12 +393,12 @@ export class AnsagenGenerator {
 
         if (!journey.ankunft) {
             this._appendSectors(p, journey);
-            this._appendFirstClassSectors(p, journey);
         }
         
         this._module(p, journey.ankunft ? 'ANKUNFT' : 'ABFAHRT');
         this._time(p, journey.scheduledTime);
-        
+        this._appendFirstClassSectors(p, journey);
+
         this._generateDeviations(p, journey);
 
         return p;
