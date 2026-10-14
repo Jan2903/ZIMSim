@@ -1,6 +1,7 @@
 // js/displays/boards/ankunftstafelRenderer.js
 import { COLORS, FONTS } from '../core/constants.js';
 import { truncateWithEllipsis, drawLineBadge } from '../core/textUtils.js';
+import { drawAnalogClock } from '../core/sharedRenderers.js';
 import { getSimulatedTime } from '../../core/utils/config.js';
 import { lineColorService } from '../../features/journey/services/lineColorService.svelte.js';
 
@@ -98,11 +99,16 @@ function drawAnkunftHeader(ctx, width, height, renderCtx) {
     const simTime = getSimulatedTime();
     const timeStr = simTime.toTimeString().slice(0, 5); // "17:51"
 
-    // Uhrzeit links
+    // Uhrzeit links (Analoge Uhr + Digitalzeit)
+    const clockRadius = height > 90 ? 28 : 24;
+    const clockCenterX = 30 + clockRadius;
+    const clockCenterY = height * 0.50;
+    drawAnalogClock(ctx, clockCenterX, clockCenterY, clockRadius, simTime);
+
     ctx.font = FONTS.bold(height > 90 ? 46 : 40);
     ctx.fillStyle = COLORS.WHITE;
     ctx.textAlign = 'left';
-    ctx.fillText(`🕒 ${timeStr}`, 30, height * 0.62);
+    ctx.fillText(timeStr, clockCenterX + clockRadius + 16, height * 0.62);
 
     // Titel "Ankunft Arrivals"
     ctx.font = FONTS.bold(height > 90 ? 46 : 40);

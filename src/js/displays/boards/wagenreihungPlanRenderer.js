@@ -2,7 +2,7 @@
 import { COLORS, FONTS, FORMATION } from '../core/constants.js';
 import { getSimulatedTime } from '../../core/utils/config.js';
 import { drawFormation, drawSectors } from '../primitives/formationRenderer.js';
-import { drawDBLogo } from '../core/sharedRenderers.js';
+import { drawDBLogo, drawAnalogClock } from '../core/sharedRenderers.js';
 import { truncateWithEllipsis } from '../core/textUtils.js';
 
 /**
@@ -74,11 +74,16 @@ function drawPlanHeader(ctx, width, height, sectorStartX, sectorUsableWidth, pla
     const simTime = getSimulatedTime();
     const timeStr = simTime.toTimeString().slice(0, 5); // "05:48"
 
-    // 1. Uhrzeit links
+    // 1. Uhrzeit links (Analoge Uhr + Digitalzeit)
+    const clockRadius = isPortrait ? 22 : 26;
+    const clockCenterX = (isPortrait ? 20 : 30) + clockRadius;
+    const clockCenterY = height * 0.50;
+    drawAnalogClock(ctx, clockCenterX, clockCenterY, clockRadius, simTime);
+
     ctx.font = FONTS.bold(isPortrait ? 38 : 42);
     ctx.fillStyle = COLORS.WHITE;
     ctx.textAlign = 'left';
-    ctx.fillText(`🕒 ${timeStr}`, isPortrait ? 20 : 30, height * 0.58);
+    ctx.fillText(timeStr, clockCenterX + clockRadius + 14, height * 0.58);
 
     // 2. "Abfahrt Departure"
     const titleX = isPortrait ? 180 : 210;
