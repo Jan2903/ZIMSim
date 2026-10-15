@@ -1,6 +1,7 @@
 // js/features/journey/services/journeyDbWebSyncService.js
 import { DbWebApiService } from '../../../core/services/dbWebApiService.js';
 import { JourneyImportService } from './journeyImportService.js';
+import { JourneyCouplingService } from './journeyCouplingService.js';
 import { journeyStore, trainDisplay } from '../../../core/state/stores.js';
 import { Stop } from '../../station/stop.svelte.js';
 import { getSimulatedTime } from '../../../core/utils/config.js';
@@ -182,6 +183,10 @@ export class JourneyDbWebSyncService {
                 }
             }
 
+            if (JourneyCouplingService.detectCouplings(journeyStore.journeys)) {
+                journeyStore.updateAllJourneySectors();
+                journeyStore.syncDynamicTexts();
+            }
             trainDisplay.updateAll();
             return { success: true, count: created.length };
 

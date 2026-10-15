@@ -55,6 +55,7 @@ export class Journey {
     id = '';
     journeyId = '';
     name = $state('');
+    number = $state(''); // Zugnummer (z. B. "845") – für Flügelzug-Abgleich
     produktGattung = $state('');
     operator = $state('');
     displayNameOverride = $state('');
@@ -87,6 +88,8 @@ export class Journey {
     visible = $state(true);
     displaySlot = $state(null);
     couplingGroupId = $state(null);
+    couplingManual = $state(false); // Vom Nutzer manuell gekoppelt/entkoppelt – schützt vor Auto-Überschreibung
+    wingsRaw = $state(null);
     linkedArrivalJourneyId = $state(null);
     _effectiveTimeMs = $state(null);
     isThroughTrain = $state(false);
@@ -112,6 +115,7 @@ export class Journey {
 
         // === Zug-Identifikation ===
         this.name = data.name || '';                 // Der formatierte Name des Zuges (z.B. "RE 70 / 95835")
+        this.number = data.number || '';             // Zugnummer (z. B. "845") – für Flügelzug-Abgleich
         this.produktGattung = data.produktGattung || ''; // DB API Gattung (z.B. "REGIONAL")
         this.operator = data.operator || '';             // EVU / Operator (z.B. "ERB", "WFB", "DB")
         this.displayNameOverride = data.displayNameOverride || ''; // Manuell überschrieben oder durch NRW-Modus berechnet
@@ -171,6 +175,8 @@ export class Journey {
 
         // === Coupling (Flügelzüge) ===
         this.couplingGroupId = data.couplingGroupId || null;
+        this.couplingManual = data.couplingManual || false;
+        this.wingsRaw = data.wingsRaw || null;
 
         // === Linked Arrival Journey (Ankunft/Weiter als) ===
         this.linkedArrivalJourneyId = data.linkedArrivalJourneyId || null;
@@ -218,6 +224,7 @@ export class Journey {
             id: this.id,
             journeyId: this.journeyId,
             name: this.name,
+            number: this.number,
             produktGattung: this.produktGattung,
             operator: this.operator,
             displayNameOverride: this.displayNameOverride,
@@ -250,6 +257,8 @@ export class Journey {
             visible: this.visible,
             displaySlot: this.displaySlot,
             couplingGroupId: this.couplingGroupId,
+            couplingManual: this.couplingManual,
+            wingsRaw: this.wingsRaw,
             linkedArrivalJourneyId: this.linkedArrivalJourneyId,
             _effectiveTimeMs: this._effectiveTimeMs,
             isThroughTrain: this.isThroughTrain,

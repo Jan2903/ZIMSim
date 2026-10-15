@@ -111,6 +111,7 @@ export class IrisDataMapper {
         return {
             journeyId: raw.id,
             name: formattedName,
+            number: raw.number || '',
             produktGattung: raw.class,
             operator: raw.operator || raw.type || '',
             isReplacementTrain: raw.tripType === 'e',
@@ -131,7 +132,8 @@ export class IrisDataMapper {
             infoTexts: infoTexts,
             messages: processedMessages,
             qosMessages: qosMessages,
-            couplingGroupId: primaryNode.wings || null,
+            couplingGroupId: null,
+            wingsRaw: primaryNode.wings || null,
             _effectiveTimeMs: effectiveTimeMs // Für internen Gebrauch (Autoplay Ticker)
         };
     }

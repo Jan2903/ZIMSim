@@ -218,3 +218,84 @@ export function formatDisplayName(parsedName, optionsOrNrwMode = undefined) {
     }
     return cleanName;
 }
+
+/**
+ * Kombiniert mehrere Zugnamen bei gekoppelten Fahrten (Flügelzüge) zu einer kompakten Anzeige.
+ * z. B. ICE 845 + ICE 855 -> "ICE 845/855"
+ * z. B. 3x ICE -> "ICE 845/855/865"
+ * z. B. RE 1 + RE 1 (im NRW-Modus / Linienmodus) -> "RE 1"
+ * z. B. RE 1 / 10123 + RE 1 / 10125 -> "RE 1 / 10123/10125"
+ * z. B. IC 2020 + RE 1234 -> "IC 2020 / RE 1234"
+ *
+ * @param {Array<object>} journeys - Array von Journeys oder Objekten mit effectiveDisplayName
+ * @param {boolean | object} [optionsOrNrwMode] - Entweder boolean (isNrwMode), options-Objekt oder undefined
+ * @returns {string} Der kombinierte Zugname
+ */
+export function combineTrainNames(journeys, optionsOrNrwMode = undefined) {
+    if (!journeys || journeys.length === 0) return '';
+    if (journeys.length === 1) {
+        return formatDisplayName(journeys[0].effectiveDisplayName || journeys[0].name, optionsOrNrwMode);
+    }
+
+    // Wenn alle Journeys denselben gesetzten displayNameOverride haben, diesen direkt nutzen
+    const firstOverride = journeys[0].displayNameOverride;
+    if (firstOverride && journeys.every(j => j.displayNameOverride === firstOverride)) {
+        return firstOverride;
+    }
+
+    const formattedNames = journeys
+        .map(j => formatDisplayName(j.effectiveDisplayName || j.name, optionsOrNrwMode))
+        .filter(Boolean);
+
+    if (formattedNames.length === 0) return '';
+    if (formattedNames.length === 1) return formattedNames[0];
+
+    // Wenn alle formatierten Namen exakt identisch sind (z.B. NRW-Modus: 2x "RE 1" oder 2x "S 1"), nicht duplizieren
+    const uniqueNames = [...new Set(formattedNames)];
+    if (uniqueNames.length === 1) {
+        return uniqueNames[0];
+    }
+
+    // Wenn alle Namen reine Linien ohne Zugnummern sind (z.B. "RE 1" und "RE 11" oder "S 1" und "S 2"),
+    // diese mit " / " trennen (z.B. "RE 1 / RE 11")
+    if (formattedNames.every(name => isRegionalLine(name) || isSbahnLine(name) || isLineOnlyProduct(name))) {
+        return formattedNames.join(' / ');
+    }
+
+    // Fall A: Name mit Schrägstrich (z.B. "RE 1 / 10123" und "RE 1 / 10125")
+    const slashParsed = formattedNames.map(name => {
+        const parts = name.split('/');
+        if (parts.length >= 2) {
+            return {
+                prefix: parts[0].trim(),
+                number: parts.slice(1).join('/').trim()
+            };
+        }
+        return null;
+    });
+
+    if (slashParsed.every(p => p !== null && p.prefix === slashParsed[0].prefix && p.number)) {
+        const numbers = slashParsed.map(p => p.number);
+        return `${slashParsed[0].prefix} / ${numbers.join('/')}`;
+    }
+
+    // Fall B: Name mit Gattung und reiner Zahl am Ende (z.B. "ICE 845" und "ICE 855", oder "IC 2020" und "IC 2022")
+    const spaceNumberParsed = formattedNames.map(name => {
+        const match = name.match(/^(.*?)\s+(\d+)$/);
+        if (match) {
+            return {
+                prefix: match[1].trim(),
+                number: match[2].trim()
+            };
+        }
+        return null;
+    });
+
+    if (spaceNumberParsed.every(p => p !== null && p.prefix === spaceNumberParsed[0].prefix)) {
+        const numbers = spaceNumberParsed.map(p => p.number);
+        return `${spaceNumberParsed[0].prefix} ${numbers.join('/')}`;
+    }
+
+    // Fallback für gemischte Produkte oder verschiedene Linien (z.B. "RE 1 / RE 11" oder "IC 2020 / RE 1234")
+    return formattedNames.join(' / ');
+}

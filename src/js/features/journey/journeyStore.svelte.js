@@ -294,12 +294,16 @@ export class JourneyStore {
      * @param {Array} journeysData 
      */
     upsertIrisJourneys(journeysData) {
-        JourneyImportService.upsertIrisJourneys(
+        const couplingChanged = JourneyImportService.upsertIrisJourneys(
             this.journeys,
             journeysData,
             (jData) => this.addJourney(jData),
             (id) => this.removeJourney(id)
         );
+        if (couplingChanged) {
+            this.updateAllJourneySectors();
+            this.syncDynamicTexts();
+        }
     }
 
     // ==========================================
@@ -442,6 +446,7 @@ export class JourneyStore {
         if (j1) {
             this.updateJourneySectors(j1);
         }
+        this.syncDynamicTexts();
         return result;
     }
 
@@ -462,6 +467,7 @@ export class JourneyStore {
                 this.updateJourneySectors(remaining);
             }
         }
+        this.syncDynamicTexts();
         return result;
     }
 
@@ -473,6 +479,17 @@ export class JourneyStore {
     getCouplingGroup(groupId) {
         return JourneyCouplingService.getCouplingGroup(this.journeys, groupId);
     }
+
+    /**
+     * Führt die automatische Erkennung und Verknüpfung von Flügelzügen auf allen Fahrten im Store durch.
+     */
+    detectCouplings() {
+        if (JourneyCouplingService.detectCouplings(this.journeys)) {
+            this.updateAllJourneySectors();
+            this.syncDynamicTexts();
+        }
+    }
+
 
     // ==========================================
     // Ankunft & Abfahrt Verknüpfung (Fahrzeugtausch / Wende)
@@ -547,7 +564,7 @@ export class JourneyStore {
      * als verwaltbare Bausteine im infoTexts-Array der jeweiligen Journey.
      */
     syncDynamicTexts() {
-        DynamicTextService.sync(this.journeys, this.stationContext.platform);
+        DynamicTextService.sync(this.journeys, this.stationContext.platform, this.stationContext.stationName);
     }
 
     // ==========================================
@@ -561,6 +578,7 @@ export class JourneyStore {
      */
     importFromDepartureList(data) {
         const created = JourneyImportService.importList(data, false, this.journeys);
+        this.updateAllJourneySectors();
         this.autoLinkJourneys();
         return created;
     }
@@ -572,6 +590,7 @@ export class JourneyStore {
      */
     importFromArrivalList(data) {
         const created = JourneyImportService.importList(data, true, this.journeys);
+        this.updateAllJourneySectors();
         this.autoLinkJourneys();
         return created;
     }

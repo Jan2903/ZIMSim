@@ -5,6 +5,8 @@ import { getSimulatedTime } from '../../core/utils/config.js';
 import { lineColorService } from '../../features/journey/services/lineColorService.svelte.js';
 import { drawDBLogo, drawAnalogClock } from '../core/sharedRenderers.js';
 import { drawQualityIcons, getMatchingPictogramRules } from '../primitives/pictogramRenderer.js';
+import { JourneyCouplingService } from '../../features/journey/services/journeyCouplingService.js';
+import { journeyStore } from '../../core/state/stores.js';
 
 /**
  * Vollständiger dynamischer Renderer für Voranzeiger und Abfahrtstafeln (Anschlusstafel).
@@ -75,12 +77,13 @@ export function drawVoranzeigerBoard(ctx, journeys = [], width = 1920, height = 
     const usableTrainHeight = height - HEADER_HEIGHT - disruptionBoxHeight;
     const trainRowHeight = usableTrainHeight / availableTrainRows;
 
-    // 5. Abfahrts-Pagination berechnen (über alle Spalten hinweg)
+    // 5. Gekoppelte Züge mit identischem Ziel/Verlauf zu einer Zeile zusammenfassen & Pagination berechnen
+    const consolidatedTrains = JourneyCouplingService.consolidateMergedTrains(trains, journeyStore.nrwMode);
     const trainsPerPage = availableTrainRows * maxCols;
-    const totalTrainPages = Math.max(1, Math.ceil(trains.length / trainsPerPage));
+    const totalTrainPages = Math.max(1, Math.ceil(consolidatedTrains.length / trainsPerPage));
     const activeTrainPage = (renderCtx.departurePageIndex || 0) % totalTrainPages;
     const pageOffset = (activeTrainPage * trainsPerPage) + (colIndex * availableTrainRows);
-    const visibleTrains = trains.slice(pageOffset, pageOffset + availableTrainRows);
+    const visibleTrains = consolidatedTrains.slice(pageOffset, pageOffset + availableTrainRows);
 
     // Render-Kontext für Header-Seitenzähler ("Seite X/Y") anreichern
     renderCtx.totalTrainPages = totalTrainPages;
@@ -96,7 +99,7 @@ export function drawVoranzeigerBoard(ctx, journeys = [], width = 1920, height = 
         ctx.globalAlpha = renderCtx.departurePageAlpha;
     }
 
-    if (trains.length === 0) {
+    if (consolidatedTrains.length === 0) {
         // Hinweis bei keinen Abfahrten
         const centerY = HEADER_HEIGHT + (usableTrainHeight / 2);
         ctx.textAlign = 'center';

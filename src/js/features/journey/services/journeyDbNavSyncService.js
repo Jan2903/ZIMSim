@@ -1,6 +1,7 @@
 // js/features/journey/services/journeyDbNavSyncService.js
 import { DbNavApiService } from '../../../core/services/dbNavApiService.js';
 import { JourneyImportService } from './journeyImportService.js';
+import { JourneyCouplingService } from './journeyCouplingService.js';
 import { journeyStore, trainDisplay } from '../../../core/state/stores.js';
 import { Journey } from '../journey.svelte.js';
 import { getSimulatedTime } from '../../../core/utils/config.js';
@@ -351,6 +352,7 @@ export class JourneyDbNavSyncService {
 
             const journey = new Journey({
                 name,
+                number: zugNr,
                 destination: dest,
                 scheduledTime: schedTimeStr,
                 expectedTime: expTimeStr !== schedTimeStr ? expTimeStr : '',
@@ -381,6 +383,10 @@ export class JourneyDbNavSyncService {
             createdJourneys.push(journey);
         }
 
+        if (JourneyCouplingService.detectCouplings(journeyStore.journeys)) {
+            journeyStore.updateAllJourneySectors();
+            journeyStore.syncDynamicTexts();
+        }
         trainDisplay.updateAll();
         return { count: createdJourneys.length, success: true };
     }

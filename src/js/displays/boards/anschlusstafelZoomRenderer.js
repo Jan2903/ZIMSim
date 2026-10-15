@@ -3,6 +3,8 @@ import { COLORS, FONTS } from '../core/constants.js';
 import { truncateWithEllipsis, drawLineBadge } from '../core/textUtils.js';
 import { drawQualityIcons } from '../primitives/pictogramRenderer.js';
 import { lineColorService } from '../../features/journey/services/lineColorService.svelte.js';
+import { JourneyCouplingService } from '../../features/journey/services/journeyCouplingService.js';
+import { journeyStore } from '../../core/state/stores.js';
 
 /**
  * Dedizierter Renderer für die DB-Anschlusstafel im Zoom-Layout (4 Zeilen Vollbild).
@@ -44,6 +46,7 @@ export function drawAnschlusstafelZoomBoard(ctx, journeys = [], width = 1920, he
     // 2. Fahrten filtern: Nur reguläre Abfahrten
     const allJourneys = journeys || [];
     const trains = allJourneys.filter(j => !j.infoscreen && !j.ankunft);
+    const consolidatedTrains = JourneyCouplingService.consolidateMergedTrains(trains, journeyStore.nrwMode);
 
     // 3. Spalten- und Pagination-Berechnung
     const colIndex = screenOptions.colIndex || 0;
@@ -51,17 +54,17 @@ export function drawAnschlusstafelZoomBoard(ctx, journeys = [], width = 1920, he
     const rowHeight = height / MAX_ROWS; // 270px bei 1080p
 
     const trainsPerPage = MAX_ROWS * maxCols;
-    const totalTrainPages = Math.max(1, Math.ceil(trains.length / trainsPerPage));
+    const totalTrainPages = Math.max(1, Math.ceil(consolidatedTrains.length / trainsPerPage));
     const activeTrainPage = (renderCtx.departurePageIndex || 0) % totalTrainPages;
     const pageOffset = (activeTrainPage * trainsPerPage) + (colIndex * MAX_ROWS);
-    const visibleTrains = trains.slice(pageOffset, pageOffset + MAX_ROWS);
+    const visibleTrains = consolidatedTrains.slice(pageOffset, pageOffset + MAX_ROWS);
 
     ctx.save();
     if (renderCtx.departurePageAlpha !== undefined && totalTrainPages > 1) {
         ctx.globalAlpha = renderCtx.departurePageAlpha;
     }
 
-    if (trains.length === 0) {
+    if (consolidatedTrains.length === 0) {
         drawNoDeparturesNotice(ctx, width, height);
     } else {
         for (let i = 0; i < MAX_ROWS; i++) {

@@ -142,7 +142,18 @@
         if (journey.couplingGroupId) {
             journeyStore.uncoupleJourney(journey.id);
         } else {
-            console.log("Koppeln clicked for", journey.id);
+            journeyStore.detectCouplings();
+            if (!journey.couplingGroupId) {
+                const partner = journeyStore.journeys.find(j =>
+                    j.id !== journey.id &&
+                    Boolean(j.ankunft) === Boolean(journey.ankunft) &&
+                    j.platform && j.platform === journey.platform &&
+                    (!journey.scheduledTime || j.scheduledTime === journey.scheduledTime)
+                );
+                if (partner) {
+                    journeyStore.coupleJourneys(journey.id, partner.id);
+                }
+            }
         }
         triggerUpdate();
     }

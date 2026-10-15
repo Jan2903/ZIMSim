@@ -209,7 +209,7 @@ export class JourneyImportService {
         }
 
         // Auto-Coupling erkennen: Gleiche Zeit + Gleiches Gleis = Flügelzug
-        JourneyCouplingService.detectCouplings(created);
+        JourneyCouplingService.detectCouplings(journeys);
 
         return created;
     }
@@ -331,6 +331,7 @@ export class JourneyImportService {
      * @param {Array} journeysData - Neu gemappte IRIS-Daten
      * @param {Function} onAddJourney - Callback zum Hinzufügen einer Journey
      * @param {Function} onRemoveJourney - Callback zum sauberen Entfernen einer Journey
+     * @returns {boolean} true, wenn sich Kopplungen geändert haben
      */
     static upsertIrisJourneys(journeys, journeysData, onAddJourney, onRemoveJourney) {
         const activeIds = new Set(journeysData.map(d => `${d.journeyId}_${d.ankunft}`));
@@ -361,6 +362,8 @@ export class JourneyImportService {
                 if (existing.delayReasonCode !== jData.delayReasonCode) existing.delayReasonCode = jData.delayReasonCode;
                 if (existing.ausfall !== jData.ausfall) existing.ausfall = jData.ausfall;
                 if (existing._effectiveTimeMs !== jData._effectiveTimeMs) existing._effectiveTimeMs = jData._effectiveTimeMs;
+                // IRIS-Wings können sich bei Gleiswechseln ändern – für Flügelzug-Erkennung aktuell halten
+                if (existing.wingsRaw !== jData.wingsRaw) existing.wingsRaw = jData.wingsRaw;
 
                 // Infotexte (Qualitätsmeldungen/Lauftexte) reaktiv und schonend aktualisieren
                 const currentQTexts = (existing.infoTexts || []).filter(t => t.type === 'Q').map(t => t.text).join('|');
@@ -420,5 +423,8 @@ export class JourneyImportService {
                 }
             }
         }
+
+        // Automatische Flügelzug-Erkennung für den aktualisierten Datenbestand ausführen
+        return JourneyCouplingService.detectCouplings(journeys);
     }
 }

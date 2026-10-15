@@ -3,21 +3,14 @@ import { COLORS, FONTS, INFO } from '../core/constants.js';
 import { drawText, drawWrappedText, drawInfoTopText, drawTextInRectangle } from '../core/textUtils.js';
 import { drawPictograms } from '../primitives/pictogramRenderer.js';
 import { calculateCoachPositions, getSectorsForCoaches, getPlatformSectors } from '../../features/formation/formationUtils.js';
-import { formatDisplayName } from '../../features/journey/trainNumberFormatter.js';
+import { formatDisplayName, combineTrainNames } from '../../features/journey/trainNumberFormatter.js';
+import { JourneyCouplingService } from '../../features/journey/services/journeyCouplingService.js';
 import { journeyStore } from '../../core/state/stores.js';
 
 function areJourneysMerged(journeys) {
-    if (!journeys || journeys.length <= 1) return true;
-    const firstDest = (journeys[0].destination || "").trim();
-    const firstVias = (journeys[0].vias || []).join('|').trim();
-    const firstTime = (journeys[0].scheduledTime || "").trim();
-    for (let i = 1; i < journeys.length; i++) {
-        if ((journeys[i].destination || "").trim() !== firstDest) return false;
-        if ((journeys[i].vias || []).join('|').trim() !== firstVias) return false;
-        if ((journeys[i].scheduledTime || "").trim() !== firstTime) return false;
-    }
-    return true;
+    return JourneyCouplingService.areJourneysMerged(journeys);
 }
+
 
 /**
  * Zeichnet den kompletten Info-Bereich eines Monitors:
@@ -62,7 +55,7 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
 
     const abfahrt = primary.scheduledTime || "";
     const abfahrtA = primary.expectedTime || "";
-    const nr = journeys.map(j => formatDisplayName(j.effectiveDisplayName, journeyStore.nrwMode)).filter(Boolean).join(' / ') || "";
+    const nr = combineTrainNames(journeys, journeyStore.nrwMode) || "";
 
     const hasAnyTrackChange = journeys.some(j => j.hasTrackChange);
     
@@ -174,37 +167,106 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
             const viaText = (primary.vias || []).join(' - ');
             drawWrappedText(ctx, viaText, 112, yPos + 200,  1800,100,FONTS.regular(75), COLORS.WHITE, 'left', 2);
         } else {
-            const zoneWidth = width / 2; // Split screen for true wing trains
-            const maxTrains = Math.min(journeys.length, 2);
+            const maxTrains = Math.min(journeys.length, 4);
 
-            for (let i = 0; i < maxTrains; i++) {
-                const journey = journeys[i];
-                const xOffset = i * zoneWidth + 30;
-                
-                const jAbfahrt = journey.scheduledTime || "";
-                const jAbfahrtA = journey.expectedTime || "";
-                
-                const drawTime = (i === 0) || (jAbfahrt !== primary.scheduledTime || jAbfahrtA !== primary.expectedTime);
+            if (maxTrains <= 2) {
+                const zoneWidth = width / 2; // 2-Spalten Split-Screen bei bis zu 2 Flügelzügen
 
-                if (drawTime) {
-                    drawText(ctx, jAbfahrt, xOffset + 50, 200, FONTS.regular(120), COLORS.WHITE, 'left');
+                for (let i = 0; i < maxTrains; i++) {
+                    const journey = journeys[i];
+                    const xOffset = i * zoneWidth + 30;
+
+                    const jAbfahrt = journey.scheduledTime || "";
+                    const jAbfahrtA = journey.expectedTime || "";
+
+                    const drawTime = (i === 0) || (jAbfahrt !== primary.scheduledTime || jAbfahrtA !== primary.expectedTime);
+
+                    if (drawTime) {
+                        drawText(ctx, jAbfahrt, xOffset + 50, 200, FONTS.regular(120), COLORS.WHITE, 'left');
+                        if (jAbfahrtA && jAbfahrtA !== jAbfahrt) {
+                            drawTextInRectangle(ctx, jAbfahrtA, xOffset + 330, 195, FONTS.regular(90), 'left', 90, 10,
+                                renderCtx, 0, COLORS.WHITE, COLORS.NAVY);
+                        }
+                    }
+
+                    const rightAlignX = xOffset + zoneWidth - 70; // Matches 890 for 960 width
+                    drawTextInRectangle(ctx, formatDisplayName(journey.effectiveDisplayName, journeyStore.nrwMode), rightAlignX, 200, FONTS.regular(75), 'right', 75, 10,
+                        { ...trainRenderCtx, operator: journey.operator }, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true, true);
+
+                    let yPos = 360;
+                    drawText(ctx, journey.destinationLang || journey.destination, xOffset + 50, yPos, FONTS.regular(128), COLORS.WHITE, 'left');
+                    yPos += 160;
+                    const viaText = (journey.vias || []).join(' - ');
+                    drawWrappedText(ctx, viaText, xOffset + 50, yPos, zoneWidth - 100, 100, FONTS.regular(75), COLORS.WHITE, 'left', 3);
+                }
+            } else {
+                // Bei mehr als 2 Zügen/Zielen (3 oder 4): Vertikal untereinander mit Klammer wie Nebenmonitor
+                const bracketX = 50;
+                const rowHeight = maxTrains === 3 ? 190 : 145;
+                const startY = maxTrains === 3 ? 200 : 175;
+                const destFont = FONTS.regular(maxTrains === 3 ? 90 : 75);
+                const timeFont = FONTS.regular(maxTrains === 3 ? 90 : 75);
+                const badgeFont = maxTrains === 3 ? 75 : 65;
+                const viaFont = FONTS.regular(maxTrains === 3 ? 60 : 50);
+
+                let lastYPos = startY;
+
+                for (let i = 0; i < maxTrains; i++) {
+                    const journey = journeys[i];
+                    const yPos = startY + (i * rowHeight);
+                    lastYPos = yPos;
+
+                    // 1. Zeit & ggf. Verspätungsbox
+                    const jAbfahrt = journey.scheduledTime || "";
+                    const jAbfahrtA = journey.expectedTime || "";
+                    drawText(ctx, jAbfahrt, 110, yPos, timeFont, COLORS.WHITE, 'left');
+
+                    let nextX = 360;
                     if (jAbfahrtA && jAbfahrtA !== jAbfahrt) {
-                        drawTextInRectangle(ctx, jAbfahrtA, xOffset + 330, 195, FONTS.regular(90), 'left', 90, 10,
+                        drawTextInRectangle(ctx, jAbfahrtA, 360, yPos - 5, FONTS.regular(maxTrains === 3 ? 70 : 55), 'left', maxTrains === 3 ? 70 : 55, 10,
                             renderCtx, 0, COLORS.WHITE, COLORS.NAVY);
+                        nextX = 550;
+                    }
+
+                    // 2. Zugname / Liniennummer
+                    drawTextInRectangle(ctx, formatDisplayName(journey.effectiveDisplayName, journeyStore.nrwMode), nextX + 170, yPos - 5, FONTS.regular(badgeFont), 'right', badgeFont, 10,
+                        { ...trainRenderCtx, operator: journey.operator }, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true, true);
+
+                    // 3. Ziel
+                    const destX = nextX + 210;
+                    let destText = journey.destinationLang || journey.destination;
+                    drawText(ctx, destText, destX, yPos, destFont, COLORS.WHITE, 'left');
+
+                    // 4. Abschnitte / Sektoren (rechtsbündig)
+                    const sectors = getPlatformSectors(journey, journeys, renderCtx.platform);
+                    if (sectors) {
+                        drawText(ctx, `Abschnitt ${sectors}`, 1855, yPos, FONTS.regular(maxTrains === 3 ? 65 : 55), COLORS.WHITE, 'right');
+                    }
+
+                    // 5. Optionale Vias (nur bei 3 Zügen, bei 4 Zeilen Platzgründe)
+                    if (maxTrains === 3 && journey.vias && journey.vias.length > 0) {
+                        const viaText = journey.vias.slice(0, 4).join(' - ');
+                        drawWrappedText(ctx, viaText, destX, yPos + 60, 950, 60, viaFont, COLORS.WHITE, 'left', 1);
                     }
                 }
-                
-                const rightAlignX = xOffset + zoneWidth - 70; // Matches 890 for 960 width
-                drawTextInRectangle(ctx, formatDisplayName(journey.effectiveDisplayName, journeyStore.nrwMode), rightAlignX, 200, FONTS.regular(75), 'right', 75, 10,
-                    { ...trainRenderCtx, operator: journey.operator }, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true, true);
 
-                let yPos = 360;
-                drawText(ctx, journey.destinationLang || journey.destination, xOffset + 50, yPos, FONTS.regular(128), COLORS.WHITE, 'left');
-                yPos += 160;
-                const viaText = (journey.vias || []).join(' - ');
-                drawWrappedText(ctx, viaText, xOffset + 50, yPos, zoneWidth - 100, 100, FONTS.regular(75), COLORS.WHITE, 'left', 3);
+                // Durchgehende geschweifte Klammer links mit horizontalen Abzweigen
+                ctx.strokeStyle = COLORS.WHITE;
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(bracketX + 20, startY - 35);
+                ctx.lineTo(bracketX, startY - 35);
+                ctx.lineTo(bracketX, lastYPos + 15);
+                ctx.lineTo(bracketX + 20, lastYPos + 15);
+                for (let i = 1; i < maxTrains - 1; i++) {
+                    const midY = startY + (i * rowHeight) - 10;
+                    ctx.moveTo(bracketX, midY);
+                    ctx.lineTo(bracketX + 20, midY);
+                }
+                ctx.stroke();
             }
         }
+
 
     // === NEBENMONITOR (compact) ===
     } else {
@@ -273,31 +335,38 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
                 drawWrappedText(ctx, viaText, 50, yPos, 880, 100, viaFont, textColor, 'left', 3);
             }
         } else {
-            let yPos = 360;
-            const destFont = FONTS.regular(90);
-            const bracketX = 20;
-            const bracketStartY = yPos; 
-            let lastYPos = yPos;
+            const maxTrains = Math.min(journeys.length, 4);
+            const rowStep = maxTrains <= 2 ? 240 : (maxTrains === 3 ? 170 : 130);
+            const startY = maxTrains <= 2 ? 360 : (maxTrains === 3 ? 310 : 270);
+            const destFont = FONTS.regular(maxTrains <= 2 ? 90 : (maxTrains === 3 ? 75 : 65));
+            const badgeFont = maxTrains <= 2 ? 75 : (maxTrains === 3 ? 65 : 55);
+            const sectorFont = FONTS.regular(maxTrains <= 2 ? 64 : (maxTrains === 3 ? 55 : 45));
 
-            for (const journey of journeys) {
+            const bracketX = 20;
+            const bracketStartY = startY;
+            let lastYPos = startY;
+
+            for (let i = 0; i < maxTrains; i++) {
+                const journey = journeys[i];
+                const yPos = startY + (i * rowStep);
                 let destText = journey.destinationLang || journey.destination;
                 ctx.font = destFont;
-                const availableWidth = 800; // Leaving room for the train name on the right
+                const availableWidth = 800; // Platz für Zugnummer rechts lassen
                 if (ctx.measureText(destText).width > availableWidth) {
                     destText = journey.destinationKurz || journey.destination;
                 }
                 
                 drawText(ctx, destText, 50, yPos, destFont, textColor, 'left');
-                drawTextInRectangle(ctx, formatDisplayName(journey.effectiveDisplayName, journeyStore.nrwMode), 890, yPos, FONTS.regular(75), 'right', 75, 10,
+                drawTextInRectangle(ctx, formatDisplayName(journey.effectiveDisplayName, journeyStore.nrwMode), 890, yPos, FONTS.regular(badgeFont), 'right', badgeFont, 10,
                     { ...trainRenderCtx, operator: journey.operator }, 0, COLORS.DIM_GREY, COLORS.WHITE, isDisrupted, true, true);
                 
                 const sectors = getPlatformSectors(journey, journeys, renderCtx.platform);
                 if (sectors) {
-                    drawText(ctx, sectors, 890, yPos + 100, FONTS.regular(64), textColor, 'right');
+                    const sectorYOffset = maxTrains === 4 ? 60 : (maxTrains === 3 ? 70 : 100);
+                    drawText(ctx, sectors, 890, yPos + sectorYOffset, sectorFont, textColor, 'right');
                 }
                 
                 lastYPos = yPos;
-                yPos += 240;
             }
 
             const bracketEndY = lastYPos;
@@ -310,8 +379,15 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
             ctx.lineTo(bracketX, bracketStartY);
             ctx.lineTo(bracketX, bracketStartY + bracketHeight);
             ctx.lineTo(bracketX + 15, bracketStartY + bracketHeight);
+            // Zusätzliche Mittelabzweige bei 3 oder 4 Zügen
+            for (let i = 1; i < maxTrains - 1; i++) {
+                const midY = startY + (i * rowStep);
+                ctx.moveTo(bracketX, midY);
+                ctx.lineTo(bracketX + 15, midY);
+            }
             ctx.stroke();
         }
+
 
         // 4. Den "Bottom-Banner" am unteren Rand (Neues Gleis)
         if (isDisrupted && hasAnyTrackChange) {

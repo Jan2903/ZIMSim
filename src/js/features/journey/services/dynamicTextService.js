@@ -59,14 +59,16 @@ export class DynamicTextService {
      * als verwaltbare Bausteine im infoTexts-Array der jeweiligen Journey.
      * @param {Array} journeys - Alle Journeys
      * @param {object} platform - Das Platform-Objekt des aktuellen Bahnhofs/Gleises
+     * @param {string|null} [stationName=null] - Name des aktuellen Bahnhofs (für Zugteilungstexte)
      */
-    static sync(journeys, platform) {
+    static sync(journeys, platform, stationName = null) {
         for (const journey of journeys) {
             const upsertText = (type, text) => {
                 const existing = journey.infoTexts.find(t => t.type === type);
                 if (text) {
                     if (existing) {
-                        existing.text = text;
+                        // Nur bei echter Änderung schreiben, um Reaktivitäts-Spam zu vermeiden
+                        if (existing.text !== text) existing.text = text;
                     } else {
                         journey.infoTexts.unshift({
                             id: crypto.randomUUID(),
@@ -128,6 +130,16 @@ export class DynamicTextService {
                 }
             }
             upsertText('strengthening', strengtheningText);
+
+            // 3. Zugteilungstext (Zugteilung in...) für gekoppelte Fahrten mit unterschiedlichen Zielen
+            let splitText = "";
+            if (!journey.ankunft && !journey.infoscreen && !journey.hasTrackChange && !journey.ausfall && journey.verkehrtAb === "0") {
+                const group = JourneyCouplingService.expandCoupling(journeys, journey);
+                if (group.length > 1 && !JourneyCouplingService.areJourneysMerged(group)) {
+                    splitText = JourneyCouplingService.generateSplitText(group, stationName || null);
+                }
+            }
+            upsertText('wing-split', splitText);
         }
     }
 }
