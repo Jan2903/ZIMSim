@@ -67,14 +67,30 @@ export function drawAnschlusstafelZoomBoard(ctx, journeys = [], width = 1920, he
     if (consolidatedTrains.length === 0) {
         drawNoDeparturesNotice(ctx, width, height);
     } else {
+        const rowAnchors = [];
+
+        // Zeilen zeichnen und Zielanker für Flügelzug-Klammern merken
         for (let i = 0; i < MAX_ROWS; i++) {
             const rowY = i * rowHeight;
             const train = visibleTrains[i];
 
             if (train) {
-                drawZoomRow(ctx, train, 0, rowY, width, rowHeight, renderCtx, screenOptions);
+                rowAnchors[i] = drawZoomRow(ctx, train, 0, rowY, width, rowHeight, renderCtx, screenOptions);
             } else {
                 drawEmptyZoomRow(ctx, 0, rowY, width, rowHeight);
+                rowAnchors[i] = null;
+            }
+        }
+
+        // Verbindungs-Klammern für Flügelzüge erst nach allen Zeilen zeichnen,
+        // damit die Zeilenhintergründe die Klammer nicht überdecken.
+        for (let i = 0; i < MAX_ROWS - 1; i++) {
+            const train = visibleTrains[i];
+            const nextTrain = visibleTrains[i + 1];
+            if (train && nextTrain && rowAnchors[i] &&
+                train.couplingGroupId && train.couplingGroupId === nextTrain.couplingGroupId) {
+                const nextLowerY = rowAnchors[i + 1] ? rowAnchors[i + 1].lowerY : (rowAnchors[i].lowerY + rowHeight);
+                drawZoomCouplingBracket(ctx, rowAnchors[i].destX, rowAnchors[i].lowerY, nextLowerY, !!train.ausfall);
             }
         }
     }
@@ -92,6 +108,7 @@ export function drawAnschlusstafelZoomBoard(ctx, journeys = [], width = 1920, he
  * @param {number} height
  * @param {object} renderCtx
  * @param {object} screenOptions
+ * @returns {{destX: number, lowerY: number}} Ankerpunkte der Zielzeile für Flügelzug-Klammern
  */
 function drawZoomRow(ctx, train, x, y, width, height, renderCtx = {}, screenOptions = {}) {
     const isAusfall = !!train.ausfall;
@@ -126,14 +143,10 @@ function drawZoomRow(ctx, train, x, y, width, height, renderCtx = {}, screenOpti
     const rightMargin = 50;
     const gleisRightX = x + width - rightMargin;
 
-    let scheduledTrack = train.platform || '-';
-    if (train.sectors && !scheduledTrack.includes(train.sectors)) {
-        scheduledTrack = `${scheduledTrack} ${train.sectors}`;
-    }
-    let changedTrack = train.ezGleis || scheduledTrack;
-    if (train.ezGleis && train.sectors && !changedTrack.includes(train.sectors)) {
-        changedTrack = `${changedTrack} ${train.sectors}`;
-    }
+    // Nur das reguläre Gleis anzeigen (keine automatisch berechneten Abschnitte),
+    // konsistent mit dem normalen Anschlusstafel-Layout.
+    const scheduledTrack = String(train.platform || '-').replace(/^Gl\.\s*/i, '').trim() || '-';
+    const changedTrack = String(train.ezGleis || scheduledTrack).replace(/^Gl\.\s*/i, '').trim() || scheduledTrack;
 
     drawZoomTrackColumn(
         ctx,
@@ -155,6 +168,9 @@ function drawZoomRow(ctx, train, x, y, width, height, renderCtx = {}, screenOpti
     const availableMiddleW = width - destX - trackReservedW;
 
     drawZoomMiddleColumn(ctx, train, isAusfall, destX, upperY, lowerY, availableMiddleW, renderCtx);
+
+    // Ankerpunkte für die optionale Flügelzug-Klammer zurückgeben
+    return { destX, lowerY };
 }
 
 /**
@@ -315,8 +331,8 @@ function drawZoomMiddleColumn(ctx, train, isAusfall, x, upperY, lowerY, availabl
 /**
  * Zeichnet die rechte Spalte für Gleis und optionale Qualitätsmerkmale.
  * @param {CanvasRenderingContext2D} ctx
- * @param {string} scheduledTrack - Geplantes Gleis (inkl. Sektoren)
- * @param {string} changedTrack - Abweichendes Gleis (inkl. Sektoren)
+ * @param {string} scheduledTrack - Geplantes Gleis (ohne Abschnitte)
+ * @param {string} changedTrack - Abweichendes Echtzeitgleis (ohne Abschnitte)
  * @param {boolean} hasTrackChange - Ob Gleiswechsel vorliegt
  * @param {boolean} isAusfall - Ob Fahrt ausgefallen ist
  * @param {boolean} showQualityIcons - Variante B (Gleis oben + Icons unten)
@@ -401,6 +417,34 @@ function drawZoomTrackColumn(ctx, scheduledTrack, changedTrack, hasTrackChange, 
             drawQualityIcons(ctx, scrollText, trainNumber, gleisRightX, lowerY - 58, iconSize, iconGap, 2);
         }
     }
+}
+
+/**
+ * Zeichnet die Verbindungs-Klammer zwischen zwei gekoppelten Fahrtzeilen (Flügelzüge).
+ * Verbindet die Zielzeilen zweier übereinanderliegender Zeilen mit einem durchgehenden "T",
+ * analog zum normalen Anschlusstafel-Layout.
+ *
+ * @param {CanvasRenderingContext2D} ctx - Canvas 2D Kontext
+ * @param {number} destX - X-Position des linken Rands der Zielspalte
+ * @param {number} topBaseline - Grundlinie des Ziels der oberen Zeile
+ * @param {number} bottomBaseline - Grundlinie des Ziels der unteren Zeile
+ * @param {boolean} isAusfall - Ob die obere Zeile invertiert (weiß) dargestellt ist
+ * @returns {void}
+ */
+function drawZoomCouplingBracket(ctx, destX, topBaseline, bottomBaseline, isAusfall) {
+    const bracketX = destX - 30;
+    const bracketArmRight = destX - 12;
+    const bracketTopY = topBaseline - 24;
+    const bracketBottomY = bottomBaseline - 24;
+
+    ctx.strokeStyle = isAusfall ? COLORS.NAVY : COLORS.WHITE;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(bracketArmRight, bracketTopY);
+    ctx.lineTo(bracketX, bracketTopY);
+    ctx.lineTo(bracketX, bracketBottomY);
+    ctx.lineTo(bracketArmRight, bracketBottomY);
+    ctx.stroke();
 }
 
 /**
