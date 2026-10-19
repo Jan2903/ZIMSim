@@ -1,6 +1,6 @@
 // js/displays/boards/zuganzeigerRenderer.js
 import { COLORS, FONTS, INFO } from '../core/constants.js';
-import { drawText, drawWrappedText, drawInfoTopText, drawTextInRectangle } from '../core/textUtils.js';
+import { drawText, drawWrappedText, drawInfoTopText, drawTextInRectangle, drawInvertedTimeBox } from '../core/textUtils.js';
 import { drawPictograms } from '../primitives/pictogramRenderer.js';
 import { calculateCoachPositions, getSectorsForCoaches, getPlatformSectors } from '../../features/formation/formationUtils.js';
 import { formatDisplayName, combineTrainNames } from '../../features/journey/trainNumberFormatter.js';
@@ -143,8 +143,10 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
         if (ankunft) {
             drawText(ctx, abfahrt, 100, 220, FONTS.regular(180), COLORS.WHITE, 'left');
             if (abfahrtA && abfahrtA !== abfahrt) {
-                drawTextInRectangle(ctx, abfahrtA, 520, 215, FONTS.regular(120), 'left', 120, 20,
-                    renderCtx, 0, COLORS.WHITE, COLORS.NAVY);
+                drawInvertedTimeBox(ctx, abfahrtA, 500, 215, FONTS.regular(120), {
+                    paddingX: 20,
+                    height: 140
+                });
             }
             drawTextInRectangle(ctx, nr, 1855, 220, FONTS.regular(100), 'right', 100, 15,
                 trainRenderCtx, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true, true);
@@ -156,8 +158,10 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
         } else if (isMerged) {
             drawText(ctx, abfahrt, 100, 220, FONTS.regular(200), COLORS.WHITE, 'left');
             if (abfahrtA && abfahrtA !== abfahrt) {
-                drawTextInRectangle(ctx, abfahrtA, 550, 215, FONTS.regular(120), 'left', 120, 20,
-                    renderCtx, 0, COLORS.WHITE, COLORS.NAVY);
+                drawInvertedTimeBox(ctx, abfahrtA, 530, 215, FONTS.regular(120), {
+                    paddingX: 20,
+                    height: 140
+                });
             }
             drawTextInRectangle(ctx, nr, 1855, 220, FONTS.regular(100), 'right', 100, 15,
                 trainRenderCtx, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true, true);
@@ -184,8 +188,10 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
                     if (drawTime) {
                         drawText(ctx, jAbfahrt, xOffset + 50, 200, FONTS.regular(120), COLORS.WHITE, 'left');
                         if (jAbfahrtA && jAbfahrtA !== jAbfahrt) {
-                            drawTextInRectangle(ctx, jAbfahrtA, xOffset + 330, 195, FONTS.regular(90), 'left', 90, 10,
-                                renderCtx, 0, COLORS.WHITE, COLORS.NAVY);
+                            drawInvertedTimeBox(ctx, jAbfahrtA, xOffset + 320, 195, FONTS.regular(90), {
+                                paddingX: 10,
+                                height: 100
+                            });
                         }
                     }
 
@@ -223,8 +229,11 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
 
                     let nextX = 360;
                     if (jAbfahrtA && jAbfahrtA !== jAbfahrt) {
-                        drawTextInRectangle(ctx, jAbfahrtA, 360, yPos - 5, FONTS.regular(maxTrains === 3 ? 70 : 55), 'left', maxTrains === 3 ? 70 : 55, 10,
-                            renderCtx, 0, COLORS.WHITE, COLORS.NAVY);
+                        const delayFont = FONTS.regular(maxTrains === 3 ? 70 : 55);
+                        drawInvertedTimeBox(ctx, jAbfahrtA, 350, yPos - 5, delayFont, {
+                            paddingX: 10,
+                            height: maxTrains === 3 ? 80 : 65
+                        });
                         nextX = 550;
                     }
 
@@ -276,8 +285,12 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
 
         drawText(ctx, abfahrt, 50, 200, FONTS.regular(120), textColor, 'left');
         if (abfahrtA && abfahrtA !== abfahrt) {
-            drawTextInRectangle(ctx, abfahrtA, 330, 195, FONTS.regular(90), 'left', 90, 10,
-                renderCtx, 0, rectBgColor, rectTextColor);
+            drawInvertedTimeBox(ctx, abfahrtA, 320, 195, FONTS.regular(90), {
+                paddingX: 10,
+                height: 100,
+                backgroundColor: rectBgColor,
+                textColor: rectTextColor
+            });
         }
         
         if (isMerged) {

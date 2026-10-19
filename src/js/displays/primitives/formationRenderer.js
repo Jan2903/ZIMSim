@@ -190,6 +190,16 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
 
     // Position und Pixellänge jedes Wagens berechnen
     const drawableCoaches = [];
+    const journeyIndexByGroup = new Map();
+
+    journeys.forEach((journey, journeyIndex) => {
+        const groups = journey?.formation?.groups;
+        if (Array.isArray(groups)) {
+            for (const group of groups) {
+                journeyIndexByGroup.set(group, journeyIndex);
+            }
+        }
+    });
 
     for (let i = 0; i < allCoaches.length; i++) {
         const currentItem = allCoaches[i];
@@ -266,6 +276,17 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
 
     const trainPixelStart = meterOrigin + (allCoaches[0].startM * pixelPerMeter);
     const trainPixelEnd = meterOrigin + (allCoaches[allCoaches.length - 1].endM * pixelPerMeter);
+
+    // Linke Kante je Journey anhand des ersten tatsächlich gezeichneten Wagens.
+    const journeyAnchors = [];
+    const seenJourneyIndices = new Set();
+    for (const item of drawableCoaches) {
+        const journeyIndex = journeyIndexByGroup.get(item.group);
+        if (journeyIndex === undefined || seenJourneyIndices.has(journeyIndex)) continue;
+        seenJourneyIndices.add(journeyIndex);
+        journeyAnchors.push({ journeyIndex, x: item.x });
+    }
+    journeyAnchors.sort((a, b) => a.x - b.x);
 
     if (drawLayer === 'all' || drawLayer === 'static') {
         // Bahnsteig-Linie (links und rechts vom Zug)
@@ -480,6 +501,7 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
     
     return {
         trainPixelStart,
-        trainPixelEnd
+        trainPixelEnd,
+        journeyAnchors
     };
 }

@@ -3,7 +3,7 @@ import { COLORS, FONTS, FORMATION } from '../core/constants.js';
 import { getSimulatedTime } from '../../core/utils/config.js';
 import { drawFormation, drawSectors } from '../primitives/formationRenderer.js';
 import { drawDBLogo, drawAnalogClock } from '../core/sharedRenderers.js';
-import { truncateWithEllipsis } from '../core/textUtils.js';
+import { drawInvertedTimeBox, getVerticalCenterOffset, truncateWithEllipsis } from '../core/textUtils.js';
 
 /**
  * Renderer für den Digitalen Wagenreihungsplan der DB.
@@ -190,21 +190,15 @@ function drawPlanRow(ctx, trainGroup, platform, x, y, width, height, sectorStart
         ctx.fillStyle = '#ef4444';
         ctx.fillText('Fällt aus', col1X, timeY + 30);
     } else if (hasDelay) {
-        // Verspätungsfeld (Invertiert oder Cyan)
-        const delayX = col1X + (isPortrait ? 100 : 130);
-        const delayBoxW = isPortrait ? 85 : 100;
-        const delayBoxH = isPortrait ? 34 : 40;
-        const delayBoxY = timeY - (delayBoxH * 0.75);
+        // Verspätungsfeld (invertierter, eckiger Kasten wie auf den übrigen Tafeln)
+        const schedW = ctx.measureText(primary.scheduledTime || '--:--').width;
+        const delayX = col1X + schedW + 12;
+        const scheduledCenterY = timeY - getVerticalCenterOffset(ctx);
 
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.roundRect(delayX, delayBoxY, delayBoxW, delayBoxH, 4);
-        ctx.fill();
-
-        ctx.font = FONTS.bold(isPortrait ? 22 : 26);
-        ctx.fillStyle = COLORS.NAVY;
-        ctx.textAlign = 'center';
-        ctx.fillText(primary.expectedTime, delayX + (delayBoxW / 2), delayBoxY + (delayBoxH * 0.72));
+        drawInvertedTimeBox(ctx, primary.expectedTime, delayX, scheduledCenterY, FONTS.bold(isPortrait ? 22 : 26), {
+            minWidth: isPortrait ? 85 : 100,
+            height: isPortrait ? 34 : 40
+        });
     }
 
     // 3. Kleines DB-Badge links unten

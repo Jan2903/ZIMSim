@@ -1,6 +1,6 @@
 // js/displays/boards/anschlusstafelRenderer.js
 import { COLORS, FONTS } from '../core/constants.js';
-import { drawText, drawWrappedText, truncateWithEllipsis, drawLineBadge, fillTextCentered } from '../core/textUtils.js';
+import { drawText, drawWrappedText, truncateWithEllipsis, drawLineBadge, drawInvertedTimeBox, fillTextCentered, getVerticalCenterOffset } from '../core/textUtils.js';
 import { getSimulatedTime } from '../../core/utils/config.js';
 import { lineColorService } from '../../features/journey/services/lineColorService.svelte.js';
 import { drawDBLogo, drawAnalogClock } from '../core/sharedRenderers.js';
@@ -364,7 +364,7 @@ function drawTrainRow(ctx, train, x, y, width, height, isAlt, isPortrait = false
                 backgroundColor: '#1c6276',
                 textColor: COLORS.WHITE,
                 borderColor: 'transparent',
-                shape: 'rounded'
+                shape: 'rectangle'
             };
         }
         drawLineBadge(ctx, displayName, col1X, badgeY, badgeW, badgeH, {
@@ -411,18 +411,12 @@ function drawTrainRow(ctx, train, x, y, width, height, isAlt, isPortrait = false
             // Verspätungskasten: Invertierter, ausgefüllter weißer eckiger (nicht gerundeter) Kasten
             const schedW = ctx.measureText(schedTime).width;
             const delayBoxX = col1X + schedW + (isPortrait ? 10 : 12);
-            const delayBoxW = isPortrait ? 78 : 96;
-            const delayBoxH = isPortrait ? 30 : 40;
-            const delayBoxY = timeY - (isPortrait ? 24 : 36);
+            const scheduledCenterY = timeY - getVerticalCenterOffset(ctx);
 
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(delayBoxX, delayBoxY, delayBoxW, delayBoxH);
-
-            ctx.font = FONTS.bold(isPortrait ? 22 : 32);
-            ctx.fillStyle = COLORS.MIDNIGHT_BLUE;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            fillTextCentered(ctx, train.expectedTime, delayBoxX + (delayBoxW / 2), delayBoxY + (delayBoxH / 2));
+            drawInvertedTimeBox(ctx, train.expectedTime, delayBoxX, scheduledCenterY, FONTS.bold(isPortrait ? 22 : 32), {
+                minWidth: isPortrait ? 78 : 96,
+                height: isPortrait ? 30 : 40
+            });
         }
     }
 

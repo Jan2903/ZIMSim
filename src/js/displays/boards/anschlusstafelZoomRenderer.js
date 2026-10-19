@@ -1,6 +1,6 @@
 // js/displays/boards/anschlusstafelZoomRenderer.js
 import { COLORS, FONTS } from '../core/constants.js';
-import { truncateWithEllipsis, drawLineBadge, fillTextCentered } from '../core/textUtils.js';
+import { truncateWithEllipsis, drawLineBadge, drawInvertedTimeBox, getVerticalCenterOffset } from '../core/textUtils.js';
 import { drawQualityIcons } from '../primitives/pictogramRenderer.js';
 import { lineColorService } from '../../features/journey/services/lineColorService.svelte.js';
 import { JourneyCouplingService } from '../../features/journey/services/journeyCouplingService.js';
@@ -223,22 +223,12 @@ function drawZoomTimeAndDelay(ctx, scheduledTime, expectedTime, x, y, isAusfall)
     if (!isAusfall && expectedTime && expectedTime !== scheduledTime) {
         const timeWidth = ctx.measureText(plannedTime).width;
         const boxX = x + timeWidth + 16;
-        const boxW = 126;
-        const boxH = 56;
-        const boxY = y - 60; // Zentriert die Box vertikal zu den Ziffern
+        const scheduledCenterY = y - getVerticalCenterOffset(ctx);
 
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.roundRect(boxX, boxY, boxW, boxH, 6);
-        ctx.fill();
-
-        ctx.font = FONTS.bold(38);
-        ctx.fillStyle = COLORS.NAVY;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        fillTextCentered(ctx, expectedTime, boxX + (boxW / 2), boxY + (boxH / 2) + 1);
-        ctx.textBaseline = 'alphabetic';
-        ctx.textAlign = 'left';
+        drawInvertedTimeBox(ctx, expectedTime, boxX, scheduledCenterY, FONTS.bold(38), {
+            minWidth: 126,
+            height: 56
+        });
     }
 }
 

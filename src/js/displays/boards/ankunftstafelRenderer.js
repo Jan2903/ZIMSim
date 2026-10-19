@@ -1,6 +1,6 @@
 // js/displays/boards/ankunftstafelRenderer.js
 import { COLORS, FONTS } from '../core/constants.js';
-import { truncateWithEllipsis, drawLineBadge } from '../core/textUtils.js';
+import { truncateWithEllipsis, drawLineBadge, drawInvertedTimeBox, getVerticalCenterOffset } from '../core/textUtils.js';
 import { drawAnalogClock } from '../core/sharedRenderers.js';
 import { getSimulatedTime } from '../../core/utils/config.js';
 import { lineColorService } from '../../features/journey/services/lineColorService.svelte.js';
@@ -183,6 +183,7 @@ function drawAnkunftRow(ctx, train, x, y, width, height, isAlt, isPortrait) {
     ctx.fillStyle = isAusfall ? '#ef4444' : COLORS.WHITE;
     const plannedTime = train.scheduledTime || '--:--';
     ctx.fillText(plannedTime, isPortrait ? 30 : 35, textY);
+    const scheduledCenterY = textY - getVerticalCenterOffset(ctx);
 
     if (isAusfall) {
         // Zeit durchstreichen
@@ -201,31 +202,37 @@ function drawAnkunftRow(ctx, train, x, y, width, height, isAlt, isPortrait) {
         ctx.fillStyle = '#ef4444';
         ctx.fillText('Fällt aus', expX, textY);
     } else if (train.expectedTime && train.expectedTime !== train.scheduledTime) {
-        ctx.font = FONTS.bold(isPortrait ? 26 : 28);
-        ctx.fillStyle = '#38bdf8';
-        ctx.fillText(train.expectedTime, expX, textY);
+        drawInvertedTimeBox(ctx, train.expectedTime, expX, scheduledCenterY, FONTS.bold(isPortrait ? 26 : 28), {
+            paddingX: 8,
+            minWidth: isPortrait ? 70 : 88,
+            height: isPortrait ? 34 : 40
+        });
     }
 
     // 3. Zug / Linie (Farbiger Badge)
     const trainX = isPortrait ? 225 : 310;
     const trainName = train.displayTitle;
-    const badgeW = isPortrait ? 115 : 140;
     const badgeH = height * 0.72;
     const badgeY = y + (height * 0.14);
 
     const font = FONTS.bold(isPortrait ? 26 : 28);
+    const originX = isPortrait ? 360 : 500;
+    const badgePadding = isPortrait ? 16 : 20;
+    const maxBadgeW = originX - trainX - 10;
+    ctx.font = font;
+    const badgeText = truncateWithEllipsis(ctx, trainName, Math.max(20, maxBadgeW - badgePadding));
+    const badgeW = Math.min(maxBadgeW, Math.max(isPortrait ? 80 : 100, ctx.measureText(badgeText).width + badgePadding));
     const badgeStyle = lineColorService.resolveStyle(trainName, {
         operator: train.operator,
         defaultBgColor: '#1e293b',
         defaultTextColor: COLORS.WHITE
     });
-    drawLineBadge(ctx, trainName, trainX, badgeY, badgeW, badgeH, {
+    drawLineBadge(ctx, badgeText, trainX, badgeY, badgeW, badgeH, {
         font,
         ...badgeStyle
     });
 
     // 4. Startbahnhof (Herkunft des Zuges)
-    const originX = isPortrait ? 360 : 500;
     ctx.textAlign = 'left';
     ctx.font = FONTS.bold(fontSize);
     ctx.fillStyle = isAusfall ? '#94a3b8' : COLORS.WHITE;

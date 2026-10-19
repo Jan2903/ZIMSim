@@ -299,7 +299,7 @@ export function findMaxTextWidth(ctx, startX, yCenter, height, screen) {
  * @param {number} [options.cornerRadius] - Expliziter Eckenradius
  */
 export function drawLineBadge(ctx, text, x, y, width, height, options = {}) {
-    const shape = options.shape || 'rounded';
+    const shape = options.shape || 'rectangle';
     let radius = 0;
 
     if (shape === 'pill') {
@@ -401,9 +401,9 @@ export function drawTextInRectangle(ctx, text, x, y, font, textAlign, textHeight
         let textDrawAlign = textAlign;
 
         let boxWidth = textWidth + 2 * rectPadding;
-        let boxHeight = textHeight + rectPadding;
+        let boxHeight = textHeight + 2 * rectPadding;
         let boxX = textAlign === 'right' ? (x - textWidth - rectPadding) : (x - rectPadding);
-        let boxY = y - textHeight / 2 - rectPadding;
+        let boxY = y - boxHeight / 2;
 
         if (isLineBadge) {
             // Zentral aufgelöster Stil aus LineColorService
@@ -498,9 +498,70 @@ export function drawTextInRectangle(ctx, text, x, y, font, textAlign, textHeight
                 boxTextColor, font
             );
         } else {
-            drawText(ctx, text, textDrawX, y, font, boxTextColor, textDrawAlign);
+            ctx.font = font;
+            ctx.fillStyle = boxTextColor;
+            ctx.textAlign = textDrawAlign;
+            fillTextCentered(ctx, text, textDrawX, y);
         }
     }
+}
+
+/**
+ * Zeichnet eine Zeitangabe invertiert in einem standardmäßig eckigen Rahmen.
+ * Rahmenhöhe und -breite orientieren sich an den Fontmetriken, damit der Text
+ * unabhängig von Browser und Fallback-Font vertikal zentriert bleibt.
+ *
+ * @param {CanvasRenderingContext2D} ctx - Kontext, dessen font noch nicht gesetzt sein muss.
+ * @param {string} text - Anzuzeigende Zeit, z. B. die erwartete Abfahrtszeit.
+ * @param {number} x - Linke Kante des Rahmens.
+ * @param {number} yCenter - Vertikale Mitte des Rahmens und des Textes.
+ * @param {string} font - Font für die Zeitangabe.
+ * @param {object} [options]
+ * @param {number} [options.paddingX=10] - Horizontaler Innenabstand.
+ * @param {number} [options.paddingY=4] - Vertikaler Innenabstand, wenn keine feste Höhe gesetzt ist.
+ * @param {number} [options.minWidth=0] - Minimale Rahmenbreite.
+ * @param {number|null} [options.height=null] - Optionale feste Rahmenhöhe.
+ * @param {string} [options.backgroundColor=COLORS.WHITE] - Hintergrundfarbe.
+ * @param {string} [options.textColor=COLORS.NAVY] - Textfarbe.
+ * @param {number} [options.cornerRadius=0] - Eckenradius; 0 zeichnet ein Rechteck.
+ * @returns {{x: number, y: number, width: number, height: number}} Rahmengeometrie.
+ */
+export function drawInvertedTimeBox(ctx, text, x, yCenter, font, options = {}) {
+    const {
+        paddingX = 10,
+        paddingY = 4,
+        minWidth = 0,
+        height = null,
+        backgroundColor = COLORS.WHITE,
+        textColor = COLORS.NAVY,
+        cornerRadius = 0
+    } = options;
+
+    ctx.save();
+    ctx.font = font;
+
+    const textWidth = ctx.measureText(text).width;
+    const { ascent, descent } = getFontMetrics(ctx);
+    const boxWidth = Math.max(minWidth, textWidth + 2 * paddingX);
+    const boxHeight = height !== null ? height : ascent + descent + 2 * paddingY;
+    const boxX = x;
+    const boxY = yCenter - boxHeight / 2;
+
+    ctx.beginPath();
+    if (cornerRadius > 0 && typeof ctx.roundRect === 'function') {
+        ctx.roundRect(boxX, boxY, boxWidth, boxHeight, cornerRadius);
+    } else {
+        ctx.rect(boxX, boxY, boxWidth, boxHeight);
+    }
+    ctx.fillStyle = backgroundColor;
+    ctx.fill();
+
+    ctx.fillStyle = textColor;
+    ctx.textAlign = 'center';
+    fillTextCentered(ctx, text, boxX + boxWidth / 2, yCenter);
+
+    ctx.restore();
+    return { x: boxX, y: boxY, width: boxWidth, height: boxHeight };
 }
 
 let _measuringCtx = null;

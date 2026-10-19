@@ -601,8 +601,8 @@ class LineColorService {
                 textColor: COLORS.NAVY,
                 borderColor: 'rgba(0, 0, 0, 0.18)',
                 borderWidth: 1,
-                shape: 'rounded',
-                cornerRadius: 6,
+                shape: 'rectangle',
+                cornerRadius: 0,
                 hasMatchedRule: false,
                 rule: null
             };
@@ -615,8 +615,8 @@ class LineColorService {
                 textColor: fallbackText,
                 borderColor: 'rgba(255, 255, 255, 0.18)',
                 borderWidth: 1,
-                shape: 'rounded',
-                cornerRadius: 6,
+                shape: 'rectangle',
+                cornerRadius: 0,
                 hasMatchedRule: false,
                 rule: null
             };
