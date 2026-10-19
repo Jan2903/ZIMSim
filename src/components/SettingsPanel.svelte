@@ -23,6 +23,35 @@
     // Status für manuellen IRIS-Schnellabruf
     let isFetchingIris = $state(false);
 
+    // Reihenfolge der Tabs für die Tastaturnavigation (ARIA-Tabs-Muster)
+    const TAB_ORDER = ['fahrten', 'station', 'livedata', 'audio', 'system'];
+
+    /**
+     * Tastaturnavigation der Tab-Leiste (Pfeiltasten, Home/End).
+     * @param {KeyboardEvent} e
+     * @returns {void}
+     */
+    function onTablistKeydown(e) {
+        const navKeys = ['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', 'Home', 'End'];
+        if (!navKeys.includes(e.key)) return;
+        e.preventDefault();
+        let idx = TAB_ORDER.indexOf(uiState.activeTab);
+        if (idx === -1) idx = 0;
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+            idx = (idx + 1) % TAB_ORDER.length;
+        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+            idx = (idx - 1 + TAB_ORDER.length) % TAB_ORDER.length;
+        } else if (e.key === 'Home') {
+            idx = 0;
+        } else if (e.key === 'End') {
+            idx = TAB_ORDER.length - 1;
+        }
+        const next = TAB_ORDER[idx];
+        uiState.activeTab = next;
+        const el = document.getElementById(`tab-${next}`);
+        if (el) el.focus();
+    }
+
     /**
      * Fügt eine neue manuelle Fahrt zur Liste hinzu.
      * @returns {void}
@@ -67,8 +96,12 @@
                 class="tab-btn" 
                 class:active={uiState.activeTab === 'fahrten'}
                 onclick={() => uiState.activeTab = 'fahrten'}
+                onkeydown={onTablistKeydown}
                 role="tab"
+                id="tab-fahrten"
+                aria-controls="panel-fahrten"
                 aria-selected={uiState.activeTab === 'fahrten'}
+                tabindex={uiState.activeTab === 'fahrten' ? 0 : -1}
             >
                 <ZimIcon name="train" size={16} />
                 <span>Fahrten ({journeyStore.journeys.length})</span>
@@ -80,8 +113,12 @@
                 class="tab-btn" 
                 class:active={uiState.activeTab === 'station'}
                 onclick={() => uiState.activeTab = 'station'}
+                onkeydown={onTablistKeydown}
                 role="tab"
+                id="tab-station"
+                aria-controls="panel-station"
                 aria-selected={uiState.activeTab === 'station'}
+                tabindex={uiState.activeTab === 'station' ? 0 : -1}
             >
                 <ZimIcon name="station" size={16} />
                 <span>Bahnhof & Zeit</span>
@@ -93,8 +130,12 @@
                 class="tab-btn" 
                 class:active={uiState.activeTab === 'livedata'}
                 onclick={() => uiState.activeTab = 'livedata'}
+                onkeydown={onTablistKeydown}
                 role="tab"
+                id="tab-livedata"
+                aria-controls="panel-livedata"
                 aria-selected={uiState.activeTab === 'livedata'}
+                tabindex={uiState.activeTab === 'livedata' ? 0 : -1}
             >
                 <ZimIcon name="api" size={16} />
                 <span>Live-Daten</span>
@@ -106,8 +147,12 @@
                 class="tab-btn" 
                 class:active={uiState.activeTab === 'audio'}
                 onclick={() => uiState.activeTab = 'audio'}
+                onkeydown={onTablistKeydown}
                 role="tab"
+                id="tab-audio"
+                aria-controls="panel-audio"
                 aria-selected={uiState.activeTab === 'audio'}
+                tabindex={uiState.activeTab === 'audio' ? 0 : -1}
             >
                 <ZimIcon name="volume_high" size={16} />
                 <span>Ansagen</span>
@@ -119,8 +164,12 @@
                 class="tab-btn" 
                 class:active={uiState.activeTab === 'system'}
                 onclick={() => uiState.activeTab = 'system'}
+                onkeydown={onTablistKeydown}
                 role="tab"
+                id="tab-system"
+                aria-controls="panel-system"
                 aria-selected={uiState.activeTab === 'system'}
+                tabindex={uiState.activeTab === 'system' ? 0 : -1}
             >
                 <ZimIcon name="settings" size={16} />
                 <span>Anzeige & System</span>
@@ -132,7 +181,7 @@
     <div class="dashboard-content">
         <!-- Tab 1: Fahrten (Züge) -->
         {#if uiState.activeTab === 'fahrten'}
-            <div class="tab-pane">
+            <div class="tab-pane" id="panel-fahrten" role="tabpanel" aria-labelledby="tab-fahrten" tabindex="0">
                 {#snippet journeyActions()}
                     <button 
                         type="button"
@@ -171,25 +220,25 @@
 
         <!-- Tab 2: Bahnhof & Zeit -->
         {:else if uiState.activeTab === 'station'}
-            <div class="tab-pane">
+            <div class="tab-pane" id="panel-station" role="tabpanel" aria-labelledby="tab-station" tabindex="0">
                 <SettingsStationTime />
             </div>
 
         <!-- Tab 3: Live-Daten (IRIS & DB Navigator) -->
         {:else if uiState.activeTab === 'livedata'}
-            <div class="tab-pane">
+            <div class="tab-pane" id="panel-livedata" role="tabpanel" aria-labelledby="tab-livedata" tabindex="0">
                 <SettingsLiveData {modalsComp} />
             </div>
 
         <!-- Tab 4: Ansagen & Audio -->
         {:else if uiState.activeTab === 'audio'}
-            <div class="tab-pane">
+            <div class="tab-pane" id="panel-audio" role="tabpanel" aria-labelledby="tab-audio" tabindex="0">
                 <SettingsAudio />
             </div>
 
         <!-- Tab 5: Anzeige & System -->
         {:else if uiState.activeTab === 'system'}
-            <div class="tab-pane">
+            <div class="tab-pane" id="panel-system" role="tabpanel" aria-labelledby="tab-system" tabindex="0">
                 <SettingsDisplaySystem {modalsComp} />
             </div>
         {/if}

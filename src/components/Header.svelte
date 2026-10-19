@@ -43,9 +43,19 @@
             monitorMenuOpen = false;
         }
     }
+
+    /**
+     * Schließt das Dropdown-Menü mit der Escape-Taste.
+     * @param {KeyboardEvent} e
+     */
+    function onWindowKeydown(e) {
+        if (e.key === 'Escape' && monitorMenuOpen) {
+            monitorMenuOpen = false;
+        }
+    }
 </script>
 
-<svelte:window onclick={onWindowClick} />
+<svelte:window onclick={onWindowClick} onkeydown={onWindowKeydown} />
 
 <header class="page-header app-top-bar">
     <div class="header-brand">
@@ -90,12 +100,14 @@
                     onclick={() => monitorMenuOpen = !monitorMenuOpen}
                     title="Monitore in separaten Vollbild-/Kiosk-Fenstern öffnen"
                     aria-expanded={monitorMenuOpen}
+                    aria-haspopup="true"
+                    aria-controls="monitor-menu"
                 >
                     <ZimIcon name="monitors" size={16} />
                     <span class="header-btn-text">Monitore ▾</span>
                 </button>
                 {#if monitorMenuOpen}
-                    <div class="header-dropdown-menu" role="menu">
+                    <div id="monitor-menu" class="header-dropdown-menu" role="group" aria-label="Monitore öffnen">
                         <div class="dropdown-header">Full-HD (1080p)</div>
                         <button type="button" class="dropdown-item" onclick={() => { monitorMenuOpen = false; onOpenScreen(1, false); }}>
                             <ZimIcon name="popout" size={14} />

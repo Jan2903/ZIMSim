@@ -1,27 +1,6 @@
 /* --- DASHBOARD CONTROL PANEL STYLING --- */
-.settings-container { 
-    max-width: 1600px; 
-    margin: 20px auto 40px auto; 
-    padding: 0 20px; 
-    box-sizing: border-box; 
-    font-family: system-ui, -apple-system, sans-serif; 
-}
-
-.page-header { 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center; 
-    padding: 8px 24px; 
-    background-color: var(--bg-card); 
-    border-bottom: 1px solid var(--border); 
-    margin-bottom: 0; 
-}
-.page-header h1, .page-header h2 { 
-    margin: 0; 
-    font-size: 1.25rem; 
-    font-weight: 600; 
-    color: var(--text-main); 
-}
+/* Hinweis: .settings-container wird scoped in SettingsPanel.svelte gestylt,
+   .page-header wird scoped in Header.svelte (.app-top-bar) gestylt. */
 
 .settings-frame { 
     background-color: var(--bg-card); 
@@ -102,24 +81,8 @@
         height: 1px; 
         margin: 10px 0; 
     }
-    .settings-container { 
-        padding: 0 10px; 
-        margin: 15px auto; 
-    }
     .settings-frame { 
         padding: 16px; 
         border-radius: 8px; 
-    }
-    .page-header {
-        padding: 6px 12px;
-        flex-direction: row;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 0;
-    }
-    .page-header h1, .page-header h2 {
-        font-size: 1.1rem;
-        text-align: left;
-        margin: 0;
     }
 }

@@ -126,7 +126,6 @@
      * @param {boolean} [use4k=false]
      */
     function openScreen(screenIndex, use4k = false) {
-        monitorMenuOpen = false;
         ScreenSyncService.openScreenWindow(screenIndex, use4k, true, displayConfigStore.layoutType);
     }
 
