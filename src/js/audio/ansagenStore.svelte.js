@@ -286,7 +286,8 @@ export class AnsagenStore {
      * @param {number|string} val
      */
     setAnschluesseMinTransferOpposite(val) {
-        const num = Math.max(0, Math.min(20, parseInt(val, 10) || 2));
+        const parsed = parseInt(val, 10);
+        const num = Math.max(0, Math.min(20, Number.isNaN(parsed) ? 2 : parsed));
         this.anschluesseMinTransferOpposite = num;
         localStorage.setItem('ansagen_anschluesse_min_transfer_opposite', String(num));
     }
