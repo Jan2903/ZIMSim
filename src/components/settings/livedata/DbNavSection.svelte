@@ -2,6 +2,7 @@
 <script>
     import { journeyStore, trainDisplay } from '../../../js/core/state/stores.js';
     import { irisConfig } from '../../../js/core/services/irisPollingService.svelte.js';
+    import { toastStore } from '../../../js/core/state/toastStore.svelte.js';
     import { isTauri, proxyConfig } from '../../../js/core/services/apiClient.js';
     import { DbNavApiService } from '../../../js/core/services/dbNavApiService.js';
     import { JourneyDbNavSyncService } from '../../../js/features/journey/services/journeyDbNavSyncService.js';
@@ -32,12 +33,12 @@
      */
     async function triggerDbNavBoardFetch(replace = true) {
         if (!journeyStore.stationContext.stationId) {
-            alert('Bitte zuerst eine Station auswählen!');
+            toastStore.warning('Bitte zuerst eine Station auswählen!');
             return;
         }
 
         if (!isTauri && !proxyConfig.enabled) {
-            alert('Für DB Navigator im Browser bitte zuerst die lokale Python-Bridge (start_bridge.bat) starten.');
+            toastStore.warning('Für DB Navigator im Browser bitte zuerst die lokale Python-Bridge (start_bridge.bat) starten.');
             return;
         }
 
@@ -52,13 +53,13 @@
                 if (dbNavConfig.fetchFormation) {
                     await JourneyDbNavSyncService.autoFetchActiveFormations(2);
                 }
-                alert(`${res.count} Fahrten über DB Navigator geladen.`);
+                toastStore.success(`${res.count} Fahrten über DB Navigator geladen.`);
             } else {
-                alert(res.message || 'Fehler beim Laden der DB Navigator Daten.');
+                toastStore.error(res.message || 'Fehler beim Laden der DB Navigator Daten.');
             }
         } catch (e) {
             console.error('[DbNavSection] Fehler beim Abrufen der DBNav-Tafel:', e);
-            alert('Fehler beim Abrufen der DB Navigator Daten.');
+            toastStore.error('Fehler beim Abrufen der DB Navigator Daten.');
         } finally {
             isFetchingDbNavBoard = false;
         }
@@ -70,7 +71,7 @@
      */
     async function syncWithDbNav() {
         if (!journeyStore.stationContext.stationId) {
-            alert('Bitte zuerst eine Station auswählen!');
+            toastStore.warning('Bitte zuerst eine Station auswählen!');
             return;
         }
 
@@ -112,7 +113,7 @@
         if (!extendedStationQuery.trim()) return;
 
         if (!isTauri && !proxyConfig.enabled) {
-            alert('Für die Stationssuche im Browser bitte zuerst die lokale Python-Bridge (start_bridge.bat) starten.');
+            toastStore.warning('Für die Stationssuche im Browser bitte zuerst die lokale Python-Bridge (start_bridge.bat) starten.');
             return;
         }
 
@@ -129,11 +130,11 @@
             })).filter(item => item.id && item.name);
 
             if (extendedSearchResults.length === 0) {
-                alert('Keine Haltestellen für diesen Suchbegriff gefunden.');
+                toastStore.info('Keine Haltestellen für diesen Suchbegriff gefunden.');
             }
         } catch (e) {
             console.error('[DbNavSection] Fehler bei der erweiterten Stationssuche:', e);
-            alert('Fehler bei der Stationssuche über DB Navigator.');
+            toastStore.error('Fehler bei der Stationssuche über DB Navigator.');
         } finally {
             isExtendedSearching = false;
         }

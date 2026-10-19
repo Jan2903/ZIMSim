@@ -12,14 +12,52 @@
     --border: rgba(255, 255, 255, 0.08);
     --border-color: #444444;
     --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.4);
-    --db-navy: navy;
-    --db-dark: midnightblue;
+    --db-navy: #000080;
+    --db-dark: #191970;
     --touch-target-min: 44px;
     --radius-sm: 4px;
     --radius-md: 8px;
     --radius-lg: 12px;
-    
+
+    /* Z-Index-Skala (statt verstreuter Magic Numbers) */
+    --z-canvas: 10;
+    --z-bezel-lip: 15;
+    --z-dropdown: 1000;
+    --z-modal: 9000;
+    --z-player: 9999;
+    --z-status: 10000;
+    --z-toast: 100000;
+
+    --focus-ring: 2px solid var(--accent);
+    --focus-ring-offset: 2px;
+
     font-family: 'Inter', Roboto, system-ui, -apple-system, sans-serif;
+}
+
+/* --- Barrierefreier Tastaturfokus (nur :focus-visible, nicht bei Mausklick) --- */
+:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: var(--focus-ring-offset);
+    border-radius: var(--radius-sm);
+}
+
+/* Eingabefelder haben bereits einen eigenen Fokus-Rahmen; keinen doppelten Ring */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+    outline: none;
+}
+
+/* --- Nutzerwunsch "reduzierte Bewegung" respektieren --- */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }
 
 /*

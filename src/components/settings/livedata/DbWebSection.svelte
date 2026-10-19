@@ -2,6 +2,7 @@
 <script>
     import { journeyStore, trainDisplay } from '../../../js/core/state/stores.js';
     import { liveDataConfig } from '../../../js/core/state/liveDataConfig.svelte.js';
+    import { toastStore } from '../../../js/core/state/toastStore.svelte.js';
     import { isTauri, proxyConfig } from '../../../js/core/services/apiClient.js';
     import { DbWebApiService } from '../../../js/core/services/dbWebApiService.js';
     import { JourneyDbWebSyncService } from '../../../js/features/journey/services/journeyDbWebSyncService.js';
@@ -65,12 +66,12 @@
     async function triggerDbWebBoardFetch(replace = true) {
         const stationId = journeyStore.stationContext.stationId;
         if (!stationId) {
-            alert('Bitte zuerst eine Station auswählen!');
+            toastStore.warning('Bitte zuerst eine Station auswählen!');
             return;
         }
 
         if (!isTauri && !proxyConfig.enabled) {
-            alert('Für bahn.de Anfragen im Web-Browser bitte zuerst die lokale Python-Bridge (start_bridge.bat) starten.');
+            toastStore.warning('Für bahn.de Anfragen im Web-Browser bitte zuerst die lokale Python-Bridge (start_bridge.bat) starten.');
             return;
         }
 
@@ -125,7 +126,7 @@
     async function syncWithDbWeb() {
         const stationId = journeyStore.stationContext.stationId;
         if (!stationId) {
-            alert('Bitte zuerst eine Station auswählen!');
+            toastStore.warning('Bitte zuerst eine Station auswählen!');
             return;
         }
 
@@ -177,7 +178,7 @@
         if (!stationQuery.trim()) return;
 
         if (!isTauri && !proxyConfig.enabled) {
-            alert('Für die Stationssuche im Web-Browser bitte die lokale Python-Bridge (start_bridge.bat) starten.');
+            toastStore.warning('Für die Stationssuche im Web-Browser bitte die lokale Python-Bridge (start_bridge.bat) starten.');
             return;
         }
 
@@ -193,11 +194,11 @@
             })).filter(item => item.id && item.name);
 
             if (searchResults.length === 0) {
-                alert('Keine Haltestellen auf bahn.de gefunden.');
+                toastStore.info('Keine Haltestellen auf bahn.de gefunden.');
             }
         } catch (e) {
             console.error('[DbWebSection] Fehler bei der Stationssuche:', e);
-            alert('Fehler bei der Stationssuche über bahn.de.');
+            toastStore.error('Fehler bei der Stationssuche über bahn.de.');
         } finally {
             isSearchingStation = false;
         }

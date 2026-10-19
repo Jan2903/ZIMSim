@@ -3,6 +3,7 @@
     import { journeyStore } from '../js/core/state/stores.js';
     import { irisPollingService, irisConfig } from '../js/core/services/irisPollingService.svelte.js';
     import { uiState } from '../js/core/state/uiState.svelte.js';
+    import { toastStore } from '../js/core/state/toastStore.svelte.js';
     import JourneyList from './JourneyList.svelte';
     import CollapsibleSection from './CollapsibleSection.svelte';
     import ZimIcon from './ZimIcon.svelte';
@@ -36,7 +37,7 @@
      */
     async function fetchIrisData() {
         if (!journeyStore.stationContext.stationId) {
-            alert('Bitte zuerst eine Station auswählen!');
+            toastStore.warning('Bitte zuerst eine Station auswählen!');
             uiState.activeTab = 'station';
             return;
         }
@@ -49,7 +50,7 @@
             }
         } catch (e) {
             console.error('[SettingsPanel] IRIS-Abruf fehlgeschlagen:', e);
-            alert('Fehler beim Abrufen der IRIS-Daten.');
+            toastStore.error('Fehler beim Abrufen der IRIS-Daten.');
         } finally {
             isFetchingIris = false;
         }
@@ -246,10 +247,10 @@
     }
 
     .tab-btn.active {
-        background: var(--accent, #3b82f6);
+        background: var(--accent);
         color: #ffffff;
         font-weight: 600;
-        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.35);
+        box-shadow: 0 2px 8px rgba(226, 0, 26, 0.35);
     }
 
     .dashboard-content {

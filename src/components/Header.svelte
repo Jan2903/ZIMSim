@@ -1,6 +1,7 @@
 <!-- src/components/Header.svelte -->
 <script>
     import ZimIcon from './ZimIcon.svelte';
+    import { downloadDisplayScreenshot } from '../js/core/utils/screenshot.js';
 
     /**
      * @typedef {Object} Props
@@ -28,10 +29,7 @@
         } else {
             const canvas = document.getElementById('zimCanvas');
             if (canvas) {
-                const link = document.createElement('a');
-                link.download = `zim_screenshot_${Date.now()}.png`;
-                link.href = canvas.toDataURL('image/png');
-                link.click();
+                downloadDisplayScreenshot({ canvas });
             }
         }
     }
@@ -157,7 +155,7 @@
     .header-badge {
         font-size: 0.68rem;
         font-weight: 700;
-        background: var(--accent, #3b82f6);
+        background: var(--accent);
         color: #ffffff;
         padding: 2px 6px;
         border-radius: 4px;
@@ -195,9 +193,9 @@
     }
 
     .header-action-btn.active-btn {
-        background: rgba(59, 130, 246, 0.15);
-        border-color: var(--accent, #3b82f6);
-        color: var(--accent, #3b82f6);
+        background: rgba(226, 0, 26, 0.15);
+        border-color: var(--accent);
+        color: var(--accent);
     }
 
     .header-dropdown-container {

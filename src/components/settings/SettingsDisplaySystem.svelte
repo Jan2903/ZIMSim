@@ -2,6 +2,7 @@
 <script>
     import { journeyStore, trainDisplay } from '../../js/core/state/stores.js';
     import { uiState } from '../../js/core/state/uiState.svelte.js';
+    import { toastStore } from '../../js/core/state/toastStore.svelte.js';
     import { config } from '../../js/core/utils/config.js';
     import { displayConfigStore } from '../../js/displays/core/displayConfigStore.svelte.js';
     import { MONITOR_PROFILES } from '../../js/displays/core/displayLayoutService.js';
@@ -55,17 +56,17 @@
         reader.onload = (event) => {
             const parsed = parseBundle(event.target.result, 'zimsim-full-backup');
             if (!parsed.success) {
-                alert(parsed.error || 'Fehler beim Importieren der Datei.');
+                toastStore.error(parsed.error || 'Fehler beim Importieren der Datei.');
                 return;
             }
 
             try {
                 journeyStore.importAll(parsed.payload);
                 trainDisplay.updateAll();
-                alert('Szenario-Backup erfolgreich geladen!');
+                toastStore.success('Szenario-Backup erfolgreich geladen!');
             } catch (err) {
                 console.error('[SettingsDisplaySystem] Fehler beim Import:', err);
-                alert('Fehler beim Importieren der Datei: ' + (err?.message || err));
+                toastStore.error('Fehler beim Importieren der Datei: ' + (err?.message || err));
             }
         };
         reader.readAsText(file);

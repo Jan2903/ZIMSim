@@ -237,7 +237,7 @@
 
     .toolbar-select:focus,
     .toolbar-select:hover {
-        border-color: var(--accent, #3b82f6);
+        border-color: var(--accent);
     }
 
     .segment-switch-compact {
@@ -268,7 +268,7 @@
     }
 
     .segment-compact-btn.active {
-        background: var(--accent, #3b82f6);
+        background: var(--accent);
         color: #fff;
         font-weight: 600;
     }
@@ -306,7 +306,7 @@
     .target-screen-tag {
         font-size: 0.75rem;
         font-weight: 700;
-        background: var(--accent, #3b82f6);
+        background: var(--accent);
         color: #fff;
         padding: 2px 6px;
         border-radius: 4px;

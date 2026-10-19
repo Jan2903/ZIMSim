@@ -1,6 +1,7 @@
 <script>
     import { onMount } from 'svelte';
     import { journeyStore, trainDisplay } from './js/core/state/stores.js';
+    import { downloadDisplayScreenshot } from './js/core/utils/screenshot.js';
     import { ScreenSyncService } from './js/core/services/screenSyncService.js';
     import { ansagenStore } from './js/audio/ansagenStore.svelte.js';
     import Header from './components/Header.svelte';
@@ -9,6 +10,8 @@
     import Modals from './components/Modals.svelte';
     import PlayerOverlay from './components/PlayerOverlay.svelte';
     import StatusOverlay from './components/StatusOverlay.svelte';
+    import ToastContainer from './components/ToastContainer.svelte';
+    import ConfirmDialog from './components/ConfirmDialog.svelte';
     import ZimIcon from './components/ZimIcon.svelte';
     import HardwareBezel from './components/HardwareBezel.svelte';
     import { displayConfigStore } from './js/displays/core/displayConfigStore.svelte.js';
@@ -132,90 +135,20 @@
      * Arbeitet kontextsensitiv und dynamisch:
      * - Bei sichtbarem Gehäuse: Komponierter High-Res-Screenshot mit Vektor-Gehäuse (z.B. 4430×1600 bei 2 Screens, 6400×1600 bei 3 Screens)
      * - Ohne Gehäuse oder im Vollbild/Kiosk: Reines, randloses Display-Canvas (z.B. 3840×1080 oder 3890×1080)
-     * @returns {void}
+     * @returns {Promise<void>}
      */
-    function downloadScreenshot() {
+    async function downloadScreenshot() {
         const canvas = document.getElementById('zimCanvas');
         if (!canvas) return;
 
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const filename = `zim_screenshot_${timestamp}.png`;
+        const svgElement = isCasingActive ? document.querySelector('.hardware-bezel-svg') : null;
 
-        if (!isCasingActive) {
-            // Reiner nativer Canvas-Export ohne Gehäuse
-            const dataUrl = canvas.toDataURL('image/png');
-            const link = document.createElement('a');
-            link.download = filename;
-            link.href = dataUrl;
-            link.click();
-            return;
-        }
-
-        // Gehäuse ist aktiv: Composed Screenshot (Gehäuse + Displays)
-        const svgElement = document.querySelector('.hardware-bezel-svg');
-        if (!svgElement) {
-            const dataUrl = canvas.toDataURL('image/png');
-            const link = document.createElement('a');
-            link.download = filename;
-            link.href = dataUrl;
-            link.click();
-            return;
-        }
-
-        try {
-            const svgString = new XMLSerializer().serializeToString(svgElement);
-            const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-            const url = URL.createObjectURL(svgBlob);
-            const img = new Image();
-
-            img.onload = () => {
-                try {
-                    const offCanvas = document.createElement('canvas');
-                    offCanvas.width = wrapperWidth;
-                    offCanvas.height = wrapperHeight;
-                    const offCtx = offCanvas.getContext('2d');
-
-                    // 1. Vektor-Gehäuse zeichnen
-                    offCtx.drawImage(img, 0, 0, wrapperWidth, wrapperHeight);
-                    URL.revokeObjectURL(url);
-
-                    // 2. Display-Canvas an exakter Offset-Position einbetten
-                    offCtx.drawImage(canvas, canvasOffsetX, canvasOffsetY);
-
-                    // 3. Download anstoßen
-                    const dataUrl = offCanvas.toDataURL('image/png');
-                    const link = document.createElement('a');
-                    link.download = filename;
-                    link.href = dataUrl;
-                    link.click();
-                } catch (err) {
-                    console.warn('[Screenshot] Fehler beim Composing mit Gehäuse, Fallback:', err);
-                    const fallbackUrl = canvas.toDataURL('image/png');
-                    const link = document.createElement('a');
-                    link.download = filename;
-                    link.href = fallbackUrl;
-                    link.click();
-                }
-            };
-
-            img.onerror = () => {
-                URL.revokeObjectURL(url);
-                const dataUrl = canvas.toDataURL('image/png');
-                const link = document.createElement('a');
-                link.download = filename;
-                link.href = dataUrl;
-                link.click();
-            };
-
-            img.src = url;
-        } catch (e) {
-            console.warn('[Screenshot] Fehler:', e);
-            const dataUrl = canvas.toDataURL('image/png');
-            const link = document.createElement('a');
-            link.download = filename;
-            link.href = dataUrl;
-            link.click();
-        }
+        await downloadDisplayScreenshot({
+            canvas,
+            casing: svgElement
+                ? { svgElement, width: wrapperWidth, height: wrapperHeight, offsetX: canvasOffsetX, offsetY: canvasOffsetY }
+                : null
+        });
     }
 
     // Reaktiver Effekt für Canvas Re-Renders und State-Broadcasts
@@ -229,8 +162,8 @@
         const pName = journeyStore.stationContext.activePlatformName;
         const nrw = journeyStore.nrwMode;
         const lr = lineColorService.rules;
-        
-        trainDisplay.updateAll();
+
+        trainDisplay.scheduleUpdateAll();
 
         // Master-Instanz sendet Aktualisierungen an sekundäre Monitore
         if (!targetScreen) {
@@ -248,9 +181,7 @@
         handleResize();
 
         // Nach Abschluss aller Svelte-DOM-Updates Canvas zuverlässig neu zeichnen
-        requestAnimationFrame(() => {
-            trainDisplay.updateAll();
-        });
+        trainDisplay.scheduleUpdateAll();
     });
 
     /**
@@ -444,6 +375,9 @@
 
 <StatusOverlay />
 {/if}
+
+<ToastContainer />
+<ConfirmDialog />
 
 <style>
     /* Subtiler Innenrahmen/Fase um die Bildschirme (Display-Einbau) */

@@ -1,5 +1,6 @@
 <script>
     import { uiState } from '../js/core/state/uiState.svelte.js';
+    import { toastStore } from '../js/core/state/toastStore.svelte.js';
     import { journeyStore, trainDisplay } from '../js/core/state/stores.js';
     import { formatDisplayName } from '../js/features/journey/trainNumberFormatter.js';
     import { lineColorService } from '../js/features/journey/services/lineColorService.svelte.js';
@@ -19,7 +20,7 @@
         e.stopPropagation();
         const res = await FormationService.fetchFormationForJourney(journey);
         if (!res.success) {
-            alert(res.message || 'Wagenreihung konnte nicht geladen werden.');
+            toastStore.error(res.message || 'Wagenreihung konnte nicht geladen werden.');
         }
     }
 

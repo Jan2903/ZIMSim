@@ -2,6 +2,7 @@
 <script>
     import { journeyStore, trainDisplay } from '../../js/core/state/stores.js';
     import { AVAILABLE_SECTOR_LETTERS } from '../../js/features/station/platform.svelte.js';
+    import { confirmDialog } from '../../js/core/state/confirmStore.svelte.js';
     import ZimIcon from '../ZimIcon.svelte';
 
     // Reaktiver Zugriff auf die aktive Bahnsteigkonfiguration
@@ -117,12 +118,12 @@
     /**
      * Löscht den aktuellen Bahnsteig nach Bestätigung.
      */
-    function deletePlatform() {
+    async function deletePlatform() {
         const keys = Object.keys(journeyStore.platforms);
         if (keys.length <= 1) return;
 
         const confirmMsg = `Bahnsteig-Konfiguration "${activePlatformName}" wirklich entfernen?`;
-        if (window.confirm(confirmMsg)) {
+        if (await confirmDialog(confirmMsg, { danger: true, confirmLabel: 'Entfernen' })) {
             journeyStore.removePlatform(activePlatformName);
             trainDisplay.updateAll();
         }

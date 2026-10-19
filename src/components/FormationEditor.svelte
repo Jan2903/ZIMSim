@@ -3,6 +3,7 @@
     import { safeFlip as flip } from '../js/core/utils/animationUtils.js';
     import { moveItemUp, moveItemDown } from '../js/core/utils/arrayUtils.js';
     import { uiState } from '../js/core/state/uiState.svelte.js';
+    import { toastStore } from '../js/core/state/toastStore.svelte.js';
     import { trainDisplay, journeyStore } from '../js/core/state/stores.js';
     import { Formation } from '../js/features/formation/formationModel.svelte.js';
     import { FormationService } from '../js/features/formation/formationService.js';
@@ -22,7 +23,7 @@
     async function fetchFromDbNav() {
         const res = await FormationService.fetchFormationForJourney(journey);
         if (!res.success) {
-            alert(res.message || 'Wagenreihung konnte nicht geladen werden.');
+            toastStore.error(res.message || 'Wagenreihung konnte nicht geladen werden.');
         } else {
             triggerUpdate();
         }
@@ -95,11 +96,11 @@
                 if (success) {
                     triggerUpdate();
                 } else {
-                    alert('Das Dateiformat konnte nicht als Formation oder Zugteil erkannt werden.');
+                    toastStore.error('Das Dateiformat konnte nicht als Formation oder Zugteil erkannt werden.');
                 }
             } catch (err) {
                 console.error('Fehler beim Importieren der Formation:', err);
-                alert('Fehler beim Einlesen der Datei: ' + err.message);
+                toastStore.error('Fehler beim Einlesen der Datei: ' + err.message);
             }
         };
         reader.readAsText(file);

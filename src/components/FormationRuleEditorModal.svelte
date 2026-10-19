@@ -3,6 +3,8 @@
     import { formationRuleService } from '../js/features/formation/formationRuleService.svelte.js';
     import { FormationPresetService } from '../js/features/formation/formationPresetService.js';
     import { journeyStore, trainDisplay } from '../js/core/state/stores.js';
+    import { toastStore } from '../js/core/state/toastStore.svelte.js';
+    import { confirmDialog } from '../js/core/state/confirmStore.svelte.js';
     import ZimIcon from './ZimIcon.svelte';
     import { downloadJsonFile, parseBundle } from '../js/core/utils/bundleUtils.js';
 
@@ -71,8 +73,8 @@
         selectedRuleId = newR.id;
     }
 
-    function deleteCurrentRule(id) {
-        if (confirm('Möchtest du diese Regel wirklich löschen?')) {
+    async function deleteCurrentRule(id) {
+        if (await confirmDialog('Möchtest du diese Regel wirklich löschen?', { danger: true, confirmLabel: 'Löschen' })) {
             formationRuleService.deleteRule(id);
             selectedRuleId = formationRuleService.rules[0]?.id || null;
         }
@@ -89,11 +91,11 @@
     function applyToAllJourneys() {
         const count = formationRuleService.applyRulesToAllJourneys(journeyStore, true);
         trainDisplay.updateAll();
-        alert(`Die Regeln wurden erfolgreich auf ${count} Fahrt(en) angewendet.`);
+        toastStore.success(`Die Regeln wurden erfolgreich auf ${count} Fahrt(en) angewendet.`);
     }
 
-    function resetToDefaults() {
-        if (confirm('Möchtest du alle Regeln auf die Standardeinstellungen zurücksetzen? Eigene Regeln gehen verloren.')) {
+    async function resetToDefaults() {
+        if (await confirmDialog('Möchtest du alle Regeln auf die Standardeinstellungen zurücksetzen? Eigene Regeln gehen verloren.', { danger: true, confirmLabel: 'Zurücksetzen' })) {
             formationRuleService.resetToDefaults();
             selectedRuleId = formationRuleService.rules[0]?.id || null;
         }
@@ -113,13 +115,13 @@
             const raw = event.target.result;
             const parsed = parseBundle(raw, 'zimsim-formation-rules');
             if (!parsed.success) {
-                alert(parsed.error || 'Fehler beim Parsen der Datei.');
+                toastStore.error(parsed.error || 'Fehler beim Parsen der Datei.');
                 return;
             }
 
             const count = Array.isArray(parsed.payload) ? parsed.payload.length : 0;
             if (count === 0) {
-                alert('Die ausgewählte Datei enthält keine Wagenreihungs-Regeln.');
+                toastStore.warning('Die ausgewählte Datei enthält keine Wagenreihungs-Regeln.');
                 return;
             }
 
@@ -143,9 +145,9 @@
             selectedRuleId = formationRuleService.rules[0]?.id || null;
             pendingImport = null;
             const actionText = mode === 'merge' ? 'zusammengeführt' : 'ersetzt';
-            alert(`${res.count} Wagenreihungs-Regeln erfolgreich ${actionText}.`);
+            toastStore.success(`${res.count} Wagenreihungs-Regeln erfolgreich ${actionText}.`);
         } else {
-            alert(res.error || 'Fehler beim Importieren der Datei.');
+            toastStore.error(res.error || 'Fehler beim Importieren der Datei.');
         }
     }
 </script>

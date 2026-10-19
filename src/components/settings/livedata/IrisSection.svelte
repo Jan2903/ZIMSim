@@ -3,6 +3,7 @@
     import { journeyStore } from '../../../js/core/state/stores.js';
     import { irisPollingService, irisConfig } from '../../../js/core/services/irisPollingService.svelte.js';
     import { liveDataConfig } from '../../../js/core/state/liveDataConfig.svelte.js';
+    import { toastStore } from '../../../js/core/state/toastStore.svelte.js';
     import { isTauri, proxyConfig } from '../../../js/core/services/apiClient.js';
     import { JourneyDbNavSyncService } from '../../../js/features/journey/services/journeyDbNavSyncService.js';
     import ZimIcon from '../../ZimIcon.svelte';
@@ -20,7 +21,7 @@
      */
     async function triggerIrisFetch() {
         if (!journeyStore.stationContext.stationId) {
-            alert('Bitte zuerst eine Station auswählen!');
+            toastStore.warning('Bitte zuerst eine Station auswählen!');
             return;
         }
         isFetchingIris = true;
@@ -32,7 +33,7 @@
             }
         } catch (e) {
             console.error('[IrisSection] Fehler beim Abrufen der IRIS-Daten:', e);
-            alert('Fehler beim Abrufen der IRIS-Daten.');
+            toastStore.error('Fehler beim Abrufen der IRIS-Daten.');
         } finally {
             isFetchingIris = false;
         }
@@ -45,7 +46,7 @@
      */
     async function syncWithDbNav() {
         if (!journeyStore.stationContext.stationId) {
-            alert('Bitte zuerst eine Station auswählen!');
+            toastStore.warning('Bitte zuerst eine Station auswählen!');
             return;
         }
 

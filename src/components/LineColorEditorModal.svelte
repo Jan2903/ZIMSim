@@ -2,6 +2,8 @@
     import { lineColorService, DEFAULT_LINE_RULES } from '../js/features/journey/services/lineColorService.svelte.js';
     import { journeyStore, trainDisplay } from '../js/core/state/stores.js';
     import { ScreenSyncService } from '../js/core/services/screenSyncService.js';
+    import { toastStore } from '../js/core/state/toastStore.svelte.js';
+    import { confirmDialog } from '../js/core/state/confirmStore.svelte.js';
     import ZimIcon from './ZimIcon.svelte';
 
     import { downloadJsonFile, parseBundle } from '../js/core/utils/bundleUtils.js';
@@ -55,9 +57,9 @@
         syncDisplay();
     }
 
-    function removeRule(id, e) {
+    async function removeRule(id, e) {
         e?.stopPropagation();
-        if (confirm('Möchtest du diese Linien-Regel wirklich löschen?')) {
+        if (await confirmDialog('Möchtest du diese Linien-Regel wirklich löschen?', { danger: true, confirmLabel: 'Löschen' })) {
             lineColorService.deleteRule(id);
             if (selectedRuleId === id) {
                 selectedRuleId = lineColorService.rules[0]?.id || null;
@@ -83,8 +85,8 @@
         syncDisplay();
     }
 
-    function resetDefaults() {
-        if (confirm('Möchtest du alle Linien-Regeln auf die DB-Standards (IC-Pille, Flixtrain, S-Bahn) zurücksetzen?')) {
+    async function resetDefaults() {
+        if (await confirmDialog('Möchtest du alle Linien-Regeln auf die DB-Standards (IC-Pille, Flixtrain, S-Bahn) zurücksetzen?', { danger: true, confirmLabel: 'Zurücksetzen' })) {
             lineColorService.resetToDefaults();
             selectedRuleId = lineColorService.rules[0]?.id || null;
             syncDisplay();
@@ -105,13 +107,13 @@
             const raw = event.target.result;
             const parsed = parseBundle(raw, 'zimsim-line-colors');
             if (!parsed.success) {
-                alert(parsed.error || 'Fehler beim Parsen der Datei.');
+                toastStore.error(parsed.error || 'Fehler beim Parsen der Datei.');
                 return;
             }
 
             const count = Array.isArray(parsed.payload) ? parsed.payload.length : 0;
             if (count === 0) {
-                alert('Die ausgewählte Datei enthält keine Linien-Regeln.');
+                toastStore.warning('Die ausgewählte Datei enthält keine Linien-Regeln.');
                 return;
             }
 
@@ -136,9 +138,9 @@
             syncDisplay();
             pendingImport = null;
             const actionText = mode === 'merge' ? 'zusammengeführt' : 'ersetzt';
-            alert(`${res.count} Linien-Regeln erfolgreich ${actionText}.`);
+            toastStore.success(`${res.count} Linien-Regeln erfolgreich ${actionText}.`);
         } else {
-            alert(res.error || 'Fehler beim Importieren der Datei.');
+            toastStore.error(res.error || 'Fehler beim Importieren der Datei.');
         }
     }
 </script>

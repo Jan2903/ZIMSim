@@ -25,6 +25,7 @@ export class TrainDisplay {
         this.scrollManager = new ScrollManager();
         this._customLayout = null;
         this._isRendering = false; // Re-entrance Guard
+        this._updateScheduled = false; // Koaleszierung geplanter Redraws
         this.featureAlpha = 1.0;
         this.vitrineProgress = 0.0;
         this.activeFeatureIndex = 0;
@@ -429,6 +430,21 @@ export class TrainDisplay {
         }
 
         this.update(journeys, screen, slot);
+    }
+
+    /**
+     * Koalesziert mehrere Update-Anforderungen in einen einzigen Redraw pro
+     * Frame. Verhindert redundante Mehrfach-Redraws, wenn mehrere reaktive
+     * Effekte im selben Tick auslösen.
+     * @returns {void}
+     */
+    scheduleUpdateAll() {
+        if (this._updateScheduled) return;
+        this._updateScheduled = true;
+        requestAnimationFrame(() => {
+            this._updateScheduled = false;
+            this.updateAll();
+        });
     }
 
     /**
