@@ -114,7 +114,7 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
         `${screen.w - x - 5}px`,
         `100px`,
         COLORS.NAVY,
-        `67px "Open Sans Condensed"`,
+        FONTS.regular(67),
         pAlpha
     );
 
@@ -292,7 +292,7 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
                 drawText(ctx, 'von / from ' + fromDestination, 50, 520, FONTS.regular(75), textColor, 'left');
                 scrollManager.createOrUpdate(canvas, zugID, 'ankunft', "Bitte nicht einsteigen Please do not board",
                     `${offX + screen.x + 50}px`, `${offY + screen.y + 300}px`,
-                    `${screen.w - 50}px`, `128px`, textColor, `128px "Open Sans Condensed"`, pAlpha);
+                    `${screen.w - 50}px`, `128px`, textColor, FONTS.regular(128), pAlpha);
                 // Den separaten arrival Scrolltext löschen
                 scrollManager.createOrUpdate(canvas, zugID, 'arrival', "", "", "", "", "", "", "", pAlpha);
             } else {
@@ -300,10 +300,10 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
                 drawText(ctx, 'von / from ' + fromDestination, 50, 670, FONTS.regular(75), textColor, 'left');
                 scrollManager.createOrUpdate(canvas, zugID, 'ankunft', "Bitte nicht einsteigen",
                     `${offX + screen.x + 50}px`, `${offY + screen.y + 280}px`,
-                    `${screen.w - 50}px`, `120px`, textColor, `120px "Open Sans Condensed"`, pAlpha);
+                    `${screen.w - 50}px`, `120px`, textColor, FONTS.regular(120), pAlpha);
                 scrollManager.createOrUpdate(canvas, zugID, 'arrival', "Please do not board",
                     `${offX + screen.x + 50}px`, `${offY + screen.y + 430}px`,
-                    `${screen.w - 50}px`, `120px`, textColor, `italic 120px "Open Sans Condensed"`, pAlpha);
+                    `${screen.w - 50}px`, `120px`, textColor, FONTS.italic(120), pAlpha);
             }
         } else if (isMerged) {
             let yPos = 360;

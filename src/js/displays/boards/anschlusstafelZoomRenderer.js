@@ -1,6 +1,6 @@
 // js/displays/boards/anschlusstafelZoomRenderer.js
 import { COLORS, FONTS } from '../core/constants.js';
-import { truncateWithEllipsis, drawLineBadge } from '../core/textUtils.js';
+import { truncateWithEllipsis, drawLineBadge, fillTextCentered } from '../core/textUtils.js';
 import { drawQualityIcons } from '../primitives/pictogramRenderer.js';
 import { lineColorService } from '../../features/journey/services/lineColorService.svelte.js';
 import { JourneyCouplingService } from '../../features/journey/services/journeyCouplingService.js';
@@ -236,7 +236,7 @@ function drawZoomTimeAndDelay(ctx, scheduledTime, expectedTime, x, y, isAusfall)
         ctx.fillStyle = COLORS.NAVY;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(expectedTime, boxX + (boxW / 2), boxY + (boxH / 2) + 1);
+        fillTextCentered(ctx, expectedTime, boxX + (boxW / 2), boxY + (boxH / 2) + 1);
         ctx.textBaseline = 'alphabetic';
         ctx.textAlign = 'left';
     }

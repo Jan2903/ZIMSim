@@ -1,6 +1,7 @@
 // js/displays/primitives/pictogramRenderer.js
 import { COLORS, FONTS, INFO } from '../core/constants.js';
 import { drawIcon } from '../core/icons.js';
+import { fillTextCentered } from '../core/textUtils.js';
 
 /**
  * Zeichnet eine Funktion (Piktogramm) in einer skalierten 100x100 Box.
@@ -87,7 +88,7 @@ const PICTOGRAM_RULES = [
             ctx.font = FONTS.bold(44);
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText("R", 76, 26);
+            fillTextCentered(ctx, "R", 76, 26);
         }
     },
     {
@@ -99,9 +100,9 @@ const PICTOGRAM_RULES = [
             ctx.font = FONTS.bold(68);
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText("H", 30, 60);
+            fillTextCentered(ctx, "H", 30, 60);
             ctx.font = FONTS.bold(64);
-            ctx.fillText("+", 65, 48);
+            fillTextCentered(ctx, "+", 65, 48);
         }
     },
     {
@@ -113,9 +114,9 @@ const PICTOGRAM_RULES = [
             ctx.font = FONTS.bold(68);
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText("H", 30, 60);
+            fillTextCentered(ctx, "H", 30, 60);
             ctx.font = FONTS.bold(64);
-            ctx.fillText("-", 60, 36);
+            fillTextCentered(ctx, "-", 60, 36);
         }
     },
     {
@@ -164,7 +165,7 @@ const PICTOGRAM_RULES = [
             ctx.font = FONTS.regular(48);
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText("WC", 66, 75);
+            fillTextCentered(ctx, "WC", 66, 75);
             ctx.strokeStyle = 'red';
             ctx.lineWidth = 12;
             ctx.beginPath();
@@ -190,7 +191,7 @@ const PICTOGRAM_RULES = [
             ctx.font = FONTS.bold(56);
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText("!", 80, 36);
+            fillTextCentered(ctx, "!", 80, 36);
         }
     },
     {
@@ -210,7 +211,7 @@ const PICTOGRAM_RULES = [
             ctx.font = FONTS.bold(56);
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText("!", 80, 36);
+            fillTextCentered(ctx, "!", 80, 36);
         }
     },
     {
@@ -230,7 +231,7 @@ const PICTOGRAM_RULES = [
             ctx.font = FONTS.bold(56);
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText("!", 80, 36);
+            fillTextCentered(ctx, "!", 80, 36);
         }
     },
 ];

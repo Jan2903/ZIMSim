@@ -2,6 +2,7 @@
 import { COLORS, FONTS, FORMATION, COUPLING } from '../core/constants.js';
 import { ICONS, drawIcon } from '../core/icons.js';
 import { drawInNormalizedBox } from './pictogramRenderer.js';
+import { fillTextCentered } from '../core/textUtils.js';
 
 /**
  * Berechnet die sichere x-Koordinate für ein Feature.
@@ -311,7 +312,7 @@ export function drawFullscreenClassLabels(ctx, scaledCoaches, y) {
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
                         ctx.fillStyle = color;
-                        ctx.fillText(text, finalX, y + 44);
+                        fillTextCentered(ctx, text, finalX, y + 44);
                     }
                 });
             }
@@ -382,7 +383,7 @@ export function drawFullscreenWagonNumbers(ctx, scaledCoaches, y) {
                         ctx.font = FONTS.regular(40);
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
-                        ctx.fillText(text, finalX, y + 44);
+                        fillTextCentered(ctx, text, finalX, y + 44);
                     }
                 });
             }
@@ -414,7 +415,7 @@ export function drawCompactClassLabels(ctx, scaledCoaches, y) {
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
                         ctx.fillStyle = COLORS.ORANGE;
-                        ctx.fillText("1.", finalX, y + 44);
+                        fillTextCentered(ctx, "1.", finalX, y + 44);
                     }
                 });
             }
@@ -479,7 +480,7 @@ export function drawCompactWagonNumbers(ctx, scaledCoaches, y) {
                         ctx.font = FONTS.regular(40);
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
-                        ctx.fillText(numberText, finalX, y + 44);
+                        fillTextCentered(ctx, numberText, finalX, y + 44);
                     }
                 });
             }

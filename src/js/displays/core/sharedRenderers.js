@@ -1,6 +1,6 @@
 // js/displays/sharedRenderers.js
 import { COLORS, FONTS } from './constants.js';
-import { drawText } from './textUtils.js';
+import { drawText, fillTextCentered } from './textUtils.js';
 import { getSimulatedTime } from '../../core/utils/config.js';
 
 /**
@@ -30,7 +30,7 @@ export function drawDBLogo(ctx, x, y, w = 80, h = 60) {
     ctx.fillStyle = COLORS.WHITE;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText("DB", x + (w / 2), y);
+    fillTextCentered(ctx, "DB", x + (w / 2), y);
     ctx.restore();
 }
 

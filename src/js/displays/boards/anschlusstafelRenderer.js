@@ -1,6 +1,6 @@
 // js/displays/boards/anschlusstafelRenderer.js
 import { COLORS, FONTS } from '../core/constants.js';
-import { drawText, drawWrappedText, truncateWithEllipsis, drawLineBadge } from '../core/textUtils.js';
+import { drawText, drawWrappedText, truncateWithEllipsis, drawLineBadge, fillTextCentered } from '../core/textUtils.js';
 import { getSimulatedTime } from '../../core/utils/config.js';
 import { lineColorService } from '../../features/journey/services/lineColorService.svelte.js';
 import { drawDBLogo, drawAnalogClock } from '../core/sharedRenderers.js';
@@ -232,18 +232,18 @@ function drawHeader(ctx, width, height, renderCtx, isPortrait) {
     ctx.font = FONTS.bold(isPortrait ? 28 : 42);
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText(timeStr, timeX, clockCenterY);
+    fillTextCentered(ctx, timeStr, timeX, clockCenterY);
 
     // 2. Titel: "Abfahrt Departure" (bündig über der Über/Ziel-Spalte)
     const titleX = isPortrait ? (timeX + 80) : col2X;
     ctx.font = FONTS.bold(isPortrait ? 30 : 44);
     ctx.fillStyle = COLORS.WHITE;
-    ctx.fillText('Abfahrt', titleX, clockCenterY);
+    fillTextCentered(ctx, 'Abfahrt', titleX, clockCenterY);
 
     const abfahrtW = ctx.measureText('Abfahrt').width;
     ctx.font = FONTS.italic(isPortrait ? 24 : 40);
     ctx.fillStyle = COLORS.WHITE;
-    ctx.fillText('Departure', titleX + abfahrtW + 12, clockCenterY);
+    fillTextCentered(ctx, 'Departure', titleX + abfahrtW + 12, clockCenterY);
 
     // 3. Oben rechts: DB-Logo aus sharedRenderers (über der Symbol-Spalte rechtsbündig)
     const logoW = isPortrait ? 52 : 72;
@@ -257,7 +257,7 @@ function drawHeader(ctx, width, height, renderCtx, isPortrait) {
         ctx.font = FONTS.regular(isPortrait ? 20 : 26);
         ctx.fillStyle = '#94a3b8';
         ctx.textAlign = 'right';
-        ctx.fillText(`Seite ${(renderCtx.activeTrainPage || 0) + 1}/${renderCtx.totalTrainPages}`, logoX - 20, clockCenterY);
+        fillTextCentered(ctx, `Seite ${(renderCtx.activeTrainPage || 0) + 1}/${renderCtx.totalTrainPages}`, logoX - 20, clockCenterY);
     }
 
     // 4. Zweisprachige Spaltenbeschriftungen (Trennstriche werden von den Zeilen oben gerendert)
@@ -422,7 +422,7 @@ function drawTrainRow(ctx, train, x, y, width, height, isAlt, isPortrait = false
             ctx.fillStyle = COLORS.MIDNIGHT_BLUE;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(train.expectedTime, delayBoxX + (delayBoxW / 2), delayBoxY + (delayBoxH / 2));
+            fillTextCentered(ctx, train.expectedTime, delayBoxX + (delayBoxW / 2), delayBoxY + (delayBoxH / 2));
         }
     }
 
@@ -511,7 +511,7 @@ function drawTrainRow(ctx, train, x, y, width, height, isAlt, isPortrait = false
         ctx.fillStyle = COLORS.MIDNIGHT_BLUE;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(newTrack, boxX + (boxW / 2), boxY + (boxH / 2));
+        fillTextCentered(ctx, newTrack, boxX + (boxW / 2), boxY + (boxH / 2));
     } else {
         ctx.font = FONTS.bold(isPortrait ? 38 : 70);
         ctx.fillStyle = COLORS.WHITE;

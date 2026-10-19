@@ -4,6 +4,33 @@ import App from '../App.svelte';
 import { journeyStore, trainDisplay } from './core/state/stores.js';
 import { StationService } from './features/station/stationService.js';
 import { RisTextService } from './core/services/risTextService.js';
+import { clearTextMetricsCache } from './displays/core/textUtils.js';
+
+/**
+ * Lädt alle genutzten Schnitte der Anzeigeschrift "Open Sans Condensed" und
+ * wartet, bis sie verfügbar sind. Erst danach darf gezeichnet werden, damit
+ * Canvas-Text nicht mit den Metriken eines Fallback-Fonts gemessen/gerendert
+ * wird (das führte zu browserabhängigen, abweichenden Textpositionen).
+ * @returns {Promise<void>}
+ */
+async function loadDisplayFonts() {
+    if (typeof document === 'undefined' || !document.fonts) return;
+    try {
+        await Promise.all([
+            document.fonts.load('600 100px "Open Sans Condensed"'),
+            document.fonts.load('700 100px "Open Sans Condensed"'),
+            document.fonts.load('italic 600 100px "Open Sans Condensed"'),
+        ]);
+        await document.fonts.ready;
+    } catch (err) {
+        console.warn('[ZIMSim] Font-Laden fehlgeschlagen, nutze Fallback:', err);
+    }
+    // Vor dem Font-Load gecachte Zeilenmessungen verwerfen (Fallback-Metriken).
+    clearTextMetricsCache();
+    // Bereits erzeugte Scroll-Overlays wurden ggf. mit Fallback-Breiten
+    // aufgebaut (Wiederholungsanzahl/Dauer); neu erzeugen lassen.
+    trainDisplay.scrollManager.clearAll();
+}
 
 
 /**
@@ -123,16 +150,19 @@ function createDemoData() {
 }
 
 // Warten, bis das DOM vollständig geladen ist
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Zuerst die Anzeigeschrift laden: Datenaufbau und erster Render dürfen
+    // nicht mit den Metriken des Fallback-Fonts messen (Vias, Zeilenumbrüche,
+    // Scroll-Overlays würden sonst mit falschen Breiten persistieren).
+    await loadDisplayFonts();
+
     createDemoData();
     StationService.loadStations(); // Asynchrones Laden im Hintergrund starten
     RisTextService.load(); // Lade RIS-Texte
-    
-    document.fonts.ready.then(() => {
-        trainDisplay.updateAll();
-    });
 
     mount(App, {
         target: document.getElementById('app')
     });
+
+    trainDisplay.updateAll();
 });

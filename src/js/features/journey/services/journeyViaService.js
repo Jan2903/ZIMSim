@@ -1,4 +1,5 @@
 import { measureTextLines } from '../../../displays/core/textUtils.js';
+import { FONTS } from '../../../displays/core/constants.js';
 
 /**
  * Service für Zwischenhalte-Auswahl (Vias) für Monitore und Audioansagen.
@@ -72,7 +73,7 @@ export class JourneyViaService {
         const sideWidth = options.sideWidth || 880;
         const maxLinesMain = options.maxLinesMain || 2;
         const maxLinesSide = options.maxLinesSide || 3;
-        const font = options.font || 'normal 75px "Open Sans Condensed", sans-serif';
+        const font = options.font || FONTS.regular(75);
 
         // Nach Kategorie sortieren (Wichtigste zuerst)
         const sortedCandidates = [...candidateStops].sort((a, b) => a.stationCategory - b.stationCategory);

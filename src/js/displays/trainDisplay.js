@@ -78,6 +78,12 @@ export class TrainDisplay {
         ctx.rect(0, 0, screen.w, screen.h);
         ctx.clip();
 
+        // Textzustand deterministisch zurücksetzen: save/restore isoliert bereits
+        // pro Screen, dieser Reset hält den Startzustand zusätzlich explizit
+        // fest (Renderer setzen textBaseline/textAlign unterschiedlich).
+        ctx.textBaseline = 'alphabetic';
+        ctx.textAlign = 'left';
+
         // HiDPI / 4K Vektor-Skalierung falls im Layout definiert
         const scaleFactor = this.currentLayout.scaleFactor || 1;
         if (scaleFactor !== 1) {

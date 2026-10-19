@@ -11,14 +11,141 @@ import { lineColorService } from '../../features/journey/services/lineColorServi
  * @property {HTMLCanvasElement} canvas - Das Canvas-Element.
  */
 
+// Fallback-Verhältnisse für Engines ohne (brauchbare) fontBoundingBox-Werte.
+// 0.8 em Ascent / 0.18 em Descent ergeben für die Zentrierung 0.31 em und
+// entsprechen damit den gemessenen Open-Sans-Condensed-Metriken.
+const FALLBACK_ASCENT_RATIO = 0.8;
+const FALLBACK_DESCENT_RATIO = 0.18;
+const MAX_FONT_METRICS_CACHE = 64;
+const _fontMetricsCache = new Map();
+
+/**
+ * Ermittelt Ascent und Descent des aktuell gesetzten Fonts.
+ *
+ * Basiert bewusst auf fontBoundingBox* (font- statt glyphenabhängig), da die
+ * Browser `textBaseline = 'middle'` unterschiedlich berechnen (Safari vs.
+ * Firefox/Android) — das war eine Hauptursache für abweichende Textpositionen.
+ * Safari/WebKit kann 0 oder NaN liefern; solche Werte werden verworfen, weil
+ * NaN in `fillText` dazu führt, dass der Text gar nicht gezeichnet wird.
+ *
+ * Die Ergebnisse werden pro Font-String gecacht, da die Funktion in jedem
+ * Render-Pass (60 fps) aufgerufen wird. Der Cache wird beim Font-Load über
+ * `clearTextMetricsCache` invalidiert.
+ *
+ * @param {CanvasRenderingContext2D} ctx - Kontext, dessen font bereits gesetzt ist.
+ * @returns {{ascent: number, descent: number}} Metriken in Pixeln.
+ */
+function getFontMetrics(ctx) {
+    const fontStatus = typeof document !== 'undefined' && document.fonts
+        ? document.fonts.status
+        : '';
+    const cacheKey = `${ctx.font}|${fontStatus}`;
+    const cached = _fontMetricsCache.get(cacheKey);
+    if (cached) return cached;
+
+    // fontBoundingBox* ist baseline-relativ: immer gegen 'alphabetic' messen,
+    // unabhängig davon, welche Baseline der Aufrufer gerade gesetzt hat.
+    const previousBaseline = ctx.textBaseline;
+    ctx.textBaseline = 'alphabetic';
+    const metrics = ctx.measureText('Hg');
+    ctx.textBaseline = previousBaseline;
+
+    let ascent = metrics.fontBoundingBoxAscent;
+    let descent = metrics.fontBoundingBoxDescent;
+
+    // Number.isFinite fängt NaN ab; ascent > 0 schließt den Safari-Fall (0) aus.
+    if (!Number.isFinite(ascent) || !Number.isFinite(descent) || ascent <= 0) {
+        const match = /([\d.]+)px/.exec(ctx.font);
+        const size = match ? parseFloat(match[1]) : 16;
+        ascent = size * FALLBACK_ASCENT_RATIO;
+        descent = size * FALLBACK_DESCENT_RATIO;
+    }
+
+    const result = { ascent, descent };
+    if (_fontMetricsCache.size >= MAX_FONT_METRICS_CACHE) {
+        _fontMetricsCache.clear();
+    }
+    _fontMetricsCache.set(cacheKey, result);
+    return result;
+}
+
+/**
+ * Ermittelt den vertikalen Versatz, um den die Baseline gegenüber einer
+ * Mittelachse verschoben werden muss, damit der Text vertikal zentriert
+ * erscheint (Baseline = Mittelachse + Versatz).
+ *
+ * @param {CanvasRenderingContext2D} ctx - Kontext, dessen font bereits gesetzt ist.
+ * @returns {number} Versatz in Pixeln.
+ */
+export function getVerticalCenterOffset(ctx) {
+    const { ascent, descent } = getFontMetrics(ctx);
+    return (ascent - descent) / 2;
+}
+
+/**
+ * Ermittelt den Abstand von der Oberkante der Font-Box bis zur Baseline.
+ * Wird benötigt, um `textBaseline = 'top'` (engine-abhängig) zu ersetzen.
+ *
+ * @param {CanvasRenderingContext2D} ctx - Kontext, dessen font bereits gesetzt ist.
+ * @returns {number} Ascent in Pixeln.
+ */
+export function getFontAscent(ctx) {
+    return getFontMetrics(ctx).ascent;
+}
+
+/**
+ * Zeichnet Text horizontal an der aktuell gesetzten textAlign-Position und
+ * vertikal zentriert um yCenter. Ersetzt das browserabhängige
+ * `textBaseline = 'middle'` durch eine explizite, metrikbasierte Baseline,
+ * ohne den Baseline-Zustand des Kontexts zu verändern.
+ *
+ * @param {CanvasRenderingContext2D} ctx - Kontext (font, fillStyle, textAlign vorab gesetzt).
+ * @param {string} text
+ * @param {number} x
+ * @param {number} yCenter
+ * @returns {void}
+ */
+export function fillTextCentered(ctx, text, x, yCenter) {
+    const previousBaseline = ctx.textBaseline;
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(text, x, yCenter + getVerticalCenterOffset(ctx));
+    // Baseline-Zustand wiederherstellen, damit aufrufender Code sich nicht ändert.
+    ctx.textBaseline = previousBaseline;
+}
+
 /**
  * Zeichnet einen einfachen Text auf den Canvas.
+ * Bei gesetzter Baseline `'middle'` oder `'top'` wird die vertikale Position
+ * deterministisch aus den Font-Metriken berechnet (siehe getFontMetrics), damit
+ * die Darstellung cross-browser identisch ist.
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {string} text
+ * @param {number} x
+ * @param {number} y
+ * @param {string} font
+ * @param {string} textColor
+ * @param {string} textAlign
+ * @returns {void}
  */
 export function drawText(ctx, text, x, y, font, textColor, textAlign) {
     ctx.font = font;
     ctx.textAlign = textAlign;
     ctx.fillStyle = textColor;
-    ctx.fillText(text, x, y);
+    const previousBaseline = ctx.textBaseline;
+    if (previousBaseline === 'middle') {
+        // Layouts setzen y hier als vertikale Mittelachse (historisch 'middle').
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillText(text, x, y + getVerticalCenterOffset(ctx));
+    } else if (previousBaseline === 'top') {
+        // 'top' ist engine-abhängig (Glyph- vs. Font-Box); explizit über Ascent.
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillText(text, x, y + getFontAscent(ctx));
+    } else {
+        ctx.fillText(text, x, y);
+    }
+    // Baseline-Zustand wiederherstellen, damit der Aufrufer sich nicht ändern muss.
+    ctx.textBaseline = previousBaseline;
 }
 
 /**
@@ -84,9 +211,9 @@ export function drawInfoTopText(ctx, backgroundColor, textColor, infoText1, info
     ctx.font = FONTS.regular(67);
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText(infoText1, x1, 55);
+    fillTextCentered(ctx, infoText1, x1, 55);
     ctx.font = FONTS.italic(67);
-    ctx.fillText(infoText2, x2, 55);
+    fillTextCentered(ctx, infoText2, x2, 55);
 }
 
 /**
@@ -215,7 +342,7 @@ export function drawLineBadge(ctx, text, x, y, width, height, options = {}) {
         ctx.fillStyle = options.textColor || COLORS.WHITE;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(text, x + (width / 2), y + (height / 2) + 1);
+        fillTextCentered(ctx, text, x + (width / 2), y + (height / 2) + 1);
     }
 
     ctx.restore();
@@ -388,7 +515,7 @@ const MAX_TEXT_LINES_CACHE = 1000;
  * @param {string} font - Font-Definition (z.B. FONTS.regular(75))
  * @returns {number} Anzahl der Zeilen
  */
-export function measureTextLines(text, maxWidth, font = 'normal 75px "Open Sans Condensed", sans-serif') {
+export function measureTextLines(text, maxWidth, font = FONTS.regular(75)) {
     if (!text) return 0;
     if (typeof document === 'undefined') return 1;
 
@@ -425,4 +552,16 @@ export function measureTextLines(text, maxWidth, font = 'normal 75px "Open Sans 
     _textLinesCache.set(cacheKey, lines);
 
     return lines;
+}
+
+/**
+ * Leert den Zeilenmessungs-Cache. Muss aufgerufen werden, nachdem die
+ * Webfonts fertig geladen sind, da zuvor ggf. mit den Metriken des
+ * Fallback-Fonts gemessen wurde (falsche Zeilenumbrüche/Breiten).
+ * @returns {void}
+ */
+export function clearTextMetricsCache() {
+    _textLinesCache.clear();
+    _fontMetricsCache.clear();
+    _measuringCtx = null;
 }

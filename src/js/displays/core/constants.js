@@ -20,12 +20,19 @@ export const COLORS = {
     MAGENTA: 'magenta',
 };
 
-/** Schrift-Hilfsfunktionen für "Open Sans Condensed" */
+/**
+ * Schrift-Hilfsfunktionen für "Open Sans Condensed".
+ * Es wird bewusst ein konkreter Schnitt (600 statt 400, 700 statt "bold")
+ * angegeben, damit jeder Browser denselben echten Font-Face wählt und nicht
+ * selbst Fett/Kursiv synthetisiert (das verursachte abweichende Textpositionen).
+ * Der generische Fallback `sans-serif` hält die Metriken stabil, falls die
+ * Webfont-Datei noch nicht geladen ist.
+ */
 export const FONTS = {
-    FAMILY: '"Open Sans Condensed"',
-    regular: (size) => `${size}px "Open Sans Condensed"`,
-    bold: (size) => `bold ${size}px "Open Sans Condensed"`,
-    italic: (size) => `italic ${size}px "Open Sans Condensed"`,
+    FAMILY: '"Open Sans Condensed", sans-serif',
+    regular: (size) => `600 ${size}px ${FONTS.FAMILY}`,
+    bold: (size) => `700 ${size}px ${FONTS.FAMILY}`,
+    italic: (size) => `italic 600 ${size}px ${FONTS.FAMILY}`,
 };
 
 /** Maße für die Wagenreihung */

@@ -22,11 +22,36 @@
     font-family: 'Inter', Roboto, system-ui, -apple-system, sans-serif;
 }
 
+/*
+ * Open Sans Condensed (SIL Open Font License, siehe public/fonts/OFL.txt)
+ * Echte statische Schnitte statt browser-synthetisierter Fett/Kursiv-Schnitte.
+ * 600 = Basis-Schnitt (bisheriges "regular"-Erscheinungsbild),
+ * 700 = echtes Bold, 600 italic = echtes Kursiv.
+ * font-display: block verhindert den Fallback-Flash (Schrift wird vor dem
+ * ersten Render über document.fonts geladen, siehe src/js/main.js).
+ */
 @font-face {
     font-family: 'Open Sans Condensed';
     src: url('../fonts/OpenSansCondensed-SemiBold.woff2') format('woff2');
     font-weight: 600;
     font-style: normal;
+    font-display: block;
+}
+
+@font-face {
+    font-family: 'Open Sans Condensed';
+    src: url('../fonts/OpenSansCondensed-SemiBoldItalic.woff2') format('woff2');
+    font-weight: 600;
+    font-style: italic;
+    font-display: block;
+}
+
+@font-face {
+    font-family: 'Open Sans Condensed';
+    src: url('../fonts/OpenSansCondensed-Bold.woff2') format('woff2');
+    font-weight: 700;
+    font-style: normal;
+    font-display: block;
 }
 
 body {

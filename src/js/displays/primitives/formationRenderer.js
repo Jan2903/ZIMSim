@@ -1,7 +1,7 @@
 // js/displays/primitives/formationRenderer.js
 import { Coach } from '../../features/formation/coachModel.svelte.js';
 import { COLORS, FONTS, FORMATION } from '../core/constants.js';
-import { drawText } from '../core/textUtils.js';
+import { drawText, fillTextCentered, getFontAscent } from '../core/textUtils.js';
 import {
     drawLocomotive, drawStartWagon, drawEndWagon, drawMiddleWagon,
     drawCoupling, drawDirectionArrow, drawFirstClassBar,
@@ -31,7 +31,10 @@ export function drawSectors(ctx, sections, scaleFactor, startX = FORMATION.THRES
     ctx.fillStyle = COLORS.WHITE;
     ctx.font = FONTS.regular(45);
     ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
+    // 'top' wird browserabhängig (Glyph- vs. Font-Box) interpretiert; daher
+    // explizit über die Font-Ascent auf die Alphabetic-Baseline umrechnen.
+    ctx.textBaseline = 'alphabetic';
+    const baselineY = 2 + getFontAscent(ctx);
     sections.forEach(s => {
         if (meterRange) {
             if (s.startMeter >= meterRange.end || s.endMeter <= meterRange.start) {
@@ -47,7 +50,7 @@ export function drawSectors(ctx, sections, scaleFactor, startX = FORMATION.THRES
             ctx.strokeRect(displayPos - 22, -4, 48, 52);
         }
         
-        ctx.fillText(s.name, displayPos, 2);
+        ctx.fillText(s.name, displayPos, baselineY);
     });
 }
 
@@ -322,7 +325,7 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
                     ctx.font = FONTS.regular(58);
                     ctx.textAlign = 'left';
                     ctx.textBaseline = 'middle';
-                    ctx.fillText(displayDest, x, y + 155);
+                    fillTextCentered(ctx, displayDest, x, y + 155);
                 }
             }
 
@@ -336,7 +339,7 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     ctx.fillStyle = COLORS.WHITE;
-                    ctx.fillText("X", safeX, y + 44);
+                    fillTextCentered(ctx, "X", safeX, y + 44);
                 }
             } else {
                 drawFirstClassBar(ctx, drawableCoach, x, y, fullScreen);
@@ -426,7 +429,8 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
         // Meter-Ticks alle 50m
         ctx.font = FONTS.regular(18);
         ctx.textAlign = 'center';
-        ctx.textBaseline = 'top';
+        // Wie in drawSectors: 'top' engine-unabhängig über die Ascent ersetzen.
+        ctx.textBaseline = 'alphabetic';
 
         const step = 50;
         for (let m = 0; m <= platformLengthMeters; m += step) {
@@ -445,15 +449,15 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
             ctx.fillStyle = isBoundary
                 ? 'rgba(255, 80, 80, 0.8)'
                 : 'rgba(255, 255, 0, 0.7)';
-            ctx.fillText(`${m}m`, px, debugBaseY + 28);
+            ctx.fillText(`${m}m`, px, debugBaseY + 28 + getFontAscent(ctx));
         }
 
         // Arrow-Buffer Labels
         ctx.font = FONTS.regular(13);
         ctx.fillStyle = 'rgba(255, 80, 80, 0.6)';
         ctx.textAlign = 'center';
-        ctx.fillText('↔ Pfeil', displayStart + arrowBuffer / 2, debugBaseY + 44);
-        ctx.fillText('Pfeil ↔', platformPixelEnd + arrowBuffer / 2, debugBaseY + 44);
+        ctx.fillText('↔ Pfeil', displayStart + arrowBuffer / 2, debugBaseY + 44 + getFontAscent(ctx));
+        ctx.fillText('Pfeil ↔', platformPixelEnd + arrowBuffer / 2, debugBaseY + 44 + getFontAscent(ctx));
 
         // Freie Meter-Bereiche beschriften (vor/nach Zug)
         ctx.font = FONTS.regular(14);
@@ -463,14 +467,14 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
         if (freeLeft > 80) {
             ctx.textAlign = 'center';
             const freeMLeft = Math.round(freeLeft / pixelPerMeter);
-            ctx.fillText(`← ${freeMLeft}m frei`, (platformPixelStart + trainPixelStart) / 2, debugBaseY + 56);
+            ctx.fillText(`← ${freeMLeft}m frei`, (platformPixelStart + trainPixelStart) / 2, debugBaseY + 56 + getFontAscent(ctx));
         }
 
         const freeRight = platformPixelEnd - trainPixelEnd;
         if (freeRight > 80) {
             ctx.textAlign = 'center';
             const freeMRight = Math.round(freeRight / pixelPerMeter);
-            ctx.fillText(`${freeMRight}m frei →`, (trainPixelEnd + platformPixelEnd) / 2, debugBaseY + 56);
+            ctx.fillText(`${freeMRight}m frei →`, (trainPixelEnd + platformPixelEnd) / 2, debugBaseY + 56 + getFontAscent(ctx));
         }
     }
     

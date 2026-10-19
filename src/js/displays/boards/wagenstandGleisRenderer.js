@@ -7,13 +7,16 @@ import { getSimulatedTime } from '../../core/utils/config.js';
 import { formatHHMM } from '../../core/utils/dateUtils.js';
 
 function drawVitrineHeader(ctx, width, activeFeatureIndex, progress, trackNumber, featureAlpha = 1.0) {
+    // Alle Texte dieses Headers sind vertikal um ihre y-Position zentriert.
+    ctx.textBaseline = 'middle';
+
     // 1. Clock (Left)
     drawAnalogClock(ctx, 80, 80);
     
     // Digital Time
     const now = getSimulatedTime();
     const timeStr = formatHHMM(now);
-    drawText(ctx, timeStr, 150, 110, FONTS.bold(86), COLORS.WHITE, 'left', 'middle');
+    drawText(ctx, timeStr, 150, 110, FONTS.bold(86), COLORS.WHITE, 'left');
 
     // 2. Progress Bar & Features (Center)
     const features = [
@@ -45,14 +48,14 @@ function drawVitrineHeader(ctx, width, activeFeatureIndex, progress, trackNumber
 
     ctx.save();
     ctx.globalAlpha = featureAlpha;
-    drawText(ctx, currentFeat.de, startX, 80, FONTS.regular(35), COLORS.WHITE, 'left', 'middle');
-    drawText(ctx, currentFeat.en, startX + w1 + 10, 80, FONTS.italic(35), COLORS.WHITE, 'left', 'middle');
+    drawText(ctx, currentFeat.de, startX, 80, FONTS.regular(35), COLORS.WHITE, 'left');
+    drawText(ctx, currentFeat.en, startX + w1 + 10, 80, FONTS.italic(35), COLORS.WHITE, 'left');
     ctx.restore();
 
     // 3. Track & DB Logo (Right)
-    drawText(ctx, 'Gleis', width - 420, 80, FONTS.regular(35), COLORS.WHITE, 'right', 'middle');
-    drawText(ctx, 'Platform', width - 300, 80, FONTS.italic(35), COLORS.WHITE, 'right', 'middle');
-    drawText(ctx, trackNumber || "", width - 280, 90, FONTS.bold(66), COLORS.WHITE, 'left', 'middle');
+    drawText(ctx, 'Gleis', width - 420, 80, FONTS.regular(35), COLORS.WHITE, 'right');
+    drawText(ctx, 'Platform', width - 300, 80, FONTS.italic(35), COLORS.WHITE, 'right');
+    drawText(ctx, trackNumber || "", width - 280, 90, FONTS.bold(66), COLORS.WHITE, 'left');
     
     drawDBLogo(ctx, width - 110, 80);
 }
@@ -75,14 +78,17 @@ function drawVitrineRow(ctx, journeys, yOffset, width, platform, activeFeatureSt
     if (drawLayer === 'all' || drawLayer === 'static') {
         const scheduled = primary.scheduledTime || "";
         const expected = primary.expectedTime || "";
-        
+
+        // Zeitangaben sind vertikal um ihre y-Position zentriert.
+        ctx.textBaseline = 'middle';
+
         // Time
-        drawText(ctx, scheduled, 20, yOffset + 150, FONTS.regular(75), COLORS.WHITE, 'left', 'middle');
+        drawText(ctx, scheduled, 20, yOffset + 150, FONTS.regular(75), COLORS.WHITE, 'left');
         
         if (expected && expected !== scheduled) {
             ctx.fillStyle = COLORS.WHITE;
             ctx.fillRect(180, yOffset + 95, 100, 55);
-            drawText(ctx, expected, 230, yOffset + 140, FONTS.bold(48), COLORS.MIDNIGHT_BLUE, 'center', 'middle');
+            drawText(ctx, expected, 230, yOffset + 140, FONTS.bold(48), COLORS.MIDNIGHT_BLUE, 'center');
         }
     }
 
@@ -109,6 +115,10 @@ function drawVitrineRow(ctx, journeys, yOffset, width, platform, activeFeatureSt
             textX = formationResult.trainPixelStart;
         }
 
+        // drawFormation/drawSectors hinterlassen 'alphabetic'; hier wieder
+        // vertikal zentriert zeichnen.
+        ctx.textBaseline = 'middle';
+
         // Zugname, Ziel, Vias
         const trainName = primary.effectiveDisplayName || "";
         const dest = primary.destination || "";
@@ -119,16 +129,16 @@ function drawVitrineRow(ctx, journeys, yOffset, width, platform, activeFeatureSt
         ctx.font = FONTS.bold(28);
         const nameWidth = ctx.measureText(trainName).width;
         ctx.fillRect(textX, yOffset + 37, nameWidth + 20, 35);
-        drawText(ctx, trainName, textX + 10, yOffset + 65, FONTS.bold(30), COLORS.WHITE, 'left', 'middle');
+        drawText(ctx, trainName, textX + 10, yOffset + 65, FONTS.bold(30), COLORS.WHITE, 'left');
 
         // Ziel
         ctx.font = FONTS.regular(65);
-        drawText(ctx, dest, textX, yOffset + 135, FONTS.regular(65), COLORS.WHITE, 'left', 'middle');
+        drawText(ctx, dest, textX, yOffset + 135, FONTS.regular(65), COLORS.WHITE, 'left');
         
         // Vias
         if (vias) {
             const destWidth = ctx.measureText(dest + " ").width;
-            drawText(ctx, "über " + vias, textX + destWidth + 10, yOffset + 133, FONTS.regular(35), COLORS.WHITE, 'left', 'middle');
+            drawText(ctx, "über " + vias, textX + destWidth + 10, yOffset + 133, FONTS.regular(35), COLORS.WHITE, 'left');
         }
     }
 }
