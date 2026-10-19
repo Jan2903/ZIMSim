@@ -46,7 +46,6 @@ function createDemoData() {
         vias: ['Hamm (Westf) Hbf', 'Dortmund Hbf', 'Bochum Hbf'],
         direction: 1,
         startMeter: 50,
-        scrollText: 'Zugteilung in Hamm (Westf) Hbf',
         formation: {
             groups: [{
                 name: 'ICE543',
@@ -77,7 +76,6 @@ function createDemoData() {
         vias: ['Hamm (Westf) Hbf', 'Wuppertal Hbf', 'Solingen Hbf'],
         direction: 1,
         startMeter: 50,
-        scrollText: 'Zugteilung in Hamm (Westf) Hbf',
         formation: {
             groups: [{
                 name: 'ICE553',
