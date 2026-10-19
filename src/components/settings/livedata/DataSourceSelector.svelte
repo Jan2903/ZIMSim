@@ -300,12 +300,6 @@
         border: 1px solid rgba(192, 132, 252, 0.25);
     }
 
-    .badge-prep {
-        background: rgba(245, 158, 11, 0.15);
-        color: #f59e0b;
-        border: 1px solid rgba(245, 158, 11, 0.25);
-    }
-
     .badge {
         display: inline-block;
         padding: 2px 6px;

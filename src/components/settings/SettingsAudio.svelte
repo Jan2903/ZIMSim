@@ -860,6 +860,7 @@
         font-weight: 600;
         text-align: right;
         -moz-appearance: textfield;
+        appearance: textfield;
     }
 
     .stepper-num-input::-webkit-outer-spin-button,

@@ -32,6 +32,8 @@ jobs:
           cache: 'npm'
       - name: Install dependencies
         run: npm install
+      - name: Check (svelte-check)
+        run: npm run check
       - name: Build
         run: npm run build
       - name: Upload artifact

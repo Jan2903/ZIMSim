@@ -754,6 +754,7 @@ input[type="text"], select {
 }
 input[type="color"] {
     -webkit-appearance: none;
+    appearance: none;
     border: none;
     width: 32px;
     height: 32px;
