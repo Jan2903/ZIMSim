@@ -9,10 +9,24 @@
 
     // Suchtext für die Bahnhofssuche
     let entry_station_search = $state(journeyStore.stationContext.stationName || '');
+    // Merkt sich, ob der Suchtext vom Nutzer selbst bearbeitet wurde
+    let isStationSearchEdited = $state(false);
+
+    // Übernimmt den Stationsnamen aus dem Store, falls dieser von außerhalb dieses
+    // Panels geändert wurde (z. B. über die Haltestellensuche im Tab 'Live-Daten').
+    // Das Panel bleibt persistent im DOM und wird daher nicht bei jedem Tab-Wechsel neu aufgebaut.
+    $effect(() => {
+        const stationName = journeyStore.stationContext.stationName || '';
+        if (!isStationSearchEdited && stationName !== entry_station_search) {
+            entry_station_search = stationName;
+        }
+    });
 
     // Zeit-Logik & Simulation
     let autoUpdateTime = $state(timeConfig.isRunning);
-    let customTimeString = $state('');
+    // Startwert direkt aus der Simulationszeit befüllen, damit das Eingabefeld beim
+    // Öffnen des Tabs nicht für eine Sekunde leer bleibt.
+    let customTimeString = $state(formatForInput(getSimulatedTime()));
 
     /**
      * Formatiert ein Datum für das HTML datetime-local Input-Feld.
@@ -25,7 +39,10 @@
 
     $effect(() => {
         timeConfig.isRunning = autoUpdateTime;
-        
+
+        // Eingabefeld sofort mit dem aktuellen Simulationszeitpunkt füllen
+        customTimeString = formatForInput(getSimulatedTime());
+
         let interval;
         if (autoUpdateTime) {
             // Aktualisiere das Eingabefeld jede Sekunde bei automatischer Zeitfortschreibung
@@ -73,6 +90,7 @@
      */
     function selectStation(station) {
         entry_station_search = station.name;
+        isStationSearchEdited = false;
         journeyStore.stationContext.stationName = station.name;
         journeyStore.stationContext.stationId = station.ibnr || station.eva;
     }
@@ -158,6 +176,7 @@
                     bind:value={entry_station_search} 
                     placeholder="z.B. Hannover Hbf oder 8000152"
                     onSelect={selectStation}
+                    onInput={() => { isStationSearchEdited = true; }}
                 />
             </div>
 

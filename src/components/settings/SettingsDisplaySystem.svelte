@@ -28,6 +28,16 @@
         setPerformanceMode(isPerformanceMode);
     });
 
+    // Die Modale liegen als position: fixed innerhalb dieses Panels und würden in einem
+    // ausgeblendeten Tab nicht mehr sichtbar sein. Da die Tab-Panels persistent im DOM
+    // bleiben, werden sie beim Verlassen des Tabs daher explizit geschlossen.
+    $effect(() => {
+        if (uiState.activeTab !== 'system') {
+            isLineColorModalOpen = false;
+            isFormationRulesModalOpen = false;
+        }
+    });
+
     /**
      * Exportiert das gesamte aktuelle Szenario im standardisierten ZIMSim-Container als JSON-Datei.
      * @returns {void}

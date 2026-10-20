@@ -7,8 +7,11 @@
     import { irisPollingService } from '../js/core/services/irisPollingService.svelte.js';
 
     const flipDurationMs = 200;
-    // Performance: FLIP-Animationen bei großen Listen (> 50 Fahrten) abschalten
-    let enableFlip = $derived(journeyStore.journeys.length <= 50);
+    // Performance: FLIP-Animationen bei großen Listen (> 50 Fahrten) abschalten.
+    // Zusätzlich deaktiviert, solange das Panel ausgeblendet ist (kein sichtbares Ziel
+    // für die Animation und kein Drag & Drop in einem unsichtbaren Container).
+    let isPanelVisible = $derived(uiState.activeTab === 'fahrten');
+    let enableFlip = $derived(journeyStore.journeys.length <= 50 && isPanelVisible);
 
     function handleDndConsider(e) {
         journeyStore.journeys = e.detail.items;
@@ -25,7 +28,7 @@
          items: journeyStore.journeys, 
          flipDurationMs: enableFlip ? flipDurationMs : 0, 
          type: 'journey',
-         dragDisabled: uiState.expandedJourneyId !== null || !uiState.enableDragAndDrop || irisPollingService.isActive
+         dragDisabled: uiState.expandedJourneyId !== null || !uiState.enableDragAndDrop || irisPollingService.isActive || !isPanelVisible
      }}
      onconsider={handleDndConsider}
      onfinalize={handleDndFinalize}>

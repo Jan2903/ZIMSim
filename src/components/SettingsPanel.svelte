@@ -2,7 +2,7 @@
 <script>
     import { journeyStore } from '../js/core/state/stores.js';
     import { irisPollingService, irisConfig } from '../js/core/services/irisPollingService.svelte.js';
-    import { uiState } from '../js/core/state/uiState.svelte.js';
+    import { uiState, selectTab, finishTabEnter, TAB_ORDER } from '../js/core/state/uiState.svelte.js';
     import { toastStore } from '../js/core/state/toastStore.svelte.js';
     import JourneyList from './JourneyList.svelte';
     import CollapsibleSection from './CollapsibleSection.svelte';
@@ -22,9 +22,6 @@
 
     // Status für manuellen IRIS-Schnellabruf
     let isFetchingIris = $state(false);
-
-    // Reihenfolge der Tabs für die Tastaturnavigation (ARIA-Tabs-Muster)
-    const TAB_ORDER = ['fahrten', 'station', 'livedata', 'audio', 'system'];
 
     /**
      * Tastaturnavigation der Tab-Leiste (Pfeiltasten, Home/End).
@@ -47,9 +44,21 @@
             idx = TAB_ORDER.length - 1;
         }
         const next = TAB_ORDER[idx];
-        uiState.activeTab = next;
+        selectTab(next);
         const el = document.getElementById(`tab-${next}`);
         if (el) el.focus();
+    }
+
+    /**
+     * Entfernt den Einblend-Marker eines Tab-Panels, sobald dessen Animation endet.
+     * @param {string} tab - Tab-ID
+     * @param {AnimationEvent} e - Animationsevent des Panels
+     * @returns {void}
+     */
+    function onPaneAnimationEnd(tab, e) {
+        if (e.target === e.currentTarget) {
+            finishTabEnter(tab);
+        }
     }
 
     /**
@@ -67,7 +76,7 @@
     async function fetchIrisData() {
         if (!journeyStore.stationContext.stationId) {
             toastStore.warning('Bitte zuerst eine Station auswählen!');
-            uiState.activeTab = 'station';
+            selectTab('station');
             return;
         }
         isFetchingIris = true;
@@ -95,7 +104,7 @@
                 type="button" 
                 class="tab-btn" 
                 class:active={uiState.activeTab === 'fahrten'}
-                onclick={() => uiState.activeTab = 'fahrten'}
+                onclick={() => selectTab('fahrten')}
                 onkeydown={onTablistKeydown}
                 role="tab"
                 id="tab-fahrten"
@@ -112,7 +121,7 @@
                 type="button" 
                 class="tab-btn" 
                 class:active={uiState.activeTab === 'station'}
-                onclick={() => uiState.activeTab = 'station'}
+                onclick={() => selectTab('station')}
                 onkeydown={onTablistKeydown}
                 role="tab"
                 id="tab-station"
@@ -129,7 +138,7 @@
                 type="button" 
                 class="tab-btn" 
                 class:active={uiState.activeTab === 'livedata'}
-                onclick={() => uiState.activeTab = 'livedata'}
+                onclick={() => selectTab('livedata')}
                 onkeydown={onTablistKeydown}
                 role="tab"
                 id="tab-livedata"
@@ -146,7 +155,7 @@
                 type="button" 
                 class="tab-btn" 
                 class:active={uiState.activeTab === 'audio'}
-                onclick={() => uiState.activeTab = 'audio'}
+                onclick={() => selectTab('audio')}
                 onkeydown={onTablistKeydown}
                 role="tab"
                 id="tab-audio"
@@ -163,7 +172,7 @@
                 type="button" 
                 class="tab-btn" 
                 class:active={uiState.activeTab === 'system'}
-                onclick={() => uiState.activeTab = 'system'}
+                onclick={() => selectTab('system')}
                 onkeydown={onTablistKeydown}
                 role="tab"
                 id="tab-system"
@@ -177,38 +186,50 @@
         </div>
     </div>
 
-    <!-- Tab-Inhalte -->
+    <!-- Aktions-Buttons der Fahrten-Liste (Snippet für den Header der CollapsibleSection) -->
+    {#snippet journeyActions()}
+        <button 
+            type="button"
+            class="btn-secondary btn-sm" 
+            onclick={fetchIrisData} 
+            disabled={isFetchingIris || irisPollingService.isFetching}
+            title="Live-Daten abrufen"
+            style="display: inline-flex; align-items: center; gap: 6px;"
+        >
+            <ZimIcon name="api" size={14} />
+            <span class="btn-text-full">{isFetchingIris || irisPollingService.isFetching ? 'Lädt...' : 'Live-Daten abrufen'}</span>
+            <span class="btn-text-short">{isFetchingIris || irisPollingService.isFetching ? 'Lädt...' : 'Live-Daten'}</span>
+        </button>
+        <button 
+            type="button"
+            id="add_journey_btn" 
+            class="btn-primary btn-sm" 
+            onclick={addManualJourney} 
+            title="Fahrt hinzufügen"
+            style="display: inline-flex; align-items: center; gap: 6px;"
+        >
+            <ZimIcon name="plus" size={14} />
+            <span class="btn-text-full">Fahrt hinzufügen</span>
+            <span class="btn-text-short">Fahrt +</span>
+        </button>
+    {/snippet}
+
+    <!-- Tab-Inhalte: Panels werden beim ersten Öffnen gemountet und danach persistent im DOM
+         gehalten (inaktive Panels via [hidden] ausgeblendet). Der Wechsel ist dadurch ein
+         reiner Attributwechsel ohne DOM-Neuaufbau - der Inhalt ist sofort sichtbar. -->
     <div class="dashboard-content">
         <!-- Tab 1: Fahrten (Züge) -->
-        {#if uiState.activeTab === 'fahrten'}
-            <div class="tab-pane" id="panel-fahrten" role="tabpanel" aria-labelledby="tab-fahrten" tabindex="0">
-                {#snippet journeyActions()}
-                    <button 
-                        type="button"
-                        class="btn-secondary btn-sm" 
-                        onclick={fetchIrisData} 
-                        disabled={isFetchingIris || irisPollingService.isFetching}
-                        title="Live-Daten abrufen"
-                        style="display: inline-flex; align-items: center; gap: 6px;"
-                    >
-                        <ZimIcon name="api" size={14} />
-                        <span class="btn-text-full">{isFetchingIris || irisPollingService.isFetching ? 'Lädt...' : 'Live-Daten abrufen'}</span>
-                        <span class="btn-text-short">{isFetchingIris || irisPollingService.isFetching ? 'Lädt...' : 'Live-Daten'}</span>
-                    </button>
-                    <button 
-                        type="button"
-                        id="add_journey_btn" 
-                        class="btn-primary btn-sm" 
-                        onclick={addManualJourney} 
-                        title="Fahrt hinzufügen"
-                        style="display: inline-flex; align-items: center; gap: 6px;"
-                    >
-                        <ZimIcon name="plus" size={14} />
-                        <span class="btn-text-full">Fahrt hinzufügen</span>
-                        <span class="btn-text-short">Fahrt +</span>
-                    </button>
-                {/snippet}
-
+        {#if uiState.mountedTabs.includes('fahrten')}
+            <div
+                class="tab-pane"
+                class:entering={uiState.enteringTabs.includes('fahrten')}
+                id="panel-fahrten"
+                role="tabpanel"
+                aria-labelledby="tab-fahrten"
+                tabindex="0"
+                hidden={uiState.activeTab !== 'fahrten'}
+                onanimationend={(e) => onPaneAnimationEnd('fahrten', e)}
+            >
                 <div id="journey_list_frame">
                     <CollapsibleSection title="Fahrten" isOpen={true} isFrame={true} headerActions={journeyActions}>
                         <div id="journey_list" class="journey-list">
@@ -217,28 +238,68 @@
                     </CollapsibleSection>
                 </div>
             </div>
+        {/if}
 
         <!-- Tab 2: Bahnhof & Zeit -->
-        {:else if uiState.activeTab === 'station'}
-            <div class="tab-pane" id="panel-station" role="tabpanel" aria-labelledby="tab-station" tabindex="0">
+        {#if uiState.mountedTabs.includes('station')}
+            <div
+                class="tab-pane"
+                class:entering={uiState.enteringTabs.includes('station')}
+                id="panel-station"
+                role="tabpanel"
+                aria-labelledby="tab-station"
+                tabindex="0"
+                hidden={uiState.activeTab !== 'station'}
+                onanimationend={(e) => onPaneAnimationEnd('station', e)}
+            >
                 <SettingsStationTime />
             </div>
+        {/if}
 
         <!-- Tab 3: Live-Daten (IRIS & DB Navigator) -->
-        {:else if uiState.activeTab === 'livedata'}
-            <div class="tab-pane" id="panel-livedata" role="tabpanel" aria-labelledby="tab-livedata" tabindex="0">
+        {#if uiState.mountedTabs.includes('livedata')}
+            <div
+                class="tab-pane"
+                class:entering={uiState.enteringTabs.includes('livedata')}
+                id="panel-livedata"
+                role="tabpanel"
+                aria-labelledby="tab-livedata"
+                tabindex="0"
+                hidden={uiState.activeTab !== 'livedata'}
+                onanimationend={(e) => onPaneAnimationEnd('livedata', e)}
+            >
                 <SettingsLiveData />
             </div>
+        {/if}
 
         <!-- Tab 4: Ansagen & Audio -->
-        {:else if uiState.activeTab === 'audio'}
-            <div class="tab-pane" id="panel-audio" role="tabpanel" aria-labelledby="tab-audio" tabindex="0">
+        {#if uiState.mountedTabs.includes('audio')}
+            <div
+                class="tab-pane"
+                class:entering={uiState.enteringTabs.includes('audio')}
+                id="panel-audio"
+                role="tabpanel"
+                aria-labelledby="tab-audio"
+                tabindex="0"
+                hidden={uiState.activeTab !== 'audio'}
+                onanimationend={(e) => onPaneAnimationEnd('audio', e)}
+            >
                 <SettingsAudio />
             </div>
+        {/if}
 
         <!-- Tab 5: Anzeige & System -->
-        {:else if uiState.activeTab === 'system'}
-            <div class="tab-pane" id="panel-system" role="tabpanel" aria-labelledby="tab-system" tabindex="0">
+        {#if uiState.mountedTabs.includes('system')}
+            <div
+                class="tab-pane"
+                class:entering={uiState.enteringTabs.includes('system')}
+                id="panel-system"
+                role="tabpanel"
+                aria-labelledby="tab-system"
+                tabindex="0"
+                hidden={uiState.activeTab !== 'system'}
+                onanimationend={(e) => onPaneAnimationEnd('system', e)}
+            >
                 <SettingsDisplaySystem {modalsComp} />
             </div>
         {/if}
@@ -308,13 +369,24 @@
 
     .tab-pane {
         width: 100%;
-        animation: fadeIn 0.15s ease-out;
     }
 
-    @keyframes fadeIn {
+    /* Inaktive Panels bleiben im DOM, werden aber vollständig ausgeblendet */
+    .tab-pane[hidden] {
+        display: none;
+    }
+
+    /* Einblend-Animation nur beim ersten Öffnen eines Panels.
+       Startet bewusst nicht bei opacity 0, damit der Inhalt nie als leerer
+       Bereich erscheint - der Panel-Aufbau blockiert sonst die Animations-Frames. */
+    .tab-pane.entering {
+        animation: tabPaneEnter 0.12s ease-out;
+    }
+
+    @keyframes tabPaneEnter {
         from {
-            opacity: 0;
-            transform: translateY(4px);
+            opacity: 0.4;
+            transform: translateY(2px);
         }
         to {
             opacity: 1;

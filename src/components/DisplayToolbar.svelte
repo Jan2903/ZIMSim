@@ -4,7 +4,7 @@
     import { displayConfigStore } from '../js/displays/core/displayConfigStore.svelte.js';
     import { LAYOUT_TYPES } from '../js/displays/core/displayLayoutService.js';
     import { trainDisplay } from '../js/core/state/stores.js';
-    import { uiState } from '../js/core/state/uiState.svelte.js';
+    import { selectTab } from '../js/core/state/uiState.svelte.js';
 
     /**
      * @typedef {Object} Props
@@ -47,7 +47,7 @@
      * @returns {void}
      */
     function openDisplaySettings() {
-        uiState.activeTab = 'system';
+        selectTab('system');
         const el = document.querySelector('.settings-container');
         if (el) {
             el.scrollIntoView({ behavior: 'smooth', block: 'start' });

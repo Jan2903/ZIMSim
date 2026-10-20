@@ -1,6 +1,5 @@
 <!-- src/components/settings/livedata/DataSourceSelector.svelte -->
 <script>
-    import { onMount } from 'svelte';
     import {
         isTauri,
         isTauriMobile,
@@ -11,6 +10,7 @@
         checkProxyHealth
     } from '../../../js/core/services/apiClient.js';
     import { liveDataConfig } from '../../../js/core/state/liveDataConfig.svelte.js';
+    import { uiState } from '../../../js/core/state/uiState.svelte.js';
     import ZimIcon from '../../ZimIcon.svelte';
 
     /**
@@ -88,7 +88,10 @@
 
     // Beim Öffnen des Tabs den Bridge-Status auffrischen, sofern die Bridge freigeschaltet ist.
     // Ohne diesen Abgleich zeigt das Badge dauerhaft "Verbunden", obwohl die Bridge längst beendet wurde.
-    onMount(() => {
+    // Das Panel bleibt persistent im DOM (Lazy-Mount), daher an die Tab-Aktivierung koppeln
+    // statt an onMount - sonst würde der Status nur beim allerersten Öffnen geprüft.
+    $effect(() => {
+        if (uiState.activeTab !== 'livedata') return;
         if (proxyConfig.enabled) {
             checkProxy();
         }
