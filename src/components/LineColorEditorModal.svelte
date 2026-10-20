@@ -7,6 +7,7 @@
     import ZimIcon from './ZimIcon.svelte';
 
     import { downloadJsonFile, parseBundle } from '../js/core/utils/bundleUtils.js';
+    import { isValidPattern } from '../js/core/utils/patternUtils.js';
 
     let { isOpen = $bindable(false) } = $props();
 
@@ -83,6 +84,16 @@
     function handleFieldChange() {
         lineColorService.saveRules();
         syncDisplay();
+    }
+
+    /**
+     * Prüft beim Verlassen des Pattern-Feldes, ob der reguläre Ausdruck gültig ist.
+     * Ein ungültiger Ausdruck würde still auf keinen Text passen.
+     */
+    function handlePatternBlur() {
+        if (selectedRule && selectedRule.matchType === 'regex' && !isValidPattern(selectedRule.pattern, 'regex')) {
+            toastStore.warning(`Ungültiger regulärer Ausdruck "${selectedRule.pattern}" - die Regel passt auf keinen Text.`);
+        }
     }
 
     async function resetDefaults() {
@@ -294,7 +305,7 @@
                                 </label>
                                 <label>
                                     <span>Muster / Pattern:</span>
-                                    <input type="text" bind:value={selectedRule.pattern} oninput={handleFieldChange}>
+                                    <input type="text" bind:value={selectedRule.pattern} oninput={handleFieldChange} onblur={handlePatternBlur}>
                                 </label>
                             </div>
 

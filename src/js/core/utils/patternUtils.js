@@ -1,6 +1,13 @@
 // src/js/core/utils/patternUtils.js
 
 /**
+ * Bereits gemeldete Muster - verhindert eine Warnungs-Flut, da das Matching
+ * bei 60 FPS mehrfach pro Sekunde mit demselben Muster läuft.
+ * @type {Set<string>}
+ */
+const _warnedPatterns = new Set();
+
+/**
  * Prüft einen Text gegen ein String- oder Regex-Muster.
  * Gemeinsame Implementierung für Linien-Badge-Regeln (lineColorService)
  * und Wagenreihungs-Regeln (formationRuleService).
@@ -35,10 +42,32 @@ export function matchesTextPattern(text, pattern, matchType, regexCache = null) 
                     if (regexCache) regexCache.set(pat, re);
                 }
                 return re.test(t);
-            } catch {
+            } catch (e) {
+                // Ungültiges Muster trifft auf keinen Text - einmalig melden statt still zu scheitern
+                if (!_warnedPatterns.has(pat)) {
+                    _warnedPatterns.add(pat);
+                    console.warn(`[patternUtils] Ungültiger regulärer Ausdruck '${pat}' - die Regel passt auf keinen Text:`, e);
+                }
                 return false;
             }
         default:
             return t.toLowerCase().startsWith(pat.toLowerCase());
+    }
+}
+
+/**
+ * Prüft, ob ein Muster der angegebenen Abgleichsart technisch verwendbar ist.
+ * @param {string} pattern - Das Suchmuster
+ * @param {'startsWith' | 'contains' | 'exact' | 'regex'} matchType - Art des Abgleichs
+ * @returns {boolean} true, wenn das Muster gültig ist
+ */
+export function isValidPattern(pattern, matchType) {
+    if (!pattern || !pattern.trim()) return false;
+    if (matchType !== 'regex') return true;
+    try {
+        new RegExp(pattern.trim(), 'i');
+        return true;
+    } catch {
+        return false;
     }
 }

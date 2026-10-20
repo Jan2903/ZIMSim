@@ -2,6 +2,7 @@
 <script>
     import { journeyStore, trainDisplay } from '../../js/core/state/stores.js';
     import { ansagenStore } from '../../js/audio/ansagenStore.svelte.js';
+    import { toastStore } from '../../js/core/state/toastStore.svelte.js';
     import { open } from '@tauri-apps/plugin-dialog';
     import ZimIcon from '../ZimIcon.svelte';
 
@@ -23,6 +24,7 @@
                 }
             } catch (e) {
                 console.error('[SettingsAudio] Fehler beim Öffnen des Tauri-Dateidialogs:', e);
+                toastStore.error('Audio-Paket konnte nicht geöffnet werden.');
             }
         } else {
             // Web: Versuche moderne File System Access API
@@ -36,6 +38,7 @@
                 } catch (e) {
                     if (e.name !== 'AbortError') {
                         console.error('[SettingsAudio] Fehler bei File System Access API:', e);
+                        toastStore.error('Audio-Paket konnte nicht geladen werden.');
                         // Fallback zum klassischen Input
                         audioZipInput?.click();
                     }
@@ -205,7 +208,9 @@
         if (e && e.currentTarget && typeof e.currentTarget.setPointerCapture === 'function') {
             try {
                 e.currentTarget.setPointerCapture(e.pointerId);
-            } catch (_) {}
+            } catch (err) {
+                console.warn('[SettingsAudio] Pointer-Capture konnte nicht gesetzt werden:', err);
+            }
         }
         stopHold();
         stepFn(delta);

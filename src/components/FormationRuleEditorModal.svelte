@@ -7,6 +7,7 @@
     import { confirmDialog } from '../js/core/state/confirmStore.svelte.js';
     import ZimIcon from './ZimIcon.svelte';
     import { downloadJsonFile, parseBundle } from '../js/core/utils/bundleUtils.js';
+    import { isValidPattern } from '../js/core/utils/patternUtils.js';
 
     /**
      * @typedef {Object} Props
@@ -86,6 +87,16 @@
 
     function handleFieldChange() {
         formationRuleService.saveRules();
+    }
+
+    /**
+     * Prüft beim Verlassen des Musters-Feldes, ob der reguläre Ausdruck gültig ist.
+     * Ein ungültiger Ausdruck würde still auf keinen Text passen.
+     */
+    function handlePatternBlur() {
+        if (selectedRule && selectedRule.matchType === 'regex' && !isValidPattern(selectedRule.linePattern, 'regex')) {
+            toastStore.warning(`Ungültiger regulärer Ausdruck "${selectedRule.linePattern}" - die Regel passt auf keinen Text.`);
+        }
     }
 
     function applyToAllJourneys() {
@@ -351,6 +362,7 @@
                                             class="form-control" 
                                             bind:value={selectedRule.linePattern} 
                                             oninput={handleFieldChange} 
+                                            onblur={handlePatternBlur}
                                             placeholder="z.B. ^RE\s*1$ oder ICE 5" 
                                         />
                                     </div>
