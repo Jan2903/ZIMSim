@@ -33,6 +33,9 @@ jobs:
       - name: install frontend dependencies
         run: npm install
 
+      - name: Check (svelte-check)
+        run: npm run check
+
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -66,6 +69,9 @@ jobs:
 
       - name: install frontend dependencies
         run: npm install
+
+      - name: Check (svelte-check)
+        run: npm run check
 
       - name: build frontend
         run: npm run build

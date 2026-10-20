@@ -5,6 +5,10 @@ on:
   push:
     branches:
       - main
+  # Pull Requests werden gebaut und geprüft (nur der Build-Job, kein Deploy)
+  pull_request:
+    branches:
+      - main
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
@@ -46,6 +50,8 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     needs: build
+    # Nur bei Pushes auf main deployen - Pull Requests werden lediglich gebaut und geprüft
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     name: Deploy
     steps:
