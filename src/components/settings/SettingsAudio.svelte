@@ -3,10 +3,12 @@
     import { journeyStore, trainDisplay } from '../../js/core/state/stores.js';
     import { ansagenStore } from '../../js/audio/ansagenStore.svelte.js';
     import { toastStore } from '../../js/core/state/toastStore.svelte.js';
-    import { clampValue, applyNumericInput, clampNumericInput, resolveNumericBlur } from '../../js/core/utils/numberUtils.js';
+    import { clampValue, clampNumericInput, resolveNumericBlur } from '../../js/core/utils/numberUtils.js';
     import { HoldRepeatController } from '../../js/core/utils/holdRepeat.js';
     import { open } from '@tauri-apps/plugin-dialog';
     import ZimIcon from '../ZimIcon.svelte';
+    import NumericStepper from './audio/NumericStepper.svelte';
+    import VoiceVariantSection from './audio/VoiceVariantSection.svelte';
 
     let audioZipInput;
 
@@ -96,6 +98,14 @@
     // --- Hold-to-Repeat Logik (Vias & Anschluss-Parameter) ---
     const holdRepeat = new HoldRepeatController();
 
+    // Varianten-Zeilen für die Sprachauswahl (Ziel, Herkunft, Vias, Zugteilung)
+    const variantRows = $derived([
+        { label: 'Ziel (Abfahrt):', value: ansagenStore.variantZiel, onChange: (v) => ansagenStore.setVariantZiel(v) },
+        { label: 'Herkunft (Ankunft):', value: ansagenStore.variantHerkunft, onChange: (v) => ansagenStore.setVariantHerkunft(v) },
+        { label: 'Vias (Zwischenhalte):', value: ansagenStore.variantVias, onChange: (v) => ansagenStore.setVariantVias(v) },
+        { label: 'Zugteilung:', value: ansagenStore.variantZugteilung, onChange: (v) => ansagenStore.setVariantZugteilung(v) }
+    ]);
+
     /**
      * Wendet Änderungen der Via-Einstellungen sofort auf alle Fahrten im Store an.
      * @returns {void}
@@ -157,33 +167,6 @@
     }
 
     /**
-     * Verarbeitet manuelle Eingaben in numerischen Einstellungsfeldern.
-     * @param {Event} e
-     * @param {number} min
-     * @param {number} max
-     * @param {(value: number) => void} setFn
-     * @returns {void}
-     */
-    function handleNumericInput(e, min, max, setFn) {
-        const value = applyNumericInput(e, min, max);
-        if (value === null) return;
-        setFn(value);
-    }
-
-    /**
-     * Stellt beim Verlassen eines numerischen Feldes einen gültigen Wert sicher.
-     * @param {Event} e
-     * @param {number} min
-     * @param {number} max
-     * @param {number} current
-     * @param {(value: number) => void} setFn
-     * @returns {void}
-     */
-    function handleNumericBlur(e, min, max, current, setFn) {
-        setFn(resolveNumericBlur(e, min, max, current));
-    }
-
-    /**
      * Schaltet zwischen "Alle Halte" und der eingestellten festen Zahl um.
      * @returns {void}
      */
@@ -220,50 +203,6 @@
         };
     });
 </script>
-
-{#snippet numericStepper(id, label, value, min, max, stepFn, setFn)}
-    <div class="setting-param-row">
-        <label class="setting-param-label" for={id}>{label}</label>
-        <div class="param-stepper">
-            <button 
-                type="button" 
-                class="stepper-action-btn" 
-                disabled={value <= min}
-                onpointerdown={(e) => holdRepeat.start(-1, stepFn, e)}
-                onpointerup={() => holdRepeat.stop()}
-                onpointerleave={() => holdRepeat.stop()}
-                onpointercancel={() => holdRepeat.stop()}
-                aria-label="{label} verringern"
-                title="Verringern (gedrückt halten für schnellen Durchlauf)"
-            >
-                <ZimIcon name="minus" size={14} />
-            </button>
-            <input 
-                id={id}
-                type="number" 
-                class="param-stepper-input" 
-                min={min} 
-                max={max} 
-                value={value}
-                oninput={(e) => handleNumericInput(e, min, max, setFn)}
-                onblur={(e) => handleNumericBlur(e, min, max, value, setFn)}
-            />
-            <button 
-                type="button" 
-                class="stepper-action-btn" 
-                disabled={value >= max}
-                onpointerdown={(e) => holdRepeat.start(1, stepFn, e)}
-                onpointerup={() => holdRepeat.stop()}
-                onpointerleave={() => holdRepeat.stop()}
-                onpointercancel={() => holdRepeat.stop()}
-                aria-label="{label} erhöhen"
-                title="Erhöhen (gedrückt halten für schnellen Durchlauf)"
-            >
-                <ZimIcon name="plus" size={14} />
-            </button>
-        </div>
-    </div>
-{/snippet}
 
 <div class="settings-tab-grid">
     <!-- Spalte 1: Vias, Sprachvarianten & optionale Audio-Quelle -->
@@ -382,64 +321,8 @@
             <!-- Stationsnamen-Varianten -->
             <div class="sub-section" style="margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px;">
                 <span class="field-label" style="margin-bottom: 8px;">Stationsnamen-Aussprache (Varianten):</span>
-                
-                <div class="variant-grid">
-                    <div class="variant-row">
-                        <span class="variant-label">Ziel (Abfahrt):</span>
-                        <div class="segment-switch-sm">
-                            <label>
-                                <input type="radio" bind:group={ansagenStore.variantZiel} value={1} onchange={() => ansagenStore.setVariantZiel(1)}>
-                                <span>Kurz</span>
-                            </label>
-                            <label>
-                                <input type="radio" bind:group={ansagenStore.variantZiel} value={2} onchange={() => ansagenStore.setVariantZiel(2)}>
-                                <span>Lang</span>
-                            </label>
-                        </div>
-                    </div>
 
-                    <div class="variant-row">
-                        <span class="variant-label">Herkunft (Ankunft):</span>
-                        <div class="segment-switch-sm">
-                            <label>
-                                <input type="radio" bind:group={ansagenStore.variantHerkunft} value={1} onchange={() => ansagenStore.setVariantHerkunft(1)}>
-                                <span>Kurz</span>
-                            </label>
-                            <label>
-                                <input type="radio" bind:group={ansagenStore.variantHerkunft} value={2} onchange={() => ansagenStore.setVariantHerkunft(2)}>
-                                <span>Lang</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="variant-row">
-                        <span class="variant-label">Vias (Zwischenhalte):</span>
-                        <div class="segment-switch-sm">
-                            <label>
-                                <input type="radio" bind:group={ansagenStore.variantVias} value={1} onchange={() => ansagenStore.setVariantVias(1)}>
-                                <span>Kurz</span>
-                            </label>
-                            <label>
-                                <input type="radio" bind:group={ansagenStore.variantVias} value={2} onchange={() => ansagenStore.setVariantVias(2)}>
-                                <span>Lang</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="variant-row">
-                        <span class="variant-label">Zugteilung:</span>
-                        <div class="segment-switch-sm">
-                            <label>
-                                <input type="radio" bind:group={ansagenStore.variantZugteilung} value={1} onchange={() => ansagenStore.setVariantZugteilung(1)}>
-                                <span>Kurz</span>
-                            </label>
-                            <label>
-                                <input type="radio" bind:group={ansagenStore.variantZugteilung} value={2} onchange={() => ansagenStore.setVariantZugteilung(2)}>
-                                <span>Lang</span>
-                            </label>
-                        </div>
-                    </div>
-                </div>
+                <VoiceVariantSection rows={variantRows} />
             </div>
 
             <!-- Zusätzliche Ansagenelemente -->
@@ -519,13 +402,45 @@
         </div>
         <div class="card-body">
             <div class="form-row column-layout">
-                {@render numericStepper('anschluesse_max_count', 'Max. Anzahl Anschlüsse', ansagenStore.anschluesseMaxCount, 1, 10, stepAnschluesseMaxCount, setAnschluesseMaxCount)}
+                <NumericStepper
+                    id="anschluesse_max_count"
+                    label="Max. Anzahl Anschlüsse"
+                    value={ansagenStore.anschluesseMaxCount}
+                    min={1}
+                    max={10}
+                    onStep={stepAnschluesseMaxCount}
+                    onChange={setAnschluesseMaxCount}
+                />
 
-                {@render numericStepper('anschluesse_time_window', 'Suchzeitfenster (Min.)', ansagenStore.anschluesseTimeWindow, 5, 180, stepAnschluesseTimeWindow, setAnschluesseTimeWindow)}
+                <NumericStepper
+                    id="anschluesse_time_window"
+                    label="Suchzeitfenster (Min.)"
+                    value={ansagenStore.anschluesseTimeWindow}
+                    min={5}
+                    max={180}
+                    onStep={stepAnschluesseTimeWindow}
+                    onChange={setAnschluesseTimeWindow}
+                />
 
-                {@render numericStepper('anschluesse_min_transfer', 'Min. Umsteigezeit normal (Min.)', ansagenStore.anschluesseMinTransfer, 1, 30, stepAnschluesseMinTransfer, setAnschluesseMinTransfer)}
+                <NumericStepper
+                    id="anschluesse_min_transfer"
+                    label="Min. Umsteigezeit normal (Min.)"
+                    value={ansagenStore.anschluesseMinTransfer}
+                    min={1}
+                    max={30}
+                    onStep={stepAnschluesseMinTransfer}
+                    onChange={setAnschluesseMinTransfer}
+                />
 
-                {@render numericStepper('anschluesse_min_transfer_opposite', 'Min. Umsteigezeit gegenüber (Min.)', ansagenStore.anschluesseMinTransferOpposite, 0, 20, stepAnschluesseMinTransferOpposite, setAnschluesseMinTransferOpposite)}
+                <NumericStepper
+                    id="anschluesse_min_transfer_opposite"
+                    label="Min. Umsteigezeit gegenüber (Min.)"
+                    value={ansagenStore.anschluesseMinTransferOpposite}
+                    min={0}
+                    max={20}
+                    onStep={stepAnschluesseMinTransferOpposite}
+                    onChange={setAnschluesseMinTransferOpposite}
+                />
 
                 <div class="checkbox-group" style="margin-top: 14px; margin-bottom: 14px;">
                     <label class="checkbox-label">
@@ -757,119 +672,6 @@
         color: var(--text-main, #f8fafc);
     }
 
-    .variant-grid {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    .variant-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .variant-label {
-        min-width: 0;
-        font-size: 0.82rem;
-        color: var(--text-muted, #94a3b8);
-    }
-
-    .segment-switch-sm {
-        display: inline-flex;
-        flex-shrink: 0;
-        background: var(--bg-input, #0f172a);
-        border: 1px solid var(--border, #334155);
-        border-radius: 4px;
-        padding: 2px;
-    }
-
-    .segment-switch-sm label {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 24px;
-        cursor: pointer;
-        padding: 3px 10px;
-        font-size: 0.75rem;
-        border-radius: 3px;
-        color: var(--text-muted, #94a3b8);
-        transition: all 0.15s ease;
-    }
-
-    .segment-switch-sm input {
-        display: none;
-    }
-
-    .segment-switch-sm label:has(input:checked) {
-        background: var(--accent, #3b82f6);
-        color: #fff;
-        font-weight: 600;
-    }
-
-    .setting-param-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 8px;
-        font-size: 0.85rem;
-        color: var(--text-main, #f8fafc);
-    }
-
-    .setting-param-label {
-        display: block;
-        flex: 1;
-        min-width: 0;
-        margin: 0;
-        font-size: 0.82rem;
-        font-weight: 500;
-        line-height: 1.3;
-        color: var(--text-muted, #94a3b8);
-    }
-
-    .param-stepper {
-        display: flex;
-        align-items: center;
-        flex-shrink: 0;
-        height: 34px;
-        overflow: hidden;
-        background: var(--bg-input, #0f172a);
-        border: 1px solid var(--border, #334155);
-        border-radius: 6px;
-        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
-    }
-
-    .param-stepper .stepper-action-btn {
-        width: 34px;
-    }
-
-    .param-stepper-input {
-        width: 46px;
-        height: 100%;
-        padding: 0;
-        background: transparent;
-        border: none;
-        outline: none;
-        color: var(--text-main, #f8fafc);
-        font-size: 0.88rem;
-        font-weight: 600;
-        text-align: center;
-        -moz-appearance: textfield;
-        appearance: textfield;
-    }
-
-    .param-stepper-input:focus {
-        background: rgba(255, 255, 255, 0.04);
-    }
-
-    .param-stepper-input::-webkit-outer-spin-button,
-    .param-stepper-input::-webkit-inner-spin-button {
-        -webkit-appearance: none;
-        margin: 0;
-    }
-
     .track-pairs-list {
         display: flex;
         flex-direction: column;
@@ -991,38 +793,6 @@
         box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
     }
 
-    .stepper-action-btn {
-        width: 48px;
-        height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(255, 255, 255, 0.04);
-        border: none;
-        color: var(--text-main, #f8fafc);
-        cursor: pointer;
-        transition: background 0.15s ease, color 0.15s ease;
-        touch-action: none; /* Verhindert Gesten/Scrollen auf Mobile beim Gedrückthalten */
-        user-select: none;
-        -webkit-user-select: none;
-        -webkit-touch-callout: none; /* Verhindert iOS-Kontextmenü */
-    }
-
-    .stepper-action-btn:hover:not(:disabled) {
-        background: rgba(255, 255, 255, 0.12);
-        color: var(--accent, #3b82f6);
-    }
-
-    .stepper-action-btn:active:not(:disabled) {
-        background: var(--accent, #3b82f6);
-        color: #ffffff;
-    }
-
-    .stepper-action-btn:disabled {
-        opacity: 0.3;
-        cursor: not-allowed;
-    }
-
     .stepper-center {
         flex: 1;
         display: flex;
@@ -1073,12 +843,8 @@
         line-height: 1.35;
     }
 
-    /* Tablet: Parameter und Gleispaar-Eingabe sauber umbrechen */
+    /* Tablet: Gleispaar-Eingabe sauber umbrechen */
     @media (max-width: 900px) {
-        .variant-row {
-            flex-wrap: wrap;
-        }
-
         .track-pair-add {
             grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
         }
@@ -1096,44 +862,6 @@
 
         .card-body {
             padding: 14px;
-        }
-
-        .variant-row {
-            gap: 8px;
-        }
-
-        .variant-label {
-            flex: 1 1 100%;
-        }
-
-        .segment-switch-sm {
-            width: 100%;
-        }
-
-        .segment-switch-sm label {
-            flex: 1;
-            min-height: 36px;
-        }
-
-        .setting-param-row {
-            flex-direction: column;
-            align-items: stretch;
-            gap: 6px;
-        }
-
-        .param-stepper {
-            width: 100%;
-            height: 40px;
-        }
-
-        .param-stepper .stepper-action-btn {
-            width: 44px;
-        }
-
-        .param-stepper-input {
-            flex: 1;
-            width: auto;
-            font-size: 16px;
         }
 
         .track-pair-input,
@@ -1178,14 +906,6 @@
 
     /* Touch-Geräte: größere Halteflächen für Stepper */
     @media (hover: none) and (pointer: coarse) {
-        .stepper-action-btn {
-            min-width: 46px;
-        }
-
-        .param-stepper .stepper-action-btn {
-            width: 44px;
-        }
-
         .via-stepper-box {
             height: 46px;
         }
