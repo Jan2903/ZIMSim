@@ -63,14 +63,19 @@ export function timestampedFilename(prefix = 'zim_screenshot') {
 
 /**
  * Kombiniert den statischen Basis-Layer mit dem dynamischen Overlay-Layer.
- * Ist kein Overlay vorhanden, wird das Basis-Canvas unverändert zurückgegeben.
+ * Ist kein Overlay vorhanden oder weicht dessen Größe vom Basis-Layer ab,
+ * wird das Basis-Canvas unverändert zurückgegeben.
  *
  * @param {HTMLCanvasElement} canvas - Statischer Basis-Layer
  * @param {HTMLCanvasElement|null} [overlayCanvas=null] - Dynamischer Overlay-Layer
  * @returns {HTMLCanvasElement}
  */
 function composeDisplayCanvas(canvas, overlayCanvas = null) {
-    if (!overlayCanvas || overlayCanvas.width === 0 || overlayCanvas.height === 0) {
+    if (!overlayCanvas) {
+        return canvas;
+    }
+    if (overlayCanvas.width !== canvas.width || overlayCanvas.height !== canvas.height) {
+        console.warn('[Screenshot] Overlay-Größe passt nicht zum Basis-Layer, nur Basis wird exportiert');
         return canvas;
     }
 

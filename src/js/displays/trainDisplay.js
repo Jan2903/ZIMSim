@@ -86,8 +86,10 @@ export class TrainDisplay {
     /**
      * Liefert den 2D-Kontext des statischen Basis-Canvas.
      * `willReadFrequently` bleibt hier bewusst erhalten, da die Zugnummern-
-     * Breite weiterhin per Pixel-Scan gemessen wird. Der Layer wird aber nur
-     * bei Daten-/Layoutänderungen neu gezeichnet und nie pro Frame kopiert.
+     * Breite weiterhin per Pixel-Scan gemessen wird – dieser Scan läuft auch
+     * im dynamischen Durchlauf des rotierenden Nebenmonitors, der auf diesem
+     * Layer gezeichnet wird. Der Basis-Layer wird dadurch nur bei Daten-/
+     * Layoutänderungen neu aufgebaut und nicht pro Frame kopiert.
      * @param {HTMLCanvasElement} canvas
      * @returns {CanvasRenderingContext2D|null}
      */
@@ -613,6 +615,13 @@ export class TrainDisplay {
         }
     }
 
+    /**
+     * Zeichnet die Screens eines Layers auf den zugehörigen Canvas.
+     *
+     * @param {'all'|'static'|'dynamic'} [layer='all'] - Zu zeichnende Ebene
+     * @param {HTMLCanvasElement|null} [layerCanvas=null] - Ziel-Canvas des Durchlaufs
+     * @returns {void}
+     */
     _renderDynamicScreens(layer = 'all', layerCanvas = null) {
         try {
             const isStaticLayer = (layer === 'all' || layer === 'static');
@@ -647,7 +656,10 @@ export class TrainDisplay {
                         targetCanvas = overlayCanvas;
                         clearMode = 'transparent';
                     } else {
-                        // Fallback ohne Overlay: keine opake Fläche löschen
+                        // Fallback ohne Overlay: Der dynamische Layer wird direkt
+                        // auf den Basis-Layer gezeichnet. Vorher wird der statische
+                        // Layer des Screens neu aufgebaut, damit sich die Frames
+                        // nicht aufsummieren (Alpha-Blending).
                         targetCanvas = baseCanvas || defaultCanvas;
                         clearMode = 'none';
                     }
@@ -693,6 +705,22 @@ export class TrainDisplay {
 
                     const trackScroll = isStaticLayer || isDynamicRotierend;
                     if (trackScroll) this.scrollManager.beginRender();
+
+                    // Fallback ohne Overlay-Canvas: statischen Layer des Screens
+                    // erneut aufbauen, damit der dynamische Layer sauber auf der
+                    // statischen Grundlage liegt (kein Aufsummieren über Frames).
+                    if (!isStaticLayer && !isRotatingScreen && targetCanvas === baseCanvas) {
+                        this.drawOnScreen(screen, (ctx, width, height) => {
+                            this._renderScreenByType(ctx, screen, width, height, {
+                                journeys,
+                                journeyGroups,
+                                renderCtx,
+                                layer: 'static',
+                                isDynamicRotierend: false,
+                                fullScreen
+                            });
+                        }, targetCanvas, 'opaque');
+                    }
 
                     this.drawOnScreen(screen, (ctx, width, height) => {
                         this._renderScreenByType(ctx, screen, width, height, {
