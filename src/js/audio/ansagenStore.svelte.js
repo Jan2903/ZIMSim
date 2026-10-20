@@ -27,6 +27,24 @@ export class AnsagenStore {
     ansageErsteKlasse = $state(true); // "Heute 1. Klasse in Abschnitt..." bei Einfahrt und Steht
     oppositeTrackPairs = $state({}); // { [stationIdOrKey]: [ [trackA, trackB], ... ] }
 
+    /**
+     * Normalisiert einen Ansage-Variantenwert (1 = kurz, 2 = lang).
+     * @param {number|string} val
+     * @returns {number} 1 oder 2
+     */
+    #normalizeVariant(val) {
+        return parseInt(val, 10) === 1 ? 1 : 2;
+    }
+
+    /**
+     * Normalisiert die Via-Sortierart (1 = Priorisiert, 2 = Standard).
+     * @param {number|string} val
+     * @returns {number} 1 oder 2
+     */
+    #normalizeViaSortMode(val) {
+        return parseInt(val, 10) === 2 ? 2 : 1;
+    }
+
     constructor() {
         this.init();
     }
@@ -45,20 +63,20 @@ export class AnsagenStore {
 
             const sSort = localStorage.getItem('ansagen_via_sort_mode');
             if (sSort !== null) {
-                this.viaSortMode = parseInt(sSort, 10);
+                this.viaSortMode = this.#normalizeViaSortMode(sSort);
             }
 
             const sZiel = localStorage.getItem('ansagen_variant_ziel');
-            if (sZiel !== null) this.variantZiel = parseInt(sZiel, 10);
+            if (sZiel !== null) this.variantZiel = this.#normalizeVariant(sZiel);
 
             const sHerkunft = localStorage.getItem('ansagen_variant_herkunft');
-            if (sHerkunft !== null) this.variantHerkunft = parseInt(sHerkunft, 10);
+            if (sHerkunft !== null) this.variantHerkunft = this.#normalizeVariant(sHerkunft);
 
             const sVias = localStorage.getItem('ansagen_variant_vias');
-            if (sVias !== null) this.variantVias = parseInt(sVias, 10);
+            if (sVias !== null) this.variantVias = this.#normalizeVariant(sVias);
 
             const sZug = localStorage.getItem('ansagen_variant_zugteilung');
-            if (sZug !== null) this.variantZugteilung = parseInt(sZug, 10);
+            if (sZug !== null) this.variantZugteilung = this.#normalizeVariant(sZug);
 
             const sMaxCount = localStorage.getItem('ansagen_anschluesse_max_count');
             if (sMaxCount !== null) this.anschluesseMaxCount = parseInt(sMaxCount, 10);
@@ -357,6 +375,61 @@ export class AnsagenStore {
     setAnsageErsteKlasse(val) {
         this.ansageErsteKlasse = Boolean(val);
         localStorage.setItem('ansagen_erste_klasse', String(this.ansageErsteKlasse));
+    }
+
+    /**
+     * Setzt die Sortierart der Via-Halte in den Ansagen (1 = Priorisiert, 2 = Standard).
+     * @param {number|string} val
+     * @returns {void}
+     */
+    setViaSortMode(val) {
+        const num = this.#normalizeViaSortMode(val);
+        this.viaSortMode = num;
+        localStorage.setItem('ansagen_via_sort_mode', String(num));
+    }
+
+    /**
+     * Setzt die Ansagevariante für das Ziel (Abfahrt) (1 = kurz, 2 = lang).
+     * @param {number|string} val
+     * @returns {void}
+     */
+    setVariantZiel(val) {
+        const num = this.#normalizeVariant(val);
+        this.variantZiel = num;
+        localStorage.setItem('ansagen_variant_ziel', String(num));
+    }
+
+    /**
+     * Setzt die Ansagevariante für die Herkunft (Ankunft) (1 = kurz, 2 = lang).
+     * @param {number|string} val
+     * @returns {void}
+     */
+    setVariantHerkunft(val) {
+        const num = this.#normalizeVariant(val);
+        this.variantHerkunft = num;
+        localStorage.setItem('ansagen_variant_herkunft', String(num));
+    }
+
+    /**
+     * Setzt die Ansagevariante für die Via-Halte (1 = kurz, 2 = lang).
+     * @param {number|string} val
+     * @returns {void}
+     */
+    setVariantVias(val) {
+        const num = this.#normalizeVariant(val);
+        this.variantVias = num;
+        localStorage.setItem('ansagen_variant_vias', String(num));
+    }
+
+    /**
+     * Setzt die Ansagevariante für die Zugteilung (1 = kurz, 2 = lang).
+     * @param {number|string} val
+     * @returns {void}
+     */
+    setVariantZugteilung(val) {
+        const num = this.#normalizeVariant(val);
+        this.variantZugteilung = num;
+        localStorage.setItem('ansagen_variant_zugteilung', String(num));
     }
 }
 

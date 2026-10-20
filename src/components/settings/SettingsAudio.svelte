@@ -433,7 +433,7 @@
                             bind:group={ansagenStore.viaSortMode} 
                             value={1} 
                             onchange={() => {
-                                localStorage.setItem('ansagen_via_sort_mode', 1);
+                                ansagenStore.setViaSortMode(1);
                                 applyViaChanges();
                             }}
                         >
@@ -445,7 +445,7 @@
                             bind:group={ansagenStore.viaSortMode} 
                             value={2} 
                             onchange={() => {
-                                localStorage.setItem('ansagen_via_sort_mode', 2);
+                                ansagenStore.setViaSortMode(2);
                                 applyViaChanges();
                             }}
                         >
@@ -463,11 +463,11 @@
                         <span class="variant-label">Ziel (Abfahrt):</span>
                         <div class="segment-switch-sm">
                             <label>
-                                <input type="radio" bind:group={ansagenStore.variantZiel} value={1} onchange={() => localStorage.setItem('ansagen_variant_ziel', ansagenStore.variantZiel)}>
+                                <input type="radio" bind:group={ansagenStore.variantZiel} value={1} onchange={() => ansagenStore.setVariantZiel(1)}>
                                 <span>Kurz</span>
                             </label>
                             <label>
-                                <input type="radio" bind:group={ansagenStore.variantZiel} value={2} onchange={() => localStorage.setItem('ansagen_variant_ziel', ansagenStore.variantZiel)}>
+                                <input type="radio" bind:group={ansagenStore.variantZiel} value={2} onchange={() => ansagenStore.setVariantZiel(2)}>
                                 <span>Lang</span>
                             </label>
                         </div>
@@ -477,11 +477,11 @@
                         <span class="variant-label">Herkunft (Ankunft):</span>
                         <div class="segment-switch-sm">
                             <label>
-                                <input type="radio" bind:group={ansagenStore.variantHerkunft} value={1} onchange={() => localStorage.setItem('ansagen_variant_herkunft', ansagenStore.variantHerkunft)}>
+                                <input type="radio" bind:group={ansagenStore.variantHerkunft} value={1} onchange={() => ansagenStore.setVariantHerkunft(1)}>
                                 <span>Kurz</span>
                             </label>
                             <label>
-                                <input type="radio" bind:group={ansagenStore.variantHerkunft} value={2} onchange={() => localStorage.setItem('ansagen_variant_herkunft', ansagenStore.variantHerkunft)}>
+                                <input type="radio" bind:group={ansagenStore.variantHerkunft} value={2} onchange={() => ansagenStore.setVariantHerkunft(2)}>
                                 <span>Lang</span>
                             </label>
                         </div>
@@ -491,11 +491,11 @@
                         <span class="variant-label">Vias (Zwischenhalte):</span>
                         <div class="segment-switch-sm">
                             <label>
-                                <input type="radio" bind:group={ansagenStore.variantVias} value={1} onchange={() => localStorage.setItem('ansagen_variant_vias', ansagenStore.variantVias)}>
+                                <input type="radio" bind:group={ansagenStore.variantVias} value={1} onchange={() => ansagenStore.setVariantVias(1)}>
                                 <span>Kurz</span>
                             </label>
                             <label>
-                                <input type="radio" bind:group={ansagenStore.variantVias} value={2} onchange={() => localStorage.setItem('ansagen_variant_vias', ansagenStore.variantVias)}>
+                                <input type="radio" bind:group={ansagenStore.variantVias} value={2} onchange={() => ansagenStore.setVariantVias(2)}>
                                 <span>Lang</span>
                             </label>
                         </div>
@@ -505,11 +505,11 @@
                         <span class="variant-label">Zugteilung:</span>
                         <div class="segment-switch-sm">
                             <label>
-                                <input type="radio" bind:group={ansagenStore.variantZugteilung} value={1} onchange={() => localStorage.setItem('ansagen_variant_zugteilung', ansagenStore.variantZugteilung)}>
+                                <input type="radio" bind:group={ansagenStore.variantZugteilung} value={1} onchange={() => ansagenStore.setVariantZugteilung(1)}>
                                 <span>Kurz</span>
                             </label>
                             <label>
-                                <input type="radio" bind:group={ansagenStore.variantZugteilung} value={2} onchange={() => localStorage.setItem('ansagen_variant_zugteilung', ansagenStore.variantZugteilung)}>
+                                <input type="radio" bind:group={ansagenStore.variantZugteilung} value={2} onchange={() => ansagenStore.setVariantZugteilung(2)}>
                                 <span>Lang</span>
                             </label>
                         </div>
