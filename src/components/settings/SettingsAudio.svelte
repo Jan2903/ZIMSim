@@ -3,6 +3,8 @@
     import { journeyStore, trainDisplay } from '../../js/core/state/stores.js';
     import { ansagenStore } from '../../js/audio/ansagenStore.svelte.js';
     import { toastStore } from '../../js/core/state/toastStore.svelte.js';
+    import { clampValue, applyNumericInput, clampNumericInput, resolveNumericBlur } from '../../js/core/utils/numberUtils.js';
+    import { HoldRepeatController } from '../../js/core/utils/holdRepeat.js';
     import { open } from '@tauri-apps/plugin-dialog';
     import ZimIcon from '../ZimIcon.svelte';
 
@@ -92,9 +94,7 @@
     }
 
     // --- Hold-to-Repeat Logik (Vias & Anschluss-Parameter) ---
-    let holdTimer = null;
-    let holdInterval = null;
-    let holdStartTime = 0;
+    const holdRepeat = new HoldRepeatController();
 
     /**
      * Wendet Änderungen der Via-Einstellungen sofort auf alle Fahrten im Store an.
@@ -122,17 +122,6 @@
             ansagenStore.setMaxVias(next);
             applyViaChanges();
         }
-    }
-
-    /**
-     * Begrenzt einen numerischen Wert auf den erlaubten Bereich.
-     * @param {number} value
-     * @param {number} min
-     * @param {number} max
-     * @returns {number}
-     */
-    function clampValue(value, min, max) {
-        return Math.max(min, Math.min(max, value));
     }
 
     function setAnschluesseMaxCount(value) {
@@ -176,8 +165,8 @@
      * @returns {void}
      */
     function handleNumericInput(e, min, max, setFn) {
-        const value = parseInt(e.target.value, 10);
-        if (Number.isNaN(value) || value < min || value > max) return;
+        const value = applyNumericInput(e, min, max);
+        if (value === null) return;
         setFn(value);
     }
 
@@ -191,63 +180,7 @@
      * @returns {void}
      */
     function handleNumericBlur(e, min, max, current, setFn) {
-        let value = parseInt(e.target.value, 10);
-        value = Number.isNaN(value) ? current : clampValue(value, min, max);
-        e.target.value = value;
-        setFn(value);
-    }
-
-    /**
-     * Startet den Hold-to-Repeat-Modus bei PointerDown (unterstützt Maus & Mobile-Touch).
-     * @param {number} delta - Schrittweite pro Wiederholung
-     * @param {(delta: number) => void} stepFn - Funktion, die den neuen Wert anwendet
-     * @param {PointerEvent} e
-     * @returns {void}
-     */
-    function startHoldRepeat(delta, stepFn, e) {
-        if (e && e.currentTarget && typeof e.currentTarget.setPointerCapture === 'function') {
-            try {
-                e.currentTarget.setPointerCapture(e.pointerId);
-            } catch (err) {
-                console.warn('[SettingsAudio] Pointer-Capture konnte nicht gesetzt werden:', err);
-            }
-        }
-        stopHold();
-        stepFn(delta);
-        holdStartTime = Date.now();
-
-        // Globale Freigabe-Listener: beenden das Wiederholen auch, wenn der Button
-        // während des Haltens deaktiviert wird oder der Zeiger das Element verlässt.
-        window.addEventListener('pointerup', stopHold);
-        window.addEventListener('pointercancel', stopHold);
-        window.addEventListener('blur', stopHold);
-
-        holdTimer = setTimeout(() => {
-            holdInterval = setInterval(() => {
-                const elapsed = Date.now() - holdStartTime;
-                // Nach 1,5s kontinuierlichem Halten Sprünge in 5er-Schritten (Beschleunigung)
-                const stepDelta = elapsed > 1500 ? delta * 5 : delta;
-                stepFn(stepDelta);
-            }, 60);
-        }, 350);
-    }
-
-    /**
-     * Beendet den Hold-to-Repeat-Timer sicher.
-     * @returns {void}
-     */
-    function stopHold() {
-        if (holdTimer) {
-            clearTimeout(holdTimer);
-            holdTimer = null;
-        }
-        if (holdInterval) {
-            clearInterval(holdInterval);
-            holdInterval = null;
-        }
-        window.removeEventListener('pointerup', stopHold);
-        window.removeEventListener('pointercancel', stopHold);
-        window.removeEventListener('blur', stopHold);
+        setFn(resolveNumericBlur(e, min, max, current));
     }
 
     /**
@@ -265,9 +198,8 @@
      * @returns {void}
      */
     function handleViaInput(e) {
-        let val = parseInt(e.target.value, 10);
-        if (isNaN(val)) return;
-        val = Math.max(0, Math.min(128, val));
+        const val = clampNumericInput(e, 0, 128);
+        if (val === null) return;
         ansagenStore.setMaxVias(val);
         applyViaChanges();
     }
@@ -278,20 +210,13 @@
      * @returns {void}
      */
     function handleViaBlur(e) {
-        let val = parseInt(e.target.value, 10);
-        if (isNaN(val)) {
-            val = ansagenStore.maxVias;
-        } else {
-            val = Math.max(0, Math.min(128, val));
-        }
-        e.target.value = val;
-        ansagenStore.setMaxVias(val);
+        ansagenStore.setMaxVias(resolveNumericBlur(e, 0, 128, ansagenStore.maxVias));
         applyViaChanges();
     }
 
     $effect(() => {
         return () => {
-            stopHold();
+            holdRepeat.destroy();
         };
     });
 </script>
@@ -304,10 +229,10 @@
                 type="button" 
                 class="stepper-action-btn" 
                 disabled={value <= min}
-                onpointerdown={(e) => startHoldRepeat(-1, stepFn, e)}
-                onpointerup={stopHold}
-                onpointerleave={stopHold}
-                onpointercancel={stopHold}
+                onpointerdown={(e) => holdRepeat.start(-1, stepFn, e)}
+                onpointerup={() => holdRepeat.stop()}
+                onpointerleave={() => holdRepeat.stop()}
+                onpointercancel={() => holdRepeat.stop()}
                 aria-label="{label} verringern"
                 title="Verringern (gedrückt halten für schnellen Durchlauf)"
             >
@@ -327,10 +252,10 @@
                 type="button" 
                 class="stepper-action-btn" 
                 disabled={value >= max}
-                onpointerdown={(e) => startHoldRepeat(1, stepFn, e)}
-                onpointerup={stopHold}
-                onpointerleave={stopHold}
-                onpointercancel={stopHold}
+                onpointerdown={(e) => holdRepeat.start(1, stepFn, e)}
+                onpointerup={() => holdRepeat.stop()}
+                onpointerleave={() => holdRepeat.stop()}
+                onpointercancel={() => holdRepeat.stop()}
                 aria-label="{label} erhöhen"
                 title="Erhöhen (gedrückt halten für schnellen Durchlauf)"
             >
@@ -370,10 +295,10 @@
                         type="button" 
                         class="stepper-action-btn" 
                         disabled={ansagenStore.allVias || ansagenStore.maxVias <= 0}
-                        onpointerdown={(e) => startHoldRepeat(-1, stepVia, e)}
-                        onpointerup={stopHold}
-                        onpointerleave={stopHold}
-                        onpointercancel={stopHold}
+                        onpointerdown={(e) => holdRepeat.start(-1, stepVia, e)}
+                        onpointerup={() => holdRepeat.stop()}
+                        onpointerleave={() => holdRepeat.stop()}
+                        onpointercancel={() => holdRepeat.stop()}
                         aria-label="Anzahl verringern"
                         title="Verringern (gedrückt halten für schnellen Durchlauf)"
                     >
@@ -402,10 +327,10 @@
                         type="button" 
                         class="stepper-action-btn" 
                         disabled={ansagenStore.allVias || ansagenStore.maxVias >= 128}
-                        onpointerdown={(e) => startHoldRepeat(1, stepVia, e)}
-                        onpointerup={stopHold}
-                        onpointerleave={stopHold}
-                        onpointercancel={stopHold}
+                        onpointerdown={(e) => holdRepeat.start(1, stepVia, e)}
+                        onpointerup={() => holdRepeat.stop()}
+                        onpointerleave={() => holdRepeat.stop()}
+                        onpointercancel={() => holdRepeat.stop()}
                         aria-label="Anzahl erhöhen"
                         title="Erhöhen (gedrückt halten für schnellen Durchlauf)"
                     >
