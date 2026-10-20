@@ -15,7 +15,7 @@
     import ZimIcon from './components/ZimIcon.svelte';
     import HardwareBezel from './components/HardwareBezel.svelte';
     import { displayConfigStore } from './js/displays/core/displayConfigStore.svelte.js';
-    import { lineColorService } from './js/features/journey/services/lineColorService.svelte.js';
+    import { lineColorService } from './js/core/services/lineColorService.svelte.js';
 
     let modalsComp = $state();
     let canvasElement = $state();

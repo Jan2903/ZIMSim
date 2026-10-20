@@ -1,5 +1,5 @@
-import { measureTextLines } from '../../../displays/core/textUtils.js';
-import { FONTS } from '../../../displays/core/constants.js';
+import { FONTS } from '../../../core/constants/theme.js';
+import { measureTextLines } from '../../../core/utils/textMeasure.js';
 
 /**
  * Service für Zwischenhalte-Auswahl (Vias) für Monitore und Audioansagen.

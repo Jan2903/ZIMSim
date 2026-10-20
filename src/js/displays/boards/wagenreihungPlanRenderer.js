@@ -1,5 +1,6 @@
 // js/displays/boards/wagenreihungPlanRenderer.js
-import { COLORS, FONTS, FORMATION } from '../core/constants.js';
+import { COLORS, FONTS } from '../../core/constants/theme.js';
+import { FORMATION } from '../core/constants.js';
 import { getSimulatedTime } from '../../core/utils/config.js';
 import { drawFormation, drawSectors } from '../primitives/formationRenderer.js';
 import { drawDBLogo, drawAnalogClock } from '../core/sharedRenderers.js';

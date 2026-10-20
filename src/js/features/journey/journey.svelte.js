@@ -3,7 +3,7 @@ import { Formation } from '../formation/formationModel.svelte.js';
 import { JourneyViaService } from './services/journeyViaService.js';
 import { DynamicTextService } from './services/dynamicTextService.js';
 import { JourneyImportService } from './services/journeyImportService.js';
-import { measureTextLines } from '../../displays/core/textUtils.js';
+import { measureTextLines } from '../../core/utils/textMeasure.js';
 import { formatDisplayName } from './trainNumberFormatter.js';
 
 /**

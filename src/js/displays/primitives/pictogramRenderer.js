@@ -1,5 +1,6 @@
 // js/displays/primitives/pictogramRenderer.js
-import { COLORS, FONTS, INFO } from '../core/constants.js';
+import { COLORS, FONTS } from '../../core/constants/theme.js';
+import { INFO } from '../core/constants.js';
 import { drawIcon } from '../core/icons.js';
 import { fillTextCentered } from '../core/textUtils.js';
 

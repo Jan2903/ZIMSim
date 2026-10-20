@@ -1,5 +1,5 @@
 // js/displays/sharedRenderers.js
-import { COLORS, FONTS } from './constants.js';
+import { COLORS, FONTS } from '../../core/constants/theme.js';
 import { drawText, fillTextCentered } from './textUtils.js';
 import { getSimulatedTime } from '../../core/utils/config.js';
 

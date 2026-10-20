@@ -1,5 +1,6 @@
 // js/displays/boards/wagenstandGleisRenderer.js
-import { COLORS, FONTS, FORMATION } from '../core/constants.js';
+import { COLORS, FONTS } from '../../core/constants/theme.js';
+import { FORMATION } from '../core/constants.js';
 import { drawFormation, drawSectors } from '../primitives/formationRenderer.js';
 import { drawLineBadge, drawText, drawInvertedTimeBox, truncateWithEllipsis } from '../core/textUtils.js';
 import { drawDBLogo, drawAnalogClock } from '../core/sharedRenderers.js';
@@ -7,7 +8,7 @@ import { getSimulatedTime } from '../../core/utils/config.js';
 import { formatHHMM } from '../../core/utils/dateUtils.js';
 import { combineTrainNames } from '../../features/journey/trainNumberFormatter.js';
 import { JourneyCouplingService } from '../../features/journey/services/journeyCouplingService.js';
-import { lineColorService } from '../../features/journey/services/lineColorService.svelte.js';
+import { lineColorService } from '../../core/services/lineColorService.svelte.js';
 
 function drawVitrineHeader(ctx, width, activeFeatureIndex, progress, trackNumber, featureAlpha = 1.0) {
     // Alle Texte dieses Headers sind vertikal um ihre y-Position zentriert.

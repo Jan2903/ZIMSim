@@ -1,9 +1,9 @@
-// js/features/journey/services/lineColorService.svelte.js
-import { COLORS } from '../../../displays/core/constants.js';
-import { journeyStore } from '../../../core/state/stores.js';
-import { StorageService } from '../../../core/services/storageService.js';
-import { createBundle, parseBundle, mergeRuleList } from '../../../core/utils/bundleUtils.js';
-import { matchesTextPattern } from '../../../core/utils/patternUtils.js';
+// src/js/core/services/lineColorService.svelte.js
+import { COLORS } from '../constants/theme.js';
+import { journeyStore } from '../state/stores.js';
+import { StorageService } from './storageService.js';
+import { createBundle, parseBundle, mergeRuleList } from '../utils/bundleUtils.js';
+import { matchesTextPattern } from '../utils/patternUtils.js';
 
 /**
  * @typedef {Object} LineBadgeRule

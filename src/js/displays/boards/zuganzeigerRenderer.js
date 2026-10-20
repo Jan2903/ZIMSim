@@ -1,5 +1,6 @@
 // js/displays/boards/zuganzeigerRenderer.js
-import { COLORS, FONTS, INFO } from '../core/constants.js';
+import { COLORS, FONTS } from '../../core/constants/theme.js';
+import { INFO } from '../core/constants.js';
 import { drawText, drawWrappedText, drawInfoTopText, drawTextInRectangle, drawInvertedTimeBox } from '../core/textUtils.js';
 import { drawPictograms } from '../primitives/pictogramRenderer.js';
 import { calculateCoachPositions, getSectorsForCoaches, getPlatformSectors } from '../../features/formation/formationUtils.js';

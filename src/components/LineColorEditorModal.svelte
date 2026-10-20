@@ -1,5 +1,5 @@
 <script>
-    import { lineColorService, DEFAULT_LINE_RULES } from '../js/features/journey/services/lineColorService.svelte.js';
+    import { lineColorService, DEFAULT_LINE_RULES } from '../js/core/services/lineColorService.svelte.js';
     import { journeyStore, trainDisplay } from '../js/core/state/stores.js';
     import { ScreenSyncService } from '../js/core/services/screenSyncService.js';
     import { toastStore } from '../js/core/state/toastStore.svelte.js';

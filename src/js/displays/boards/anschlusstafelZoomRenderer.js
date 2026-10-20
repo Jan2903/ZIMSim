@@ -1,8 +1,8 @@
 // js/displays/boards/anschlusstafelZoomRenderer.js
-import { COLORS, FONTS } from '../core/constants.js';
+import { COLORS, FONTS } from '../../core/constants/theme.js';
 import { truncateWithEllipsis, drawLineBadge, drawInvertedTimeBox, getVerticalCenterOffset } from '../core/textUtils.js';
 import { drawQualityIcons } from '../primitives/pictogramRenderer.js';
-import { lineColorService } from '../../features/journey/services/lineColorService.svelte.js';
+import { lineColorService } from '../../core/services/lineColorService.svelte.js';
 import { JourneyCouplingService } from '../../features/journey/services/journeyCouplingService.js';
 import { journeyStore } from '../../core/state/stores.js';
 

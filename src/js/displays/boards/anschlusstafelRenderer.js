@@ -1,8 +1,8 @@
 // js/displays/boards/anschlusstafelRenderer.js
-import { COLORS, FONTS } from '../core/constants.js';
+import { COLORS, FONTS } from '../../core/constants/theme.js';
 import { drawText, drawWrappedText, truncateWithEllipsis, drawLineBadge, drawInvertedTimeBox, fillTextCentered, getVerticalCenterOffset } from '../core/textUtils.js';
 import { getSimulatedTime } from '../../core/utils/config.js';
-import { lineColorService } from '../../features/journey/services/lineColorService.svelte.js';
+import { lineColorService } from '../../core/services/lineColorService.svelte.js';
 import { drawDBLogo, drawAnalogClock } from '../core/sharedRenderers.js';
 import { drawQualityIcons, getMatchingPictogramRules } from '../primitives/pictogramRenderer.js';
 import { JourneyCouplingService } from '../../features/journey/services/journeyCouplingService.js';

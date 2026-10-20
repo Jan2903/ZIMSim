@@ -1,6 +1,7 @@
 // js/displays/primitives/formationRenderer.js
 import { Coach } from '../../features/formation/coachModel.svelte.js';
-import { COLORS, FONTS, FORMATION } from '../core/constants.js';
+import { COLORS, FONTS } from '../../core/constants/theme.js';
+import { FORMATION } from '../core/constants.js';
 import { drawText, fillTextCentered, getFontAscent } from '../core/textUtils.js';
 import {
     drawLocomotive, drawStartWagon, drawEndWagon, drawMiddleWagon,

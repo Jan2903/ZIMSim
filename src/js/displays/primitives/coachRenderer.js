@@ -1,5 +1,6 @@
 // js/displays/primitives/coachRenderer.js
-import { COLORS, FONTS, FORMATION, COUPLING } from '../core/constants.js';
+import { COLORS, FONTS } from '../../core/constants/theme.js';
+import { FORMATION, COUPLING } from '../core/constants.js';
 import { ICONS, drawIcon } from '../core/icons.js';
 import { drawInNormalizedBox } from './pictogramRenderer.js';
 import { fillTextCentered } from '../core/textUtils.js';

@@ -3,7 +3,7 @@
     import { toastStore } from '../js/core/state/toastStore.svelte.js';
     import { journeyStore, trainDisplay } from '../js/core/state/stores.js';
     import { formatDisplayName } from '../js/features/journey/trainNumberFormatter.js';
-    import { lineColorService } from '../js/features/journey/services/lineColorService.svelte.js';
+    import { lineColorService } from '../js/core/services/lineColorService.svelte.js';
     import JourneyDetails from './JourneyDetails.svelte';
     import ZimIcon from './ZimIcon.svelte';
     import { FormationService } from '../js/features/formation/formationService.js';

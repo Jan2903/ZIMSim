@@ -1,6 +1,6 @@
 import { Journey } from '../journey.svelte.js';
 import { Platform } from '../../station/platform.svelte.js';
-import { lineColorService } from './lineColorService.svelte.js';
+import { lineColorService } from '../../../core/services/lineColorService.svelte.js';
 import { formationRuleService } from '../../formation/formationRuleService.svelte.js';
 
 /**

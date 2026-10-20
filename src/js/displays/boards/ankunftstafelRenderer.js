@@ -1,9 +1,9 @@
 // js/displays/boards/ankunftstafelRenderer.js
-import { COLORS, FONTS } from '../core/constants.js';
+import { COLORS, FONTS } from '../../core/constants/theme.js';
 import { truncateWithEllipsis, drawLineBadge, drawInvertedTimeBox, getVerticalCenterOffset } from '../core/textUtils.js';
 import { drawAnalogClock } from '../core/sharedRenderers.js';
 import { getSimulatedTime } from '../../core/utils/config.js';
-import { lineColorService } from '../../features/journey/services/lineColorService.svelte.js';
+import { lineColorService } from '../../core/services/lineColorService.svelte.js';
 
 /**
  * Renderer für die DB-Ankunftstafel (Nur Ankünfte).
