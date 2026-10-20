@@ -25,6 +25,9 @@ class DisplayConfigStore {
     // 6. 4K Ultra-HD Skalierungs-Flag
     is4k = $state(false);
 
+    // 7. Skalierungsmodus ('fit' = an Bildschirmbreite anpassen, 'scroll' = 1:1 Detailansicht)
+    scaleMode = $state(localStorage.getItem('zimsim_scale_mode') || 'fit');
+
     /**
      * Berechnet reaktiv das aktuelle Layout-Objekt basierend auf Monitor, Typ, Gehäuse und Pop-Out-Ziel.
      */
@@ -104,6 +107,22 @@ class DisplayConfigStore {
     toggleBezel() {
         this.showBezel = !this.showBezel;
         localStorage.setItem('zimsim_show_bezel', String(this.showBezel));
+    }
+
+    /**
+     * Setzt den Skalierungsmodus ('fit' oder 'scroll').
+     * @param {'fit' | 'scroll'} mode
+     */
+    setScaleMode(mode) {
+        this.scaleMode = mode === 'scroll' ? 'scroll' : 'fit';
+        localStorage.setItem('zimsim_scale_mode', this.scaleMode);
+    }
+
+    /**
+     * Schaltet zwischen Fit- und Scroll-Modus um.
+     */
+    toggleScaleMode() {
+        this.setScaleMode(this.scaleMode === 'fit' ? 'scroll' : 'fit');
     }
 }
 

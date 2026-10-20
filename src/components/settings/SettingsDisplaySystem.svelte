@@ -3,7 +3,7 @@
     import { journeyStore, trainDisplay } from '../../js/core/state/stores.js';
     import { uiState } from '../../js/core/state/uiState.svelte.js';
     import { toastStore } from '../../js/core/state/toastStore.svelte.js';
-    import { config } from '../../js/core/utils/config.js';
+    import { config, setPerformanceMode } from '../../js/core/utils/config.js';
     import { displayConfigStore } from '../../js/displays/core/displayConfigStore.svelte.js';
     import { MONITOR_PROFILES } from '../../js/displays/core/displayLayoutService.js';
     import LineColorEditorModal from '../LineColorEditorModal.svelte';
@@ -25,8 +25,7 @@
     let isPerformanceMode = $state(config.performance_mode);
 
     $effect(() => {
-        config.performance_mode = isPerformanceMode;
-        localStorage.setItem('zimsim_performance_mode', isPerformanceMode);
+        setPerformanceMode(isPerformanceMode);
     });
 
     /**

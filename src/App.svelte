@@ -31,7 +31,8 @@
     const targetLayout = urlParams.get('layout');
 
     // Hybrid-Modus für Mobile/Desktop: 'fit' (an Bildschirm anpassen) oder 'scroll' (Mindestbreite mit Scrollbalken)
-    let displayScaleMode = $state(localStorage.getItem('zimsim_scale_mode') || 'fit');
+    // Wird im displayConfigStore verwaltet und dort persistiert.
+    const displayScaleMode = $derived(displayConfigStore.scaleMode);
 
     // Vollbild-Zustand (Fullscreen API)
     let isFullscreen = $state(false);
@@ -65,8 +66,7 @@
      * @returns {void}
      */
     function toggleScaleMode() {
-        displayScaleMode = displayScaleMode === 'fit' ? 'scroll' : 'fit';
-        localStorage.setItem('zimsim_scale_mode', displayScaleMode);
+        displayConfigStore.toggleScaleMode();
         setTimeout(handleResize, 20);
     }
 
