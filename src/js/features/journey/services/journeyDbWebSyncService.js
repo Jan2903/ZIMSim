@@ -80,7 +80,9 @@ export class JourneyDbWebSyncService {
                         journeyId: entry.journeyId || ''
                     };
 
-                    // Vias behutsam anreichern, falls die Fahrt noch gar keine Zwischenhalte hatte
+                    // Vias behutsam anreichern, falls die Fahrt noch gar keine Zwischenhalte hatte.
+                    // Hinweis: Journey.vias wird ausschließlich aus stops/showAsVia berechnet und
+                    // ist setter-seitig nicht beschreibbar - eine direkte Zuweisung bleibt wirkungslos.
                     if ((!j.vias || j.vias.length === 0) && Array.isArray(entry.ueber) && entry.ueber.length > 1) {
                         j.vias = entry.ueber.slice(1);
                     }
@@ -148,7 +150,7 @@ export class JourneyDbWebSyncService {
                 isDeparture,
                 options.dateStr || null,
                 options.timeStr || null,
-                8, // Immer 8 Vias für ZIM-Anzeiger
+                options.maxVias ?? 8, // Standard: 8 Vias für ZIM-Anzeiger
                 options.mots || null
             );
 
@@ -321,18 +323,29 @@ export class JourneyDbWebSyncService {
     }
 
     /**
-     * Lädt automatisch Wagenreihungen für alle aktuell sichtbaren Züge nach.
-     * @returns {Promise<void>}
+     * Lädt automatisch Wagenreihungen für sichtbare Züge (z.B. Haupt- und Nebenmonitor) nach,
+     * sofern für diese noch keine Formation geladen wurde.
+     * @param {number} [maxTrains=2] - Maximale Anzahl Fahrten, die sequenziell nachgeladen werden
+     * @returns {Promise<number>} Anzahl erfolgreich geladener Formationen
      */
-    static async autoFetchActiveFormations() {
-        const visible = journeyStore.journeys.filter(j => 
-            j.displaySlot !== null && 
-            !j.ankunft && 
+    static async autoFetchActiveFormations(maxTrains = 2) {
+        const visible = journeyStore.journeys.filter(j =>
+            j.displaySlot !== null &&
+            !j.ankunft &&
             (!j.formation || !j.formation.groups || j.formation.groups.length === 0)
         );
 
+        let fetched = 0;
         for (const j of visible) {
-            await this.fetchFormationForJourney(j);
+            if (fetched >= maxTrains) break;
+            if (j.isFetchingFormation) continue;
+
+            const res = await this.fetchFormationForJourney(j);
+            if (res.success) {
+                fetched++;
+            }
         }
+
+        return fetched;
     }
 }

@@ -23,10 +23,7 @@
     // Plattformabhängige Verfügbarkeit der Nicht-CORS-APIs (DB Navigator / bahn.de)
     const availability = $derived(getNonCorsAvailability());
 
-    // Immer 8 Zwischenhalte als fester ZIM-Standard
-    liveDataConfig.dbWeb.maxVias = 8;
-
-    // Verfügbare Verkehrsmittel
+    // Verfügbare Verkehrsmittel (neutrale IDs, werden 1:1 als HAFAS-Codes übergeben)
     const ALL_MOTS = [
         { id: 'ICE', label: 'ICE' },
         { id: 'EC_IC', label: 'EC / IC' },
@@ -45,7 +42,7 @@
      * @param {string[]} list
      */
     function setMots(list) {
-        liveDataConfig.dbWeb.verkehrsmittel = [...list];
+        liveDataConfig.board.verkehrsmittel = [...list];
     }
 
     /**
@@ -53,11 +50,11 @@
      * @param {string} motId
      */
     function toggleMot(motId) {
-        const cur = liveDataConfig.dbWeb.verkehrsmittel || [];
+        const cur = liveDataConfig.board.verkehrsmittel || [];
         if (cur.includes(motId)) {
-            liveDataConfig.dbWeb.verkehrsmittel = cur.filter(m => m !== motId);
+            liveDataConfig.board.verkehrsmittel = cur.filter(m => m !== motId);
         } else {
-            liveDataConfig.dbWeb.verkehrsmittel = [...cur, motId];
+            liveDataConfig.board.verkehrsmittel = [...cur, motId];
         }
     }
 
@@ -83,10 +80,10 @@
         fetchResult = null;
 
         try {
-            const isDeparture = liveDataConfig.dbWeb.queryType !== 'arrivals';
+            const isDeparture = liveDataConfig.board.queryType !== 'arrivals';
             const res = await JourneyDbWebSyncService.syncStationBoard(stationId, isDeparture, {
-                maxVias: 8,
-                mots: liveDataConfig.dbWeb.verkehrsmittel,
+                maxVias: liveDataConfig.board.maxVias,
+                mots: liveDataConfig.board.verkehrsmittel,
                 clearBefore: replace
             });
 
@@ -97,7 +94,7 @@
                 };
 
                 // Wagenreihungen für sichtbare Züge nachladen, falls aktiviert
-                if (liveDataConfig.dbWeb.fetchFormation) {
+                if (liveDataConfig.board.fetchFormation) {
                     isFetchingFormations = true;
                     try {
                         await JourneyDbWebSyncService.autoFetchActiveFormations();
@@ -253,11 +250,11 @@
     <div class="field-label" style="margin-top: 10px;">Abfrage-Typ:</div>
     <div class="segment-switch">
         <label>
-            <input type="radio" name="dbweb_query_type" value="departures" bind:group={liveDataConfig.dbWeb.queryType}>
+            <input type="radio" name="board_query_type" value="departures" bind:group={liveDataConfig.board.queryType}>
             <span>Abfahrten</span>
         </label>
         <label>
-            <input type="radio" name="dbweb_query_type" value="arrivals" bind:group={liveDataConfig.dbWeb.queryType}>
+            <input type="radio" name="board_query_type" value="arrivals" bind:group={liveDataConfig.board.queryType}>
             <span>Ankünfte</span>
         </label>
     </div>
@@ -265,7 +262,7 @@
     <!-- Zwischenhalte (fest auf 8 Vias) -->
     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; padding: 6px 10px; background: rgba(0, 0, 0, 0.2); border-radius: 4px; border: 1px solid var(--border);">
         <span class="field-label" style="margin: 0;">Zwischenhalte (Vias):</span>
-        <span class="vias-badge">8 Zwischenhalte (ZIM-Standard)</span>
+        <span class="vias-badge">{liveDataConfig.board.maxVias} Zwischenhalte (ZIM-Standard)</span>
     </div>
 
     <!-- Verkehrsmittel-Filter -->
@@ -273,23 +270,23 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
             <span class="field-label" style="margin: 0;">Verkehrsmittel:</span>
             <div style="display: flex; gap: 6px;">
-                <button 
-                    type="button" 
-                    class="btn-xs" 
+                <button
+                    type="button"
+                    class="btn-xs"
                     onclick={() => setMots(ALL_MOTS.map(m => m.id))}
                 >
                     Alle
                 </button>
-                <button 
-                    type="button" 
-                    class="btn-xs" 
+                <button
+                    type="button"
+                    class="btn-xs"
                     onclick={() => setMots(['ICE', 'EC_IC', 'IR', 'REGIONAL', 'SBAHN'])}
                 >
                     Nur Bahn
                 </button>
-                <button 
-                    type="button" 
-                    class="btn-xs" 
+                <button
+                    type="button"
+                    class="btn-xs"
                     onclick={() => setMots(['ICE', 'EC_IC'])}
                 >
                     Fernverkehr
@@ -299,10 +296,10 @@
 
         <div class="mots-grid">
             {#each ALL_MOTS as mot}
-                <label class="mot-item" class:selected={liveDataConfig.dbWeb.verkehrsmittel?.includes(mot.id)}>
-                    <input 
-                        type="checkbox" 
-                        checked={liveDataConfig.dbWeb.verkehrsmittel?.includes(mot.id)}
+                <label class="mot-item" class:selected={liveDataConfig.board.verkehrsmittel?.includes(mot.id)}>
+                    <input
+                        type="checkbox"
+                        checked={liveDataConfig.board.verkehrsmittel?.includes(mot.id)}
                         onchange={() => toggleMot(mot.id)}
                     >
                     <span>{mot.label}</span>
@@ -314,7 +311,7 @@
     <!-- Optionen -->
     <div class="checkbox-group" style="margin-top: 12px;">
         <label class="checkbox-label">
-            <input type="checkbox" bind:checked={liveDataConfig.dbWeb.fetchFormation}>
+            <input type="checkbox" bind:checked={liveDataConfig.board.fetchFormation}>
             <span>Wagenreihungen nach dem Laden automatisch für sichtbare Züge abrufen</span>
         </label>
     </div>

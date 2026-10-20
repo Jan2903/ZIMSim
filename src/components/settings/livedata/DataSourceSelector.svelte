@@ -82,7 +82,7 @@
      */
     function handleSelect(source) {
         selectedDataSource = source;
-        liveDataConfig.timetableSource = source;
+        liveDataConfig.profile = source;
         onSelectSource?.(source);
     }
 
@@ -102,7 +102,7 @@
     </div>
     <div class="card-body">
         <!-- Datenquellen-Segment -->
-        <div class="field-label">Aktive Schnittstelle / Profil:</div>
+        <div class="field-label">Aktives Optionsprofil:</div>
         <div class="source-selector">
             <label class="source-card" class:active={selectedDataSource === 'iris'}>
                 <input type="radio" name="data_source" value="iris" bind:group={selectedDataSource} onchange={() => handleSelect('iris')}>
@@ -145,6 +145,12 @@
                     Moderne bahn.de Reiselösungs-API für Echtzeit-Abfahrten, Zwischenhalte und detaillierte Wagenreihungen.
                 </div>
             </label>
+        </div>
+
+        <div class="source-hint">
+            Das Profil bestimmt, welche Optionen rechts angezeigt werden. Die Datenquelle selbst
+            wird über die Aktions-Buttons des jeweiligen Profils geladen - jede Quelle lässt sich
+            weiterhin einzeln oder gemeinsam nutzen.
         </div>
 
         <!-- Plattform- und CORS-Status-Banner -->
@@ -333,6 +339,13 @@
         font-size: 0.78rem;
         color: var(--text-muted, #94a3b8);
         line-height: 1.4;
+    }
+
+    .source-hint {
+        font-size: 0.76rem;
+        color: var(--text-muted, #94a3b8);
+        line-height: 1.45;
+        margin: -8px 0 16px 0;
     }
 
     .source-badge {

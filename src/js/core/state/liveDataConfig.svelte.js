@@ -1,22 +1,34 @@
 // src/js/core/state/liveDataConfig.svelte.js
-
 /**
  * @fileoverview Globaler reaktiver Konfigurations-State für Live-Daten-Schnittstellen und Provider.
- * Verwaltet die aktive Fahrplan-Quelle, Wagenreihungs-Dienste und Provider-spezifische Optionen.
+ * Verwaltet das aktive Optionsprofil, die Wagenreihungs-Quelle und die gemeinsamen Board-Optionen
+ * für DB Navigator und bahn.de. Der State wird persistent gespeichert.
  */
+import { StorageService } from '../services/storageService.js';
 
-export const liveDataConfig = $state({
+/**
+ * LocalStorage-Key für die Live-Daten-Konfiguration.
+ * @type {string}
+ */
+const STORAGE_KEY = 'zimsim_live_data_config';
+
+/**
+ * Standard-Konfiguration der Live-Daten-Schnittstellen.
+ * @type {object}
+ */
+const DEFAULTS = {
     /**
-     * Aktive Primärquelle für Fahrplandaten & Bahnhofstafel.
+     * Aktives Optionsprofil der Live-Daten-Einstellungen.
+     * Bestimmt, welcher Optionsblock angezeigt wird - NICHT, welche API automatisch befragt wird.
      * Mögliche Werte: 'iris' | 'db_navigator' | 'dbweb'
      * @type {'iris' | 'db_navigator' | 'dbweb'}
      */
-    timetableSource: 'iris',
+    profile: 'iris',
 
     /**
-     * Quelle für automatische Wagenreihungen (Formationen).
-     * Mögliche Werte: 'db_navigator' | 'dbweb' | 'none'
-     * @type {'db_navigator' | 'dbweb' | 'none'}
+     * Quelle für Wagenreihungen (Formationen) bei Fahrten ohne eigene Quellen-Metadaten (z. B. aus IRIS).
+     * Mögliche Werte: 'db_navigator' | 'dbweb'
+     * @type {'db_navigator' | 'dbweb'}
      */
     formationSource: 'db_navigator',
 
@@ -28,27 +40,93 @@ export const liveDataConfig = $state({
     autoFetchActiveFormations: false,
 
     /**
-     * DB Navigator spezifische Optionen
+     * Gemeinsame Optionen der Bahnhofstafel für DB Navigator und bahn.de.
+     * @type {object}
      */
-    dbNav: {
-        queryType: 'departures', // 'departures' | 'arrivals'
-        fetchFormation: true,
-        fetchDetails: true,
-        includeNearby: false
-    },
+    board: {
+        /**
+         * Abfrage-Typ der Bahnhofstafel.
+         * @type {'departures' | 'arrivals'}
+         */
+        queryType: 'departures',
 
-    /**
-     * DBweb spezifische Optionen (bahn.de Web API)
-     */
-    dbWeb: {
-        isAvailable: true,
-        queryType: 'departures', // 'departures' | 'arrivals'
-        maxVias: 5,
+        /**
+         * Maximale Anzahl der Zwischenhalte (Vias), sofern die Quelle welche liefert.
+         * @type {number}
+         */
+        maxVias: 8,
+
+        /**
+         * Ob Wagenreihungen nach dem Laden der Tafel automatisch für sichtbare Züge abgerufen werden.
+         * @type {boolean}
+         */
         fetchFormation: true,
-        clearBeforeSync: false,
+
+        /**
+         * Verkehrsmittel-Filter der Bahnhofstafel als neutrale IDs (HAFAS-Kürzel).
+         * Die Zuordnung zu den provider-spezifischen Codes erfolgt in der Provider-Fassade.
+         * @type {string[]}
+         */
         verkehrsmittel: [
             'ICE', 'EC_IC', 'IR', 'REGIONAL', 'SBAHN',
             'BUS', 'SCHIFF', 'UBAHN', 'TRAM', 'ANRUFPFLICHTIG'
         ]
     }
+};
+
+/**
+ * Erzeugt eine tiefe Kopie der Standard-Konfiguration.
+ * @returns {object}
+ */
+function createDefaults() {
+    return {
+        ...DEFAULTS,
+        board: { ...DEFAULTS.board, verkehrsmittel: [...DEFAULTS.board.verkehrsmittel] }
+    };
+}
+
+/**
+ * Lädt die persistierte Konfiguration und führt sie mit den Standardwerten zusammen.
+ * @returns {object}
+ */
+function loadPersistedConfig() {
+    try {
+        const persisted = StorageService.getItem(STORAGE_KEY, null);
+        if (!persisted || typeof persisted !== 'object') {
+            return createDefaults();
+        }
+        return {
+            ...createDefaults(),
+            ...persisted,
+            board: { ...DEFAULTS.board, ...(persisted.board || {}) }
+        };
+    } catch (e) {
+        console.warn('[LiveDataConfig] Fehler beim Laden der Konfiguration:', e);
+        return createDefaults();
+    }
+}
+
+/**
+ * Globaler reaktiver Konfigurations-State der Live-Daten-Schnittstellen.
+ */
+export const liveDataConfig = $state(loadPersistedConfig());
+
+/**
+ * Speichert die aktuelle Konfiguration persistent.
+ * @returns {void}
+ */
+export function saveLiveDataConfig() {
+    try {
+        StorageService.setItem(STORAGE_KEY, JSON.parse(JSON.stringify(liveDataConfig)));
+    } catch (e) {
+        console.warn('[LiveDataConfig] Fehler beim Speichern der Konfiguration:', e);
+    }
+}
+
+// Persistenz automatisch auslösen, sobald sich ein Wert ändert.
+// Das Lesen von liveDataConfig innerhalb des Effekts erzeugt die Reaktivitäts-Abhängigkeit.
+$effect.root(() => {
+    $effect(() => {
+        saveLiveDataConfig();
+    });
 });

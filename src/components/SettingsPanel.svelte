@@ -227,7 +227,7 @@
         <!-- Tab 3: Live-Daten (IRIS & DB Navigator) -->
         {:else if uiState.activeTab === 'livedata'}
             <div class="tab-pane" id="panel-livedata" role="tabpanel" aria-labelledby="tab-livedata" tabindex="0">
-                <SettingsLiveData {modalsComp} />
+                <SettingsLiveData />
             </div>
 
         <!-- Tab 4: Ansagen & Audio -->

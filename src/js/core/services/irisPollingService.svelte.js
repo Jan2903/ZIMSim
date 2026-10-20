@@ -4,16 +4,61 @@ import { journeyStore, trainDisplay } from '../state/stores.js';
 import { getSimulatedTime } from '../utils/config.js';
 import { irisAnnouncementService } from '../../audio/irisAnnouncementService.js';
 import { yieldToMain } from '../utils/yieldUtils.js';
+import { StorageService } from './storageService.js';
 
 // Re-Export für externe Konsumenten (Rückwärtskompatibilität)
 export { yieldToMain };
 
-export const irisConfig = $state({
-    autoUpdateInterval: 0,
-    futureWindowHours: 2,
-    lookbehindMinutes: 30, // Vergangenheits-Puffer für Standzeiten und Wenden (in Minuten)
-    autoAnnouncements: false,
-    autoSort: true,
+/**
+ * LocalStorage-Key für die IRIS-Konfiguration.
+ * @type {string}
+ */
+const IRIS_CONFIG_STORAGE_KEY = 'zimsim_iris_config';
+
+/**
+ * Lädt die persistierte IRIS-Konfiguration und führt sie mit den Standardwerten zusammen.
+ * @returns {object}
+ */
+function loadPersistedIrisConfig() {
+    const defaults = {
+        autoUpdateInterval: 0,
+        futureWindowHours: 2,
+        lookbehindMinutes: 30, // Vergangenheits-Puffer für Standzeiten und Wenden (in Minuten)
+        autoAnnouncements: false,
+        autoSort: true,
+    };
+
+    try {
+        const persisted = StorageService.getItem(IRIS_CONFIG_STORAGE_KEY, null);
+        if (!persisted || typeof persisted !== 'object') {
+            return defaults;
+        }
+        return { ...defaults, ...persisted };
+    } catch (e) {
+        console.warn('[IrisPollingService] Fehler beim Laden der IRIS-Konfiguration:', e);
+        return defaults;
+    }
+}
+
+export const irisConfig = $state(loadPersistedIrisConfig());
+
+/**
+ * Speichert die aktuelle IRIS-Konfiguration persistent.
+ * @returns {void}
+ */
+export function saveIrisConfig() {
+    try {
+        StorageService.setItem(IRIS_CONFIG_STORAGE_KEY, JSON.parse(JSON.stringify(irisConfig)));
+    } catch (e) {
+        console.warn('[IrisPollingService] Fehler beim Speichern der IRIS-Konfiguration:', e);
+    }
+}
+
+// Persistenz automatisch auslösen, sobald sich ein Wert ändert.
+$effect.root(() => {
+    $effect(() => {
+        saveIrisConfig();
+    });
 });
 
 class IrisPollingService {

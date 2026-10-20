@@ -7,25 +7,15 @@
     import DbNavSection from './livedata/DbNavSection.svelte';
     import DbWebSection from './livedata/DbWebSection.svelte';
 
-    /**
-     * @typedef {Object} Props
-     * @property {object} [modalsComp] - Referenz auf die Modals-Komponente für den DB-Import
-     */
-    let { modalsComp = null } = $props();
-
-    // Aktive Datenquelle: 'iris' | 'db_navigator' | 'dbweb'
-    let selectedDataSource = $state(liveDataConfig.timetableSource || 'iris');
-
-    $effect(() => {
-        liveDataConfig.timetableSource = selectedDataSource;
-    });
+    // Aktives Optionsprofil: 'iris' | 'db_navigator' | 'dbweb'
+    let selectedDataSource = $state(liveDataConfig.profile || 'iris');
 </script>
 
 <div class="settings-tab-grid">
     <!-- Spalte 1: Datenquellen-Auswahl, Plattform-Status & Python-Bridge -->
     <DataSourceSelector bind:selectedDataSource />
 
-    <!-- Spalte 2: Konfiguration der gewählten Datenquelle -->
+    <!-- Spalte 2: Konfiguration des gewählten Datenquellen-Profils -->
     <div class="settings-card">
         <div class="card-header">
             <ZimIcon name="settings" size={18} />

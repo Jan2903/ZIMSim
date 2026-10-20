@@ -1,20 +1,13 @@
 <!-- src/components/settings/livedata/DbNavSection.svelte -->
 <script>
     import { journeyStore, trainDisplay } from '../../../js/core/state/stores.js';
+    import { liveDataConfig } from '../../../js/core/state/liveDataConfig.svelte.js';
     import { irisConfig } from '../../../js/core/services/irisPollingService.svelte.js';
     import { toastStore } from '../../../js/core/state/toastStore.svelte.js';
     import { getNonCorsAvailability } from '../../../js/core/services/apiClient.js';
     import { DbNavApiService } from '../../../js/core/services/dbNavApiService.js';
     import { JourneyDbNavSyncService } from '../../../js/features/journey/services/journeyDbNavSyncService.js';
     import ZimIcon from '../../ZimIcon.svelte';
-
-    // DB Navigator & bahn.de Konfiguration
-    let dbNavConfig = $state({
-        queryType: 'departures', // 'departures' | 'arrivals'
-        fetchDetails: true,      // Details/Zuglauf pro Fahrt abrufen
-        fetchFormation: true,    // Wagenreihung pro Fahrt abrufen
-        includeNearby: false     // Nahverkehr / Ersatzverkehr einschließen
-    });
 
     // Plattformabhängige Verfügbarkeit der Nicht-CORS-APIs (DB Navigator / bahn.de)
     const availability = $derived(getNonCorsAvailability());
@@ -48,13 +41,13 @@
 
         isFetchingDbNavBoard = true;
         try {
-            const isArrival = dbNavConfig.queryType === 'arrivals';
+            const isArrival = liveDataConfig.board.queryType === 'arrivals';
             const res = await JourneyDbNavSyncService.loadStationBoard(null, isArrival, replace, {
                 lookbehindMinutes: irisConfig.lookbehindMinutes ?? 30,
                 chunks: 2
             });
             if (res.success) {
-                if (dbNavConfig.fetchFormation) {
+                if (liveDataConfig.board.fetchFormation) {
                     await JourneyDbNavSyncService.autoFetchActiveFormations(2);
                 }
                 toastStore.success(`${res.count} Fahrten über DB Navigator geladen.`);
@@ -173,18 +166,18 @@
     <div class="field-label">Abfrage-Modus für Bahnhofstafel:</div>
     <div class="segment-switch">
         <label>
-            <input type="radio" name="dbnav_query_type" value="departures" bind:group={dbNavConfig.queryType}>
+            <input type="radio" name="board_query_type" value="departures" bind:group={liveDataConfig.board.queryType}>
             <span>Abfahrten</span>
         </label>
         <label>
-            <input type="radio" name="dbnav_query_type" value="arrivals" bind:group={dbNavConfig.queryType}>
+            <input type="radio" name="board_query_type" value="arrivals" bind:group={liveDataConfig.board.queryType}>
             <span>Ankünfte</span>
         </label>
     </div>
 
     <div class="checkbox-group" style="margin-top: 6px;">
         <label class="checkbox-label">
-            <input type="checkbox" bind:checked={dbNavConfig.fetchFormation}>
+            <input type="checkbox" bind:checked={liveDataConfig.board.fetchFormation}>
             <span>Wagenreihung für angezeigten Zug automatisch abrufen</span>
         </label>
     </div>
