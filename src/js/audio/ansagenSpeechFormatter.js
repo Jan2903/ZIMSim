@@ -372,6 +372,38 @@ export class AnsagenSpeechFormatter {
     }
 
     /**
+     * Fügt eine reine Stationsliste (z. B. Teilungsbahnhöfe) zur Playlist hinzu.
+     * Die Aussprache-Variante wird über den Store-Schlüssel gesteuert.
+     *
+     * @param {Array} playlist - Die Playlist
+     * @param {Array<string|object>} stations - Stationen als Name oder { name, extId }
+     * @param {string} [variantKey='variantZugteilung'] - Store-Schlüssel der Variante
+     */
+    stationList(playlist, stations, variantKey = 'variantZugteilung') {
+        if (!stations || stations.length === 0) return;
+
+        const variant = ansagenStore[variantKey] ?? ansagenStore.variantVias;
+        const validStations = stations.map(s => ({
+            name: typeof s === 'object' ? (s.nameKurz || s.name) : s,
+            ibnr: typeof s === 'object' && s.extId ? s.extId : this.getIbnr(s)
+        })).filter(s => s.ibnr);
+
+        for (let i = 0; i < validStations.length; i++) {
+            const { name, ibnr } = validStations[i];
+            const isLast = i === validStations.length - 1;
+
+            if (isLast && i > 0) {
+                this.module(playlist, 'UND');
+            }
+
+            playlist.push({
+                file: `${this.lang}/ziele/variante${variant}/${isLast ? 'tief' : 'hoch'}/${ibnr}`,
+                text: name
+            });
+        }
+    }
+
+    /**
      * Fügt den Einleitungs-Gong hinzu.
      * @param {Array} playlist - Die Playlist
      */

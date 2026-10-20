@@ -76,6 +76,122 @@ export class JourneyCouplingService {
     }
 
     /**
+     * Liefert die Coupling-Gruppe einer Fahrt für Ansagen.
+     * Ist die Fahrt nicht gekoppelt, wird ein Array mit der Fahrt selbst zurückgegeben.
+     *
+     * @param {Array<object>} journeys - Alle Fahrten des Stores
+     * @param {object} journey - Die Bezugsfahrt
+     * @returns {Array<object>} Gruppe in Store-Reihenfolge
+     */
+    static getAnnouncementGroup(journeys, journey) {
+        if (!journey) return [];
+        const group = this.expandCoupling(journeys || [], journey);
+        return group.length > 0 ? group : [journey];
+    }
+
+    /**
+     * Filtert ausgefallene Mitglieder aus einer Coupling-Gruppe für die Ansage.
+     *
+     * @param {Array<object>} group - Coupling-Gruppe
+     * @returns {Array<object>} Aktive Gruppenmitglieder
+     */
+    static getActiveAnnouncementGroup(group) {
+        if (!group) return [];
+        return group.filter(j => j && !j.ausfall);
+    }
+
+    /**
+     * Ermittelt das für die gesamte Coupling-Gruppe gültige Gleis.
+     * Bevorzugt ein gemeinsames Echtzeitgleis; sonst ein gemeinsames Plangleis.
+     * Bei widersprüchlichen Gleisen wird null zurückgegeben.
+     *
+     * @param {Array<object>} group - Coupling-Gruppe
+     * @returns {object|null} Journey mit dem gültigen Gleis oder null
+     */
+    static getGroupPlatformJourney(group) {
+        if (!group || group.length === 0) return null;
+
+        const realtimePlatforms = [...new Set(
+            group.map(j => (j.ezGleis || '').trim()).filter(Boolean)
+        )];
+        if (realtimePlatforms.length === 1) {
+            return group.find(j => (j.ezGleis || '').trim() === realtimePlatforms[0]) || null;
+        }
+        if (realtimePlatforms.length > 1) return null;
+
+        const plannedPlatforms = [...new Set(
+            group.map(j => (j.platform || '').trim()).filter(Boolean)
+        )];
+        if (plannedPlatforms.length === 1) {
+            return group.find(j => (j.platform || '').trim() === plannedPlatforms[0]) || null;
+        }
+        return null;
+    }
+
+    /**
+     * Liefert die zukünftigen Teilungsbahnhöfe als Stationsobjekte für die Ansage.
+     *
+     * @param {Array<object>} group - Coupling-Gruppe
+     * @param {string|null} [currentStation=null] - Name des aktuellen Bahnhofs
+     * @returns {Array<{name: string, extId: string}>} Teilungsbahnhöfe
+     */
+    static getUpcomingSplitStations(group, currentStation = null) {
+        const names = this.detectUpcomingSplitStations(group, currentStation);
+        if (names.length === 0) return [];
+
+        const allStops = (group || []).flatMap(j => j.stops || []);
+        const seen = new Set();
+
+        return names.map(name => {
+            const normalized = String(name || '').trim().toLowerCase();
+            if (!normalized || seen.has(normalized)) return null;
+            seen.add(normalized);
+
+            const stop = allStops.find(s => String(s?.name || '').trim().toLowerCase() === normalized);
+            return {
+                name: stop?.name || name,
+                extId: stop?.extId || ''
+            };
+        }).filter(Boolean);
+    }
+
+    /**
+     * Ermittelt, ob eine Coupling-Gruppe sich am aktuellen Bahnhof vereinigt.
+     * Route-basiert: Der aktuelle Bahnhof ist der erste gemeinsame Halt der
+     * bisherigen Routen. Ohne Haltdaten dient ein gesetztes IRIS-Wings-Feld
+     * als Fallback.
+     *
+     * @param {Array<object>} group - Coupling-Gruppe
+     * @param {string|null} [currentStation=null] - Name des aktuellen Bahnhofs
+     * @returns {boolean}
+     */
+    static isJoiningAtCurrentStation(group, currentStation = null) {
+        if (!group || group.length < 2) return false;
+
+        const hasWings = group.some(j => Boolean(j.wingsRaw));
+        const target = String(currentStation || '').trim().toLowerCase();
+        if (!target) return hasWings;
+
+        const routes = group.map(j => {
+            const stops = (j.stops || []).map(s => String(s?.name || '').trim().toLowerCase());
+            const idx = stops.lastIndexOf(target);
+            return idx >= 0 ? stops.slice(0, idx + 1) : null;
+        });
+
+        if (routes.some(r => r === null)) return hasWings;
+
+        const previousStops = routes.map(r => r.length >= 2 ? r[r.length - 2] : null);
+        const nonEmptyPrevious = previousStops.filter(Boolean);
+
+        // Mindestens ein Zug beginnt am aktuellen Bahnhof oder die Vorgängerhalte
+        // unterscheiden sich -> die Vereinigung erfolgt hier.
+        if (previousStops.some(p => p === null)) return true;
+        if (new Set(nonEmptyPrevious).size > 1) return true;
+
+        return false;
+    }
+
+    /**
      * Prüft, ob alle Journeys in einer Gruppe identisches Ziel, Vias und Planzeit haben.
      * Wenn ja, können sie zu einer gemeinsamen Anzeige zusammengefasst werden.
      * @param {Array<object>} journeys

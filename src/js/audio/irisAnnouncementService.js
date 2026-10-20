@@ -1,6 +1,7 @@
 import { ansagenGenerator } from './ansagenGenerator.js';
 import { announcementQueueService, ANNOUNCEMENT_TYPE } from './announcementQueueService.svelte.js';
 import { JourneyAnnouncementState } from '../features/journey/journey.svelte.js';
+import { JourneyCouplingService } from '../features/journey/services/journeyCouplingService.js';
 import { ansagenPlayer } from './ansagenPlayer.svelte.js';
 
 class IrisAnnouncementService {
@@ -53,6 +54,8 @@ class IrisAnnouncementService {
 
         const maxFutureMs = 60 * 60 * 1000; // 60-Minuten-Horizont
         const maxPastMs = 3 * 60 * 1000;
+        const handledGleiswechselGroups = new Set();
+        const handledInfoGroups = new Set();
 
         for (const j of journeys) {
             // Ankünfte, die zu einer Durchfahrt oder einem verknüpften Zug gehören, werden NIE separat angesagt (nur die Abfahrt kündigt an)
@@ -108,21 +111,54 @@ class IrisAnnouncementService {
             // 2. Gleiswechsel (Priorität 75)
             const currentPlatform = j.ezGleis || j.platform || '';
             if (state.platform && currentPlatform && currentPlatform !== state.platform) {
-                state.platform = currentPlatform;
-                state.lastAnnouncedSimTimeMs = simTimeMs;
-                if (autoAnnouncementsEnabled) {
-                    const linkedPartner = this._getLinkedArrival(j, journeys);
-                    const playlist = ansagenGenerator.generateGleiswechsel(j, linkedPartner);
-                    if (playlist.length > 0) {
-                        announcementQueueService.enqueue({
-                            journeyId: j.journeyId,
-                            trainName: j.name,
-                            type: ANNOUNCEMENT_TYPE.GLEISWECHSEL,
-                            playlist: playlist,
-                            label: `${j.name} Gleiswechsel (Gl. ${currentPlatform})`,
-                            trainCountdownTimeMs: trainTime
-                        });
-                        infoAnnouncementEnqueued = true;
+                const couplingGroup = this._getCouplingGroup(j, journeys);
+                const groupKey = j.couplingGroupId || j.id;
+                const groupPlatformJourney = JourneyCouplingService.getGroupPlatformJourney(couplingGroup);
+                const isCoupledPlatformChange = couplingGroup.length > 1 &&
+                    groupPlatformJourney &&
+                    couplingGroup.some(member => ansagenGenerator.hasGleiswechsel(member));
+
+                if (isCoupledPlatformChange) {
+                    this._syncGroupPlatformState(couplingGroup);
+                    state.lastAnnouncedSimTimeMs = simTimeMs;
+
+                    if (!handledGleiswechselGroups.has(groupKey)) {
+                        handledGleiswechselGroups.add(groupKey);
+                        handledInfoGroups.add(groupKey);
+
+                        if (autoAnnouncementsEnabled) {
+                            const linkedPartner = this._getLinkedArrival(j, journeys);
+                            const playlist = ansagenGenerator.generateGleiswechsel(j, linkedPartner);
+                            if (playlist.length > 0) {
+                                announcementQueueService.enqueue({
+                                    journeyId: j.journeyId,
+                                    trainName: this._getGroupAnnouncementName(couplingGroup),
+                                    type: ANNOUNCEMENT_TYPE.GLEISWECHSEL,
+                                    playlist: playlist,
+                                    label: `${this._getGroupAnnouncementName(couplingGroup)} Gleiswechsel (Gl. ${currentPlatform})`,
+                                    trainCountdownTimeMs: trainTime
+                                });
+                                infoAnnouncementEnqueued = true;
+                            }
+                        }
+                    }
+                } else {
+                    state.platform = currentPlatform;
+                    state.lastAnnouncedSimTimeMs = simTimeMs;
+                    if (autoAnnouncementsEnabled) {
+                        const linkedPartner = this._getLinkedArrival(j, journeys);
+                        const playlist = ansagenGenerator.generateGleiswechsel(j, linkedPartner);
+                        if (playlist.length > 0) {
+                            announcementQueueService.enqueue({
+                                journeyId: j.journeyId,
+                                trainName: j.name,
+                                type: ANNOUNCEMENT_TYPE.GLEISWECHSEL,
+                                playlist: playlist,
+                                label: `${j.name} Gleiswechsel (Gl. ${currentPlatform})`,
+                                trainCountdownTimeMs: trainTime
+                            });
+                            infoAnnouncementEnqueued = true;
+                        }
                     }
                 }
             } else if (!state.platform && currentPlatform) {
@@ -140,18 +176,22 @@ class IrisAnnouncementService {
                 const cooldownPassed = (simTimeMs - state.lastAnnouncedSimTimeMs) >= 2.5 * 60 * 1000; // 2.5 Min Cooldown
                 
                 if (delayDiff >= 5 && (state.lastAnnouncedDelay === 0 || cooldownPassed)) {
+                    const couplingGroup = this._getCouplingGroup(j, journeys);
+                    const groupKey = j.couplingGroupId || j.id;
                     state.lastAnnouncedDelay = roundedDelay;
                     state.lastAnnouncedSimTimeMs = simTimeMs;
                     // Nur einreihen, wenn nicht bereits Gleiswechsel in diesem Zyklus die Information abgedeckt hat
-                    if (autoAnnouncementsEnabled && !infoAnnouncementEnqueued) {
+                    if (autoAnnouncementsEnabled && !infoAnnouncementEnqueued && !handledInfoGroups.has(groupKey)) {
+                        this._syncGroupInfoState(couplingGroup, simTimeMs);
                         const playlist = ansagenGenerator.generateInformation(j);
                         if (playlist.length > 0) {
+                            handledInfoGroups.add(groupKey);
                             announcementQueueService.enqueue({
                                 journeyId: j.journeyId,
-                                trainName: j.name,
+                                trainName: this._getGroupAnnouncementName(couplingGroup),
                                 type: ANNOUNCEMENT_TYPE.VERSPAETUNG,
                                 playlist: playlist,
-                                label: `${j.name} Verspätung (+${roundedDelay}m)`,
+                                label: `${this._getGroupAnnouncementName(couplingGroup)} Verspätung (+${roundedDelay}m)`,
                                 trainCountdownTimeMs: trainTime
                             });
                             infoAnnouncementEnqueued = true;
@@ -181,16 +221,20 @@ class IrisAnnouncementService {
                     if (deviationsHash !== '') {
                         const cooldownPassed = (simTimeMs - state.lastAnnouncedSimTimeMs) >= 2 * 60 * 1000;
                         if (cooldownPassed) {
+                            const couplingGroup = this._getCouplingGroup(j, journeys);
+                            const groupKey = j.couplingGroupId || j.id;
                             state.lastAnnouncedSimTimeMs = simTimeMs;
-                            if (autoAnnouncementsEnabled && !infoAnnouncementEnqueued) {
+                            if (autoAnnouncementsEnabled && !infoAnnouncementEnqueued && !handledInfoGroups.has(groupKey)) {
+                                this._syncGroupInfoState(couplingGroup, simTimeMs);
                                 const playlist = ansagenGenerator.generateInformation(j);
                                 if (playlist.length > 0) {
+                                    handledInfoGroups.add(groupKey);
                                     announcementQueueService.enqueue({
                                         journeyId: j.journeyId,
-                                        trainName: j.name,
+                                        trainName: this._getGroupAnnouncementName(couplingGroup),
                                         type: ANNOUNCEMENT_TYPE.FAHRTAENDERUNG,
                                         playlist: playlist,
-                                        label: `${j.name} Fahrplanänderung`,
+                                        label: `${this._getGroupAnnouncementName(couplingGroup)} Fahrplanänderung`,
                                         trainCountdownTimeMs: trainTime
                                     });
                                     infoAnnouncementEnqueued = true;
@@ -233,6 +277,7 @@ class IrisAnnouncementService {
 
         // 1. Vorschau der nächsten 4 Einfahrten für das Status-Overlay
         const upcoming = [];
+        const seenUpcomingGroups = new Set();
         for (const j of journeys) {
             if (j.ausfall) continue;
             // Durchfahrt-Ankünfte überspringen (die Abfahrt kündigt an)
@@ -247,11 +292,17 @@ class IrisAnnouncementService {
             const effectiveMs = j.countdownTimeMs;
             if (!effectiveMs) continue;
 
+            const previewGroup = this._getCouplingGroup(j, journeys);
+            if (previewGroup.length > 1 && j.couplingGroupId) {
+                if (seenUpcomingGroups.has(j.couplingGroupId)) continue;
+                seenUpcomingGroups.add(j.couplingGroupId);
+            }
+
             const diffSecs = Math.floor((effectiveMs - simTimeMs) / 1000);
             if (diffSecs > 0 && diffSecs <= 3600 && !j.announcementState?.hasPlayedEinfahrt) {
                 upcoming.push({
                     journeyId: j.journeyId,
-                    name: j.name,
+                    name: previewGroup.length > 1 ? this._getGroupAnnouncementName(previewGroup) : j.name,
                     dest: j.destinationKurz || j.destination,
                     countdown: diffSecs,
                     type: 'Einfahrt'
@@ -290,7 +341,8 @@ class IrisAnnouncementService {
                 const diffSecs = Math.floor((effectiveMs - simTimeMs) / 1000);
 
                 if (diffSecs <= 60 && diffSecs >= -45 && !state.hasPlayedEinfahrt && !j.ausfall) {
-                    state.hasPlayedEinfahrt = true;
+                    const couplingGroup = this._getCouplingGroup(j, journeys);
+                    this._markGroupEinfahrtPlayed(couplingGroup);
 
                     // Bei verknüpftem Zug Partner ermitteln und ebenfalls markieren
                     const linkedPartner = this._getLinkedArrival(j, journeys);
@@ -302,10 +354,10 @@ class IrisAnnouncementService {
                         const playlist = ansagenGenerator.generateEinfahrt(j, linkedPartner);
                         announcementQueueService.enqueue({
                             journeyId: j.journeyId,
-                            trainName: j.name,
+                            trainName: this._getGroupAnnouncementName(couplingGroup),
                             type: ANNOUNCEMENT_TYPE.EINFAHRT,
                             playlist: playlist,
-                            label: `${j.name} Einfahrt`,
+                            label: `${this._getGroupAnnouncementName(couplingGroup)} Einfahrt`,
                             trainCountdownTimeMs: effectiveMs
                         });
                     }
@@ -336,7 +388,7 @@ class IrisAnnouncementService {
 
             // --- C) PERIODISCHER REMINDER (Priorität 30) ---
             if (autoAnnouncementsEnabled && !state.hasPlayedEinfahrt) {
-                this._checkReminder(j, simTimeMs);
+                this._checkReminder(j, simTimeMs, journeys);
             }
         }
     }
@@ -348,7 +400,49 @@ class IrisAnnouncementService {
      * 10 bis 30 Min vor Fahrt: alle 10 Minuten.
      * 1 bis 10 Min vor Fahrt: alle 5 Minuten.
      */
-    _checkReminder(journey, simTimeMs) {
+    _checkReminder(journey, simTimeMs, journeys = []) {
+        const group = this._getCouplingGroup(journey, journeys);
+        if (group.length > 1) {
+            const representative = group.find(member => !member.ausfall) || group[0];
+            if (representative.id !== journey.id) return;
+            if (!group.some(member => ansagenGenerator.hasInformationalContent(member))) return;
+
+            const state = representative.announcementState;
+            if (simTimeMs - state.lastAnnouncedSimTimeMs < 5 * 60 * 1000) return;
+
+            const targetTimeMs = representative.countdownTimeMs || representative._effectiveTimeMs || 0;
+            const diffMins = Math.floor((targetTimeMs - simTimeMs) / 60000);
+            if (diffMins <= 0 || diffMins > 60) return;
+
+            let intervalMins = 15;
+            if (diffMins <= 10) {
+                intervalMins = 5;
+            } else if (diffMins <= 30) {
+                intervalMins = 10;
+            }
+
+            if (simTimeMs - state.lastAnnouncedSimTimeMs >= intervalMins * 60 * 1000) {
+                for (const member of group) {
+                    if (!member.announcementState) member.announcementState = new JourneyAnnouncementState();
+                    member.announcementState.lastAnnouncedSimTimeMs = simTimeMs;
+                }
+
+                const isPlatformChange = group.some(member => ansagenGenerator.hasGleiswechsel(member));
+                const playlist = isPlatformChange
+                    ? ansagenGenerator.generateGleiswechsel(representative)
+                    : ansagenGenerator.generateInformation(representative);
+                announcementQueueService.enqueue({
+                    journeyId: representative.journeyId,
+                    trainName: this._getGroupAnnouncementName(group),
+                    type: ANNOUNCEMENT_TYPE.REMINDER,
+                    playlist: playlist,
+                    label: `${this._getGroupAnnouncementName(group)} Erinnerung`,
+                    trainCountdownTimeMs: targetTimeMs
+                });
+            }
+            return;
+        }
+
         if (!ansagenGenerator.hasInformationalContent(journey)) return;
 
         const state = journey.announcementState;
@@ -410,6 +504,77 @@ class IrisAnnouncementService {
             return journeys.find(a => a.ankunft && a.journeyId === journey.journeyId) || null;
         }
         return null;
+    }
+
+    /**
+     * Liefert die Coupling-Gruppe einer Fahrt.
+     * @param {object} journey - Die Bezugsfahrt
+     * @param {Array} journeys - Liste aller Züge
+     * @returns {Array<object>} Gruppe oder Einzelfahrt
+     */
+    _getCouplingGroup(journey, journeys = []) {
+        if (!journey) return [];
+        if (!journey.couplingGroupId) return [journey];
+
+        const group = journeys.filter(j => j.couplingGroupId === journey.couplingGroupId);
+        return group.length > 0 ? group : [journey];
+    }
+
+    /**
+     * Erzeugt einen kombinierten Namen für eine Coupling-Gruppe.
+     * @param {Array<object>} group - Coupling-Gruppe
+     * @returns {string} Kombinierter Name
+     */
+    _getGroupAnnouncementName(group) {
+        const names = [...new Set((group || []).map(j => j?.name).filter(Boolean))];
+        return names.length > 1 ? names.join(' + ') : (names[0] || '');
+    }
+
+    /**
+     * Markiert die Einfahrtsansage für alle Mitglieder einer Coupling-Gruppe als gespielt.
+     * @param {Array<object>} group - Coupling-Gruppe
+     */
+    _markGroupEinfahrtPlayed(group) {
+        for (const member of group || []) {
+            if (!member.announcementState) {
+                member.announcementState = new JourneyAnnouncementState();
+            }
+            member.announcementState.hasPlayedEinfahrt = true;
+        }
+    }
+
+    /**
+     * Synchronisiert den Gleiszustand aller Gruppenmitglieder.
+     * @param {Array<object>} group - Coupling-Gruppe
+     */
+    _syncGroupPlatformState(group) {
+        for (const member of group || []) {
+            if (!member.announcementState) {
+                member.announcementState = new JourneyAnnouncementState();
+            }
+            member.announcementState.platform = member.ezGleis || member.platform || '';
+        }
+    }
+
+    /**
+     * Synchronisiert Verspätungs- und Abweichungszustand aller Gruppenmitglieder,
+     * nachdem eine gemeinsame Informationsansage eingereiht wurde.
+     * @param {Array<object>} group - Coupling-Gruppe
+     * @param {number} simTimeMs - Aktuelle Simulationszeit in Millisekunden
+     */
+    _syncGroupInfoState(group, simTimeMs) {
+        for (const member of group || []) {
+            if (!member.announcementState) {
+                member.announcementState = new JourneyAnnouncementState();
+            }
+            const delay = ansagenGenerator._calculateDelay(member);
+            member.announcementState.delay = delay;
+            member.announcementState.lastAnnouncedDelay = delay >= 5 ? delay : 0;
+            member.announcementState.deviationsHash = typeof member.getStopsHash === 'function'
+                ? member.getStopsHash()
+                : '';
+            member.announcementState.lastAnnouncedSimTimeMs = simTimeMs;
+        }
     }
 }
 

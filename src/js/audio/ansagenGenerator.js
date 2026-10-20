@@ -98,8 +98,9 @@ export class AnsagenGenerator {
      * sofern Abschnitte für das Gleis und Wagenreihung/Override für die Fahrt existieren.
      * @param {Array} playlist - Die Playlist
      * @param {object} journey - Das Journey-Objekt
+     * @param {Array<object>|null} [groupOverride=null] - Optionale Coupling-Gruppe für die Positionierung
      */
-    _appendSectors(playlist, journey) {
+    _appendSectors(playlist, journey, groupOverride = null) {
         if (!ansagenStore.ansageAbschnitte) return;
         if (!journey) return;
 
@@ -109,7 +110,7 @@ export class AnsagenGenerator {
             return;
         }
 
-        const coupledJourneys = JourneyCouplingService.expandCoupling(journeyStore.journeys, journey);
+        const coupledJourneys = groupOverride || JourneyCouplingService.expandCoupling(journeyStore.journeys, journey);
         const sectorsStr = getPlatformSectors(journey, coupledJourneys, platform);
         if (!sectorsStr) return;
 
@@ -151,6 +152,200 @@ export class AnsagenGenerator {
         if (validLetters.length === 0) return;
 
         this.formatter.firstClassSections(playlist, validLetters);
+    }
+
+    // --- Coupling / Flügelzüge ---
+
+    /**
+     * Liefert die Coupling-Gruppe einer Fahrt für Ansagen.
+     * @param {object} journey - Das Journey-Objekt
+     * @returns {Array<object>} Gruppe in Store-Reihenfolge
+     */
+    _getAnnouncementGroup(journey) {
+        return JourneyCouplingService.getAnnouncementGroup(journeyStore.journeys, journey);
+    }
+
+    /**
+     * Liefert die aktiven (nicht ausgefallenen) Mitglieder einer Coupling-Gruppe.
+     * @param {Array<object>} group - Coupling-Gruppe
+     * @returns {Array<object>} Aktive Mitglieder
+     */
+    _getActiveGroup(group) {
+        return JourneyCouplingService.getActiveAnnouncementGroup(group);
+    }
+
+    /**
+     * Ermittelt das gemeinsame Gleis einer Coupling-Gruppe.
+     * @param {Array<object>} group - Coupling-Gruppe
+     * @returns {object|null} Journey mit gültigem Gleis oder null
+     */
+    _getGroupPlatformJourney(group) {
+        return JourneyCouplingService.getGroupPlatformJourney(group);
+    }
+
+    /**
+     * Prüft, ob eine Coupling-Gruppe als gemeinsame Ansage gesprochen werden kann.
+     * @param {Array<object>} group - Aktive Coupling-Gruppe
+     * @returns {boolean}
+     */
+    _canAnnounceCoupledGroup(group) {
+        if (!group || group.length === 0) return false;
+
+        const roles = new Set(group.map(j => Boolean(j.ankunft)));
+        if (roles.size > 1) return false;
+
+        const times = new Set(group.map(j => (j.scheduledTime || '').trim()));
+        if (times.size > 1) return false;
+
+        return Boolean(this._getGroupPlatformJourney(group));
+    }
+
+    /**
+     * Ermittelt den Namen des aktuellen Bahnhofs für Zugteilungs- und
+     * Zugvereinigungsansagen.
+     * @param {Array<object>} group - Coupling-Gruppe
+     * @returns {string} Bahnhofsname oder leer
+     */
+    _getCurrentStationName(group = []) {
+        const contextName = journeyStore.stationContext?.stationName || '';
+        if (contextName) return contextName;
+
+        for (const journey of group) {
+            const stop = journey?.currentStop;
+            if (stop?.name) return stop.name;
+        }
+        return '';
+    }
+
+    /**
+     * Fügt die Routen aller Gruppenmitglieder mit "mit" verbunden hinzu.
+     * @param {Array} playlist - Die Playlist
+     * @param {Array<object>} group - Coupling-Gruppe
+     */
+    _appendCoupledRoute(playlist, group) {
+        group.forEach((member, index) => {
+            if (index > 0) {
+                this._module(playlist, 'MIT');
+            }
+            this._appendRoute(playlist, member);
+        });
+    }
+
+    /**
+     * Ermittelt eine für alle Gruppenmitglieder identische Verspätung.
+     * Unterschiedliche Verspätungen werden separat angesagt.
+     * @param {Array<object>} group - Coupling-Gruppe
+     * @returns {number} Gemeinsame Verspätung oder 0
+     */
+    _getCommonDelay(group) {
+        const delays = group.map(j => this._calculateDelay(j));
+        if (delays.length === 0) return 0;
+        return delays.every(d => d === delays[0]) ? delays[0] : 0;
+    }
+
+    /**
+     * Fügt Verspätungen hinzu, die nur einzelne Gruppenmitglieder betreffen.
+     * @param {Array} playlist - Die Playlist
+     * @param {Array<object>} group - Coupling-Gruppe
+     */
+    _appendPerTrainDelays(playlist, group) {
+        const delays = group.map(j => this._calculateDelay(j));
+        if (new Set(delays).size <= 1) return;
+
+        group.forEach((member, index) => {
+            const delay = delays[index];
+            if (delay < 5) return;
+            this._train(playlist, member.name);
+            this._appendDelay(playlist, delay);
+        });
+    }
+
+    /**
+     * Fügt die gemeinsame 1.-Klasse-Abschnittsansage für eine Coupling-Gruppe hinzu.
+     * Die Abschnitte aller aktiven Mitglieder werden zu einer Union zusammengefasst.
+     * @param {Array} playlist - Die Playlist
+     * @param {Array<object>} group - Coupling-Gruppe
+     */
+    _appendCombinedFirstClassSectors(playlist, group) {
+        if (!ansagenStore.ansageErsteKlasse) return;
+        if (!group || group.length === 0) return;
+
+        const platform = getPlatformForJourney(group[0], journeyStore.platforms, journeyStore.stationContext);
+        if (!platform || !platform.sections || platform.sections.length === 0) return;
+
+        const platformSectorNames = new Set(platform.sections.map(s => s.name.toUpperCase()));
+        const letters = new Set();
+
+        for (const member of group) {
+            const sectorsStr = getPlatformFirstClassSectors(member, group, platform);
+            if (!sectorsStr) continue;
+
+            for (const letter of getSectionLetters(sectorsStr)) {
+                if (letter !== '*' && platformSectorNames.has(letter.toUpperCase())) {
+                    letters.add(letter.toUpperCase());
+                }
+            }
+        }
+
+        const validLetters = [...letters].sort();
+        if (validLetters.length > 0) {
+            this.formatter.firstClassSections(playlist, validLetters);
+        }
+    }
+
+    /**
+     * Fügt die Zugteilungsansage für eine Coupling-Gruppe hinzu.
+     * Nur Abfahrten erhalten einen Teilungshinweis.
+     * @param {Array} playlist - Die Playlist
+     * @param {Array<object>} group - Aktive Coupling-Gruppe
+     * @returns {boolean} true, wenn ein Hinweis ergänzt wurde
+     */
+    _appendSplitAnnouncement(playlist, group) {
+        if (!group || group.length < 2) return false;
+        if (group.some(j => j.ankunft)) return false;
+
+        const currentStation = this._getCurrentStationName(group);
+        const splitStations = JourneyCouplingService.getUpcomingSplitStations(group, currentStation || null);
+        if (splitStations.length === 0) return false;
+
+        this._module(playlist, 'ZUG_WIRD_IN');
+        this.formatter.stationList(playlist, splitStations, 'variantZugteilung');
+        this._module(playlist, 'ZUGTEILUNG_2');
+        return true;
+    }
+
+    /**
+     * Fügt den Hinweis auf eine Zugvereinigung im aktuellen Bahnhof hinzu.
+     * @param {Array} playlist - Die Playlist
+     * @param {Array<object>} group - Aktive Coupling-Gruppe
+     * @returns {boolean} true, wenn ein Hinweis ergänzt wurde
+     */
+    _appendJoiningNotice(playlist, group) {
+        if (!group || group.length < 2) return false;
+        if (group.some(j => j.ankunft)) return false;
+
+        const currentStation = this._getCurrentStationName(group);
+        if (!JourneyCouplingService.isJoiningAtCurrentStation(group, currentStation || null)) {
+            return false;
+        }
+
+        this._module(playlist, 'ZUGVEREINIGUNG_TUEREN_GESCHLOSSEN');
+        return true;
+    }
+
+    /**
+     * Fügt Hinweise für ausgefallene Mitglieder einer Coupling-Gruppe hinzu.
+     * @param {Array} playlist - Die Playlist
+     * @param {Array<object>} cancelledGroup - Ausgefallene Mitglieder
+     */
+    _appendCancelledMembers(playlist, cancelledGroup) {
+        if (!cancelledGroup || cancelledGroup.length === 0) return;
+
+        for (const member of cancelledGroup) {
+            this._train(playlist, member.name);
+            this._module(playlist, 'FAELLT_HEUTE_AUS');
+            this._module(playlist, 'ENTSCHULDIGUNG');
+        }
     }
 
     // --- Fach- und Domainprüfungen ---
@@ -329,6 +524,8 @@ export class AnsagenGenerator {
         this._gong(p);
 
         const isWende = this._isWende(journey, linkedJourney);
+        const fullGroup = this._getAnnouncementGroup(journey);
+        const activeGroup = this._getActiveGroup(fullGroup);
 
         if (isWende) {
             const arrival = journey.ankunft ? journey : linkedJourney;
@@ -353,6 +550,47 @@ export class AnsagenGenerator {
             // 6. Abweichungen + VORSICHT_BEI_DER_EINFAHRT
             this._generateDeviations(p, departure);
             this._module(p, 'VORSICHT_BEI_DER_EINFAHRT');
+
+            return p;
+        }
+
+        // Gekoppelte Fahrten: gemeinsame Basis, danach zugspezifische Blöcke.
+        if (fullGroup.length > 1 && activeGroup.length > 0 && this._canAnnounceCoupledGroup(activeGroup)) {
+            const platformJourney = this._getGroupPlatformJourney(activeGroup) || activeGroup[0];
+            const action = activeGroup[0].ankunft ? 'ANKUNFT' : 'ABFAHRT';
+            const commonDelay = this._getCommonDelay(activeGroup);
+
+            this._appendPlatform(p, platformJourney);
+            this._module(p, 'EINFAHRT');
+
+            activeGroup.forEach((member, index) => {
+                if (index > 0) {
+                    this._module(p, 'MIT');
+                }
+                this._appendRoute(p, member);
+
+                if (!member.ankunft) {
+                    this._appendSectors(p, member, activeGroup);
+                    this._generateDeviations(p, member);
+
+                    // Zugspezifische Verspätung nur ansagen, wenn sie von der gemeinsamen abweicht.
+                    const memberDelay = this._calculateDelay(member);
+                    if (commonDelay < 5 && memberDelay >= 5) {
+                        this._appendDelay(p, memberDelay);
+                    }
+                }
+            });
+
+            this.formatter.timeInfo(p, activeGroup[0], action, commonDelay);
+            this._appendSplitAnnouncement(p, activeGroup);
+            this._appendCombinedFirstClassSectors(p, activeGroup);
+            this._appendCancelledMembers(p, fullGroup.filter(j => j.ausfall));
+            this._appendJoiningNotice(p, activeGroup);
+            this._module(p, 'VORSICHT_BEI_DER_EINFAHRT');
+
+            if (activeGroup.every(member => this._isPureArrival(member, null)) && ansagenStore.einfahrtBitteNichtEinsteigen) {
+                this._module(p, 'BITTE_NICHT_EINSTEIGEN');
+            }
 
             return p;
         }
@@ -386,6 +624,37 @@ export class AnsagenGenerator {
     generateSteht(journey) {
         const p = [];
         this._gong(p);
+
+        const fullGroup = this._getAnnouncementGroup(journey);
+        const activeGroup = this._getActiveGroup(fullGroup);
+
+        if (fullGroup.length > 1 && activeGroup.length > 0 && this._canAnnounceCoupledGroup(activeGroup)) {
+            const platformJourney = this._getGroupPlatformJourney(activeGroup) || activeGroup[0];
+
+            this._appendPlatform(p, platformJourney);
+            this._module(p, 'STEHT');
+
+            activeGroup.forEach((member, index) => {
+                if (index > 0) {
+                    this._module(p, 'MIT');
+                }
+                this._appendRoute(p, member);
+
+                if (!member.ankunft) {
+                    this._appendSectors(p, member, activeGroup);
+                    this._generateDeviations(p, member);
+                }
+            });
+
+            this._module(p, activeGroup[0].ankunft ? 'ANKUNFT' : 'ABFAHRT');
+            this._time(p, activeGroup[0].scheduledTime);
+            this._appendSplitAnnouncement(p, activeGroup);
+            this._appendCombinedFirstClassSectors(p, activeGroup);
+            this._appendCancelledMembers(p, fullGroup.filter(j => j.ausfall));
+
+            return p;
+        }
+
         this._appendPlatform(p, journey);
         
         this._module(p, 'STEHT');
@@ -400,6 +669,47 @@ export class AnsagenGenerator {
         this._appendFirstClassSectors(p, journey);
 
         this._generateDeviations(p, journey);
+
+        return p;
+    }
+
+    /**
+     * Generiert eine gemeinsame Gleiswechsel-Ansage für eine Coupling-Gruppe.
+     * Alle Zugteile werden mit "mit" verbunden, die Gleisangabe erfolgt einmal.
+     *
+     * @param {Array<object>} group - Aktive Coupling-Gruppe
+     * @param {object} platformJourney - Journey mit dem gültigen Zielgleis
+     * @returns {Array} Playlist mit Audio-Objekten
+     */
+    _generateCoupledGleiswechsel(group, platformJourney) {
+        const p = [];
+        this._gong(p);
+        this._module(p, 'INFORMATION_ZU');
+
+        const isArrival = Boolean(group[0].ankunft);
+        const action = isArrival ? 'ANKUNFT' : 'ABFAHRT';
+        const commonDelay = this._getCommonDelay(group);
+
+        this._appendCoupledRoute(p, group);
+        this.formatter.timeInfo(p, group[0], action, commonDelay);
+
+        if (commonDelay >= 5) {
+            this._appendDelay(p, commonDelay);
+        } else {
+            this._appendPerTrainDelays(p, group);
+        }
+
+        const prefixPart1 = isArrival
+            ? 'HEUTE_AUF_GLEIS'
+            : (commonDelay >= 5 ? 'UND_VON_GLEIS' : 'HEUTE_VON_GLEIS');
+        this._appendPlatform(p, platformJourney, prefixPart1);
+
+        this._module(p, 'ICH_WIEDERHOLE');
+        this._appendCoupledRoute(p, group);
+        this.formatter.timeInfo(p, group[0], action, commonDelay);
+
+        const prefixPart2 = isArrival ? 'HEUTE_AUF_GLEIS' : 'HEUTE_VON_GLEIS';
+        this._appendPlatform(p, platformJourney, prefixPart2);
 
         return p;
     }
@@ -420,6 +730,17 @@ export class AnsagenGenerator {
         }
 
         const isWende = this._isWende(journey, linkedJourney);
+        const fullGroup = this._getAnnouncementGroup(journey);
+        const activeGroup = this._getActiveGroup(fullGroup);
+
+        // Gekoppelte Fahrten: gemeinsame Gleiswechselansage für den Zugverband.
+        if (!isWende && fullGroup.length > 1 && activeGroup.length > 0 && this._canAnnounceCoupledGroup(activeGroup)) {
+            const groupPlatformJourney = this._getGroupPlatformJourney(activeGroup);
+            if (groupPlatformJourney && activeGroup.some(member => this.hasGleiswechsel(member))) {
+                return this._generateCoupledGleiswechsel(activeGroup, groupPlatformJourney);
+            }
+        }
+
         const arrival = isWende ? (journey.ankunft ? journey : linkedJourney) : null;
         const departure = isWende ? (journey.ankunft ? linkedJourney : journey) : null;
         const mainJourney = isWende ? departure : journey;
@@ -489,6 +810,22 @@ export class AnsagenGenerator {
      * @returns {Array} Playlist mit Audio-Objekten
      */
     generateInformation(journey) {
+        const fullGroup = this._getAnnouncementGroup(journey);
+        const activeGroup = this._getActiveGroup(fullGroup);
+
+        if (!journey?.ausfall && fullGroup.length > 1 && activeGroup.length > 0 && this._canAnnounceCoupledGroup(activeGroup)) {
+            return this._generateCoupledInformation(activeGroup);
+        }
+
+        return this._generateSingleInformation(journey);
+    }
+
+    /**
+     * Generiert eine Informations-Ansage für eine einzelne Fahrt.
+     * @param {object} journey - Das Journey-Objekt
+     * @returns {Array} Playlist mit Audio-Objekten
+     */
+    _generateSingleInformation(journey) {
         if (!this.hasGeneralInformationalContent(journey)) {
             return [];
         }
@@ -518,6 +855,52 @@ export class AnsagenGenerator {
 
         if (delay >= 30) {
             this._module(p, 'ENTSCHULDIGUNG');
+        }
+
+        return p;
+    }
+
+    /**
+     * Generiert eine Informations-Ansage für eine Coupling-Gruppe.
+     * Betrifft die Information nur einen Zug, wird die Einzelansage genutzt.
+     *
+     * @param {Array<object>} group - Aktive Coupling-Gruppe
+     * @returns {Array} Playlist mit Audio-Objekten
+     */
+    _generateCoupledInformation(group) {
+        const affected = group.filter(j => this.hasGeneralInformationalContent(j));
+        if (affected.length === 0) return [];
+        if (affected.length === 1) return this._generateSingleInformation(affected[0]);
+
+        const p = [];
+        this._gong(p);
+        this._module(p, 'INFORMATION_ZU');
+
+        this._appendCoupledRoute(p, group);
+        this._module(p, group[0].ankunft ? 'ANKUNFT' : 'ABFAHRT');
+        this._time(p, group[0].scheduledTime);
+
+        for (const member of affected) {
+            this._train(p, member.name);
+
+            if (member.ausfall) {
+                this._module(p, 'FAELLT_HEUTE_AUS');
+                this._module(p, 'ENTSCHULDIGUNG');
+                continue;
+            }
+
+            const delay = this._calculateDelay(member);
+            this._appendDelay(p, delay);
+
+            if (delay >= 5 && member.delayReason) {
+                this._appendDelayReason(p, member);
+            }
+
+            this._generateDeviations(p, member);
+
+            if (delay >= 30) {
+                this._module(p, 'ENTSCHULDIGUNG');
+            }
         }
 
         return p;
