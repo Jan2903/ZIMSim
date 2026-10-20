@@ -216,24 +216,6 @@
 </div>
 
 <style>
-    .field-label {
-        display: block;
-        font-size: 0.82rem;
-        font-weight: 600;
-        color: var(--text-muted, #94a3b8);
-        margin-bottom: 6px;
-    }
-
-    .provider-pill {
-        font-size: 0.7rem;
-        background: rgba(59, 130, 246, 0.15);
-        color: #60a5fa;
-        border: 1px solid rgba(96, 165, 250, 0.25);
-        padding: 1px 6px;
-        border-radius: 4px;
-        font-weight: 500;
-    }
-
     .form-input,
     .form-select {
         width: 100%;
@@ -251,19 +233,5 @@
     .form-input:focus,
     .form-select:focus {
         border-color: var(--accent, #3b82f6);
-    }
-
-    .sync-result-msg {
-        color: #f87171;
-        padding: 6px 10px;
-        border-radius: 4px;
-        background: rgba(239, 68, 68, 0.1);
-        border: 1px solid rgba(239, 68, 68, 0.2);
-    }
-
-    .sync-result-msg.is-success {
-        color: #4ade80;
-        background: rgba(34, 197, 94, 0.1);
-        border-color: rgba(74, 222, 128, 0.2);
     }
 </style>

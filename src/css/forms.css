@@ -161,6 +161,15 @@ input.jfield { min-width: 0; }
 input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; margin-right: 8px; cursor: pointer; }
 .radio-group .options { display: flex; flex-direction: row; gap: 15px; margin-top: 5px; }
 
+/* Beschriftung von Einstellungsfeldern */
+.field-label {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-muted, #94a3b8);
+    margin-bottom: 6px;
+}
+
 .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
 .radio-card { background-color: var(--bg-input); border: 1px solid var(--border); padding: 12px; border-radius: 6px; transition: all 0.2s; }
 .radio-card:hover { border-color: var(--text-muted); }

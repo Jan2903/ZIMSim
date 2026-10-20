@@ -1,0 +1,205 @@
+/* --- LIVE-DATEN-EINSTELLUNGEN (gemeinsame Klassen) --- */
+
+/* Hinweisboxen zur lokalen Python-Bridge (ZIMSim Bridge) */
+.bridge-warning-box {
+    padding: 10px 12px;
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 6px;
+    margin-bottom: 12px;
+    font-size: 0.82rem;
+    color: #fde68a;
+    line-height: 1.45;
+}
+.bridge-code {
+    color: white;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 1px 4px;
+    border-radius: 3px;
+}
+
+/* Teiler zwischen den Abschnitten eines Reiters */
+.sub-section { margin-top: 14px; }
+
+/* Kleine Hinweistexte unter Einstellungen */
+.hint-text {
+    font-size: 0.78rem;
+    color: var(--text-muted, #94a3b8);
+    margin-top: 6px;
+    line-height: 1.45;
+}
+
+/* Gruppierung von Checkboxen */
+.checkbox-group { display: flex; flex-direction: column; gap: 8px; }
+
+/* Ergebnismeldungen der Live-Daten-Aktionen */
+.sync-result-msg {
+    color: #f87171;
+    padding: 8px 12px;
+    border-radius: 4px;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    line-height: 1.4;
+}
+.sync-result-msg.is-success {
+    color: #4ade80;
+    background: rgba(34, 197, 94, 0.1);
+    border-color: rgba(74, 222, 128, 0.2);
+}
+
+/* Aktiver Bahnhof */
+.station-badge-card {
+    padding: 10px 14px;
+    background: rgba(59, 130, 246, 0.08);
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    border-radius: 6px;
+    margin-bottom: 6px;
+}
+.station-id-pill {
+    font-size: 0.72rem;
+    padding: 2px 8px;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--border, #334155);
+    border-radius: 10px;
+    color: var(--text-muted, #94a3b8);
+    font-family: monospace;
+}
+
+/* Zeile für die Zwischenhalte (Vias) */
+.vias-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 6px;
+    padding: 6px 10px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+    border: 1px solid var(--border);
+}
+.vias-badge {
+    font-size: 0.75rem;
+    color: #c084fc;
+    background: rgba(168, 85, 247, 0.15);
+    border: 1px solid rgba(192, 132, 252, 0.3);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+.vias-badge-muted {
+    color: var(--text-muted, #94a3b8);
+    background: rgba(148, 163, 184, 0.12);
+    border-color: var(--border);
+}
+
+/* Verkehrsmittel-Filter */
+.mots-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 6px;
+    margin-top: 4px;
+}
+.mot-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    background: var(--bg-input, #0f172a);
+    border: 1px solid var(--border, #334155);
+    border-radius: 4px;
+    font-size: 0.76rem;
+    color: var(--text-muted, #94a3b8);
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s ease;
+}
+.mot-item:hover { border-color: rgba(255, 255, 255, 0.2); }
+.mot-item.selected {
+    border-color: rgba(168, 85, 247, 0.5);
+    background: rgba(168, 85, 247, 0.1);
+    color: var(--text-main, #f8fafc);
+}
+.mot-item input { accent-color: #a855f7; }
+
+/* Kleine Auswahl-Buttons (Verkehrsmittel-Schnellwahl) */
+.btn-xs {
+    background: var(--bg-input, #0f172a);
+    color: var(--text-main, #f8fafc);
+    border: 1px solid var(--border, #334155);
+    border-radius: 3px;
+    padding: 2px 8px;
+    font-size: 0.72rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.btn-xs:hover {
+    border-color: var(--accent, #3b82f6);
+    background: rgba(59, 130, 246, 0.1);
+}
+
+/* Ergebnisse der Haltestellensuche */
+.search-results-list {
+    margin-top: 8px;
+    max-height: 180px;
+    overflow-y: auto;
+    border: 1px solid var(--border, #334155);
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.2);
+}
+.search-result-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+.search-result-item:last-child { border-bottom: none; }
+.station-meta {
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.84rem;
+}
+.station-id {
+    font-size: 0.75rem;
+    color: var(--text-muted, #94a3b8);
+    margin-left: 6px;
+}
+
+/* Herkunftskennung der Wagenreihungs-Quelle */
+.provider-pill {
+    font-size: 0.7rem;
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    border: 1px solid rgba(96, 165, 250, 0.25);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+/* Fähigkeiten-Übersicht der aktiven Quelle */
+.capability-list {
+    list-style: none;
+    margin: 0 0 8px 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.capability-list li {
+    position: relative;
+    padding-left: 22px;
+    font-size: 0.78rem;
+    color: var(--text-muted, #94a3b8);
+    line-height: 1.4;
+}
+.capability-list li::before {
+    content: "–";
+    position: absolute;
+    left: 6px;
+    color: #64748b;
+    font-weight: 700;
+}
+.capability-list li.cap-yes { color: var(--text-main, #f8fafc); }
+.capability-list li.cap-yes::before { content: "✓"; color: #4ade80; }

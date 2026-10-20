@@ -271,14 +271,6 @@
         padding: 18px;
     }
 
-    .field-label {
-        display: block;
-        font-size: 0.82rem;
-        font-weight: 600;
-        color: var(--text-muted, #94a3b8);
-        margin-bottom: 6px;
-    }
-
     .source-selector {
         display: flex;
         flex-direction: column;

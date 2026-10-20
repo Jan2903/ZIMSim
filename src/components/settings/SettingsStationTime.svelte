@@ -340,14 +340,6 @@
         padding: 18px;
     }
 
-    .field-label {
-        display: block;
-        font-size: 0.82rem;
-        font-weight: 600;
-        color: var(--text-muted, #94a3b8);
-        margin-bottom: 6px;
-    }
-
     .form-input {
         width: 100%;
         background: var(--bg-input, #0f172a);
@@ -394,10 +386,6 @@
 
     .font-mono {
         font-family: monospace;
-    }
-
-    .sub-section {
-        margin-top: 14px;
     }
 
     .sub-title {

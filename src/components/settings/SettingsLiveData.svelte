@@ -4,8 +4,7 @@
     import ZimIcon from '../ZimIcon.svelte';
     import DataSourceSelector from './livedata/DataSourceSelector.svelte';
     import IrisSection from './livedata/IrisSection.svelte';
-    import DbNavSection from './livedata/DbNavSection.svelte';
-    import DbWebSection from './livedata/DbWebSection.svelte';
+    import ProviderSection from './livedata/ProviderSection.svelte';
 
     // Aktives Optionsprofil: 'iris' | 'db_navigator' | 'dbweb'
     let selectedDataSource = $state(liveDataConfig.profile || 'iris');
@@ -34,10 +33,8 @@
         <div class="card-body">
             {#if selectedDataSource === 'iris'}
                 <IrisSection />
-            {:else if selectedDataSource === 'db_navigator'}
-                <DbNavSection />
-            {:else if selectedDataSource === 'dbweb'}
-                <DbWebSection />
+            {:else if selectedDataSource === 'db_navigator' || selectedDataSource === 'dbweb'}
+                <ProviderSection providerId={selectedDataSource} />
             {/if}
         </div>
     </div>
