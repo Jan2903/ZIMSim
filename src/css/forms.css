@@ -69,6 +69,86 @@ input[type="text"], input[type="number"], input[type="datetime-local"], select {
 
     .checkbox-label, .radio-card { min-height: 38px; padding-top: 8px; padding-bottom: 8px; }
 }
+
+/* Kompaktere Bedienelemente im Fahrten-Bereich (nur mobil) */
+@media (max-width: 768px) {
+    #journey_list_frame .jfield,
+    #journey_list_frame .group-field,
+    #journey_list_frame .coach-input,
+    #journey_list_frame .coach-select,
+    #journey_list_frame input.s-prop,
+    #journey_list_frame select.s-prop,
+    #journey_list_frame select {
+        min-height: 34px;
+        padding: 5px 8px;
+        font-size: 0.82rem;
+    }
+
+    #journey_list_frame .btn-sm,
+    #journey_list_frame .details-actions button,
+    #journey_list_frame .actions-buttons-wrap button {
+        min-height: 34px;
+        padding: 5px 10px;
+        font-size: 0.8rem;
+    }
+
+    #journey_list_frame .checkbox-label {
+        min-height: 32px;
+        padding-top: 0;
+        padding-bottom: 0;
+        font-size: 0.85rem;
+    }
+
+    #journey_list_frame .segment-switch span {
+        min-height: 36px;
+        padding: 6px 10px;
+        font-size: 0.85em;
+    }
+
+    #journey_list_frame .settings-box {
+        padding: 8px 10px;
+        margin-bottom: 12px;
+    }
+
+    #journey_list_frame .form-row-responsive {
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+
+    #journey_list_frame .details-grid {
+        gap: 14px;
+    }
+
+    #journey_list_frame .group-header-right .btn-icon,
+    #journey_list_frame .status-toggle-btn,
+    #journey_list_frame .expand-toggle {
+        min-height: 32px;
+        min-width: 32px;
+    }
+
+    #journey_list_frame .badge-formation-available {
+        min-height: 28px;
+    }
+
+    #journey_list_frame .coach-type-select,
+    #journey_list_frame .wagon-num-input,
+    #journey_list_frame .coach-class-select,
+    #journey_list_frame .length-input {
+        min-height: 34px;
+    }
+
+    #journey_list_frame .formation-empty-card {
+        padding: 16px 10px;
+        gap: 10px;
+    }
+
+    #journey_list_frame .formation-empty-card button {
+        min-height: 34px;
+        padding: 5px 10px;
+        font-size: 0.8rem;
+    }
+}
+
 input[type="text"]:focus, input[type="number"]:focus, input[type="datetime-local"]:focus, select:focus {
     border-color: var(--accent); box-shadow: 0 0 0 3px rgba(226, 0, 26, 0.2);
 }

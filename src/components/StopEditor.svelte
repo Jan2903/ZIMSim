@@ -99,7 +99,7 @@
                             <StationPicker 
                                 bind:value={stop.name} 
                                 placeholder="Name" 
-                                cssClass="s-prop short-input" 
+                                cssClass="s-prop"
                                 onSelect={(station) => onStopStationSelect(stop, station)} 
                             />
                         </div>
