@@ -139,11 +139,13 @@
     async function downloadScreenshot() {
         const canvas = document.getElementById('zimCanvas');
         if (!canvas) return;
+        const overlayCanvas = document.getElementById('zimDynamicCanvas');
 
         const svgElement = isCasingActive ? document.querySelector('.hardware-bezel-svg') : null;
 
         await downloadDisplayScreenshot({
             canvas,
+            overlayCanvas,
             casing: svgElement
                 ? { svgElement, width: wrapperWidth, height: wrapperHeight, offsetX: canvasOffsetX, offsetY: canvasOffsetY }
                 : null
@@ -353,6 +355,11 @@
                 bind:this={canvasElement} 
                 id="zimCanvas" 
                 style="position: absolute; top: {canvasOffsetY}px; left: {canvasOffsetX}px; z-index: 10;"
+            ></canvas>
+            <canvas 
+                id="zimDynamicCanvas" 
+                aria-hidden="true"
+                style="position: absolute; top: {canvasOffsetY}px; left: {canvasOffsetX}px; z-index: 11; pointer-events: none; background: transparent;"
             ></canvas>
         </div>
     </div>

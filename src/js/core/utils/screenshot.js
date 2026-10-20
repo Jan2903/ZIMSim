@@ -62,23 +62,47 @@ export function timestampedFilename(prefix = 'zim_screenshot') {
 }
 
 /**
+ * Kombiniert den statischen Basis-Layer mit dem dynamischen Overlay-Layer.
+ * Ist kein Overlay vorhanden, wird das Basis-Canvas unverändert zurückgegeben.
+ *
+ * @param {HTMLCanvasElement} canvas - Statischer Basis-Layer
+ * @param {HTMLCanvasElement|null} [overlayCanvas=null] - Dynamischer Overlay-Layer
+ * @returns {HTMLCanvasElement}
+ */
+function composeDisplayCanvas(canvas, overlayCanvas = null) {
+    if (!overlayCanvas || overlayCanvas.width === 0 || overlayCanvas.height === 0) {
+        return canvas;
+    }
+
+    const composed = document.createElement('canvas');
+    composed.width = canvas.width;
+    composed.height = canvas.height;
+    const ctx = composed.getContext('2d');
+    ctx.drawImage(canvas, 0, 0);
+    ctx.drawImage(overlayCanvas, 0, 0);
+    return composed;
+}
+
+/**
  * Rendert das Display-Canvas – optional inklusive Gehäuse – und lädt es als PNG
  * herunter.
  *
  * @param {object} options
- * @param {HTMLCanvasElement} options.canvas - Das Display-Canvas
+ * @param {HTMLCanvasElement} options.canvas - Das statische Display-Canvas
+ * @param {HTMLCanvasElement|null} [options.overlayCanvas=null] - Das dynamische Overlay-Canvas
  * @param {{svgElement: SVGElement|null, width: number, height: number, offsetX: number, offsetY: number}|null} [options.casing]
  *        Gehäuse-Informationen; null für einen randlosen Canvas-Export
  * @param {string} [options.filename] - Ziel-Dateiname
  * @returns {Promise<void>}
  */
-export async function downloadDisplayScreenshot({ canvas, casing = null, filename } = {}) {
+export async function downloadDisplayScreenshot({ canvas, overlayCanvas = null, casing = null, filename } = {}) {
     if (!canvas) return;
     const name = filename || timestampedFilename();
+    const displayCanvas = composeDisplayCanvas(canvas, overlayCanvas);
 
     // Randloser Export oder kein SVG verfügbar
     if (!casing || !casing.svgElement) {
-        downloadBlob(await canvasToBlob(canvas), name);
+        downloadBlob(await canvasToBlob(displayCanvas), name);
         return;
     }
 
@@ -101,12 +125,12 @@ export async function downloadDisplayScreenshot({ canvas, casing = null, filenam
 
         // 1. Vektor-Gehäuse zeichnen
         ctx.drawImage(img, 0, 0, width, height);
-        // 2. Display-Canvas an exakter Offset-Position einbetten
-        ctx.drawImage(canvas, offsetX, offsetY);
+        // 2. Display-Canvas (Basis + dynamisches Overlay) an exakter Offset-Position einbetten
+        ctx.drawImage(displayCanvas, offsetX, offsetY);
 
         downloadBlob(await canvasToBlob(composed), name);
     } catch (err) {
         console.warn('[Screenshot] Composing mit Gehäuse fehlgeschlagen, Fallback:', err);
-        downloadBlob(await canvasToBlob(canvas), name);
+        downloadBlob(await canvasToBlob(displayCanvas), name);
     }
 }

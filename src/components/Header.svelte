@@ -29,7 +29,8 @@
         } else {
             const canvas = document.getElementById('zimCanvas');
             if (canvas) {
-                downloadDisplayScreenshot({ canvas });
+                const overlayCanvas = document.getElementById('zimDynamicCanvas');
+                downloadDisplayScreenshot({ canvas, overlayCanvas });
             }
         }
     }

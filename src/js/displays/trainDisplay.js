@@ -26,6 +26,11 @@ export class TrainDisplay {
         this._customLayout = null;
         this._isRendering = false; // Re-entrance Guard
         this._updateScheduled = false; // Koaleszierung geplanter Redraws
+        this._baseCanvasRef = null;
+        this._overlayCanvasRef = null;
+        this._baseCtx = null;
+        this._overlayCtx = null;
+        this._overlayDirtyScreens = new Set();
         this.featureAlpha = 1.0;
         this.vitrineProgress = 0.0;
         this.activeFeatureIndex = 0;
@@ -55,23 +60,110 @@ export class TrainDisplay {
     // ==========================================
 
     /**
+     * Liefert das statische Basis-Canvas (zimCanvas).
+     * @returns {HTMLCanvasElement|null}
+     */
+    _getBaseCanvas() {
+        if (!this._baseCanvasRef || !this._baseCanvasRef.isConnected) {
+            this._baseCanvasRef = document.getElementById('zimCanvas');
+            this._baseCtx = null;
+        }
+        return this._baseCanvasRef;
+    }
+
+    /**
+     * Liefert das dynamische Overlay-Canvas (zimDynamicCanvas).
+     * @returns {HTMLCanvasElement|null}
+     */
+    _getOverlayCanvas() {
+        if (!this._overlayCanvasRef || !this._overlayCanvasRef.isConnected) {
+            this._overlayCanvasRef = document.getElementById('zimDynamicCanvas');
+            this._overlayCtx = null;
+        }
+        return this._overlayCanvasRef;
+    }
+
+    /**
+     * Liefert den 2D-Kontext des statischen Basis-Canvas.
+     * `willReadFrequently` bleibt hier bewusst erhalten, da die Zugnummern-
+     * Breite weiterhin per Pixel-Scan gemessen wird. Der Layer wird aber nur
+     * bei Daten-/Layoutänderungen neu gezeichnet und nie pro Frame kopiert.
+     * @param {HTMLCanvasElement} canvas
+     * @returns {CanvasRenderingContext2D|null}
+     */
+    _getBaseCtx(canvas) {
+        if (!this._baseCtx || this._baseCtx.canvas !== canvas) {
+            this._baseCtx = canvas.getContext('2d', { willReadFrequently: true });
+        }
+        return this._baseCtx;
+    }
+
+    /**
+     * Liefert den GPU-beschleunigten 2D-Kontext des dynamischen Overlays.
+     * @returns {CanvasRenderingContext2D|null}
+     */
+    _getOverlayCtx() {
+        const canvas = this._getOverlayCanvas();
+        if (!canvas) return null;
+        if (!this._overlayCtx || this._overlayCtx.canvas !== canvas) {
+            this._overlayCtx = canvas.getContext('2d');
+        }
+        return this._overlayCtx;
+    }
+
+    /**
+     * Setzt die Pixelmaße beider Canvas-Layer auf das aktuelle Layout.
+     * Durch die Größenänderung werden beide Layer implizit geleert.
+     * @returns {boolean} true, wenn mindestens ein Canvas angepasst wurde.
+     */
+    _resizeCanvases() {
+        const width = this.currentLayout.width;
+        const height = this.currentLayout.height;
+        const base = this._getBaseCanvas();
+        const overlay = this._getOverlayCanvas();
+        let resized = false;
+
+        if (base && (base.width !== width || base.height !== height)) {
+            base.width = width;
+            base.height = height;
+            resized = true;
+        }
+        if (overlay && (overlay.width !== width || overlay.height !== height)) {
+            overlay.width = width;
+            overlay.height = height;
+            resized = true;
+        }
+        if (resized) this._overlayDirtyScreens = new Set();
+
+        return resized;
+    }
+
+    /**
      * Richtet den Canvas-Kontext für einen bestimmten Monitor-Bereich ein
      * (Clipping, Translation) und ruft die Zeichenfunktion auf.
+     *
+     * @param {object} screen - Bildschirmkonfiguration
+     * @param {Function} drawFunction - Zeichenfunktion
+     * @param {HTMLCanvasElement|null} [targetCanvas=null] - Ziel-Canvas (Basis oder Overlay)
+     * @param {'opaque'|'transparent'|'none'} [clearMode='opaque'] - Art des Vorab-Löschens
      */
-    drawOnScreen(screen, drawFunction, targetCanvas = null, clearBackground = true) {
+    drawOnScreen(screen, drawFunction, targetCanvas = null, clearMode = 'opaque') {
         this.currentScreen = screen;
-        const canvas = targetCanvas || document.getElementById('zimCanvas');
+        const canvas = targetCanvas || this._getBaseCanvas();
         if (!canvas) return;
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        if (!screen) return;
+        const isOverlay = canvas === this._getOverlayCanvas();
+        const ctx = isOverlay ? this._getOverlayCtx() : this._getBaseCtx(canvas);
+        if (!ctx || !screen) return;
 
         ctx.save();
-        if (clearBackground) {
+        if (clearMode !== 'none') {
             ctx.clearRect(screen.x, screen.y, screen.w, screen.h);
 
-            // Bereich des Monitors mit der Standard-Canvas-Farbe (navy) füllen
-            ctx.fillStyle = COLORS.MIDNIGHT_BLUE;
-            ctx.fillRect(screen.x, screen.y, screen.w, screen.h);
+            if (clearMode === 'opaque') {
+                // Bereich des Monitors mit der Standard-Canvas-Farbe (navy) füllen
+                ctx.fillStyle = COLORS.MIDNIGHT_BLUE;
+                ctx.fillRect(screen.x, screen.y, screen.w, screen.h);
+            }
         }
 
         ctx.translate(screen.x, screen.y);
@@ -203,11 +295,7 @@ export class TrainDisplay {
         }
 
         // Canvas-Größe anpassen
-        const canvas = document.getElementById('zimCanvas');
-        if (canvas) {
-            canvas.width = this.currentLayout.width;
-            canvas.height = this.currentLayout.height;
-        }
+        this._resizeCanvases();
 
         // Alte Scrolling-Divs aufräumen
         this.scrollManager.clearAll();
@@ -231,11 +319,7 @@ export class TrainDisplay {
         }
         this._customLayout = null;
 
-        const canvas = document.getElementById('zimCanvas');
-        if (canvas) {
-            canvas.width = this.currentLayout.width;
-            canvas.height = this.currentLayout.height;
-        }
+        this._resizeCanvases();
 
         this.scrollManager.clearAll();
         this.updateAll();
@@ -268,9 +352,14 @@ export class TrainDisplay {
                 
                 this.vitrineProgress = cycle / 12000;
                 this.activeFeatureIndex = featureIndex;
+                // Nur neu zeichnen, wenn sich Feature oder Alpha tatsächlich ändern.
+                // In den Haltephasen bleibt das Bild identisch (bei der Vitrine
+                // läuft dagegen der Fortschrittsbalken kontinuierlich weiter).
+                if (isVitrine || newFeatureStr !== this.activeFeature || alpha !== this.featureAlpha) {
+                    needsRender = true;
+                }
                 this.activeFeature = newFeatureStr;
                 this.featureAlpha = alpha;
-                needsRender = true;
             } else {
                 if (this.featureAlpha !== 1.0) {
                     this.featureAlpha = 1.0;
@@ -284,13 +373,18 @@ export class TrainDisplay {
                 const journeyCycleDuration = 4800;
                 const totalJourneyCycle = pagesCount * journeyCycleDuration;
                 const jCycle = now % totalJourneyCycle;
-                this.activePageIndex = Math.floor(jCycle / journeyCycleDuration);
+                const nextPageIndex = Math.floor(jCycle / journeyCycleDuration);
                 
                 const tJ = jCycle % journeyCycleDuration;
-                if (tJ < 800) this.pageAlpha = tJ / 800;
-                else if (tJ > 4000) this.pageAlpha = 1.0 - ((tJ - 4000) / 800);
-                else this.pageAlpha = 1.0;
-                needsRender = true;
+                let nextPageAlpha = 1.0;
+                if (tJ < 800) nextPageAlpha = tJ / 800;
+                else if (tJ > 4000) nextPageAlpha = 1.0 - ((tJ - 4000) / 800);
+                
+                if (nextPageIndex !== this.activePageIndex || nextPageAlpha !== this.pageAlpha) {
+                    needsRender = true;
+                }
+                this.activePageIndex = nextPageIndex;
+                this.pageAlpha = nextPageAlpha;
             } else {
                 if (this.pageAlpha !== 1.0 || this.activePageIndex !== 0) {
                     this.activePageIndex = 0;
@@ -449,33 +543,34 @@ export class TrainDisplay {
 
     /**
      * Zeichnet alle Monitore neu. Haupteinstieg nach Datenänderungen.
+     * Der statische Basis-Layer wird vollständig aufgebaut, danach wird der
+     * dynamische Overlay-Layer verworfen und neu befüllt.
      */
     updateAll() {
         if (this._isRendering) return;
         this._isRendering = true;
 
         try {
-            const canvas = document.getElementById('zimCanvas');
+            const canvas = this._getBaseCanvas();
             if (!canvas) return;
 
-            if (canvas.width !== this.currentLayout.width || canvas.height !== this.currentLayout.height) {
-                canvas.width = this.currentLayout.width;
-                canvas.height = this.currentLayout.height;
+            if (this._resizeCanvases()) {
                 window.dispatchEvent(new Event('resize'));
             }
 
-            if (!this.offscreenCanvas) {
-                this.offscreenCanvas = document.createElement('canvas');
-            }
-            if (this.offscreenCanvas.width !== this.currentLayout.width || this.offscreenCanvas.height !== this.currentLayout.height) {
-                this.offscreenCanvas.width = this.currentLayout.width;
-                this.offscreenCanvas.height = this.currentLayout.height;
-            }
-
-            this.ctx = this.offscreenCanvas.getContext('2d', { willReadFrequently: true });
+            this.ctx = this._getBaseCtx(canvas);
             this.drawFullBackground();
 
-            this._renderDynamicScreens('static', this.offscreenCanvas);
+            this._renderDynamicScreens('static', canvas);
+
+            // Dynamischen Layer vollständig verwerfen: Er wird direkt danach
+            // aus den aktuellen Daten neu aufgebaut (kein Vollflächen-Blit).
+            const overlay = this._getOverlayCanvas();
+            const overlayCtx = this._getOverlayCtx();
+            if (overlay && overlayCtx) {
+                overlayCtx.clearRect(0, 0, overlay.width, overlay.height);
+            }
+            this._overlayDirtyScreens = new Set();
         } catch (err) {
             console.error('Error in updateAll:', err);
         } finally {
@@ -485,43 +580,91 @@ export class TrainDisplay {
         this._renderFrames();
     }
 
+    /**
+     * Zeichnet ausschließlich die animierten Inhalte auf den dynamischen Layer.
+     * Der statische Basis-Layer bleibt dabei unangetastet.
+     * @returns {void}
+     */
     _renderFrames() {
-        if (!this.offscreenCanvas) return;
-        const canvas = document.getElementById('zimCanvas');
+        const canvas = this._getBaseCanvas();
         if (!canvas) return;
-        
-        const mainCtx = canvas.getContext('2d', { willReadFrequently: true });
-        mainCtx.clearRect(0, 0, canvas.width, canvas.height);
-        mainCtx.drawImage(this.offscreenCanvas, 0, 0);
 
-        this._renderDynamicScreens('dynamic', canvas);
+        const overlay = this._getOverlayCanvas();
+        this._renderDynamicScreens('dynamic', overlay || canvas);
     }
 
-    _renderDynamicScreens(layer = 'all', targetCanvas = null) {
-        try {
-            const canvas = targetCanvas || document.getElementById('zimCanvas');
-            if (!canvas) return;
+    /**
+     * Prüft, ob ein Screen im dynamischen Durchlauf tatsächlich animierte
+     * Inhalte besitzt.
+     * @param {object} screen
+     * @param {Array} journeys
+     * @returns {boolean}
+     */
+    _screenHasDynamicContent(screen, journeys) {
+        switch (screen.type) {
+            case 'haupt':
+            case 'neben':
+            case 'zuganzeiger_portrait':
+                return shouldRenderFormation(journeys);
+            case 'liste':
+                return false;
+            default:
+                return true;
+        }
+    }
 
-            const mainCanvas = document.getElementById('zimCanvas');
-            const container = mainCanvas ? mainCanvas.parentElement : null;
+    _renderDynamicScreens(layer = 'all', layerCanvas = null) {
+        try {
+            const isStaticLayer = (layer === 'all' || layer === 'static');
+            const baseCanvas = this._getBaseCanvas();
+            const overlayCanvas = this._getOverlayCanvas();
+            const defaultCanvas = layerCanvas || baseCanvas;
+            if (!defaultCanvas) return;
+
+            const container = baseCanvas ? baseCanvas.parentElement : defaultCanvas.parentElement;
             const cssScale = container ? (container.clientWidth / this.currentLayout.width) : 1;
             const screenAssignments = this._buildScreenAssignments();
+            const drawnOverlayScreens = isStaticLayer ? null : new Set();
 
             this.currentLayout.screens.forEach(screen => {
                 try {
                     const assignment = screenAssignments.get(screen.id) || { journeys: [], zugID: 1 };
                     const { journeys, journeyGroups, zugID } = assignment;
+                    const isRotatingScreen = screen.type === 'neben_rotierend';
+
+                    // Ziel-Layer bestimmen: Der rotierende Nebenmonitor wird
+                    // weiterhin vollflächig (opak) neu gezeichnet, alle übrigen
+                    // Animationen laufen auf dem transparenten Overlay.
+                    let targetCanvas;
+                    let clearMode;
+                    if (isStaticLayer) {
+                        targetCanvas = defaultCanvas;
+                        clearMode = 'opaque';
+                    } else if (isRotatingScreen) {
+                        targetCanvas = baseCanvas || defaultCanvas;
+                        clearMode = 'opaque';
+                    } else if (overlayCanvas) {
+                        targetCanvas = overlayCanvas;
+                        clearMode = 'transparent';
+                    } else {
+                        // Fallback ohne Overlay: keine opake Fläche löschen
+                        targetCanvas = baseCanvas || defaultCanvas;
+                        clearMode = 'none';
+                    }
 
                     if ((!journeys || journeys.length === 0) && (!journeyGroups || journeyGroups.length === 0)) {
-                        if (layer === 'all' || layer === 'static') {
-                            this.drawOnScreen(screen, () => {}, canvas);
+                        if (isStaticLayer) {
+                            this.drawOnScreen(screen, () => {}, targetCanvas, 'opaque');
+                            this.scrollManager.clearForZug(zugID);
+                        } else if (targetCanvas === overlayCanvas && this._overlayDirtyScreens.has(screen.id)) {
+                            // Reste einer zuvor gezeichneten Animation entfernen
+                            this.drawOnScreen(screen, () => {}, targetCanvas, 'transparent');
                         }
-                        if (layer === 'all' || layer === 'static') this.scrollManager.clearForZug(zugID);
                         return;
                     }
 
                     const fullScreen = screen.type === 'haupt';
-                    const renderCtx = this._createRenderContext(mainCanvas, screen, zugID, fullScreen, cssScale);
+                    const renderCtx = this._createRenderContext(baseCanvas || targetCanvas, screen, zugID, fullScreen, cssScale);
                     
                     if (screen.type === 'neben_rotierend') {
                         renderCtx.pageAlpha = this.pageAlpha;
@@ -534,10 +677,23 @@ export class TrainDisplay {
                         renderCtx.pageAlpha = 1.0;
                     }
 
-                    const isDynamicRotierend = (layer === 'dynamic' && screen.type === 'neben_rotierend');
-                    if (layer === 'all' || layer === 'static' || isDynamicRotierend) this.scrollManager.beginRender();
+                    const isDynamicRotierend = (layer === 'dynamic' && isRotatingScreen);
 
-                    const clearBg = (layer === 'all' || layer === 'static' || isDynamicRotierend);
+                    // Auf dem Overlay nur Screens zeichnen, die wirklich
+                    // animierte Inhalte haben (sonst bleibt der Layer leer).
+                    if (!isStaticLayer && targetCanvas === overlayCanvas) {
+                        if (!this._screenHasDynamicContent(screen, journeys)) {
+                            if (this._overlayDirtyScreens.has(screen.id)) {
+                                this.drawOnScreen(screen, () => {}, targetCanvas, 'transparent');
+                            }
+                            return;
+                        }
+                        drawnOverlayScreens.add(screen.id);
+                    }
+
+                    const trackScroll = isStaticLayer || isDynamicRotierend;
+                    if (trackScroll) this.scrollManager.beginRender();
+
                     this.drawOnScreen(screen, (ctx, width, height) => {
                         this._renderScreenByType(ctx, screen, width, height, {
                             journeys,
@@ -547,13 +703,15 @@ export class TrainDisplay {
                             isDynamicRotierend,
                             fullScreen
                         });
-                    }, canvas, clearBg);
+                    }, targetCanvas, clearMode);
 
-                    if (layer === 'all' || layer === 'static' || isDynamicRotierend) this.scrollManager.cleanupUnused(zugID);
+                    if (trackScroll) this.scrollManager.cleanupUnused(zugID);
                 } catch (screenErr) {
                     console.error(`Error rendering screen ${screen.id}:`, screenErr);
                 }
             });
+
+            if (drawnOverlayScreens) this._overlayDirtyScreens = drawnOverlayScreens;
         } catch (err) {
             console.error('Error in _renderDynamicScreens:', err);
         }
