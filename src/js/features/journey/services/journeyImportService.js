@@ -16,8 +16,11 @@ export class JourneyImportService {
     /**
      * Extrahiert Verspätungsgründe (RIS R-Presets) und Infotexte aus rohen Meldungen.
      * @private
+     * @param {object[]} rawMeldungen
+     * @param {boolean} [checkAusfall=false] - Ausfall-Meldungen als 'ausfall' kennzeichnen
+     * @param {boolean} [skipAusfallMessages=false] - Ausfall-Meldungen nicht als Infotext übernehmen
      */
-    static _extractDelayReasonAndInfoTexts(rawMeldungen, checkAusfall = false) {
+    static _extractDelayReasonAndInfoTexts(rawMeldungen, checkAusfall = false, skipAusfallMessages = false) {
         const infoTexts = [];
         let delayReason = '';
         let delayReasonCode = '';
@@ -25,9 +28,10 @@ export class JourneyImportService {
         const rPresets = RisTextService.getPresetsByType('R');
 
         rawMeldungen.forEach(m => {
-            if (checkAusfall && (m.type === 'HALT_AUSFALL' || m.text === 'Halt entfällt')) {
-                ausfall = true;
-                return;
+            const isAusfallMeldung = (m.type === 'HALT_AUSFALL' || m.text === 'Halt entfällt');
+            if (isAusfallMeldung) {
+                if (checkAusfall) ausfall = true;
+                if (checkAusfall || skipAusfallMessages) return;
             }
 
             const matchingPreset = rPresets.find(p => p.text === m.text);
@@ -47,6 +51,69 @@ export class JourneyImportService {
         });
 
         return { infoTexts, delayReason, delayReasonCode, ausfall };
+    }
+
+    /**
+     * Erstellt eine Journey aus einem normalisierten Board-Eintrag.
+     * Das Format wird von den Provider-Adaptern erzeugt (siehe liveDataProviderService.js)
+     * und ist für DB Navigator und bahn.de identisch.
+     * @param {object} entry - Normalisierter Board-Eintrag
+     * @param {boolean} [isArrival=false] - true, wenn der Eintrag von einer Ankunftstafel stammt
+     * @returns {Journey}
+     */
+    static fromNormalizedEntry(entry, isArrival = false) {
+        const rawMeldungen = entry.messages || [];
+        const { infoTexts, delayReason, delayReasonCode } = this._extractDelayReasonAndInfoTexts(rawMeldungen, false, true);
+
+        let viasArray = Array.isArray(entry.vias) ? [...entry.vias] : [];
+        const fallbackDestination = viasArray.length > 0 ? viasArray[viasArray.length - 1] : '';
+        const finalDest = entry.destination || fallbackDestination;
+
+        let destLang = finalDest;
+        let destKurz = finalDest;
+
+        if (StationService.isLoaded) {
+            const destStation = StationService.getStationByIdOrName(null, finalDest);
+            if (destStation) {
+                destLang = destStation.name;
+                destKurz = destStation.nameKurz;
+            }
+        }
+
+        // Ansatz A: Bei Abfahrten steht der aktuelle Bahnhof als erstes Element in den Vias.
+        // Das Ziel stand früher als letztes Element drin und wurde weggeschnitten.
+        // Wir behalten das Ziel nun als letzten "Halt" in der Liste, damit es als ausfallend markiert werden kann.
+        if (!isArrival && viasArray.length > 0) {
+            viasArray = viasArray.slice(1);
+        }
+
+        const journey = new Journey({
+            journeyId: entry.journeyId || '',
+            name: entry.name || '',
+            produktGattung: entry.category || '',
+            operator: entry.operator || '',
+            destination: finalDest,
+            destinationLang: destLang,
+            destinationKurz: destKurz,
+            scheduledTime: entry.scheduledTime || '',
+            expectedTime: entry.expectedTime || '',
+            platform: entry.platform || '',
+            ezGleis: entry.expectedPlatform || '',
+            ausfall: Boolean(entry.cancelled),
+            vias: viasArray,
+            messages: rawMeldungen.map(m => ({
+                priority: m.priority,
+                text: m.text
+            })),
+            infoTexts: infoTexts,
+            delayReason: delayReason,
+            delayReasonCode: delayReasonCode
+        });
+
+        // Wenn durch Migration Dummy-Stops aus den Vias erzeugt wurden, reichern wir sie an
+        journey.stops.forEach(s => s.enrichWithStationData());
+
+        return journey;
     }
 
     /**

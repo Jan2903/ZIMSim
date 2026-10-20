@@ -5,8 +5,8 @@
     import { irisConfig } from '../../../js/core/services/irisPollingService.svelte.js';
     import { toastStore } from '../../../js/core/state/toastStore.svelte.js';
     import { getNonCorsAvailability } from '../../../js/core/services/apiClient.js';
-    import { DbNavApiService } from '../../../js/core/services/dbNavApiService.js';
-    import { JourneyDbNavSyncService } from '../../../js/features/journey/services/journeyDbNavSyncService.js';
+    import { DbNavProviderService } from '../../../js/core/services/dbNavProviderService.js';
+    import { JourneyLiveSyncService } from '../../../js/features/journey/services/journeyLiveSyncService.js';
     import ZimIcon from '../../ZimIcon.svelte';
 
     // Plattformabhängige Verfügbarkeit der Nicht-CORS-APIs (DB Navigator / bahn.de)
@@ -42,13 +42,15 @@
         isFetchingDbNavBoard = true;
         try {
             const isArrival = liveDataConfig.board.queryType === 'arrivals';
-            const res = await JourneyDbNavSyncService.loadStationBoard(null, isArrival, replace, {
+            const res = await JourneyLiveSyncService.loadStationBoard('db_navigator', {
+                isArrival: isArrival,
+                replace: replace,
                 lookbehindMinutes: irisConfig.lookbehindMinutes ?? 30,
                 chunks: 2
             });
             if (res.success) {
                 if (liveDataConfig.board.fetchFormation) {
-                    await JourneyDbNavSyncService.autoFetchActiveFormations(2);
+                    await JourneyLiveSyncService.autoFetchActiveFormations(2);
                 }
                 toastStore.success(`${res.count} Fahrten über DB Navigator geladen.`);
             } else {
@@ -84,9 +86,10 @@
         isSyncingDbNav = true;
         dbNavSyncResult = null;
         try {
-            const res = await JourneyDbNavSyncService.enrichJourneysWithDbNav(null, null, {
+            const res = await JourneyLiveSyncService.enrichJourneys('db_navigator', {
+                stationId: journeyStore.stationContext.stationId,
                 lookbehindMinutes: irisConfig.lookbehindMinutes ?? 30,
-                maxChunks: 2
+                chunks: 2
             });
             dbNavSyncResult = {
                 success: true,
@@ -120,13 +123,8 @@
         extendedSearchResults = [];
 
         try {
-            const raw = await DbNavApiService.searchLocation(extendedStationQuery);
-            const list = Array.isArray(raw) ? raw : (raw?.locations || []);
-            extendedSearchResults = list.map(item => ({
-                id: item.id || item.extId || item.evaNr || '',
-                name: item.name || '',
-                type: item.locationType || item.type || 'Station'
-            })).filter(item => item.id && item.name);
+            const raw = await DbNavProviderService.searchStations(extendedStationQuery);
+            extendedSearchResults = raw;
 
             if (extendedSearchResults.length === 0) {
                 toastStore.info('Keine Haltestellen für diesen Suchbegriff gefunden.');

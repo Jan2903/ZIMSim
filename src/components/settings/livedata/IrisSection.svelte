@@ -5,8 +5,7 @@
     import { liveDataConfig } from '../../../js/core/state/liveDataConfig.svelte.js';
     import { toastStore } from '../../../js/core/state/toastStore.svelte.js';
     import { getNonCorsAvailability } from '../../../js/core/services/apiClient.js';
-    import { JourneyDbNavSyncService } from '../../../js/features/journey/services/journeyDbNavSyncService.js';
-    import { JourneyDbWebSyncService } from '../../../js/features/journey/services/journeyDbWebSyncService.js';
+    import { JourneyLiveSyncService } from '../../../js/features/journey/services/journeyLiveSyncService.js';
     import ZimIcon from '../../ZimIcon.svelte';
 
     // Lade-Status für manuelle IRIS-Abfrage
@@ -66,22 +65,20 @@
         }
 
         const useDbWeb = liveDataConfig.formationSource === 'dbweb';
+        const providerId = useDbWeb ? 'dbweb' : 'db_navigator';
 
         isSyncingFormations = true;
         formationSyncResult = null;
         try {
-            const res = useDbWeb
-                ? await JourneyDbWebSyncService.enrichJourneysWithDbWeb(null, journeyStore.stationContext.stationId)
-                : await JourneyDbNavSyncService.enrichJourneysWithDbNav(null, null, {
-                    lookbehindMinutes: irisConfig.lookbehindMinutes ?? 30,
-                    maxChunks: 2
-                });
+            const res = await JourneyLiveSyncService.enrichJourneys(providerId, {
+                stationId: journeyStore.stationContext.stationId,
+                lookbehindMinutes: irisConfig.lookbehindMinutes ?? 30,
+                chunks: 2
+            });
 
             let extraMsg = '';
             if (liveDataConfig.autoFetchActiveFormations && res.matchedCount > 0) {
-                const fetched = useDbWeb
-                    ? await JourneyDbWebSyncService.autoFetchActiveFormations()
-                    : await JourneyDbNavSyncService.autoFetchActiveFormations(2);
+                const fetched = await JourneyLiveSyncService.autoFetchActiveFormations(2);
                 if (fetched > 0) {
                     extraMsg = ` (${fetched} Wagenreihung(en) für Anzeige geladen)`;
                 }

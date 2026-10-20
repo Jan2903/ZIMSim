@@ -4,8 +4,8 @@
     import { liveDataConfig } from '../../../js/core/state/liveDataConfig.svelte.js';
     import { toastStore } from '../../../js/core/state/toastStore.svelte.js';
     import { getNonCorsAvailability } from '../../../js/core/services/apiClient.js';
-    import { DbWebApiService } from '../../../js/core/services/dbWebApiService.js';
-    import { JourneyDbWebSyncService } from '../../../js/features/journey/services/journeyDbWebSyncService.js';
+    import { DbWebProviderService } from '../../../js/core/services/dbWebProviderService.js';
+    import { JourneyLiveSyncService } from '../../../js/features/journey/services/journeyLiveSyncService.js';
     import ZimIcon from '../../ZimIcon.svelte';
 
     // Status für Board Fetch, Hybrid-Sync und Formations-Abruf
@@ -81,10 +81,10 @@
 
         try {
             const isDeparture = liveDataConfig.board.queryType !== 'arrivals';
-            const res = await JourneyDbWebSyncService.syncStationBoard(stationId, isDeparture, {
-                maxVias: liveDataConfig.board.maxVias,
-                mots: liveDataConfig.board.verkehrsmittel,
-                clearBefore: replace
+            const res = await JourneyLiveSyncService.loadStationBoard('dbweb', {
+                isArrival: !isDeparture,
+                replace: replace,
+                maxVias: liveDataConfig.board.maxVias
             });
 
             if (res.success) {
@@ -97,7 +97,7 @@
                 if (liveDataConfig.board.fetchFormation) {
                     isFetchingFormations = true;
                     try {
-                        await JourneyDbWebSyncService.autoFetchActiveFormations();
+                        await JourneyLiveSyncService.autoFetchActiveFormations(2);
                     } finally {
                         isFetchingFormations = false;
                     }
@@ -143,7 +143,9 @@
         isSyncingHybrid = true;
         hybridSyncResult = null;
         try {
-            const res = await JourneyDbWebSyncService.enrichJourneysWithDbWeb(null, stationId);
+            const res = await JourneyLiveSyncService.enrichJourneys('dbweb', {
+                stationId: stationId
+            });
             hybridSyncResult = {
                 success: true,
                 message: `${res.matchedCount} von ${res.totalDepartures} bahn.de Fahrten abgeglichen, [W] Verfügbarkeit & Wagenreihungen aktualisiert.`
@@ -166,7 +168,7 @@
     async function fetchVisibleFormations() {
         isFetchingFormations = true;
         try {
-            await JourneyDbWebSyncService.autoFetchActiveFormations();
+            await JourneyLiveSyncService.autoFetchActiveFormations(2);
         } finally {
             isFetchingFormations = false;
         }
@@ -189,12 +191,8 @@
         searchResults = [];
 
         try {
-            const list = await DbWebApiService.searchLocation(stationQuery, 10);
-            searchResults = (list || []).map(item => ({
-                id: item.extId || item.id || '',
-                name: item.name || '',
-                type: item.type || 'ST'
-            })).filter(item => item.id && item.name);
+            const list = await DbWebProviderService.searchStations(stationQuery, 10);
+            searchResults = list;
 
             if (searchResults.length === 0) {
                 toastStore.info('Keine Haltestellen auf bahn.de gefunden.');

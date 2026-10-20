@@ -3,9 +3,7 @@ import { Formation, FormationGroup } from './formationModel.svelte.js';
 import { Coach } from './coachModel.svelte.js';
 import { FormationParser } from './formationParser.js';
 import { Platform } from '../station/platform.svelte.js';
-import { liveDataConfig } from '../../core/state/liveDataConfig.svelte.js';
-import { JourneyDbWebSyncService } from '../journey/services/journeyDbWebSyncService.js';
-import { JourneyDbNavSyncService } from '../journey/services/journeyDbNavSyncService.js';
+import { JourneyLiveSyncService } from '../journey/services/journeyLiveSyncService.js';
 
 /**
  * Service für Operationen auf Wagenreihungen (Gruppen und Wagen).
@@ -18,25 +16,7 @@ export class FormationService {
      * @returns {Promise<{ success: boolean, message?: string }>}
      */
     static async fetchFormationForJourney(journey) {
-        if (!journey) return { success: false, message: 'Keine Fahrt ausgewählt.' };
-
-        // Bevorzuge explizit vorhandene Metadaten
-        if (journey.dbWebMeta && !journey.dbNavMeta) {
-            return JourneyDbWebSyncService.fetchFormationForJourney(journey);
-        }
-        if (journey.dbNavMeta && !journey.dbWebMeta) {
-            return JourneyDbNavSyncService.fetchFormationForJourney(journey);
-        }
-
-        // Ansonsten anhand der konfigurierten Quelle
-        if (liveDataConfig.formationSource === 'dbweb') {
-            return JourneyDbWebSyncService.fetchFormationForJourney(journey);
-        }
-        if (liveDataConfig.formationSource === 'db_navigator') {
-            return JourneyDbNavSyncService.fetchFormationForJourney(journey);
-        }
-
-        return { success: false, message: 'Keine aktive Wagenreihungs-Schnittstelle konfiguriert.' };
+        return JourneyLiveSyncService.fetchFormationForJourney(journey);
     }
     /**
      * Erstellt einen neuen Standardwagen mit sinnvollen Standardwerten.
