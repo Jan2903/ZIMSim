@@ -1,8 +1,9 @@
 // js/features/journey/services/lineColorService.svelte.js
 import { COLORS } from '../../../displays/core/constants.js';
-import { journeyStore, trainDisplay } from '../../../core/state/stores.js';
+import { journeyStore } from '../../../core/state/stores.js';
 import { StorageService } from '../../../core/services/storageService.js';
 import { createBundle, parseBundle, mergeRuleList } from '../../../core/utils/bundleUtils.js';
+import { matchesTextPattern } from '../../../core/utils/patternUtils.js';
 
 /**
  * @typedef {Object} LineBadgeRule
@@ -142,9 +143,8 @@ class LineColorService {
             if (Array.isArray(restored) && restored.length > 0) {
                 this.rules = restored;
                 this.clearCache();
-                if (typeof trainDisplay !== 'undefined' && trainDisplay?.updateAll) {
-                    trainDisplay.updateAll();
-                }
+                // Kein direkter Aufruf des Display-Layers: Das Neuzeichnen übernimmt
+                // der reaktive Effekt in App.svelte, der lineColorService.rules beobachtet.
             }
         });
     }
@@ -175,9 +175,8 @@ class LineColorService {
             console.warn('[LineColorService] Fehler beim Speichern der Auto-Farben-Einstellung:', e);
         }
         this.clearCache();
-        if (typeof trainDisplay !== 'undefined' && trainDisplay?.updateAll) {
-            trainDisplay.updateAll();
-        }
+        // Kein direkter Aufruf des Display-Layers: Das Neuzeichnen übernimmt
+        // der reaktive Effekt in App.svelte, der autoColorsEnabled beobachtet.
     }
 
     /**
@@ -193,9 +192,8 @@ class LineColorService {
                 this._autoData = await res.json();
                 this.isAutoColorsLoaded = true;
                 this.clearCache();
-                if (typeof trainDisplay !== 'undefined' && trainDisplay?.updateAll) {
-                    trainDisplay.updateAll();
-                }
+                // Kein direkter Aufruf des Display-Layers: Das Neuzeichnen übernimmt
+                // der reaktive Effekt in App.svelte, der isAutoColorsLoaded beobachtet.
             }
         } catch (e) {
             console.warn('[LineColorService] Konnte line-colors.json nicht laden:', e);
@@ -632,30 +630,7 @@ class LineColorService {
      */
     matchesRule(text, rule) {
         if (!text || !rule || !rule.pattern) return false;
-        const pat = rule.pattern.trim();
-        const t = text.trim();
-
-        switch (rule.matchType) {
-            case 'startsWith':
-                return t.toLowerCase().startsWith(pat.toLowerCase());
-            case 'contains':
-                return t.toLowerCase().includes(pat.toLowerCase());
-            case 'exact':
-                return t.toLowerCase() === pat.toLowerCase();
-            case 'regex':
-                try {
-                    let re = this._regexCache.get(pat);
-                    if (!re) {
-                        re = new RegExp(pat, 'i');
-                        this._regexCache.set(pat, re);
-                    }
-                    return re.test(t);
-                } catch {
-                    return false;
-                }
-            default:
-                return t.toLowerCase().startsWith(pat.toLowerCase());
-        }
+        return matchesTextPattern(text, rule.pattern, rule.matchType, this._regexCache);
     }
 
     /**

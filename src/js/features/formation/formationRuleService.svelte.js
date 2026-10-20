@@ -3,6 +3,7 @@ import { FormationPresetService } from './formationPresetService.js';
 import { getSimulatedTime } from '../../core/utils/config.js';
 import { StorageService } from '../../core/services/storageService.js';
 import { createBundle, parseBundle, mergeRuleList } from '../../core/utils/bundleUtils.js';
+import { matchesTextPattern as matchTextPattern } from '../../core/utils/patternUtils.js';
 
 /**
  * @typedef {Object} FormationRule
@@ -373,30 +374,7 @@ class FormationRuleService {
      */
     matchesTextPattern(text, pattern, matchType) {
         if (!pattern) return true;
-        const pat = pattern.trim();
-        const t = (text || '').trim();
-
-        switch (matchType) {
-            case 'startsWith':
-                return t.toLowerCase().startsWith(pat.toLowerCase());
-            case 'contains':
-                return t.toLowerCase().includes(pat.toLowerCase());
-            case 'exact':
-                return t.toLowerCase() === pat.toLowerCase();
-            case 'regex':
-                try {
-                    let re = this._regexCache.get(pat);
-                    if (!re) {
-                        re = new RegExp(pat, 'i');
-                        this._regexCache.set(pat, re);
-                    }
-                    return re.test(t);
-                } catch {
-                    return false;
-                }
-            default:
-                return t.toLowerCase().startsWith(pat.toLowerCase());
-        }
+        return matchTextPattern(text, pattern, matchType, this._regexCache);
     }
 
     /**

@@ -163,6 +163,8 @@
         const pName = journeyStore.stationContext.activePlatformName;
         const nrw = journeyStore.nrwMode;
         const lr = lineColorService.rules;
+        const lac = lineColorService.autoColorsEnabled;
+        const lacl = lineColorService.isAutoColorsLoaded;
 
         trainDisplay.scheduleUpdateAll();
 
