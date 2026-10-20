@@ -84,6 +84,24 @@
     });
 
     let linkedJourney = $derived(journeyStore.getLinkedJourney(journey.id));
+
+    let isDelayed = $derived(
+        !journey.ausfall && Boolean(journey.expectedTime) && journey.expectedTime !== journey.scheduledTime
+    );
+
+    let statusTone = $derived.by(() => {
+        if (journey.ausfall) return 'cancelled';
+        if (isDelayed) return 'delayed';
+        if (!journey.infoscreen) return 'ontime';
+        return '';
+    });
+
+    let statusTitle = $derived.by(() => {
+        if (journey.ausfall) return 'Ausfall';
+        if (isDelayed) return `Erwartet ${journey.expectedTime}`;
+        if (!journey.infoscreen) return 'Pünktlich';
+        return '';
+    });
 </script>
 
 <div id="journey-{journey.id}" class="journey-row {journey.ausfall ? 'journey-cancelled' : ''} {isHidden ? 'mot-hidden' : ''} {isExpanded ? 'is-expanded' : ''}">
@@ -124,71 +142,65 @@
                 {:else}
                     <span class="badge badge-departure" title="Abfahrt">Ab</span>
                 {/if}
-                <span class="journey-destination">{journey.destination || '—'}</span>
+                <span class="journey-destination" title={journey.destination || '—'}>{journey.destination || '—'}</span>
                 <span class="journey-time">{journey.scheduledTime || '—'}</span>
-                
-                {#if journey.ausfall}
-                    <span class="status-badge status-cancelled">
+
+                <span class="journey-status {statusTone}" title={statusTitle || undefined}>
+                    {#if statusTone}
                         <span class="status-dot"></span>
-                        Ausfall
-                    </span>
-                {:else if journey.expectedTime && journey.expectedTime !== journey.scheduledTime}
-                    <span class="status-badge status-delayed">
-                        <span class="status-dot"></span>
-                        {journey.expectedTime}
-                    </span>
-                {:else if !journey.infoscreen}
-                    <span class="status-badge status-ontime">
-                        <span class="status-dot"></span>
-                        Pünktlich
-                    </span>
-                {/if}
-                
+                    {/if}
+                    {#if isDelayed}
+                        <span class="status-time">{journey.expectedTime}</span>
+                    {/if}
+                    {#if statusTitle}
+                        <span class="sr-only">{statusTitle}</span>
+                    {/if}
+                </span>
+
                 <span class="journey-platform">
                     {journey.platform ? 'Gl. ' + journey.platform : ''}
                     {#if journey.ezGleis && journey.ezGleis !== journey.platform}
-                        <span style="color: #ff6b6b; font-weight: bold;">({journey.ezGleis})</span>
+                        <span class="journey-platform-alt">({journey.ezGleis})</span>
                     {/if}
                 </span>
-                
-                {#if linkedJourney}
-                    <!-- svelte-ignore a11y_click_events_have_key_events -->
-                    <!-- svelte-ignore a11y_no_static_element_interactions -->
-                    <span class="badge badge-link" 
-                          title="{journey.ankunft ? 'Wird zu Abfahrt' : 'Kommt von Ankunft'} (anklicken zum Öffnen)" 
-                          style="cursor: pointer; background: #4dabf7; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.85em; margin-right: 8px;"
-                          onclick={(e) => {
-                              e.stopPropagation();
-                              uiState.expandedJourneyId = linkedJourney.id;
-                              setTimeout(() => {
-                                  const el = document.getElementById('journey-' + linkedJourney.id);
-                                  if (el) el.scrollIntoView({behavior: 'smooth', block: 'center'});
-                              }, 50);
-                          }}>
-                        <span style="display: inline-flex; align-items: center; gap: 4px;">
-                            <ZimIcon name="link" size={13} />
-                            <span>{journey.ankunft ? 'Wird zu' : 'Kommt aus'} {linkedJourney.effectiveDisplayName} ({linkedJourney.scheduledTime})</span>
-                        </span>
-                    </span>
-                {/if}
 
-                {#if journey.hasFormation}
-                    <span class="badge badge-formation-loaded" title="Wagenreihung vorhanden">
-                        <ZimIcon name="train_fast" size={12} />
-                        <span>WR</span>
-                    </span>
-                {:else if journey.hasFormationAvailable}
-                    <button 
-                        type="button"
-                        class="badge badge-formation-available" 
-                        title="Wagenreihung verfügbar (DB Navigator) - Klicken zum Laden"
-                        disabled={journey.isFetchingFormation}
-                        onclick={fetchWagenreihung}
-                    >
-                        <ZimIcon name="train_fast" size={12} />
-                        <span>{journey.isFetchingFormation ? 'Lädt...' : '[W]'}</span>
-                    </button>
-                {/if}
+                <div class="journey-badges">
+                    {#if linkedJourney}
+                        <!-- svelte-ignore a11y_click_events_have_key_events -->
+                        <!-- svelte-ignore a11y_no_static_element_interactions -->
+                        <span class="badge badge-link"
+                              title="{journey.ankunft ? 'Wird zu Abfahrt' : 'Kommt von Ankunft'} (anklicken zum Öffnen)"
+                              onclick={(e) => {
+                                  e.stopPropagation();
+                                  uiState.expandedJourneyId = linkedJourney.id;
+                                  setTimeout(() => {
+                                      const el = document.getElementById('journey-' + linkedJourney.id);
+                                      if (el) el.scrollIntoView({behavior: 'smooth', block: 'center'});
+                                  }, 50);
+                              }}>
+                            <ZimIcon name="link" size={13} />
+                            <span class="badge-link-text">{journey.ankunft ? 'Wird zu' : 'Kommt aus'} {linkedJourney.effectiveDisplayName} ({linkedJourney.scheduledTime})</span>
+                        </span>
+                    {/if}
+
+                    {#if journey.hasFormation}
+                        <span class="badge badge-formation-loaded" title="Wagenreihung vorhanden">
+                            <ZimIcon name="train_fast" size={12} />
+                            <span>WR</span>
+                        </span>
+                    {:else if journey.hasFormationAvailable}
+                        <button
+                            type="button"
+                            class="badge badge-formation-available"
+                            title="Wagenreihung verfügbar (DB Navigator) - Klicken zum Laden"
+                            disabled={journey.isFetchingFormation}
+                            onclick={fetchWagenreihung}
+                        >
+                            <ZimIcon name="train_fast" size={12} />
+                            <span>{journey.isFetchingFormation ? 'Lädt...' : '[W]'}</span>
+                        </button>
+                    {/if}
+                </div>
 
                 <button class="btn-icon expand-toggle" title={isExpanded ? 'Einklappen' : 'Ausklappen'}>
                     <ZimIcon name={isExpanded ? 'chevron_down' : 'chevron_right'} size={16} />
@@ -233,17 +245,48 @@
 :global(.coupling-single) .coupling-line { display: none; }
 
 .journey-col-main { flex: 1; padding: 8px 12px; min-width: 0; }
-.journey-summary { display: flex; align-items: center; gap: 10px; cursor: pointer; flex-wrap: wrap; }
-.journey-name { font-weight: bold; font-size: 1.05em; color: var(--text-main); white-space: nowrap; }
+.journey-summary {
+    display: grid;
+    grid-template-columns: 132px 34px minmax(0, 1fr) 52px 64px 72px minmax(0, 190px) 28px;
+    align-items: center;
+    column-gap: 8px;
+    cursor: pointer;
+    min-width: 0;
+}
+.journey-name { font-weight: bold; font-size: 1.05em; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .journey-name.has-custom-badge { display: inline-flex; align-items: center; line-height: 1.25; font-size: 0.95em; }
-.journey-destination { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 80px; }
+.journey-destination { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .journey-time { white-space: nowrap; font-variant-numeric: tabular-nums; }
-.journey-platform { color: var(--text-muted); white-space: nowrap; font-size: 0.9em; }
+.journey-status { display: inline-flex; align-items: center; gap: 5px; justify-self: start; min-width: 0; font-size: 0.85em; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.journey-status.ontime { color: #22c55e; }
+.journey-status.delayed { color: #e2001a; }
+.journey-status.cancelled { color: #9ca3af; }
+.journey-status.ontime .status-dot { background: #22c55e; box-shadow: 0 0 8px #22c55e; }
+.journey-status.delayed .status-dot { background: #e2001a; box-shadow: 0 0 8px #e2001a; animation: pulse-red 2s infinite; }
+.journey-status.cancelled .status-dot { background: #9ca3af; }
+.journey-platform { color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.9em; }
+.journey-platform-alt { color: #ff6b6b; font-weight: bold; }
+.journey-badges { display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
 .badge { display: inline-flex; align-items: center; padding: 1px 6px; border-radius: 4px; font-weight: bold; font-size: 0.85em; }
-.badge-arrival { background: #1e40af; color: #93c5fd; }
-.badge-departure { background: #334155; color: #f8fafc; }
-.badge-info { background: transparent; color: var(--text-muted); font-size: 1.2em; padding: 0 4px; border: 1px solid var(--border); }
+.badge-arrival { background: #1e40af; color: #93c5fd; justify-self: start; }
+.badge-departure { background: #334155; color: #f8fafc; justify-self: start; }
+.badge-info { background: transparent; color: var(--text-muted); font-size: 1.2em; padding: 0 4px; border: 1px solid var(--border); justify-self: start; }
+.badge-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    max-width: 100%;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    background: #4dabf7;
+    color: white;
+    cursor: pointer;
+}
+.badge-link-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .badge-formation-loaded {
     background: rgba(34, 197, 94, 0.15);
     color: #4ade80;
@@ -271,17 +314,30 @@
     opacity: 0.6;
     cursor: wait;
 }
-.expand-toggle { margin-left: auto; }
+.expand-toggle { justify-self: center; }
 
 @media (max-width: 768px) {
     .journey-col-reorder { width: 30px; }
     .arrow-btn { min-height: 24px; padding: 2px 4px; }
     .journey-col-visibility { min-width: 38px; padding: 8px 2px; }
     .journey-col-main { padding: 6px 8px; }
-    .journey-summary { gap: 6px; }
-    .journey-name { font-size: 0.95em; }
-    .journey-destination { font-size: 0.9em; min-width: 60px; }
-    .expand-toggle { min-height: 36px; min-width: 32px; display: flex; align-items: center; justify-content: center; }
+    .journey-summary {
+        grid-template-columns: 70px 24px minmax(0, 1fr) 42px 28px;
+        grid-template-areas:
+            "name mode dest time toggle"
+            "status status platform badges badges";
+        column-gap: 4px;
+        row-gap: 4px;
+    }
+    .journey-name { grid-area: name; font-size: 0.95em; }
+    .journey-summary > .badge { grid-area: mode; }
+    .journey-destination { grid-area: dest; font-size: 0.9em; }
+    .journey-time { grid-area: time; }
+    .journey-status { grid-area: status; }
+    .journey-platform { grid-area: platform; }
+    .journey-badges { grid-area: badges; }
+    .badge-link-text { display: none; }
+    .expand-toggle { grid-area: toggle; min-height: 36px; min-width: 32px; display: flex; align-items: center; justify-content: center; }
     .journey-details-fullwidth { padding: 0 6px 10px 6px; }
 }
 </style>
