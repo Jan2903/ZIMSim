@@ -6,14 +6,20 @@
     import { toastStore } from '../../../js/core/state/toastStore.svelte.js';
     import { getNonCorsAvailability } from '../../../js/core/services/apiClient.js';
     import { JourneyDbNavSyncService } from '../../../js/features/journey/services/journeyDbNavSyncService.js';
+    import { JourneyDbWebSyncService } from '../../../js/features/journey/services/journeyDbWebSyncService.js';
     import ZimIcon from '../../ZimIcon.svelte';
 
     // Lade-Status für manuelle IRIS-Abfrage
     let isFetchingIris = $state(false);
 
-    // Status für DBNav Wagenreihungs-Sync
-    let isSyncingDbNav = $state(false);
-    let dbNavSyncResult = $state(null);
+    // Status für die Wagenreihungs-Anreicherung ([W])
+    let isSyncingFormations = $state(false);
+    let formationSyncResult = $state(null);
+
+    // Anzeigename der aktiven Wagenreihungs-Quelle
+    const formationSourceLabel = $derived(
+        liveDataConfig.formationSource === 'dbweb' ? 'bahn.de' : 'DB Navigator'
+    );
 
     /**
      * Führt eine sofortige Aktualisierung der IRIS-Daten aus.
@@ -40,11 +46,11 @@
     }
 
     /**
-     * Gleicht die aktuellen Fahrten mit der DB Navigator Abfahrtstafel ab.
+     * Gleicht die aktuellen Fahrten mit der aktiven Wagenreihungs-Quelle ab.
      * Ermittelt die Verfügbarkeit von Wagenreihungen ([W]) und lädt optional die Formation für aktive Züge.
      * @returns {Promise<void>}
      */
-    async function syncWithDbNav() {
+    async function syncFormations() {
         if (!journeyStore.stationContext.stationId) {
             toastStore.warning('Bitte zuerst eine Station auswählen!');
             return;
@@ -52,39 +58,51 @@
 
         const avail = getNonCorsAvailability();
         if (avail.blocked) {
-            dbNavSyncResult = {
+            formationSyncResult = {
                 success: false,
                 message: `DB Navigator ${avail.reason}`
             };
             return;
         }
 
-        isSyncingDbNav = true;
-        dbNavSyncResult = null;
+        const useDbWeb = liveDataConfig.formationSource === 'dbweb';
+
+        isSyncingFormations = true;
+        formationSyncResult = null;
         try {
-            const res = await JourneyDbNavSyncService.enrichJourneysWithDbNav(null, null, {
-                lookbehindMinutes: irisConfig.lookbehindMinutes ?? 30,
-                maxChunks: 2
-            });
+            const res = useDbWeb
+                ? await JourneyDbWebSyncService.enrichJourneysWithDbWeb(null, journeyStore.stationContext.stationId)
+                : await JourneyDbNavSyncService.enrichJourneysWithDbNav(null, null, {
+                    lookbehindMinutes: irisConfig.lookbehindMinutes ?? 30,
+                    maxChunks: 2
+                });
+
             let extraMsg = '';
             if (liveDataConfig.autoFetchActiveFormations && res.matchedCount > 0) {
-                const fetched = await JourneyDbNavSyncService.autoFetchActiveFormations(2);
+                const fetched = useDbWeb
+                    ? await JourneyDbWebSyncService.autoFetchActiveFormations()
+                    : await JourneyDbNavSyncService.autoFetchActiveFormations(2);
                 if (fetched > 0) {
                     extraMsg = ` (${fetched} Wagenreihung(en) für Anzeige geladen)`;
                 }
             }
-            dbNavSyncResult = {
+
+            const suffix = useDbWeb
+                ? '[W] Verfügbarkeit & Wagenreihungen aktualisiert.'
+                : '[W] Verfügbarkeit aktualisiert.';
+
+            formationSyncResult = {
                 success: true,
-                message: `${res.matchedCount} von ${res.totalDepartures} DB Navigator Fahrten abgeglichen, [W] Verfügbarkeit aktualisiert.${extraMsg}`
+                message: `${res.matchedCount} von ${res.totalDepartures} ${formationSourceLabel} Fahrten abgeglichen, ${suffix}${extraMsg}`
             };
         } catch (e) {
-            console.error('[IrisSection] Fehler beim DBNav-Abgleich:', e);
-            dbNavSyncResult = {
+            console.error('[IrisSection] Fehler beim Wagenreihungs-Abgleich:', e);
+            formationSyncResult = {
                 success: false,
-                message: 'Fehler beim DB Navigator Abgleich.'
+                message: `Fehler beim Abgleich mit ${formationSourceLabel}.`
             };
         } finally {
-            isSyncingDbNav = false;
+            isSyncingFormations = false;
         }
     }
 </script>
@@ -162,30 +180,39 @@
     <div class="sub-section" style="margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px;">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
             <div class="field-label" style="margin-bottom: 0;">Wagenreihungs-Anreicherung:</div>
-            <span class="provider-pill">via DB Navigator</span>
+            <span class="provider-pill">via {formationSourceLabel}</span>
         </div>
         <p class="sub-desc" style="font-size: 0.76rem; color: var(--text-muted); margin: 0 0 10px 0; line-height: 1.4;">
-            DB IRIS liefert reine Fahrplandaten. Wagenreihungen ([W]) und Formationen werden modular über den DB Navigator bezogen.
+            DB IRIS liefert reine Fahrplandaten. Wagenreihungen ([W]) und Formationen werden modular über die gewählte Quelle bezogen.
         </p>
-        <div class="checkbox-group" style="margin-bottom: 10px;">
+
+        <label class="field-label" style="display: block; margin-bottom: 4px;">
+            Quelle für Wagenreihungen (IRIS-Fahrten):
+        </label>
+        <select class="form-select" bind:value={liveDataConfig.formationSource}>
+            <option value="db_navigator">DB Navigator (Wagenreihung-Indikator, exakte Gleisposition)</option>
+            <option value="dbweb">bahn.de Web API (Zwischenhalte, RIS-Gründe)</option>
+        </select>
+
+        <div class="checkbox-group" style="margin: 10px 0;">
             <label class="checkbox-label">
                 <input type="checkbox" bind:checked={liveDataConfig.autoFetchActiveFormations}>
                 <span>Wagenreihung für angezeigten Zug automatisch nachladen</span>
             </label>
         </div>
-        <button 
-            type="button" 
-            class="btn-secondary" 
+        <button
+            type="button"
+            class="btn-secondary"
             style="width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px;"
-            onclick={syncWithDbNav}
-            disabled={isSyncingDbNav}
+            onclick={syncFormations}
+            disabled={isSyncingFormations}
         >
             <ZimIcon name="train_fast" size={14} />
-            <span>{isSyncingDbNav ? 'Gleiche mit DB Navigator ab...' : 'Wagenreihungen ermitteln ([W])'}</span>
+            <span>{isSyncingFormations ? `Gleiche mit ${formationSourceLabel} ab...` : 'Wagenreihungen ermitteln ([W])'}</span>
         </button>
-        {#if dbNavSyncResult}
-            <div class="sync-result-msg" class:is-success={dbNavSyncResult.success} style="margin-top: 8px; font-size: 0.8rem;">
-                {dbNavSyncResult.message}
+        {#if formationSyncResult}
+            <div class="sync-result-msg" class:is-success={formationSyncResult.success} style="margin-top: 8px; font-size: 0.8rem;">
+                {formationSyncResult.message}
             </div>
         {/if}
     </div>
