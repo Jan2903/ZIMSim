@@ -121,7 +121,7 @@ class AnnouncementQueueService {
             // 1. Einfahrt: Wenn der Zug bereits mehr als 45s vorbei ist -> verwerfen
             if (nextCandidate.type === ANNOUNCEMENT_TYPE.EINFAHRT && nextCandidate.trainCountdownTimeMs) {
                 if (currentSimTimeMs - nextCandidate.trainCountdownTimeMs > 45000) {
-                    console.log(`[AnnouncementQueue] Verwerfe veraltete Einfahrt für ${nextCandidate.trainName} (45s verstrichen).`);
+                    console.debug(`[AnnouncementQueue] Verwerfe veraltete Einfahrt für ${nextCandidate.trainName} (45s verstrichen).`);
                     this.queue.shift();
                     continue;
                 }
@@ -129,7 +129,7 @@ class AnnouncementQueueService {
 
             // 2. Andere Ansagen für Züge, die bereits mehr als 60s in der Vergangenheit liegen -> verwerfen
             if (nextCandidate.trainCountdownTimeMs && (currentSimTimeMs - nextCandidate.trainCountdownTimeMs > 60000)) {
-                console.log(`[AnnouncementQueue] Verwerfe veraltete Ansage (${nextCandidate.type}) für ${nextCandidate.trainName}.`);
+                console.debug(`[AnnouncementQueue] Verwerfe veraltete Ansage (${nextCandidate.type}) für ${nextCandidate.trainName}.`);
                 this.queue.shift();
                 continue;
             }

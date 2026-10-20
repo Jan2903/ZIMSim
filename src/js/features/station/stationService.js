@@ -50,7 +50,7 @@ export class StationService {
 
             this.isLoaded = true;
             this.clearCache();
-            console.log(`[StationService] Erfolgreich ${this.stations.length} Stationen geladen (${loadedFromJson ? 'kompiliertes JSON' : 'CSV-Fallback'}).`);
+            console.debug(`[StationService] Erfolgreich ${this.stations.length} Stationen geladen (${loadedFromJson ? 'kompiliertes JSON' : 'CSV-Fallback'}).`);
 
             // Nachträgliches Anreichern bereits existierender Züge (z.B. Demo-Daten oder Preset)
             if (journeyStore && journeyStore.journeys) {

@@ -34,7 +34,9 @@ export class IrisApiService {
             }
         });
 
-        // Verhindern, dass ein einzelner Netzwerkfehler die gesamte Queue lahmlegt
+        // Verhindern, dass ein einzelner Netzwerkfehler die gesamte Queue lahmlegt.
+        // Der Fehler wird dem Aufrufer über `chained` weiterhin zugestellt - dieser
+        // Catch-Aufruf neutralisiert nur die Rejection des Queue-Platzes selbst.
         this._queuePromise = chained.catch(() => {});
         return chained;
     }

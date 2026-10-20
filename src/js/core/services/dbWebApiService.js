@@ -52,6 +52,9 @@ export class DbWebApiService {
             }
         });
 
+        // Neutralisiert die Rejection des Queue-Platzes, damit ein einzelner Fehler
+        // die Folgeanfragen nicht blockiert. Der Aufrufer erhält den Fehler weiterhin
+        // über das zurückgegebene `chained`.
         this._queuePromise = chained.catch(() => {});
         return chained;
     }

@@ -91,6 +91,9 @@ export class DbNavApiService {
             }
         });
 
+        // Neutralisiert die Rejection des Queue-Platzes, damit ein einzelner Fehler
+        // die Folgeanfragen nicht blockiert. Der Aufrufer erhält den Fehler weiterhin
+        // über das zurückgegebene `chained`.
         this._queuePromise = chained.catch(() => {});
         return chained;
     }
@@ -237,7 +240,7 @@ export class DbNavApiService {
             if (!res) return null;
             if (!res.ok) {
                 if (res.status === 404) {
-                    console.log(`[DbNavApiService] Keine Wagenreihung für ${gattung} ${zugnummer} an EVA ${evaNr} gefunden (HTTP 404).`);
+                    console.debug(`[DbNavApiService] Keine Wagenreihung für ${gattung} ${zugnummer} an EVA ${evaNr} gefunden (HTTP 404).`);
                     this._formationCache.set(cacheKey, { data: null, timestamp: Date.now() });
                 } else {
                     console.error(`[DbNavApiService] wagenreihung Fehler für ${gattung} ${zugnummer}: HTTP ${res.status}`);

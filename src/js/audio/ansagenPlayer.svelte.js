@@ -282,7 +282,11 @@ export class AnsagenPlayer {
         this.currentFile = '';
         
         this._sourceNodes.forEach(node => {
-            try { node.stop(); } catch(e) {}
+            try {
+                node.stop();
+            } catch (e) {
+                console.warn('[AnsagenPlayer] Audio-Quelle konnte nicht gestoppt werden:', e);
+            }
         });
         this._sourceNodes = [];
 

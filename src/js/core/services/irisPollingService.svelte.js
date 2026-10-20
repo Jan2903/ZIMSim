@@ -296,7 +296,7 @@ class IrisPollingService {
         } catch (e) {
             // Wenn der User schnell den Bahnhof gewechselt hat, ist der Abort beabsichtigt.
             if (e.name === 'AbortError') {
-                console.log(`[IrisPollingService] Request aborted for EVA ${eva} (Changed station rapidly).`);
+                console.debug(`[IrisPollingService] Request aborted for EVA ${eva} (Changed station rapidly).`);
             } else {
                 console.error('[IrisPollingService] Polling error:', e);
             }

@@ -98,7 +98,9 @@ export class JourneyStore {
                 this.customStations = restored;
                 import('../station/stationService.js').then(({ StationService }) => {
                     StationService.clearCache();
-                }).catch(() => {});
+                }).catch((e) => {
+                    console.warn('[JourneyStore] Station-Service konnte nicht geladen werden:', e);
+                });
             }
         });
     }
@@ -145,7 +147,9 @@ export class JourneyStore {
             StorageService.setItem('zimsim_custom_stations', this.customStations);
             import('../station/stationService.js').then(({ StationService }) => {
                 StationService.clearCache();
-            }).catch(() => {});
+            }).catch((e) => {
+                console.warn('[JourneyStore] Station-Service konnte nicht geladen werden:', e);
+            });
         } catch (e) {
             console.warn('[JourneyStore] Fehler beim Speichern der Custom Stations:', e);
         }

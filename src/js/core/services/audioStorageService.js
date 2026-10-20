@@ -16,7 +16,11 @@ class WebZipStorageProvider {
 
         if (this._lastFileRef !== fileRef) {
             if (this._cachedZipReader) {
-                try { await this._cachedZipReader.close(); } catch(e) {}
+                try {
+                    await this._cachedZipReader.close();
+                } catch (e) {
+                    console.warn('[AudioStorageService] Fehler beim Schließen des vorherigen ZIP-Readers:', e);
+                }
             }
             this._cachedZipEntries = null;
             this._cachedZipMap = null;

@@ -81,8 +81,12 @@ export class StorageService {
             console.warn(`[StorageService] Fehler beim Entfernen aus LocalStorage für '${key}':`, e);
         }
         try {
-            del(key).catch(() => {});
-        } catch {}
+            del(key).catch((e) => {
+                console.warn(`[StorageService] Fehler beim Entfernen aus IndexedDB für '${key}':`, e);
+            });
+        } catch (e) {
+            console.warn(`[StorageService] IndexedDB nicht verfügbar beim Entfernen von '${key}':`, e);
+        }
     }
 
     /**
@@ -98,10 +102,12 @@ export class StorageService {
             if (currentLocal === null || (Array.isArray(currentLocal) && currentLocal.length === 0)) {
                 const idbData = await get(key);
                 if (idbData !== undefined && idbData !== null) {
-                    console.log(`[StorageService] Stelle '${key}' erfolgreich aus IndexedDB wieder her.`);
+                    console.debug(`[StorageService] Stelle '${key}' erfolgreich aus IndexedDB wieder her.`);
                     try {
                         localStorage.setItem(key, JSON.stringify(idbData));
-                    } catch {}
+                    } catch (e) {
+                        console.warn(`[StorageService] Konnte '${key}' nicht in den LocalStorage spiegeln:`, e);
+                    }
                     if (typeof onRestored === 'function') {
                         onRestored(idbData);
                     }
