@@ -3,7 +3,7 @@
     import { journeyStore, trainDisplay } from '../../../js/core/state/stores.js';
     import { liveDataConfig } from '../../../js/core/state/liveDataConfig.svelte.js';
     import { toastStore } from '../../../js/core/state/toastStore.svelte.js';
-    import { isTauri, proxyConfig } from '../../../js/core/services/apiClient.js';
+    import { getNonCorsAvailability } from '../../../js/core/services/apiClient.js';
     import { DbWebApiService } from '../../../js/core/services/dbWebApiService.js';
     import { JourneyDbWebSyncService } from '../../../js/features/journey/services/journeyDbWebSyncService.js';
     import ZimIcon from '../../ZimIcon.svelte';
@@ -19,6 +19,9 @@
     let stationQuery = $state('');
     let isSearchingStation = $state(false);
     let searchResults = $state([]);
+
+    // Plattformabhängige Verfügbarkeit der Nicht-CORS-APIs (DB Navigator / bahn.de)
+    const availability = $derived(getNonCorsAvailability());
 
     // Immer 8 Zwischenhalte als fester ZIM-Standard
     liveDataConfig.dbWeb.maxVias = 8;
@@ -70,8 +73,9 @@
             return;
         }
 
-        if (!isTauri && !proxyConfig.enabled) {
-            toastStore.warning('Für bahn.de Anfragen im Web-Browser bitte zuerst die lokale Python-Bridge (start_bridge.bat) starten.');
+        const avail = getNonCorsAvailability();
+        if (avail.blocked) {
+            toastStore.warning(`bahn.de ${avail.reason}`);
             return;
         }
 
@@ -130,10 +134,11 @@
             return;
         }
 
-        if (!isTauri && !proxyConfig.enabled) {
+        const avail = getNonCorsAvailability();
+        if (avail.blocked) {
             hybridSyncResult = {
                 success: false,
-                message: 'bahn.de erfordert im Browser die lokale Python-Bridge (start_bridge.bat) oder Tauri.'
+                message: `bahn.de ${avail.reason}`
             };
             return;
         }
@@ -177,8 +182,9 @@
     async function searchStation() {
         if (!stationQuery.trim()) return;
 
-        if (!isTauri && !proxyConfig.enabled) {
-            toastStore.warning('Für die Stationssuche im Web-Browser bitte die lokale Python-Bridge (start_bridge.bat) starten.');
+        const avail = getNonCorsAvailability();
+        if (avail.blocked) {
+            toastStore.warning(`bahn.de ${avail.reason}`);
             return;
         }
 
@@ -218,9 +224,13 @@
 </script>
 
 <div class="form-row column-layout">
-    {#if !isTauri && !proxyConfig.enabled}
+    {#if availability.blocked}
         <div class="bridge-warning-box">
-            <strong>Hinweis für Browser / GitHub Pages:</strong> bahn.de Web API Anfragen benötigen im Browser die lokale Python-Bridge. Starte einfach <code class="bridge-code">scripts/start_bridge.bat</code> auf Windows.
+            <strong>{availability.needsBridge ? 'Hinweis für Browser / GitHub Pages:' : 'Hinweis für mobile Geräte:'}</strong>
+            DB Navigator und bahn.de {availability.reason}
+            {#if availability.needsBridge}
+                <br>Start unter Windows per Doppelklick auf <code class="bridge-code">scripts/start_bridge.bat</code>, unter macOS/Linux mit <code class="bridge-code">python3 scripts/zimsim_bridge.py</code>. Alternativ die Tauri-Desktop-App verwenden.
+            {/if}
         </div>
     {/if}
 

@@ -4,7 +4,7 @@
     import { irisPollingService, irisConfig } from '../../../js/core/services/irisPollingService.svelte.js';
     import { liveDataConfig } from '../../../js/core/state/liveDataConfig.svelte.js';
     import { toastStore } from '../../../js/core/state/toastStore.svelte.js';
-    import { isTauri, proxyConfig } from '../../../js/core/services/apiClient.js';
+    import { getNonCorsAvailability } from '../../../js/core/services/apiClient.js';
     import { JourneyDbNavSyncService } from '../../../js/features/journey/services/journeyDbNavSyncService.js';
     import ZimIcon from '../../ZimIcon.svelte';
 
@@ -50,10 +50,11 @@
             return;
         }
 
-        if (!isTauri && !proxyConfig.enabled) {
+        const avail = getNonCorsAvailability();
+        if (avail.blocked) {
             dbNavSyncResult = {
                 success: false,
-                message: 'DB Navigator erfordert im Browser die lokale Python-Bridge (start_bridge.bat) oder Tauri.'
+                message: `DB Navigator ${avail.reason}`
             };
             return;
         }

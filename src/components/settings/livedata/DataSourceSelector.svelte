@@ -1,6 +1,15 @@
 <!-- src/components/settings/livedata/DataSourceSelector.svelte -->
 <script>
-    import { isTauri, isGitHubPages, proxyConfig, checkProxyHealth } from '../../../js/core/services/apiClient.js';
+    import { onMount } from 'svelte';
+    import {
+        isTauri,
+        isTauriMobile,
+        isMobile,
+        isGitHubPages,
+        canUseLocalBridge,
+        proxyConfig,
+        checkProxyHealth
+    } from '../../../js/core/services/apiClient.js';
     import { liveDataConfig } from '../../../js/core/state/liveDataConfig.svelte.js';
     import ZimIcon from '../../ZimIcon.svelte';
 
@@ -12,10 +21,29 @@
     let { selectedDataSource = $bindable('iris'), onSelectSource } = $props();
 
     // Status und Konfiguration fuer lokalen Python-Proxy (ZIMSim Bridge) - strikt Opt-In
-    let proxyEnabled = $state(proxyConfig.enabled);
     let proxyUrl = $state(proxyConfig.url);
     let isCheckingProxy = $state(false);
     let proxyStatus = $state(null);
+
+    // Plattform-Banner: Tauri Mobile / Tauri Desktop / Mobil-Browser / Web-Browser
+    const platformTitle = $derived(
+        isTauriMobile ? 'Tauri Mobile-App aktiv'
+        : isTauri ? 'Tauri Desktop-App aktiv'
+        : isMobile ? 'Mobil-Browser aktiv'
+        : 'Web-Browser Modus'
+    );
+
+    const platformDescription = $derived(
+        isTauriMobile
+            ? 'Native HTTP-Sockets aktiv. Keine CORS-Einschränkungen für externe APIs (IRIS, DB Navigator und bahn.de direkt nutzbar). Die lokale Python-Bridge ist auf Mobilgeräten nicht einsetzbar - sie muss als Python-Prozess auf einem PC laufen.'
+        : isTauri
+            ? 'Native HTTP-Sockets aktiv. Keine CORS-Einschränkungen für externe APIs (IRIS, DB Navigator und bahn.de direkt nutzbar).'
+        : isMobile
+            ? 'Die IRIS-API ist auch mobil direkt verfügbar. DB Navigator und bahn.de benötigen die lokale Python-Bridge - die auf diesem Gerät nicht laufen kann. Nutze die Tauri-Mobile-App für vollen Zugriff.'
+        : isGitHubPages
+            ? 'Gehostet auf GitHub Pages. IRIS-API ist direkt verfügbar. DB Navigator und bahn.de erfordern die lokale Python-Bridge oder Tauri.'
+        : 'Lokale Browser-Umgebung. IRIS ist direkt aktiv. DB Navigator und bahn.de erfordern die lokale Python-Bridge oder Tauri.'
+    );
 
     /**
      * Prüft die Verbindung zum lokalen Python-Proxy (ZIMSim Bridge) explizit auf Nutzeraktion.
@@ -28,7 +56,6 @@
             proxyStatus = res;
             if (res.connected) {
                 proxyConfig.enabled = true;
-                proxyEnabled = true;
             }
         } finally {
             isCheckingProxy = false;
@@ -37,11 +64,12 @@
 
     /**
      * Schaltet den lokalen Python-Proxy explizit ein oder aus (Opt-In).
+     * @param {boolean} [enabled=true] - Gewünschter Aktivierungszustand
      * @returns {Promise<void>}
      */
-    async function handleProxyToggle() {
-        proxyConfig.enabled = proxyEnabled;
-        if (proxyEnabled) {
+    async function handleProxyToggle(enabled = true) {
+        proxyConfig.enabled = enabled;
+        if (enabled) {
             await checkProxy();
         } else {
             proxyStatus = null;
@@ -57,6 +85,14 @@
         liveDataConfig.timetableSource = source;
         onSelectSource?.(source);
     }
+
+    // Beim Öffnen des Tabs den Bridge-Status auffrischen, sofern die Bridge freigeschaltet ist.
+    // Ohne diesen Abgleich zeigt das Badge dauerhaft "Verbunden", obwohl die Bridge längst beendet wurde.
+    onMount(() => {
+        if (proxyConfig.enabled) {
+            checkProxy();
+        }
+    });
 </script>
 
 <div class="settings-card">
@@ -92,7 +128,7 @@
                     <span class="source-badge badge-nav">Wagenreihung & ÖPNV</span>
                 </div>
                 <div class="source-desc">
-                    Erweiterte Fahrplandetails, Zwischenhalte, Ankunft & Abfahrt kombiniert sowie Wagenreihungen (Formationen).
+                    Erweiterte Fahrplandetails, Ankunft & Abfahrt kombiniert sowie Wagenreihungen (Formationen) mit exakter Gleisposition.
                 </div>
             </label>
 
@@ -115,20 +151,14 @@
         <div class="platform-status-box" class:tauri-mode={isTauri} class:web-mode={!isTauri}>
             <div class="status-indicator">
                 <span class="status-dot"></span>
-                <strong>{isTauri ? 'Tauri Desktop-App aktiv' : 'Web-Browser Modus'}</strong>
+                <strong>{platformTitle}</strong>
             </div>
             <div class="status-details">
-                {#if isTauri}
-                    Native HTTP-Sockets aktiv. Keine CORS-Einschränkungen für externe APIs (IRIS und DB Navigator direkt nutzbar).
-                {:else if isGitHubPages}
-                    Gehostet auf GitHub Pages. IRIS-API ist direkt verfügbar. DB Navigator erfordert die lokale Python-Bridge oder Tauri.
-                {:else}
-                    Lokale Browser-Umgebung. IRIS ist direkt aktiv. DB Navigator erfordert die lokale Python-Bridge oder Tauri.
-                {/if}
+                {platformDescription}
             </div>
         </div>
 
-        {#if !isTauri}
+        {#if canUseLocalBridge}
             <!-- Lokaler Python-Proxy (ZIMSim Bridge) -->
             <div class="proxy-config-card" style="margin-top: 14px; padding: 12px; border-radius: 6px; border: 1px solid var(--border); background: rgba(0, 0, 0, 0.25);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
@@ -136,7 +166,7 @@
                         <ZimIcon name="api" size={16} />
                         <strong style="font-size: 0.9rem;">Python-Proxy (ZIMSim Bridge)</strong>
                     </div>
-                    {#if !proxyEnabled}
+                    {#if !proxyConfig.enabled}
                         <span class="badge" style="background: rgba(148, 163, 184, 0.12); color: var(--text-muted); border: 1px solid var(--border); font-size: 0.72rem;">
                             Deaktiviert
                         </span>
@@ -153,28 +183,28 @@
 
                 <div class="checkbox-group" style="margin-bottom: 8px;">
                     <label class="checkbox-label">
-                        <input 
-                            type="checkbox" 
-                            bind:checked={proxyEnabled}
-                            onchange={handleProxyToggle}
+                        <input
+                            type="checkbox"
+                            checked={proxyConfig.enabled}
+                            onchange={(e) => handleProxyToggle(e.currentTarget.checked)}
                         >
                         <span>Lokalen Proxy im Browser aktivieren (Opt-In)</span>
                     </label>
                 </div>
 
                 <div style="display: flex; gap: 6px; align-items: center;">
-                    <input 
-                    type="text" 
-                    class="form-input" 
+                    <input
+                    type="text"
+                    class="form-input"
                     style="font-size: 0.8rem; padding: 6px 10px;"
-                    bind:value={proxyUrl} 
+                    bind:value={proxyUrl}
                     onchange={() => { proxyConfig.url = proxyUrl; }}
                     placeholder="http://127.0.0.1:8765"
                     >
-                    <button 
-                        type="button" 
-                        class="btn-secondary btn-sm" 
-                        onclick={checkProxy} 
+                    <button
+                        type="button"
+                        class="btn-secondary btn-sm"
+                        onclick={checkProxy}
                         disabled={isCheckingProxy}
                         style="white-space: nowrap;"
                     >
@@ -182,8 +212,24 @@
                     </button>
                 </div>
 
-                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; line-height: 1.4;">
-                    Start per Doppelklick auf <code style="color: var(--accent); background: rgba(0,0,0,0.3); padding: 1px 4px; border-radius: 3px;">scripts/start_bridge.bat</code> auf Windows.
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; line-height: 1.5;">
+                    Start unter Windows per Doppelklick auf <code style="color: var(--accent); background: rgba(0,0,0,0.3); padding: 1px 4px; border-radius: 3px;">scripts/start_bridge.bat</code>,
+                    unter macOS/Linux mit <code style="color: var(--accent); background: rgba(0,0,0,0.3); padding: 1px 4px; border-radius: 3px;">python3 scripts/zimsim_bridge.py</code>.
+                </div>
+            </div>
+        {:else if isMobile}
+            <!-- Mobile Browser: Die Bridge benötigt einen PC und kann hier nicht betrieben werden -->
+            <div class="proxy-config-card" style="margin-top: 14px; padding: 12px; border-radius: 6px; border: 1px solid var(--border); background: rgba(0, 0, 0, 0.25);">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                    <ZimIcon name="api" size={16} />
+                    <strong style="font-size: 0.9rem;">Python-Proxy (ZIMSim Bridge)</strong>
+                    <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #fcd34d; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 0.72rem; margin-left: auto;">
+                        Nicht verfügbar
+                    </span>
+                </div>
+                <div style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.5;">
+                    Die ZIMSim Bridge muss als Python-Prozess auf einem Desktop-PC laufen und ist auf Mobilgeräten nicht einsetzbar.
+                    Für DB Navigator und bahn.de auf dem Handy nutze bitte die Tauri-Mobile-App - dort sind native HTTP-Sockets aktiv.
                 </div>
             </div>
         {/if}
@@ -235,6 +281,7 @@
     }
 
     .source-card {
+        position: relative;
         display: flex;
         flex-direction: column;
         padding: 12px 14px;
@@ -254,8 +301,22 @@
         background: rgba(59, 130, 246, 0.08);
     }
 
+    /* Radio-Input visuell ausblenden, aber fokussierbar und per Tastatur bedienbar lassen */
     .source-card input {
-        display: none;
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
+
+    .source-card:has(input:focus-visible) {
+        outline: 2px solid var(--accent, #3b82f6);
+        outline-offset: 2px;
     }
 
     .source-title {

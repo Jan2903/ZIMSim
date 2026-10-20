@@ -5,6 +5,7 @@
  * Ermoeglicht im Web die Nutzung eines lokalen Python-Proxys (ZIMSim Bridge) fuer Nicht-CORS-APIs,
  * waehrend in Tauri der native HTTP-Socket-Client (@tauri-apps/plugin-http) genutzt wird.
  */
+import { bridgeState, setBridgeEnabled, setBridgeUrl } from '../state/bridgeState.svelte.js';
 
 /**
  * Gibt an, ob die Anwendung aktuell innerhalb der nativen Tauri-Desktop-App ausgeführt wird.
@@ -21,26 +22,87 @@ export const isGitHubPages = typeof window !== 'undefined' &&
     window.location.hostname.endsWith('github.io');
 
 /**
+ * Gibt an, ob die Anwendung auf einem mobilen Gerät läuft (Browser oder Tauri-WebView).
+ * Die Erkennung erfolgt über den User-Agent, da im Projekt kein OS-Plugin
+ * (tauri-plugin-os) eingebunden ist. Der Tauri-WebView liefert auf Android
+ * (Android WebView) und iOS (WKWebView) die jeweiligen Mobile-User-Agents.
+ * @type {boolean}
+ */
+export const isMobile = typeof navigator !== 'undefined' && (() => {
+    const ua = navigator.userAgent || '';
+    if (/Android|iPhone|iPad|iPod|Mobile/i.test(ua)) return true;
+    // iPadOS 13+ tarnt sich als "Macintosh" - nur mit Touch-Unterstützung als Tablet erkennbar
+    return (navigator.maxTouchPoints || 0) > 1 && /Macintosh/i.test(ua);
+})();
+
+/**
+ * Gibt an, ob die Anwendung in der nativen Tauri-App auf einem Mobilgerät läuft (Android/iOS).
+ * @type {boolean}
+ */
+export const isTauriMobile = isTauri && isMobile;
+
+/**
+ * Gibt an, ob die lokale Python-Bridge (ZIMSim Bridge) sinnvoll nutzbar ist.
+ * Sie benötigt einen Desktop-Rechner, auf dem der Python-Prozess laufen kann -
+ * auf Mobilgeräten ist sie daher nicht einsetzbar.
+ * @type {boolean}
+ */
+export const canUseLocalBridge = !isTauri && !isMobile;
+
+/**
  * Konfiguration fuer den optionalen lokalen Python-Proxy (ZIMSim Bridge).
+ * Der Zustand liegt reaktiv in bridgeState.svelte.js, damit UI-Komponenten
+ * auf Aenderungen reagieren; die Persistenz erfolgt im LocalStorage.
  */
 export const proxyConfig = {
     get enabled() {
-        return typeof localStorage !== 'undefined' && localStorage.getItem('zimsim_proxy_enabled') === 'true';
+        return bridgeState.enabled;
     },
     set enabled(val) {
-        if (typeof localStorage !== 'undefined') {
-            localStorage.setItem('zimsim_proxy_enabled', String(val));
-        }
+        setBridgeEnabled(val);
     },
     get url() {
-        return (typeof localStorage !== 'undefined' && localStorage.getItem('zimsim_proxy_url')) || 'http://127.0.0.1:8765';
+        return bridgeState.url;
     },
     set url(val) {
-        if (typeof localStorage !== 'undefined') {
-            localStorage.setItem('zimsim_proxy_url', val);
-        }
+        setBridgeUrl(val);
     }
 };
+
+/**
+ * @typedef {Object} NonCorsAvailability
+ * @property {boolean} blocked - true, wenn Nicht-CORS-APIs aktuell nicht nutzbar sind
+ * @property {boolean} needsBridge - true, wenn die lokale Python-Bridge den Betrieb ermöglichen würde
+ * @property {string|null} reason - Kurzbegründung als Satzanhang (z. B. "im Browser nur mit der lokalen Python-Bridge nutzbar")
+ */
+
+/**
+ * Prüft, ob die aktuelle Plattform die Nicht-CORS-APIs (DB Navigator / bahn.de) nutzen kann.
+ * @returns {NonCorsAvailability}
+ */
+export function getNonCorsAvailability() {
+    if (isTauri) {
+        return { blocked: false, needsBridge: false, reason: null };
+    }
+
+    if (isMobile) {
+        return {
+            blocked: true,
+            needsBridge: false,
+            reason: 'im mobilen Browser nicht nutzbar - die ZIMSim Bridge muss als Python-Prozess auf einem PC laufen.'
+        };
+    }
+
+    if (proxyConfig.enabled) {
+        return { blocked: false, needsBridge: false, reason: null };
+    }
+
+    return {
+        blocked: true,
+        needsBridge: true,
+        reason: 'im Browser nur mit der lokalen Python-Bridge (ZIMSim Bridge) nutzbar.'
+    };
+}
 
 /**
  * Prüft, ob der lokale Python-Proxy (ZIMSim Bridge) erreichbar ist.
@@ -85,7 +147,8 @@ export async function safeApiFetch(url, options = {}, isNonCorsApi = false) {
         }
 
         // Web-Modus: Wenn lokaler Python-Proxy aktiv ist, Anfrage darueber leiten
-        if (proxyConfig.enabled) {
+        // (auf Mobilgeraeten ist die Bridge nicht einsetzbar - siehe canUseLocalBridge)
+        if (proxyConfig.enabled && canUseLocalBridge) {
             const proxyBase = proxyConfig.url.replace(/\/+$/, '');
             let proxiedUrl = url;
             if (url.startsWith('https://app.services-bahn.de')) {
