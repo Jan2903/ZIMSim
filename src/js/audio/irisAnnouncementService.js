@@ -3,6 +3,7 @@ import { announcementQueueService, ANNOUNCEMENT_TYPE } from './announcementQueue
 import { JourneyAnnouncementState } from '../features/journey/journey.svelte.js';
 import { JourneyCouplingService } from '../features/journey/services/journeyCouplingService.js';
 import { ansagenPlayer } from './ansagenPlayer.svelte.js';
+import { roundDelayForAnnouncement } from '../core/utils/dateUtils.js';
 
 class IrisAnnouncementService {
     upcomingAnnouncements = [];
@@ -21,7 +22,7 @@ class IrisAnnouncementService {
         ansagenPlayer.stop();
 
         for (const j of journeys) {
-            const roundedDelay = ansagenGenerator._calculateDelay(j);
+            const roundedDelay = roundDelayForAnnouncement(j);
             const currentPlatform = j.ezGleis || j.platform || '';
             const countdownTime = j.countdownTimeMs || j._effectiveTimeMs || 0;
             const stopsHash = typeof j.getStopsHash === 'function' ? j.getStopsHash() : '';
@@ -166,7 +167,7 @@ class IrisAnnouncementService {
             }
 
             // 3. Verspätungsänderung (Priorität 50)
-            const roundedDelay = ansagenGenerator._calculateDelay(j);
+            const roundedDelay = roundDelayForAnnouncement(j);
             state.delay = roundedDelay; // aktuellen Zustand immer tracken
 
             if (roundedDelay >= 5) {
@@ -567,7 +568,7 @@ class IrisAnnouncementService {
             if (!member.announcementState) {
                 member.announcementState = new JourneyAnnouncementState();
             }
-            const delay = ansagenGenerator._calculateDelay(member);
+            const delay = roundDelayForAnnouncement(member);
             member.announcementState.delay = delay;
             member.announcementState.lastAnnouncedDelay = delay >= 5 ? delay : 0;
             member.announcementState.deviationsHash = typeof member.getStopsHash === 'function'

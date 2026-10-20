@@ -78,3 +78,24 @@ export function calculateDelayMinutes(scheduledTime, expectedTime) {
     else if (diff > 720) diff -= 1440;
     return diff;
 }
+
+/**
+ * Berechnet die für Ansagen gerundete Verspätung gemäß DB-Standard:
+ * - 0-4 Min: 0 (unterdrückt/pünktlich)
+ * - 5-60 Min: 5er-Schritte abgerundet
+ * - 61-210 Min: 10er-Schritte abgerundet
+ * - >210 Min: Obergrenze 210 Min
+ *
+ * @param {object} journey - Das Journey-Objekt (mit expectedTime und scheduledTime)
+ * @returns {number} Verspätung in Minuten
+ */
+export function roundDelayForAnnouncement(journey) {
+    if (!journey || !journey.expectedTime || !journey.scheduledTime) return 0;
+
+    const diff = calculateDelayMinutes(journey.scheduledTime, journey.expectedTime);
+
+    if (diff < 5) return 0;                             // 0-4 Min -> pünktlich / unterdrückt
+    if (diff <= 60) return Math.floor(diff / 5) * 5;    // 5-60 Min -> 5er-Schritte nach unten
+    if (diff <= 210) return Math.floor(diff / 10) * 10; // 61-210 Min -> 10er-Schritte nach unten
+    return 210;                                         // Obergrenze 210 Min
+}

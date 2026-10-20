@@ -1,12 +1,12 @@
 // src/js/audio/ansagenGenerator.js
 import { ansagenStore } from './ansagenStore.svelte.js';
-import { isOppositeTrack, parseTrack, getSectionLetters } from '../core/utils/trackUtils.js';
+import { isOppositeTrack } from '../core/utils/trackUtils.js';
 import { journeyStore } from '../core/state/stores.js';
 import { getSimulatedTime } from '../core/utils/config.js';
-import { calculateDelayMinutes } from '../core/utils/dateUtils.js';
+import { roundDelayForAnnouncement } from '../core/utils/dateUtils.js';
 import { JourneyConnectionService } from '../features/journey/services/journeyConnectionService.js';
 import { JourneyCouplingService } from '../features/journey/services/journeyCouplingService.js';
-import { getPlatformSectors, getPlatformFirstClassSectors, getPlatformForJourney } from '../features/formation/formationUtils.js';
+import { getPlatformSectors, getPlatformFirstClassSectors, getPlatformForJourney, resolveValidSectionLetters } from '../features/formation/formationUtils.js';
 import { AnsagenSpeechFormatter } from './ansagenSpeechFormatter.js';
 
 /**
@@ -22,28 +22,12 @@ export class AnsagenGenerator {
 
     // --- Delegation an AnsagenSpeechFormatter (Rückwärtskompatibilität) ---
 
-    _getIbnr(station) {
-        return this.formatter.getIbnr(station);
-    }
-
-    _pushAudio(playlist, filePath, text) {
-        this.formatter.pushAudio(playlist, filePath, text);
+    _gong(playlist) {
+        this.formatter.gong(playlist);
     }
 
     _module(playlist, modKey) {
         this.formatter.module(playlist, modKey);
-    }
-
-    _number(playlist, numStr, defaultPitch = 'hoch') {
-        this.formatter.number(playlist, numStr, defaultPitch);
-    }
-
-    _pushNumberAudio(playlist, number, pitch) {
-        this.formatter.pushNumberAudio(playlist, number, pitch);
-    }
-
-    _targetWithVia(playlist, target, vias = [], isArrival = false) {
-        this.formatter.targetWithVia(playlist, target, vias, isArrival);
     }
 
     _train(playlist, trainName) {
@@ -58,14 +42,6 @@ export class AnsagenGenerator {
         this.formatter.deviations(playlist, journey);
     }
 
-    _addStationList(playlist, stationList) {
-        this.formatter.addStationList(playlist, stationList);
-    }
-
-    _gong(playlist) {
-        this.formatter.gong(playlist);
-    }
-
     _appendPlatform(playlist, journey, prefixModule = 'GLEIS', pitch = null) {
         this.formatter.platform(playlist, journey, prefixModule, pitch);
     }
@@ -75,7 +51,7 @@ export class AnsagenGenerator {
     }
 
     _appendTimeInfo(playlist, journey, delayActionStr) {
-        const delay = this._calculateDelay(journey);
+        const delay = roundDelayForAnnouncement(journey);
         this.formatter.timeInfo(playlist, journey, delayActionStr, delay);
     }
 
@@ -114,11 +90,7 @@ export class AnsagenGenerator {
         const sectorsStr = getPlatformSectors(journey, coupledJourneys, platform);
         if (!sectorsStr) return;
 
-        const rawLetters = getSectionLetters(sectorsStr).filter(l => l !== '*');
-        if (rawLetters.length === 0) return;
-
-        const platformSectorNames = new Set(platform.sections.map(s => s.name.toUpperCase()));
-        const validLetters = rawLetters.filter(l => platformSectorNames.has(l)).sort();
+        const validLetters = resolveValidSectionLetters(sectorsStr, platform);
         if (validLetters.length === 0) return;
 
         this.formatter.sections(playlist, validLetters);
@@ -144,11 +116,7 @@ export class AnsagenGenerator {
         const sectorsStr = getPlatformFirstClassSectors(journey, coupledJourneys, platform);
         if (!sectorsStr) return;
 
-        const rawLetters = getSectionLetters(sectorsStr).filter(l => l !== '*');
-        if (rawLetters.length === 0) return;
-
-        const platformSectorNames = new Set(platform.sections.map(s => s.name.toUpperCase()));
-        const validLetters = rawLetters.filter(l => platformSectorNames.has(l)).sort();
+        const validLetters = resolveValidSectionLetters(sectorsStr, platform);
         if (validLetters.length === 0) return;
 
         this.formatter.firstClassSections(playlist, validLetters);
@@ -238,7 +206,7 @@ export class AnsagenGenerator {
      * @returns {number} Gemeinsame Verspätung oder 0
      */
     _getCommonDelay(group) {
-        const delays = group.map(j => this._calculateDelay(j));
+        const delays = group.map(j => roundDelayForAnnouncement(j));
         if (delays.length === 0) return 0;
         return delays.every(d => d === delays[0]) ? delays[0] : 0;
     }
@@ -249,7 +217,7 @@ export class AnsagenGenerator {
      * @param {Array<object>} group - Coupling-Gruppe
      */
     _appendPerTrainDelays(playlist, group) {
-        const delays = group.map(j => this._calculateDelay(j));
+        const delays = group.map(j => roundDelayForAnnouncement(j));
         if (new Set(delays).size <= 1) return;
 
         group.forEach((member, index) => {
@@ -273,17 +241,14 @@ export class AnsagenGenerator {
         const platform = getPlatformForJourney(group[0], journeyStore.platforms, journeyStore.stationContext);
         if (!platform || !platform.sections || platform.sections.length === 0) return;
 
-        const platformSectorNames = new Set(platform.sections.map(s => s.name.toUpperCase()));
         const letters = new Set();
 
         for (const member of group) {
             const sectorsStr = getPlatformFirstClassSectors(member, group, platform);
             if (!sectorsStr) continue;
 
-            for (const letter of getSectionLetters(sectorsStr)) {
-                if (letter !== '*' && platformSectorNames.has(letter.toUpperCase())) {
-                    letters.add(letter.toUpperCase());
-                }
+            for (const letter of resolveValidSectionLetters(sectorsStr, platform)) {
+                letters.add(letter);
             }
         }
 
@@ -351,27 +316,6 @@ export class AnsagenGenerator {
     // --- Fach- und Domainprüfungen ---
 
     /**
-     * Berechnet die gerundete Verspätung für Ansagen gemäß DB-Standard:
-     * - 0-4 Min: 0 (unterdrückt/pünktlich)
-     * - 5-60 Min: 5er-Schritte abgerundet
-     * - 61-210 Min: 10er-Schritte abgerundet
-     * - >210 Min: Obergrenze 210 Min
-     *
-     * @param {object} journey - Das Journey-Objekt
-     * @returns {number} Verspätung in Minuten
-     */
-    _calculateDelay(journey) {
-        if (!journey || !journey.expectedTime || !journey.scheduledTime) return 0;
-        
-        const diff = calculateDelayMinutes(journey.scheduledTime, journey.expectedTime);
-        
-        if (diff < 5) return 0;                             // 0-4 Min -> pünktlich / unterdrückt
-        if (diff <= 60) return Math.floor(diff / 5) * 5;    // 5-60 Min -> 5er-Schritte nach unten
-        if (diff <= 210) return Math.floor(diff / 10) * 10; // 61-210 Min -> 10er-Schritte nach unten
-        return 210;                                         // Obergrenze 210 Min
-    }
-
-    /**
      * Prüft, ob ein Gleiswechsel vorliegt.
      * @param {object} journey
      * @returns {boolean}
@@ -388,15 +332,8 @@ export class AnsagenGenerator {
     hasGeneralInformationalContent(journey) {
         if (!journey) return false;
         if (journey.ausfall) return true;
-        if (this._calculateDelay(journey) >= 5) return true;
-
-        if (!journey.ankunft && journey.stops && journey.stops.length > 0) {
-            const startIndex = journey._currentStopIndex >= 0 ? journey._currentStopIndex + 1 : 0;
-            const futureStops = journey.stops.slice(startIndex);
-            if (futureStops.some(s => s.cancelled || s.isCancelled || s.additional || s.isAdditional)) {
-                return true;
-            }
-        }
+        if (roundDelayForAnnouncement(journey) >= 5) return true;
+        if (this._hasRelevantDeviations(journey)) return true;
         return false;
     }
 
@@ -574,7 +511,7 @@ export class AnsagenGenerator {
                     this._generateDeviations(p, member);
 
                     // Zugspezifische Verspätung nur ansagen, wenn sie von der gemeinsamen abweicht.
-                    const memberDelay = this._calculateDelay(member);
+                    const memberDelay = roundDelayForAnnouncement(member);
                     if (commonDelay < 5 && memberDelay >= 5) {
                         this._appendDelay(p, memberDelay);
                     }
@@ -745,9 +682,9 @@ export class AnsagenGenerator {
         const departure = isWende ? (journey.ankunft ? linkedJourney : journey) : null;
         const mainJourney = isWende ? departure : journey;
 
-        const effectivePlatformJourney = (mainJourney.ezGleis && mainJourney.ezGleis !== mainJourney.platform)
+        const effectivePlatformJourney = this.hasGleiswechsel(mainJourney)
             ? mainJourney
-            : (arrival && arrival.ezGleis && arrival.ezGleis !== arrival.platform ? arrival : mainJourney);
+            : (arrival && this.hasGleiswechsel(arrival) ? arrival : mainJourney);
 
         if (!this.hasGleiswechsel(effectivePlatformJourney)) {
             return [];
@@ -771,7 +708,7 @@ export class AnsagenGenerator {
         }
 
         // Verspätung (nur in Teil 1)
-        const delay = this._calculateDelay(mainJourney);
+        const delay = roundDelayForAnnouncement(mainJourney);
         this._appendDelay(p, delay);
 
         // Gleisangabe Teil 1:
@@ -844,7 +781,7 @@ export class AnsagenGenerator {
             return p;
         }
 
-        let delay = this._calculateDelay(journey);
+        let delay = roundDelayForAnnouncement(journey);
         this._appendDelay(p, delay);
 
         if (delay >= 5 && journey.delayReason) {
@@ -889,7 +826,7 @@ export class AnsagenGenerator {
                 continue;
             }
 
-            const delay = this._calculateDelay(member);
+            const delay = roundDelayForAnnouncement(member);
             this._appendDelay(p, delay);
 
             if (delay >= 5 && member.delayReason) {
@@ -941,12 +878,12 @@ export class AnsagenGenerator {
             this._time(p, conn.scheduledTime);
 
             // 4. Gleis (VON_GLEIS oder HEUTE_VON_GLEIS)
-            const hasTrackChange = Boolean(conn.ezGleis && conn.ezGleis !== conn.platform);
+            const hasTrackChange = this.hasGleiswechsel(conn);
             const prefixModule = hasTrackChange ? 'HEUTE_VON_GLEIS' : 'VON_GLEIS';
             const connTrack = conn.ezGleis || conn.platform;
             const isOpposite = Boolean(refTrack && connTrack && this.isOppositeTrack(refTrack, connTrack, stationId));
 
-            const delay = ansagenStore.anschluesseIncludeDelays ? this._calculateDelay(conn) : 0;
+            const delay = ansagenStore.anschluesseIncludeDelays ? roundDelayForAnnouncement(conn) : 0;
 
             this._appendPlatform(p, conn, prefixModule);
 

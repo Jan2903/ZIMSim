@@ -1,5 +1,5 @@
 // js/utils/formationUtils.js
-import { parseTrack } from '../../core/utils/trackUtils.js';
+import { parseTrack, getSectionLetters } from '../../core/utils/trackUtils.js';
 
 /**
  * Berechnet die absoluten Meter-Positionen (startM, endM) für alle Wagen einer oder mehrerer Journeys.
@@ -302,4 +302,22 @@ export function getPlatformFirstClassSectors(targetJourney, allJourneys, platfor
     if (!targetJourney) return "";
     if (targetJourney.sectorsFirstClass) return targetJourney.sectorsFirstClass;
     return calculatePlatformFirstClassSectors(targetJourney, allJourneys, platform);
+}
+
+/**
+ * Löst einen Abschnitts-String in die gültigen, auf dem Bahnsteig vorhandenen Abschnitts-Buchstaben auf.
+ * Entfernt den Platzhalter '*' sowie Buchstaben, die der Bahnsteig nicht kennt.
+ *
+ * @param {string} sectorsStr - Abschnitts-String (z.B. "A-C", "A, B")
+ * @param {import('../station/platform.svelte.js').Platform} platform - Das Bahnsteig-Objekt
+ * @returns {string[]} Sortierte Liste der gültigen Abschnitts-Buchstaben
+ */
+export function resolveValidSectionLetters(sectorsStr, platform) {
+    if (!sectorsStr || !platform || !platform.sections || platform.sections.length === 0) return [];
+
+    const rawLetters = getSectionLetters(sectorsStr).filter(l => l !== '*');
+    if (rawLetters.length === 0) return [];
+
+    const platformSectorNames = new Set(platform.sections.map(s => s.name.toUpperCase()));
+    return rawLetters.filter(l => platformSectorNames.has(l.toUpperCase())).sort();
 }
