@@ -331,7 +331,7 @@
     <div 
         class="display-container" 
         bind:this={outerContainer} 
-        style="position: relative; width: 100%; min-width: {displayScaleMode === 'scroll' && !isFullscreen && !isKiosk ? '850px' : '0'}; overflow: hidden; transition: min-width 0.2s ease;"
+        style="position: relative; width: 100%; min-width: {displayScaleMode === 'scroll' && !isFullscreen && !isKiosk ? '850px' : '0'}; transition: min-width 0.2s ease;"
     >
         <div 
             bind:this={scaleWrapper} 
