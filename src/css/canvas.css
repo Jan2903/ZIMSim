@@ -1,6 +1,5 @@
 /* --- CANVAS BEREICH --- */
 canvas {
-    background-color: var(--db-navy);
     border: none;
     display: block;
 }
