@@ -180,6 +180,10 @@
         const _w = wrapperWidth;
         const _h = wrapperHeight;
         const _c = isCasingActive;
+        const _layout = displayConfigStore.currentLayout;
+
+        // Layout im TrainDisplay synchronisieren (wichtig bei Monitor/Typ/Bezel-Wechsel)
+        trainDisplay.setLayout(displayConfigStore.currentLayout);
 
         handleResize();
 
