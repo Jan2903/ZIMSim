@@ -223,10 +223,11 @@
 
         const scale = containerWidth / targetW;
         const scaledHeight = targetH * scale;
+        const scaledWidth = targetW * scale;
 
         scaleWrapper.style.transform = `scale(${scale})`;
         outerContainer.style.height = `${scaledHeight}px`;
-        outerContainer.style.width = '100%';
+        outerContainer.style.width = `${scaledWidth}px`;
         
         scaleWrapper.style.width = `${targetW}px`;
         scaleWrapper.style.height = `${targetH}px`;
