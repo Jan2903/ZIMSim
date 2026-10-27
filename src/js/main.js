@@ -143,6 +143,67 @@ function createDemoData() {
         }
     });
 
+    // Weitere Fahrten für realistische Multi-Screen- & Anschlusstafeln (füllt beide Spalten)
+    journeyStore.addJourney({
+        name: 'RE 1',
+        destination: 'Aachen Hbf',
+        platform: '3',
+        scheduledTime: '14:35',
+        expectedTime: '14:35',
+        vias: ['Bochum Hbf', 'Essen Hbf', 'Duisburg Hbf', 'Düsseldorf Hbf', 'Köln Hbf'],
+        direction: 1
+    });
+
+    journeyStore.addJourney({
+        name: 'S 1',
+        destination: 'Solingen Hbf',
+        platform: '7',
+        scheduledTime: '14:42',
+        expectedTime: '14:47',
+        vias: ['Bochum Hbf', 'Essen Hbf', 'Mülheim(Ruhr)Hbf', 'Duisburg Hbf'],
+        direction: 1
+    });
+
+    journeyStore.addJourney({
+        name: 'RE 6',
+        destination: 'Minden(Westf)',
+        platform: '4',
+        scheduledTime: '14:45',
+        expectedTime: '14:45',
+        vias: ['Kamen', 'Hamm(Westf)Hbf', 'Bielefeld Hbf', 'Herford'],
+        direction: 1
+    });
+
+    journeyStore.addJourney({
+        name: 'ICE 102',
+        destination: 'Hamburg-Altona',
+        platform: '2',
+        scheduledTime: '14:50',
+        expectedTime: '14:50',
+        vias: ['Münster(Westf)Hbf', 'Osnabrück Hbf', 'Bremen Hbf', 'Hamburg Hbf'],
+        direction: 1
+    });
+
+    journeyStore.addJourney({
+        name: 'RB 53',
+        destination: 'Iserlohn',
+        platform: '5',
+        scheduledTime: '14:55',
+        expectedTime: '14:55',
+        vias: ['Schwerte(Ruhr)', 'Iserlohnerheide'],
+        direction: 1
+    });
+
+    journeyStore.addJourney({
+        name: 'RE 11',
+        destination: 'Kassel-Wilhelmshöhe',
+        platform: '4',
+        scheduledTime: '15:02',
+        expectedTime: '15:05',
+        vias: ['Soest', 'Lippstadt', 'Paderborn Hbf', 'Altenbeken'],
+        direction: 1
+    });
+
     // Abschnitte aller Demo-Fahrten dynamisch berechnen
     journeyStore.updateAllJourneySectors();
 }

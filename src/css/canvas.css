@@ -6,7 +6,7 @@ canvas {
 .display-container {
     position: relative;
     width: 100%;
-    background-color: var(--db-navy);
+    background-color: transparent;
     box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     z-index: 10;
 }

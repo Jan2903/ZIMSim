@@ -154,6 +154,7 @@
             <button 
                 type="button" 
                 class="display-toolbar-btn"
+                class:active-scale={displayScaleMode === 'scroll'}
                 onclick={onToggleScaleMode}
                 title={displayScaleMode === 'fit' ? 'Zur scrollbaren Detailansicht (1:1) wechseln' : 'An Bildschirmbreite anpassen (Fit)'}
                 aria-label="Display-Skalierung umschalten"
@@ -301,6 +302,12 @@
         color: var(--text-main, #f8fafc);
         background: rgba(255, 255, 255, 0.08);
         border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .display-toolbar-btn.active-scale {
+        background: rgba(226, 0, 26, 0.2);
+        border-color: var(--accent);
+        color: #fff;
     }
 
     .target-screen-tag {

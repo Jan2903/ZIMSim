@@ -181,6 +181,7 @@
         const _h = wrapperHeight;
         const _c = isCasingActive;
         const _layout = displayConfigStore.currentLayout;
+        const _mode = displayScaleMode;
 
         // Layout im TrainDisplay synchronisieren (wichtig bei Monitor/Typ/Bezel-Wechsel)
         trainDisplay.setLayout(displayConfigStore.currentLayout);
@@ -222,20 +223,34 @@
         scaleWrapper.style.left = '0px';
         scaleWrapper.style.top = '0px';
 
-        const visualViewport = window.visualViewport;
-        const containerWidth = visualViewport ? visualViewport.width : outerContainer.clientWidth;
-        if (containerWidth === 0) return;
+        if (displayScaleMode === 'scroll') {
+            // 1:1 Modus: Native Pixel mit horizontalem Scrollen
+            scaleWrapper.style.transform = 'scale(1)';
+            scaleWrapper.style.width = `${targetW}px`;
+            scaleWrapper.style.height = `${targetH}px`;
 
-        const scale = containerWidth / targetW;
-        const scaledHeight = targetH * scale;
-        const scaledWidth = targetW * scale;
+            outerContainer.style.width = `${targetW}px`;
+            outerContainer.style.height = `${targetH}px`;
+            outerContainer.style.minWidth = `${targetW}px`;
+        } else {
+            // 'fit' Modus: Proportional an die verfuegbare Breite anpassen
+            const availWidth = displayWrapper && displayWrapper.clientWidth > 0
+                ? displayWrapper.clientWidth
+                : (window.visualViewport ? window.visualViewport.width : window.innerWidth);
 
-        scaleWrapper.style.transform = `scale(${scale})`;
-        outerContainer.style.height = `${scaledHeight}px`;
-        outerContainer.style.width = `${scaledWidth}px`;
-        
-        scaleWrapper.style.width = `${targetW}px`;
-        scaleWrapper.style.height = `${targetH}px`;
+            if (availWidth === 0) return;
+
+            const scale = availWidth / targetW;
+            const scaledHeight = targetH * scale;
+
+            scaleWrapper.style.transform = `scale(${scale})`;
+            scaleWrapper.style.width = `${targetW}px`;
+            scaleWrapper.style.height = `${targetH}px`;
+
+            outerContainer.style.width = `${availWidth}px`;
+            outerContainer.style.height = `${scaledHeight}px`;
+            outerContainer.style.minWidth = '0px';
+        }
     }
 
     function onFullscreenChange() {
@@ -276,13 +291,18 @@
             trainDisplay.updateAll();
         }
         
-        // Verwende ResizeObserver für verlässliche Neuberechnung bei Layout-Änderungen
+        // Verwende ResizeObserver für verlässliche Neuberechnung bei Viewport-/Wrapper-Änderungen
         let observer = null;
-        if (window.ResizeObserver && outerContainer) {
+        if (window.ResizeObserver && displayWrapper) {
             observer = new ResizeObserver(() => {
                 handleResize();
             });
-            observer.observe(outerContainer);
+            observer.observe(displayWrapper);
+        }
+
+        const onViewportResize = () => handleResize();
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', onViewportResize);
         }
         
         window.addEventListener('resize', handleResize);
@@ -292,6 +312,9 @@
         
         return () => {
             window.removeEventListener('resize', handleResize);
+            if (window.visualViewport) {
+                window.visualViewport.removeEventListener('resize', onViewportResize);
+            }
             document.removeEventListener('fullscreenchange', onFullscreenChange);
             window.removeEventListener('keydown', onKeyDown);
             if (observer) observer.disconnect();
@@ -317,7 +340,7 @@
     ontouchstart={handleUserActivity}
     onpointerdown={handleUserActivity}
     role="presentation"
-    style="width: 100%; position: relative; {isFullscreen || isKiosk ? 'height: 100vh; overflow: hidden; background: #000;' : 'overflow-x: auto; overflow-y: hidden;'}"
+    style="width: 100%; position: relative; {isFullscreen || isKiosk ? 'height: 100vh; overflow: hidden; background: #000;' : (displayScaleMode === 'fit' ? 'overflow: hidden;' : 'overflow-x: auto; overflow-y: hidden;')}"
 >
     <!-- Schwebendes Exit-HUD im Vollbild / Kiosk-Modus -->
     {#if isFullscreen || isKiosk}
@@ -337,7 +360,7 @@
     <div 
         class="display-container" 
         bind:this={outerContainer} 
-        style="position: relative; width: 100%; min-width: {displayScaleMode === 'scroll' && !isFullscreen && !isKiosk ? '850px' : '0'}; transition: min-width 0.2s ease;"
+        style="position: relative; width: 100%; overflow: hidden;"
     >
         <div 
             bind:this={scaleWrapper} 
