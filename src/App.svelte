@@ -218,7 +218,8 @@
         scaleWrapper.style.left = '0px';
         scaleWrapper.style.top = '0px';
 
-        const containerWidth = outerContainer.clientWidth;
+        const visualViewport = window.visualViewport;
+        const containerWidth = visualViewport ? visualViewport.width : outerContainer.clientWidth;
         if (containerWidth === 0) return;
 
         const scale = containerWidth / targetW;
