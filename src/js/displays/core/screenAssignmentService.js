@@ -75,7 +75,7 @@ export class ScreenAssignmentService {
         const screens = layout?.screens || [];
         const haupt = screens.find(s => s.type === 'haupt');
         const nebens = screens.filter(s => s.type === 'neben');
-        const rotierend = screens.find(s => s.type === 'neben_rotierend');
+        const rotierends = screens.filter(s => s.type === 'neben_rotierend');
 
         // Hauptmonitor
         if (haupt) {
@@ -99,14 +99,20 @@ export class ScreenAssignmentService {
         const rotatingPages = [];
         let nextPageIndex = activePageIndex;
 
-        if (rotierend) {
-            let normalStartIndex = 2;
-            if (!haupt && nebens.length > 0) {
-                const maxIndex = Math.max(...nebens.map(s => (s.trainIndex !== undefined ? s.trainIndex : 1)));
-                normalStartIndex = maxIndex + 1;
-            } else if (!haupt && nebens.length === 0) {
-                normalStartIndex = 0;
+        if (rotierends.length > 0) {
+            // Feste Screens belegen die ersten Journey-Gruppen. Der rotierende
+            // Teil beginnt hinter der höchsten belegten trainIndex-Position
+            // (nicht pauschal bei 2), sonst erscheint z.B. bei zim3x32 ein Zug
+            // gleichzeitig auf dem festen Nebenmonitor und im Rotationsbereich.
+            let normalStartIndex = 0;
+            if (haupt) {
+                const hIndex = haupt.trainIndex !== undefined ? haupt.trainIndex : 0;
+                normalStartIndex = Math.max(normalStartIndex, hIndex + 1);
             }
+            nebens.forEach(neben => {
+                const nIndex = neben.trainIndex !== undefined ? neben.trainIndex : 1;
+                normalStartIndex = Math.max(normalStartIndex, nIndex + 1);
+            });
 
             const groupsToRotate = [...disrupted, ...normal.slice(normalStartIndex)];
 
@@ -165,13 +171,19 @@ export class ScreenAssignmentService {
                 currentJourneys = rotatingPages[nextPageIndex].journeys;
             }
 
-            const rotZugId = nebens.length > 0
+            // Jeder rotierende Screen bekommt eine eigene, kollisionsfreie
+            // Zug-ID. Bei Layouts mit zwei rotierenden Monitoren (zim3x32)
+            // würde eine gemeinsame/fehlende ID sonst die Scroll-Overlays
+            // eines anderen Screens aufräumen.
+            const rotZugIdBase = nebens.length > 0
                 ? (Math.max(...nebens.map(s => (s.trainIndex !== undefined ? s.trainIndex : 1))) + 2)
                 : (haupt ? 3 : 1);
 
-            assignments.set(rotierend.id, {
-                journeys: currentJourneys,
-                zugID: rotZugId,
+            rotierends.forEach((screen, index) => {
+                assignments.set(screen.id, {
+                    journeys: currentJourneys,
+                    zugID: rotZugIdBase + index,
+                });
             });
         }
 

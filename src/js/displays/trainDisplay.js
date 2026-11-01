@@ -241,6 +241,36 @@ export class TrainDisplay {
     // ==========================================
 
     /**
+     * Synchronisiert das aktive Layout mit dem TrainDisplay.
+     * Wird von der UI aufgerufen, wenn sich Monitor, Anzeigetyp oder Gehäuse
+     * ändern. Bei einem echten Layoutwechsel werden alle Scroll-Overlays
+     * verworfen, weil ihre Positionen und Zug-IDs an das alte Layout gebunden
+     * sind und sonst als Geistertexte über der neuen Anzeige stehen bleiben.
+     *
+     * @param {object} layout - Das neue Layout-Objekt aus dem DisplayConfigStore.
+     * @returns {void}
+     */
+    setLayout(layout) {
+        if (!layout) return;
+
+        // Layout-Objekte werden vom Store bei jeder Änderung neu erzeugt.
+        // Über einen Vergleich der serialisierten Daten erkennen wir, ob sich
+        // wirklich etwas geändert hat (Skalierungsmodus-Wechsel o.ä. sollen
+        // laufende Scrolltexte nicht neu starten).
+        const signature = JSON.stringify(layout);
+        if (signature === this._layoutSignature) return;
+        this._layoutSignature = signature;
+
+        this._customLayout = layout;
+        this._resizeCanvases();
+        this.scrollManager.clearAll();
+        this._overlayDirtyScreens = new Set();
+
+        this.updateAll();
+        window.dispatchEvent(new Event('resize'));
+    }
+
+    /**
      * Wechselt das Layout (z.B. Standard ↔ Voranzeiger).
      * @param {string} layoutName
      */
@@ -634,11 +664,25 @@ export class TrainDisplay {
             const cssScale = container ? (container.clientWidth / this.currentLayout.width) : 1;
             const screenAssignments = this._buildScreenAssignments();
             const drawnOverlayScreens = isStaticLayer ? null : new Set();
+            // Zug-IDs des aktuellen Layouts sammeln, um am Ende des statischen
+            // Durchlaufs Overlays aus einem vorherigen Layout zu entfernen.
+            const activeZugIDs = isStaticLayer ? new Set() : null;
 
             this.currentLayout.screens.forEach(screen => {
                 try {
-                    const assignment = screenAssignments.get(screen.id) || { journeys: [], zugID: 1 };
+                    const assignment = screenAssignments.get(screen.id);
+                    if (!assignment) {
+                        // Screen ohne Zuweisung: Fläche nur leeren. Auf keinen
+                        // Fall eine Fallback-Zug-ID verwenden – deren Cleanup
+                        // würde sonst die Scroll-Overlays eines anderen Screens
+                        // (z.B. des Hauptmonitors) entfernen.
+                        if (isStaticLayer) {
+                            this.drawOnScreen(screen, () => {}, defaultCanvas, 'opaque');
+                        }
+                        return;
+                    }
                     const { journeys, journeyGroups, zugID } = assignment;
+                    if (activeZugIDs) activeZugIDs.add(zugID);
                     const isRotatingScreen = screen.type === 'neben_rotierend';
 
                     // Ziel-Layer bestimmen: Der rotierende Nebenmonitor wird
@@ -738,6 +782,10 @@ export class TrainDisplay {
                     console.error(`Error rendering screen ${screen.id}:`, screenErr);
                 }
             });
+
+            if (activeZugIDs) {
+                this.scrollManager.cleanupInactiveZugIDs(activeZugIDs);
+            }
 
             if (drawnOverlayScreens) this._overlayDirtyScreens = drawnOverlayScreens;
         } catch (err) {

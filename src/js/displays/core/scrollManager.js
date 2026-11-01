@@ -150,7 +150,29 @@ export class ScrollManager {
     clearForZug(zugID) {
         if (this.scrollDivs[zugID]) {
             Object.values(this.scrollDivs[zugID]).forEach(div => div?.remove());
-            this.scrollDivs[zugID] = {};
+            delete this.scrollDivs[zugID];
+        }
+    }
+
+    /**
+     * Entfernt alle Scroll-Divs, deren Zug-ID im aktuellen Layout nicht mehr
+     * vorkommt. Wird nach einem vollständigen (statischen) Render-Durchlauf
+     * aufgerufen, damit Overlays aus einem vorherigen Layout (z.B. Monitor-,
+     * Anzeigetyp- oder Gehäuse-Wechsel) nicht im DOM zurückbleiben.
+     *
+     * Ohne diese Bereinigung bleiben z.B. beim Wechsel von zim3x32 (Zug-IDs
+     * 1–5) auf zim2x32 (Zug-IDs 1–3) die Overlays der IDs 4 und 5 sichtbar
+     * über dem rotierenden Monitor liegen, weil `cleanupUnused` nur die IDs
+     * des aktuellen Screens kennt.
+     *
+     * @param {Iterable<number|string>} activeZugIDs - Zug-IDs des aktuellen Layouts.
+     */
+    cleanupInactiveZugIDs(activeZugIDs) {
+        const keep = new Set(Array.from(activeZugIDs || [], id => String(id)));
+        for (const zugID of Object.keys(this.scrollDivs)) {
+            if (!keep.has(zugID)) {
+                this.clearForZug(zugID);
+            }
         }
     }
 
