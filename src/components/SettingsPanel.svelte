@@ -1,5 +1,6 @@
 <!-- src/components/SettingsPanel.svelte -->
 <script>
+    import { onMount } from 'svelte';
     import { journeyStore } from '../js/core/state/stores.js';
     import { irisPollingService, irisConfig } from '../js/core/services/irisPollingService.svelte.js';
     import { uiState, selectTab, finishTabEnter, TAB_ORDER } from '../js/core/state/uiState.svelte.js';
@@ -14,14 +15,16 @@
     import SettingsAudio from './settings/SettingsAudio.svelte';
     import SettingsDisplaySystem from './settings/SettingsDisplaySystem.svelte';
     
-    /**
-     * @typedef {Object} Props
+    /** @typedef {Object} Props
      * @property {object} [modalsComp] - Referenz auf die Modals-Komponente für Dialog-Aufrufe
      */
     let { modalsComp } = $props();
 
     // Status für manuellen IRIS-Schnellabruf
     let isFetchingIris = $state(false);
+
+    // Reduce Transparency State für CSS-Fallback
+    let reduceTransparency = $state(false);
 
     /**
      * Tastaturnavigation der Tab-Leiste (Pfeiltasten, Home/End).
@@ -93,9 +96,18 @@
             isFetchingIris = false;
         }
     }
+
+    onMount(() => {
+        // Reduce Transparency vom Backend abhören
+        if (typeof window !== 'undefined' && window.__TAURI__) {
+            window.__TAURI__.event.listen('reduce-transparency-changed', (event) => {
+                reduceTransparency = event.payload;
+            });
+        }
+    });
 </script>
 
-<div class="settings-container">
+<div class="settings-container" class:reduce-transparency={reduceTransparency}>
     <!-- Einheitliche 5-Tab Hauptnavigation (Desktop & Mobile) -->
     <div class="dashboard-nav-wrapper">
         <div class="dashboard-tabs" role="tablist" aria-label="Einstellungs-Bereiche">
@@ -215,7 +227,7 @@
     {/snippet}
 
     <!-- Tab-Inhalte: Panels werden beim ersten Öffnen gemountet und danach persistent im DOM
-         gehalten (inaktive Panels via [hidden] ausgeblendet). Der Wechsel ist dadurch ein
+         gehalten (inaktive Panels via CSS display: none ausgeblendet). Der Wechsel ist dadurch ein
          reiner Attributwechsel ohne DOM-Neuaufbau - der Inhalt ist sofort sichtbar. -->
     <div class="dashboard-content">
         <!-- Tab 1: Fahrten (Züge) -->
@@ -227,7 +239,8 @@
                 role="tabpanel"
                 aria-labelledby="tab-fahrten"
                 tabindex="0"
-                hidden={uiState.activeTab !== 'fahrten'}
+                style="display: {uiState.activeTab === 'fahrten' ? 'block' : 'none'};"
+                aria-hidden={uiState.activeTab !== 'fahrten'}
                 onanimationend={(e) => onPaneAnimationEnd('fahrten', e)}
             >
                 <div id="journey_list_frame">
@@ -249,7 +262,8 @@
                 role="tabpanel"
                 aria-labelledby="tab-station"
                 tabindex="0"
-                hidden={uiState.activeTab !== 'station'}
+                style="display: {uiState.activeTab === 'station' ? 'block' : 'none'};"
+                aria-hidden={uiState.activeTab !== 'station'}
                 onanimationend={(e) => onPaneAnimationEnd('station', e)}
             >
                 <SettingsStationTime />
@@ -265,7 +279,8 @@
                 role="tabpanel"
                 aria-labelledby="tab-livedata"
                 tabindex="0"
-                hidden={uiState.activeTab !== 'livedata'}
+                style="display: {uiState.activeTab === 'livedata' ? 'block' : 'none'};"
+                aria-hidden={uiState.activeTab !== 'livedata'}
                 onanimationend={(e) => onPaneAnimationEnd('livedata', e)}
             >
                 <SettingsLiveData />
@@ -281,7 +296,8 @@
                 role="tabpanel"
                 aria-labelledby="tab-audio"
                 tabindex="0"
-                hidden={uiState.activeTab !== 'audio'}
+                style="display: {uiState.activeTab === 'audio' ? 'block' : 'none'};"
+                aria-hidden={uiState.activeTab !== 'audio'}
                 onanimationend={(e) => onPaneAnimationEnd('audio', e)}
             >
                 <SettingsAudio />
@@ -297,7 +313,8 @@
                 role="tabpanel"
                 aria-labelledby="tab-system"
                 tabindex="0"
-                hidden={uiState.activeTab !== 'system'}
+                style="display: {uiState.activeTab === 'system' ? 'block' : 'none'};"
+                aria-hidden={uiState.activeTab !== 'system'}
                 onanimationend={(e) => onPaneAnimationEnd('system', e)}
             >
                 <SettingsDisplaySystem {modalsComp} />
@@ -315,30 +332,37 @@
         font-family: system-ui, -apple-system, sans-serif;
     }
 
+    .settings-container.reduce-transparency .dashboard-tabs {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+
     .dashboard-nav-wrapper {
         margin-bottom: 20px;
     }
 
     .dashboard-tabs {
         display: flex;
-        background: var(--bg-card, #1e293b);
-        border: 1px solid var(--border, #334155);
-        border-radius: var(--radius-md, 8px);
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
         padding: 4px;
         gap: 6px;
         overflow-x: auto;
-        box-shadow: var(--shadow-card, 0 4px 12px rgba(0, 0, 0, 0.2));
+        box-shadow: var(--shadow-card);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
     }
 
     .tab-btn {
         flex: 1;
         min-width: 140px;
-        min-height: 42px;
-        padding: 8px 14px;
+        min-height: 44px;
+        padding: 10px 16px;
         background: transparent;
-        color: var(--text-muted, #94a3b8);
+        color: var(--text-muted);
         border: none;
-        border-radius: var(--radius-sm, 6px);
+        border-radius: var(--radius-sm);
         cursor: pointer;
         display: inline-flex;
         align-items: center;
@@ -352,7 +376,7 @@
     }
 
     .tab-btn:hover {
-        color: var(--text-main, #f8fafc);
+        color: var(--text-main);
         background: rgba(255, 255, 255, 0.05);
     }
 
@@ -363,17 +387,17 @@
         box-shadow: 0 2px 8px rgba(226, 0, 26, 0.35);
     }
 
+    .tab-btn:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: var(--focus-ring-offset);
+    }
+
     .dashboard-content {
         width: 100%;
     }
 
     .tab-pane {
         width: 100%;
-    }
-
-    /* Inaktive Panels bleiben im DOM, werden aber vollständig ausgeblendet */
-    .tab-pane[hidden] {
-        display: none;
     }
 
     /* Einblend-Animation nur beim ersten Öffnen eines Panels.
@@ -413,7 +437,8 @@
         .tab-btn {
             min-width: 110px;
             font-size: 0.8rem;
-            padding: 6px 10px;
+            padding: 8px 12px;
+            min-height: 44px;
         }
     }
 

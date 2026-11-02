@@ -1,5 +1,6 @@
 <!-- src/components/DisplayToolbar.svelte -->
 <script>
+    import { onMount } from 'svelte';
     import ZimIcon from './ZimIcon.svelte';
     import { displayConfigStore } from '../js/displays/core/displayConfigStore.svelte.js';
     import { LAYOUT_TYPES } from '../js/displays/core/displayLayoutService.js';
@@ -20,6 +21,9 @@
 
     // Aktiver Wagenreihungs-Modus ('rotierend' | 'wagennummern' | 'ausstattung' | 'klasse')
     let activeFeature = $state('wagennummern');
+
+    // Reduce Transparency State für CSS-Fallback
+    let reduceTransparency = $state(false);
 
     /**
      * Behandelt den Wechsel des DB-Anzeigetyps.
@@ -53,9 +57,18 @@
             el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
     }
+
+    onMount(() => {
+        // Reduce Transparency vom Backend abhören
+        if (typeof window !== 'undefined' && window.__TAURI__) {
+            window.__TAURI__.event.listen('reduce-transparency-changed', (event) => {
+                reduceTransparency = event.payload;
+            });
+        }
+    });
 </script>
 
-<div class="display-toolbar-wrapper">
+<div class="display-toolbar-wrapper" class:reduce-transparency={reduceTransparency}>
     <div class="display-toolbar">
         <!-- Linker Bereich: Tafel-Auswahl & Wagenreihungs-Modus -->
         <div class="display-toolbar-direct-controls">
@@ -86,13 +99,14 @@
                     </span>
                     
                     <!-- Desktop: Segment-Buttons -->
-                    <div class="segment-switch-compact feature-segment-desktop">
+                    <div class="segment-switch-compact feature-segment-desktop" role="group" aria-label="Wagenreihungs-Anzeigemodus">
                         <button 
                             type="button" 
                             class="segment-compact-btn" 
                             class:active={activeFeature === 'wagennummern'}
                             onclick={() => handleFeatureChange('wagennummern')}
                             title="Wagennummern anzeigen"
+                            aria-pressed={activeFeature === 'wagennummern'}
                         >
                             Nummern
                         </button>
@@ -102,6 +116,7 @@
                             class:active={activeFeature === 'ausstattung'}
                             onclick={() => handleFeatureChange('ausstattung')}
                             title="Ausstattungs-Piktogramme anzeigen"
+                            aria-pressed={activeFeature === 'ausstattung'}
                         >
                             Icons
                         </button>
@@ -111,6 +126,7 @@
                             class:active={activeFeature === 'klasse'}
                             onclick={() => handleFeatureChange('klasse')}
                             title="Wagenklassen anzeigen"
+                            aria-pressed={activeFeature === 'klasse'}
                         >
                             Klasse
                         </button>
@@ -120,6 +136,7 @@
                             class:active={activeFeature === 'rotierend'}
                             onclick={() => handleFeatureChange('rotierend')}
                             title="Automatisch rotieren"
+                            aria-pressed={activeFeature === 'rotierend'}
                         >
                             Rotierend
                         </button>
@@ -156,23 +173,12 @@
                 class="display-toolbar-btn"
                 class:active-scale={displayScaleMode === 'scroll'}
                 onclick={onToggleScaleMode}
-                title={displayScaleMode === 'fit' ? 'Zur scrollbaren Detailansicht (1:1) wechseln' : 'An Bildschirmbreite anpassen (Fit)'}
+                title={displayScaleMode === 'fit' ? 'Zur scrollbaren Detailansicht (1:1) wechseln (Cmd+1)' : 'An Bildschirmbreite anpassen (Fit) (Cmd+0)'}
                 aria-label="Display-Skalierung umschalten"
+                aria-pressed={displayScaleMode === 'scroll'}
             >
                 <ZimIcon name={displayScaleMode === 'fit' ? 'zoom_scroll' : 'zoom_fit'} size={14} />
                 <span>{displayScaleMode === 'fit' ? 'Fit' : '1:1'}</span>
-            </button>
-
-            <!-- Schnelleinstieg: Hardware & Gehäuse in Einstellungen anpassen -->
-            <button 
-                type="button" 
-                class="display-toolbar-btn btn-settings-shortcut"
-                onclick={openDisplaySettings}
-                title="Hardware-Profil & Gehäuse-Optionen in den Einstellungen anpassen"
-                aria-label="Hardware und Gehäuse konfigurieren"
-            >
-                <ZimIcon name="settings" size={14} />
-                <span class="shortcut-text">Hardware...</span>
             </button>
         </div>
     </div>
@@ -181,10 +187,17 @@
 <style>
     .display-toolbar-wrapper {
         width: 100%;
-        background: #11141a;
-        border-bottom: 1px solid var(--border, #2d3748);
-        border-top: 1px solid var(--border, #2d3748);
+        background: var(--bg-card);
+        border-bottom: 1px solid var(--border);
+        border-top: 1px solid var(--border);
         box-sizing: border-box;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+    }
+
+    .display-toolbar-wrapper.reduce-transparency {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
     }
 
     .display-toolbar {
@@ -217,23 +230,24 @@
         align-items: center;
         gap: 4px;
         font-size: 0.8rem;
-        color: var(--text-muted, #94a3b8);
+        color: var(--text-muted);
         font-weight: 600;
         user-select: none;
         white-space: nowrap;
     }
 
     .toolbar-select {
-        background: var(--bg-input, #1e293b);
-        color: var(--text-main, #f8fafc);
-        border: 1px solid var(--border, #334155);
-        border-radius: var(--radius-sm, 4px);
-        padding: 4px 8px;
-        font-size: 0.82rem;
+        background: var(--bg-input);
+        color: var(--text-main);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 8px 12px;
+        font-size: 0.85rem;
         cursor: pointer;
         outline: none;
         transition: border-color 0.2s ease;
         max-width: 220px;
+        min-height: 44px;
     }
 
     .toolbar-select:focus,
@@ -241,30 +255,37 @@
         border-color: var(--accent);
     }
 
+    .toolbar-select:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: var(--focus-ring-offset);
+    }
+
     .segment-switch-compact {
         display: inline-flex;
-        background: var(--bg-input, #1e293b);
-        border: 1px solid var(--border, #334155);
-        border-radius: var(--radius-sm, 4px);
-        padding: 2px;
-        gap: 2px;
+        background: var(--bg-input);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 4px;
+        gap: 4px;
     }
 
     .segment-compact-btn {
         background: transparent;
         border: none;
-        color: var(--text-muted, #94a3b8);
-        padding: 3px 8px;
-        font-size: 0.78rem;
+        color: var(--text-muted);
+        padding: 8px 14px;
+        font-size: 0.82rem;
         font-weight: 500;
-        border-radius: 3px;
+        border-radius: 4px;
         cursor: pointer;
         transition: all 0.15s ease;
         white-space: nowrap;
+        min-height: 44px;
+        min-width: 44px;
     }
 
     .segment-compact-btn:hover {
-        color: var(--text-main, #f8fafc);
+        color: var(--text-main);
         background: rgba(255, 255, 255, 0.05);
     }
 
@@ -272,6 +293,11 @@
         background: var(--accent);
         color: #fff;
         font-weight: 600;
+    }
+
+    .segment-compact-btn:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: var(--focus-ring-offset);
     }
 
     .display-toolbar-actions {
@@ -285,21 +311,23 @@
         display: inline-flex;
         align-items: center;
         gap: 5px;
-        background: var(--bg-input, #1e293b);
-        color: var(--text-muted, #94a3b8);
-        border: 1px solid var(--border, #334155);
-        padding: 5px 10px;
-        border-radius: var(--radius-sm, 4px);
-        font-size: 0.8rem;
+        background: var(--bg-input);
+        color: var(--text-muted);
+        border: 1px solid var(--border);
+        padding: 8px 12px;
+        border-radius: var(--radius-sm);
+        font-size: 0.82rem;
         font-weight: 500;
         cursor: pointer;
         transition: all 0.15s ease;
         user-select: none;
         white-space: nowrap;
+        min-height: 44px;
+        min-width: 44px;
     }
 
     .display-toolbar-btn:hover {
-        color: var(--text-main, #f8fafc);
+        color: var(--text-main);
         background: rgba(255, 255, 255, 0.08);
         border-color: rgba(255, 255, 255, 0.2);
     }
@@ -310,12 +338,17 @@
         color: #fff;
     }
 
+    .display-toolbar-btn:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: var(--focus-ring-offset);
+    }
+
     .target-screen-tag {
         font-size: 0.75rem;
         font-weight: 700;
-        background: var(--accent);
+        background: var(--accent-status);
         color: #fff;
-        padding: 2px 6px;
+        padding: 4px 8px;
         border-radius: 4px;
     }
 
@@ -343,7 +376,7 @@
         .toolbar-select {
             max-width: 140px;
             font-size: 0.8rem;
-            padding: 4px 6px;
+            padding: 6px 8px;
         }
         .wr-select {
             max-width: 110px;
@@ -355,9 +388,15 @@
             display: none;
         }
         .display-toolbar-btn {
-            min-height: 34px;
-            padding: 5px 8px;
+            min-height: 44px;
+            min-width: 44px;
+            padding: 8px;
             justify-content: center;
+        }
+        .segment-compact-btn {
+            min-height: 44px;
+            min-width: 44px;
+            padding: 8px;
         }
     }
 

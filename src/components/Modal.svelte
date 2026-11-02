@@ -1,5 +1,6 @@
 <!-- src/components/Modal.svelte -->
 <script>
+    import { onMount } from 'svelte';
     import ZimIcon from './ZimIcon.svelte';
 
     /**
@@ -30,6 +31,9 @@
 
     let dialogEl = $state();
     let lastFocused = null;
+
+    // Reduce Transparency State für CSS-Fallback
+    let reduceTransparency = $state(false);
 
     /**
      * Schließt den Dialog und benachrichtigt den Aufrufer.
@@ -110,6 +114,15 @@
             document.body.style.overflow = '';
         };
     });
+
+    onMount(() => {
+        // Reduce Transparency vom Backend abhören
+        if (typeof window !== 'undefined' && window.__TAURI__) {
+            window.__TAURI__.event.listen('reduce-transparency-changed', (event) => {
+                reduceTransparency = event.payload;
+            });
+        }
+    });
 </script>
 
 <svelte:window onkeydown={onKeydown} />
@@ -119,6 +132,7 @@
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
         class="modal-overlay"
+        class:reduce-transparency={reduceTransparency}
         role="presentation"
         onclick={(e) => { if (closeOnOverlay && e.target === e.currentTarget) close(); }}
     >
@@ -168,6 +182,11 @@
         box-sizing: border-box;
     }
 
+    .modal-overlay.reduce-transparency .modal-content {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+
     .modal-content {
         background: var(--bg-card);
         border-radius: 12px;
@@ -179,6 +198,8 @@
         width: 100%;
         box-sizing: border-box;
         box-shadow: var(--shadow-card);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
     }
 
     .modal-sm { max-width: 480px; }
@@ -204,15 +225,21 @@
         border: none;
         color: var(--text-muted);
         cursor: pointer;
-        padding: 6px;
+        padding: 10px;
         border-radius: 4px;
         display: flex;
         align-items: center;
         justify-content: center;
+        min-height: 44px;
+        min-width: 44px;
     }
     .modal-close:hover {
         color: var(--text-main);
         background: rgba(255, 255, 255, 0.08);
+    }
+    .modal-close:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: var(--focus-ring-offset);
     }
 
     .modal-body {
@@ -227,6 +254,9 @@
         gap: 8px;
         padding: 12px 20px;
         border-top: 1px solid var(--border);
+    }
+    .modal-footer :global(button) {
+        min-height: 44px;
     }
 
     @media (max-width: 600px) {

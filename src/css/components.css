@@ -87,13 +87,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 6px 14px;
+    padding: 10px 16px;
     font-size: 0.85em;
     transition: background 0.2s ease, color 0.2s ease;
     text-align: center;
     min-width: 60px;
     width: 100%;
     color: var(--text-muted, #aaa);
+    min-height: 44px;
 }
 .segment-switch input[type="radio"]:checked + span {
     background: var(--accent, #e2001a);
@@ -103,11 +104,16 @@
 .segment-switch label:not(:last-child) span {
     border-right: 1px solid rgba(255, 255, 255, 0.08);
 }
+.segment-switch input[type="radio"]:focus-visible + span {
+    outline: var(--focus-ring);
+    outline-offset: -2px;
+}
 
 /* Stepper-Knöpfe (Plus/Minus) - global, da sie in mehreren Komponenten genutzt werden */
 .stepper-action-btn {
     width: 48px;
     height: 100%;
+    min-height: 44px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -135,6 +141,11 @@
 .stepper-action-btn:disabled {
     opacity: 0.3;
     cursor: not-allowed;
+}
+
+.stepper-action-btn:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: var(--focus-ring-offset);
 }
 
 @media (max-width: 768px) {

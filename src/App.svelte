@@ -4,6 +4,8 @@
     import { downloadDisplayScreenshot } from './js/core/utils/screenshot.js';
     import { ScreenSyncService } from './js/core/services/screenSyncService.js';
     import { ansagenStore } from './js/audio/ansagenStore.svelte.js';
+    import { displayConfigStore } from './js/displays/core/displayConfigStore.svelte.js';
+    import { selectTab } from './js/core/state/uiState.svelte.js';
     import Header from './components/Header.svelte';
     import DisplayToolbar from './components/DisplayToolbar.svelte';
     import SettingsPanel from './components/SettingsPanel.svelte';
@@ -14,7 +16,6 @@
     import ConfirmDialog from './components/ConfirmDialog.svelte';
     import ZimIcon from './components/ZimIcon.svelte';
     import HardwareBezel from './components/HardwareBezel.svelte';
-    import { displayConfigStore } from './js/displays/core/displayConfigStore.svelte.js';
     import { lineColorService } from './js/core/services/lineColorService.svelte.js';
 
     let modalsComp = $state();
@@ -40,6 +41,9 @@
     // Auto-Hiding HUD für Vollbild/Kiosk
     let hudVisible = $state(false);
     let hudTimeout = null;
+
+    // Reduce Transparency State für CSS-Fallback
+    let reduceTransparency = $state(false);
 
     // Gehäuse-Zustand & dynamische Abmessungen für Gehäuse vs. Reines Display via Store
     let showBezel = $derived(displayConfigStore.showBezel);
@@ -150,6 +154,49 @@
                 ? { svgElement, width: wrapperWidth, height: wrapperHeight, offsetX: canvasOffsetX, offsetY: canvasOffsetY }
                 : null
         });
+    }
+
+    // Tauri Menu Events verarbeiten
+    function handleMenuEvent(eventName, detail) {
+        switch (eventName) {
+            case 'menu-open-settings':
+                selectTab('system');
+                const el = document.querySelector('.settings-container');
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                break;
+            case 'menu-add-journey':
+                journeyStore.addJourney();
+                break;
+            case 'menu-import-journeys':
+                // TODO: Import dialog
+                break;
+            case 'menu-export-journeys':
+                // TODO: Export dialog
+                break;
+            case 'menu-screenshot':
+                downloadScreenshot();
+                break;
+            case 'menu-toggle-fullscreen':
+                toggleFullscreen();
+                break;
+            case 'menu-set-scale-fit':
+                if (displayScaleMode !== 'fit') toggleScaleMode();
+                break;
+            case 'menu-set-scale-1to1':
+                if (displayScaleMode !== 'scroll') toggleScaleMode();
+                break;
+            case 'menu-toggle-bezel':
+                toggleBezel();
+                break;
+            case 'menu-open-screen':
+                if (detail && Array.isArray(detail)) {
+                    openScreen(detail[0], detail[1]);
+                }
+                break;
+            case 'menu-show-shortcuts':
+                // TODO: Shortcuts modal
+                break;
+        }
     }
 
     // Reaktiver Effekt für Canvas Re-Renders und State-Broadcasts
@@ -268,6 +315,14 @@
         } else if (e.key === 'F11') {
             e.preventDefault();
             toggleFullscreen();
+        } else if ((e.metaKey || e.ctrlKey) && e.key === ',') {
+            e.preventDefault();
+            selectTab('system');
+            const el = document.querySelector('.settings-container');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === '4') {
+            e.preventDefault();
+            downloadScreenshot();
         }
     }
 
@@ -310,6 +365,27 @@
         window.addEventListener('keydown', onKeyDown);
         setTimeout(handleResize, 100);
         
+        // Tauri Menu Events abhören
+        if (typeof window !== 'undefined' && window.__TAURI__) {
+            const events = [
+                'menu-open-settings', 'menu-add-journey', 'menu-import-journeys',
+                'menu-export-journeys', 'menu-screenshot', 'menu-toggle-fullscreen',
+                'menu-set-scale-fit', 'menu-set-scale-1to1', 'menu-toggle-bezel',
+                'menu-open-screen', 'menu-show-shortcuts'
+            ];
+            
+            events.forEach(eventName => {
+                window.__TAURI__.event.listen(eventName, (event) => {
+                    handleMenuEvent(eventName, event.payload);
+                });
+            });
+
+            // Reduce Transparency Event
+            window.__TAURI__.event.listen('reduce-transparency-changed', (event) => {
+                reduceTransparency = event.payload;
+            });
+        }
+        
         return () => {
             window.removeEventListener('resize', handleResize);
             if (window.visualViewport) {
@@ -344,7 +420,7 @@
 >
     <!-- Schwebendes Exit-HUD im Vollbild / Kiosk-Modus -->
     {#if isFullscreen || isKiosk}
-        <div class="fullscreen-hud" class:hud-visible={hudVisible}>
+        <div class="fullscreen-hud" class:hud-visible={hudVisible} class:reduce-transparency={reduceTransparency}>
             <button 
                 type="button" 
                 class="fullscreen-hud-btn" 
@@ -445,13 +521,19 @@
         pointer-events: auto;
         transform: translateY(0);
     }
+    .fullscreen-hud.reduce-transparency .fullscreen-hud-btn {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        background: var(--bg-card);
+    }
     .fullscreen-hud-btn {
         background: rgba(18, 18, 24, 0.85);
         backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
         color: #fff;
         border: 1px solid rgba(255, 255, 255, 0.2);
         border-radius: 8px;
-        padding: 10px 18px;
+        padding: 12px 20px;
         font-size: 0.9rem;
         cursor: pointer;
         display: inline-flex;
@@ -459,10 +541,16 @@
         gap: 8px;
         box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
         transition: all 0.2s ease;
+        min-height: 44px;
+        min-width: 44px;
     }
     .fullscreen-hud-btn:hover {
         background: rgba(40, 40, 50, 0.95);
         border-color: var(--accent);
         transform: scale(1.02);
+    }
+    .fullscreen-hud-btn:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: var(--focus-ring-offset);
     }
 </style>

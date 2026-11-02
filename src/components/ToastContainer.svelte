@@ -76,16 +76,22 @@
         border: none;
         color: var(--text-muted);
         cursor: pointer;
-        padding: 2px;
+        padding: 8px;
         border-radius: 4px;
         display: flex;
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
+        min-height: 44px;
+        min-width: 44px;
     }
     .toast-close:hover {
         color: var(--text-main);
         background: rgba(255, 255, 255, 0.08);
+    }
+    .toast-close:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: var(--focus-ring-offset);
     }
 
     .toast-success { border-left-color: #22c55e; }
