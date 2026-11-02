@@ -227,8 +227,8 @@
     {/snippet}
 
     <!-- Tab-Inhalte: Panels werden beim ersten Öffnen gemountet und danach persistent im DOM
-         gehalten (inaktive Panels via CSS display: none ausgeblendet). Der Wechsel ist dadurch ein
-         reiner Attributwechsel ohne DOM-Neuaufbau - der Inhalt ist sofort sichtbar. -->
+         gehalten (inaktive Panels über das hidden-Attribut ausgeblendet). Der Wechsel ist dadurch
+         ein reiner Attributwechsel ohne DOM-Neuaufbau - der Inhalt ist sofort sichtbar. -->
     <div class="dashboard-content">
         <!-- Tab 1: Fahrten (Züge) -->
         {#if uiState.mountedTabs.includes('fahrten')}
@@ -240,7 +240,6 @@
                 aria-labelledby="tab-fahrten"
                 tabindex="0"
                 hidden={uiState.activeTab !== 'fahrten'}
-                aria-hidden={uiState.activeTab !== 'fahrten'}
                 onanimationend={(e) => onPaneAnimationEnd('fahrten', e)}
             >
                 <div id="journey_list_frame">
@@ -263,7 +262,6 @@
                 aria-labelledby="tab-station"
                 tabindex="0"
                 hidden={uiState.activeTab !== 'station'}
-                aria-hidden={uiState.activeTab !== 'station'}
                 onanimationend={(e) => onPaneAnimationEnd('station', e)}
             >
                 <SettingsStationTime />
@@ -280,7 +278,6 @@
                 aria-labelledby="tab-livedata"
                 tabindex="0"
                 hidden={uiState.activeTab !== 'livedata'}
-                aria-hidden={uiState.activeTab !== 'livedata'}
                 onanimationend={(e) => onPaneAnimationEnd('livedata', e)}
             >
                 <SettingsLiveData />
@@ -297,7 +294,6 @@
                 aria-labelledby="tab-audio"
                 tabindex="0"
                 hidden={uiState.activeTab !== 'audio'}
-                aria-hidden={uiState.activeTab !== 'audio'}
                 onanimationend={(e) => onPaneAnimationEnd('audio', e)}
             >
                 <SettingsAudio />
@@ -314,7 +310,6 @@
                 aria-labelledby="tab-system"
                 tabindex="0"
                 hidden={uiState.activeTab !== 'system'}
-                aria-hidden={uiState.activeTab !== 'system'}
                 onanimationend={(e) => onPaneAnimationEnd('system', e)}
             >
                 <SettingsDisplaySystem {modalsComp} />

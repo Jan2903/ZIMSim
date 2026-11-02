@@ -1,6 +1,6 @@
 <!-- src/components/Header.svelte -->
 <script>
-    import { onMount } from 'svelte';
+    import { onMount, tick } from 'svelte';
     import ZimIcon from './ZimIcon.svelte';
     import { downloadDisplayScreenshot } from '../js/core/utils/screenshot.js';
 
@@ -23,6 +23,8 @@
 
     // Zustand für das Monitore-Dropdown-Menü
     let monitorMenuOpen = $state(false);
+    let monitorMenuEl = $state(null);
+    let monitorButtonEl = $state(null);
 
     /**
      * Führt den Screenshot-Download aus.
@@ -40,22 +42,116 @@
     }
 
     /**
-     * Schließt Dropdowns beim Klick außerhalb.
-     * @param {MouseEvent} e
+     * Schließt das Monitore-Dropdown.
+     * @param {{ restoreFocus?: boolean }} [options]
      */
-    function onWindowClick(e) {
-        if (monitorMenuOpen && !e.target.closest('.header-dropdown-container')) {
-            monitorMenuOpen = false;
+    function closeMonitorMenu({ restoreFocus = false } = {}) {
+        monitorMenuOpen = false;
+        if (restoreFocus) {
+            monitorButtonEl?.focus();
         }
     }
 
     /**
-     * Schließt das Dropdown-Menü mit der Escape-Taste.
+     * Öffnet bzw. schließt das Dropdown und setzt den Fokus auf den ersten Eintrag.
+     */
+    async function toggleMonitorMenu() {
+        if (monitorMenuOpen) {
+            closeMonitorMenu();
+            return;
+        }
+
+        monitorMenuOpen = true;
+        await tick();
+        if (monitorMenuOpen) {
+            focusMenuItem(0);
+        }
+    }
+
+    /**
+     * @returns {HTMLElement[]} Alle Menüeinträge des offenen Dropdowns.
+     */
+    function getMenuItems() {
+        return monitorMenuEl
+            ? /** @type {HTMLElement[]} */ (Array.from(monitorMenuEl.querySelectorAll('[role="menuitem"]')))
+            : [];
+    }
+
+    /**
+     * Fokussiert einen Menüeintrag (mit Umlauf).
+     * @param {number} index
+     */
+    function focusMenuItem(index) {
+        const items = getMenuItems();
+        if (!items.length) return;
+        items[(index + items.length) % items.length].focus();
+    }
+
+    /**
+     * Tastaturnavigation innerhalb des Menüs (Pfeile, Home, End, Tab).
+     * @param {KeyboardEvent} e
+     */
+    function onMonitorMenuKeydown(e) {
+        const items = getMenuItems();
+        const active = document.activeElement;
+        const currentIndex = active instanceof HTMLElement ? items.indexOf(active) : -1;
+
+        switch (e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                focusMenuItem(currentIndex === -1 ? 0 : currentIndex + 1);
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                focusMenuItem(currentIndex === -1 ? items.length - 1 : currentIndex - 1);
+                break;
+            case 'Home':
+                e.preventDefault();
+                focusMenuItem(0);
+                break;
+            case 'End':
+                e.preventDefault();
+                focusMenuItem(items.length - 1);
+                break;
+            case 'Tab':
+                // Fokus zurück auf den Trigger; die Standard-Tab-Navigation
+                // bewegt sich anschließend vom Trigger aus weiter.
+                closeMonitorMenu({ restoreFocus: true });
+                break;
+        }
+    }
+
+    /**
+     * Öffnet einen Monitor und schließt das Menü.
+     * @param {number} screenIndex
+     * @param {boolean} use4k
+     */
+    function openMonitor(screenIndex, use4k) {
+        closeMonitorMenu({ restoreFocus: true });
+        onOpenScreen?.(screenIndex, use4k);
+    }
+
+    /**
+     * Schließt Dropdowns beim Klick außerhalb.
+     * @param {MouseEvent} e
+     */
+    function onWindowClick(e) {
+        if (
+            monitorMenuOpen &&
+            e.target instanceof Element &&
+            !e.target.closest('.header-dropdown-container')
+        ) {
+            closeMonitorMenu();
+        }
+    }
+
+    /**
+     * Schließt das Dropdown-Menü mit der Escape-Taste und gibt den Fokus zurück.
      * @param {KeyboardEvent} e
      */
     function onWindowKeydown(e) {
         if (e.key === 'Escape' && monitorMenuOpen) {
-            monitorMenuOpen = false;
+            closeMonitorMenu({ restoreFocus: true });
         }
     }
 
@@ -111,40 +207,59 @@
                 <button 
                     type="button" 
                     class="header-action-btn"
-                    onclick={() => monitorMenuOpen = !monitorMenuOpen}
+                    bind:this={monitorButtonEl}
+                    onclick={toggleMonitorMenu}
                     title="Monitore in separaten Vollbild-/Kiosk-Fenstern öffnen"
+                    aria-label="Monitore"
                     aria-expanded={monitorMenuOpen}
-                    aria-haspopup="true"
+                    aria-haspopup="menu"
                     aria-controls="monitor-menu"
                 >
                     <ZimIcon name="monitors" size={16} />
-                    <span class="header-btn-text">Monitore ▾</span>
+                    <span class="header-btn-text">Monitore</span>
+                    <ZimIcon name={monitorMenuOpen ? 'chevron_up' : 'chevron_down'} size={12} />
                 </button>
                 {#if monitorMenuOpen}
-                    <div id="monitor-menu" class="header-dropdown-menu" role="group" aria-label="Monitore öffnen">
-                        <div class="dropdown-header">Full-HD (1080p)</div>
-                        <button type="button" class="dropdown-item" onclick={() => { monitorMenuOpen = false; onOpenScreen(1, false); }}>
-                            <ZimIcon name="popout" size={14} />
-                            <span>Monitor 1 (Hauptmonitor)</span>
-                        </button>
-                        <button type="button" class="dropdown-item" onclick={() => { monitorMenuOpen = false; onOpenScreen(2, false); }}>
-                            <ZimIcon name="popout" size={14} />
-                            <span>Monitor 2 (Nebenmonitore)</span>
-                        </button>
-                        <button type="button" class="dropdown-item" onclick={() => { monitorMenuOpen = false; onOpenScreen(3, false); }}>
-                            <ZimIcon name="popout" size={14} />
-                            <span>Monitor 3 (Zusatzanzeiger)</span>
-                        </button>
-                        <div class="dropdown-divider"></div>
-                        <div class="dropdown-header">4K Ultra-HD (2160p)</div>
-                        <button type="button" class="dropdown-item" onclick={() => { monitorMenuOpen = false; onOpenScreen(1, true); }}>
-                            <ZimIcon name="popout" size={14} />
-                            <span>Monitor 1 (4K)</span>
-                        </button>
-                        <button type="button" class="dropdown-item" onclick={() => { monitorMenuOpen = false; onOpenScreen(2, true); }}>
-                            <ZimIcon name="popout" size={14} />
-                            <span>Monitor 2 (4K)</span>
-                        </button>
+                    <div
+                        id="monitor-menu"
+                        class="header-dropdown-menu"
+                        role="menu"
+                        aria-label="Monitore öffnen"
+                        tabindex="-1"
+                        bind:this={monitorMenuEl}
+                        onkeydown={onMonitorMenuKeydown}
+                    >
+                        <div class="dropdown-group" role="group" aria-label="Full-HD (1080p)">
+                            <div class="dropdown-header" aria-hidden="true">Full-HD (1080p)</div>
+                            <button type="button" role="menuitem" tabindex="-1" class="dropdown-item" onclick={() => openMonitor(1, false)}>
+                                <ZimIcon name="popout" size={14} />
+                                <span>Monitor 1 (Hauptmonitor)</span>
+                            </button>
+                            <button type="button" role="menuitem" tabindex="-1" class="dropdown-item" onclick={() => openMonitor(2, false)}>
+                                <ZimIcon name="popout" size={14} />
+                                <span>Monitor 2 (Nebenmonitore)</span>
+                            </button>
+                            <button type="button" role="menuitem" tabindex="-1" class="dropdown-item" onclick={() => openMonitor(3, false)}>
+                                <ZimIcon name="popout" size={14} />
+                                <span>Monitor 3 (Zusatzanzeiger)</span>
+                            </button>
+                        </div>
+                        <div class="dropdown-divider" role="separator"></div>
+                        <div class="dropdown-group" role="group" aria-label="4K Ultra-HD (2160p)">
+                            <div class="dropdown-header" aria-hidden="true">4K Ultra-HD (2160p)</div>
+                            <button type="button" role="menuitem" tabindex="-1" class="dropdown-item" onclick={() => openMonitor(1, true)}>
+                                <ZimIcon name="popout" size={14} />
+                                <span>Monitor 1 (4K)</span>
+                            </button>
+                            <button type="button" role="menuitem" tabindex="-1" class="dropdown-item" onclick={() => openMonitor(2, true)}>
+                                <ZimIcon name="popout" size={14} />
+                                <span>Monitor 2 (4K)</span>
+                            </button>
+                            <button type="button" role="menuitem" tabindex="-1" class="dropdown-item" onclick={() => openMonitor(3, true)}>
+                                <ZimIcon name="popout" size={14} />
+                                <span>Monitor 3 (4K)</span>
+                            </button>
+                        </div>
                     </div>
                 {/if}
             </div>
@@ -264,14 +379,20 @@
         padding: 6px;
         min-width: 230px;
         box-shadow: var(--shadow-card);
-        z-index: 1000;
+        z-index: var(--z-dropdown);
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .dropdown-group {
         display: flex;
         flex-direction: column;
         gap: 2px;
     }
 
     .dropdown-header {
-        font-size: 0.7rem;
+        font-size: 0.75rem;
         text-transform: uppercase;
         letter-spacing: 0.5px;
         color: var(--text-muted);
@@ -292,8 +413,9 @@
         background: transparent;
         border: none;
         color: var(--text-main);
-        padding: 6px 8px;
-        font-size: 0.82rem;
+        padding: 6px 10px;
+        min-height: 36px;
+        font-size: 0.85rem;
         border-radius: var(--radius-sm);
         cursor: pointer;
         text-align: left;
@@ -301,9 +423,17 @@
         transition: background 0.15s ease;
     }
 
-    .dropdown-item:hover {
-        background: rgba(255, 255, 255, 0.08);
-        color: #fff;
+    .dropdown-item:hover,
+    .dropdown-item:focus-visible {
+        background: var(--bg-panel);
+        color: var(--text-primary);
+    }
+
+    /* Touch-Geräte (auch Tablets > 768 px) erhalten die vollen 44 px. */
+    @media (pointer: coarse) {
+        .dropdown-item {
+            min-height: 44px;
+        }
     }
 
     @media (max-width: 768px) {
@@ -314,6 +444,9 @@
             font-size: 1.05rem;
         }
         .header-btn-text {
+            display: none;
+        }
+        .desktop-only {
             display: none;
         }
         .header-action-btn {
