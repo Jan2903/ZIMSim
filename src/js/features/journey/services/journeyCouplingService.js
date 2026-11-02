@@ -156,16 +156,75 @@ export class JourneyCouplingService {
     }
 
     /**
+     * Ermittelt die planmäßige Ankunftszeit einer Fahrt am aktuellen Bahnhof.
+     * IRIS liefert die Ankunft als eigenen Knoten (ar.pt), der als separate
+     * Ankunfts-Journey mit identischer journeyId im Store liegt.
+     *
+     * @param {object} journey - Abfahrts- oder Ankunfts-Journey
+     * @param {Array<object>} [allJourneys=[]] - Alle Fahrten des Stores
+     * @returns {string} Planmäßige Ankunftszeit (HH:MM) oder ''
+     */
+    static getPlannedArrivalTimeAtCurrentStation(journey, allJourneys = []) {
+        if (!journey) return '';
+        if (journey.ankunft) return String(journey.scheduledTime || '').trim();
+
+        const list = allJourneys || [];
+        let arrival = journey.journeyId
+            ? list.find(j => j.ankunft && j.journeyId === journey.journeyId)
+            : null;
+        if (!arrival && journey.linkedArrivalJourneyId) {
+            arrival = list.find(j => j.id === journey.linkedArrivalJourneyId) || null;
+        }
+
+        return String(arrival?.scheduledTime || '').trim();
+    }
+
+    /**
+     * Prüft, ob mindestens zwei Züge der Gruppe unterschiedliche planmäßige
+     * Ankunftszeiten am aktuellen Bahnhof haben. Bereits gekoppelte Züge
+     * treffen gemeinsam ein und dürfen keinen Vereinigungshinweis auslösen.
+     *
+     * @param {Array<object>} group - Coupling-Gruppe
+     * @param {Array<object>} [allJourneys=[]] - Alle Fahrten des Stores
+     * @returns {boolean}
+     */
+    static haveDifferentPlannedArrivalTimesAtCurrentStation(group, allJourneys = []) {
+        const arrivalTimes = (group || [])
+            .map(j => this.getPlannedArrivalTimeAtCurrentStation(j, allJourneys))
+            .filter(Boolean);
+
+        if (arrivalTimes.length < 2) return false;
+        return new Set(arrivalTimes).size > 1;
+    }
+
+    /**
      * Ermittelt, ob eine Coupling-Gruppe sich am aktuellen Bahnhof vereinigt.
      * Route-basiert: Der aktuelle Bahnhof ist der erste gemeinsame Halt der
      * bisherigen Routen. Ohne Haltdaten dient ein gesetztes IRIS-Wings-Feld
-     * als Fallback.
+     * als Fallback. Zusätzlich müssen sich die planmäßigen IRIS-Ankunftszeiten
+     * der Züge unterscheiden, damit bereits gekoppelte Züge nicht fälschlich
+     * als Vereinigung angesagt werden.
+     *
+     * @param {Array<object>} group - Coupling-Gruppe
+     * @param {string|null} [currentStation=null] - Name des aktuellen Bahnhofs
+     * @param {Array<object>} [allJourneys=[]] - Alle Fahrten des Stores
+     * @returns {boolean}
+     */
+    static isJoiningAtCurrentStation(group, currentStation = null, allJourneys = []) {
+        if (!group || group.length < 2) return false;
+        if (!this._isRouteJoiningAtCurrentStation(group, currentStation)) return false;
+
+        return this.haveDifferentPlannedArrivalTimesAtCurrentStation(group, allJourneys);
+    }
+
+    /**
+     * Route-basierte Vereinigungserkennung am aktuellen Bahnhof.
      *
      * @param {Array<object>} group - Coupling-Gruppe
      * @param {string|null} [currentStation=null] - Name des aktuellen Bahnhofs
      * @returns {boolean}
      */
-    static isJoiningAtCurrentStation(group, currentStation = null) {
+    static _isRouteJoiningAtCurrentStation(group, currentStation = null) {
         if (!group || group.length < 2) return false;
 
         const hasWings = group.some(j => Boolean(j.wingsRaw));

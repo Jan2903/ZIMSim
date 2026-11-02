@@ -290,7 +290,8 @@ export class AnsagenGenerator {
         if (group.some(j => j.ankunft)) return false;
 
         const currentStation = this._getCurrentStationName(group);
-        if (!JourneyCouplingService.isJoiningAtCurrentStation(group, currentStation || null)) {
+        const allJourneys = journeyStore.journeys || [];
+        if (!JourneyCouplingService.isJoiningAtCurrentStation(group, currentStation || null, allJourneys)) {
             return false;
         }
 
@@ -523,11 +524,13 @@ export class AnsagenGenerator {
             this._appendCombinedFirstClassSectors(p, activeGroup);
             this._appendCancelledMembers(p, fullGroup.filter(j => j.ausfall));
             this._appendJoiningNotice(p, activeGroup);
-            this._module(p, 'VORSICHT_BEI_DER_EINFAHRT');
 
             if (activeGroup.every(member => this._isPureArrival(member, null)) && ansagenStore.einfahrtBitteNichtEinsteigen) {
                 this._module(p, 'BITTE_NICHT_EINSTEIGEN');
             }
+            
+            this._module(p, 'VORSICHT_BEI_DER_EINFAHRT');
+
 
             return p;
         }
@@ -544,11 +547,12 @@ export class AnsagenGenerator {
         this._appendTimeInfo(p, journey, journey.ankunft ? 'ANKUNFT' : 'ABFAHRT');
         this._appendFirstClassSectors(p, journey);
         this._generateDeviations(p, journey);
-        this._module(p, 'VORSICHT_BEI_DER_EINFAHRT');
-
+        
         if (this._isPureArrival(journey, linkedJourney) && ansagenStore.einfahrtBitteNichtEinsteigen) {
             this._module(p, 'BITTE_NICHT_EINSTEIGEN');
         }
+
+        this._module(p, 'VORSICHT_BEI_DER_EINFAHRT');
 
         return p;
     }
@@ -799,6 +803,9 @@ export class AnsagenGenerator {
 
     /**
      * Generiert eine Informations-Ansage für eine Coupling-Gruppe.
+     * Die Abweichungen werden direkt nach der jeweiligen Zugroute angesagt,
+     * bevor mit "mit" der nächste Zug folgt. Die gemeinsame Zeitansage erfolgt
+     * einmal am Ende für den gesamten Zugverband.
      * Betrifft die Information nur einen Zug, wird die Einzelansage genutzt.
      *
      * @param {Array<object>} group - Aktive Coupling-Gruppe
@@ -809,21 +816,23 @@ export class AnsagenGenerator {
         if (affected.length === 0) return [];
         if (affected.length === 1) return this._generateSingleInformation(affected[0]);
 
+        const affectedSet = new Set(affected);
         const p = [];
         this._gong(p);
         this._module(p, 'INFORMATION_ZU');
 
-        this._appendCoupledRoute(p, group);
-        this._module(p, group[0].ankunft ? 'ANKUNFT' : 'ABFAHRT');
-        this._time(p, group[0].scheduledTime);
+        group.forEach((member, index) => {
+            if (index > 0) {
+                this._module(p, 'MIT');
+            }
+            this._appendRoute(p, member);
 
-        for (const member of affected) {
-            this._train(p, member.name);
+            if (!affectedSet.has(member)) return;
 
             if (member.ausfall) {
                 this._module(p, 'FAELLT_HEUTE_AUS');
                 this._module(p, 'ENTSCHULDIGUNG');
-                continue;
+                return;
             }
 
             const delay = roundDelayForAnnouncement(member);
@@ -838,7 +847,10 @@ export class AnsagenGenerator {
             if (delay >= 30) {
                 this._module(p, 'ENTSCHULDIGUNG');
             }
-        }
+        });
+
+        this._module(p, group[0].ankunft ? 'ANKUNFT' : 'ABFAHRT');
+        this._time(p, group[0].scheduledTime);
 
         return p;
     }
