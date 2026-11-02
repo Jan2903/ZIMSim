@@ -239,7 +239,7 @@
                 role="tabpanel"
                 aria-labelledby="tab-fahrten"
                 tabindex="0"
-                style="display: {uiState.activeTab === 'fahrten' ? 'block' : 'none'};"
+                hidden={uiState.activeTab !== 'fahrten'}
                 aria-hidden={uiState.activeTab !== 'fahrten'}
                 onanimationend={(e) => onPaneAnimationEnd('fahrten', e)}
             >
@@ -262,7 +262,7 @@
                 role="tabpanel"
                 aria-labelledby="tab-station"
                 tabindex="0"
-                style="display: {uiState.activeTab === 'station' ? 'block' : 'none'};"
+                hidden={uiState.activeTab !== 'station'}
                 aria-hidden={uiState.activeTab !== 'station'}
                 onanimationend={(e) => onPaneAnimationEnd('station', e)}
             >
@@ -279,7 +279,7 @@
                 role="tabpanel"
                 aria-labelledby="tab-livedata"
                 tabindex="0"
-                style="display: {uiState.activeTab === 'livedata' ? 'block' : 'none'};"
+                hidden={uiState.activeTab !== 'livedata'}
                 aria-hidden={uiState.activeTab !== 'livedata'}
                 onanimationend={(e) => onPaneAnimationEnd('livedata', e)}
             >
@@ -296,7 +296,7 @@
                 role="tabpanel"
                 aria-labelledby="tab-audio"
                 tabindex="0"
-                style="display: {uiState.activeTab === 'audio' ? 'block' : 'none'};"
+                hidden={uiState.activeTab !== 'audio'}
                 aria-hidden={uiState.activeTab !== 'audio'}
                 onanimationend={(e) => onPaneAnimationEnd('audio', e)}
             >
@@ -313,7 +313,7 @@
                 role="tabpanel"
                 aria-labelledby="tab-system"
                 tabindex="0"
-                style="display: {uiState.activeTab === 'system' ? 'block' : 'none'};"
+                hidden={uiState.activeTab !== 'system'}
                 aria-hidden={uiState.activeTab !== 'system'}
                 onanimationend={(e) => onPaneAnimationEnd('system', e)}
             >
@@ -398,6 +398,11 @@
 
     .tab-pane {
         width: 100%;
+    }
+
+    /* Inaktive Panels bleiben im DOM, werden aber vollständig ausgeblendet */
+    .tab-pane[hidden] {
+        display: none;
     }
 
     /* Einblend-Animation nur beim ersten Öffnen eines Panels.
