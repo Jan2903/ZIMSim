@@ -143,7 +143,7 @@ export const audioModules = {
         fr: { file: "042", text: "" }
     },
     ZUSATZHALT_IN: {
-        de: { file: "014", text: "Heute mit Halt in" },
+        de: { file: "020", text: "Heute mit Halt in" },
         en: { file: "015", text: "makes an additional stop at" },
         fr: { file: "042", text: "" }
     },
