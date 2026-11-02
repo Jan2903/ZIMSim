@@ -204,8 +204,10 @@ export class TrainDisplay {
         // Trennsteg(e) in authentischem DB-Dunkelblau zeichnen, falls im Layout definiert
         if (this.currentLayout.hasBezelGap && this.currentLayout.gapWidth) {
             const gapW = this.currentLayout.gapWidth;
-            const gaps = this.currentLayout.width >= 5800
-                ? [1920, 1920 + gapW + 1920]
+            // Positionen kommen aus dem Layout (dort bereits 4K-skaliert):
+            // `gaps` für Triple-Gehäuse, `gapX` für Doppel-Gehäuse.
+            const gaps = Array.isArray(this.currentLayout.gaps) && this.currentLayout.gaps.length
+                ? this.currentLayout.gaps
                 : [this.currentLayout.gapX !== undefined ? this.currentLayout.gapX : 1920];
 
             for (const gapX of gaps) {

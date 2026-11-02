@@ -26,20 +26,26 @@
     const isVitrine = $derived(family === 'vitrine');
     const isStele = $derived(family === 'stele');
     const isStretched = $derived(family === 'stretched');
+    // Nur Standard-/Überkopf-/Stretched-Gehäuse haben einen durchgehend
+    // deckenden Korpus. Vitrine und Stele lassen Flächen transparent.
+    const hasSolidBody = $derived(!isVitrine && !isStele);
 
-    // Berechnung der X-Positionen der 50px-Mittelstege relativ zum Gehäuse
+    // Berechnung der X-Positionen der 50px-Mittelstege relativ zum Gehäuse.
+    // Die Positionen stammen aus dem Layout (dort bereits 4K-skaliert) und
+    // liegen im Canvas-Raum; das Gehäuse ist um paddingX (= casingOffsetX)
+    // verschoben.
     let gapXPositions = $derived.by(() => {
         if (!layout.hasBezelGap || !layout.gapWidth) return [];
-        if (layout.width >= 5800) {
-            return [paddingX + 1920, paddingX + 1920 + 50 + 1920];
-        }
-        return [paddingX + (layout.gapX !== undefined ? layout.gapX : 1920)];
+        const gaps = Array.isArray(layout.gaps) && layout.gaps.length
+            ? layout.gaps
+            : (layout.gapX !== undefined ? [layout.gapX] : []);
+        return gaps.map(gapX => paddingX + gapX);
     });
 </script>
 
 <div 
     class="hardware-bezel-wrapper" 
-    style="width: {width}px; height: {height}px;"
+    style="width: {width}px; height: {height}px; background-color: {hasSolidBody ? '#050e1c' : 'transparent'};"
     aria-hidden="true"
 >
     <svg 
@@ -76,11 +82,6 @@
                 <stop offset="85%" stop-color="#061224" />
                 <stop offset="100%" stop-color="#040a14" />
             </linearGradient>
-
-            <!-- Weicher Display-Einbauschatten -->
-            <filter id="screen-shadow" x="-5%" y="-5%" width="110%" height="110%">
-                <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#000000" flood-opacity="0.8" />
-            </filter>
         </defs>
 
         {#if isVitrine}
@@ -106,7 +107,6 @@
                 width="{width - (paddingX * 2)}" 
                 height="{layout.height || 1080}" 
                 fill="#030814" 
-                filter="url(#screen-shadow)" 
             />
         {:else if isStele}
             <!-- STELE-BAUFORM (Portrait 9:16 mit massivem Sockel unten) -->
@@ -144,7 +144,6 @@
                 width="{width - (paddingX * 2)}" 
                 height="{layout.height || 1920}" 
                 fill="#030814" 
-                filter="url(#screen-shadow)" 
             />
         {:else}
             <!-- STANDARD / ÜBERKOPF / STRETCHED: DB Nachtblau RAL 5022 Gehäuse -->
@@ -164,13 +163,16 @@
             <rect x="20" y="23" width="{width - 40}" height="1" fill="rgba(255, 255, 255, 0.12)" />
 
             <!-- Aussparung für die Monitore -->
+            <!-- Bewusst ohne SVG-Filter: Chromium (v.a. Android/GPU) begrenzt
+                 Filter-Puffer und schneidet bei breiten Gehäusen (2+ Monitore,
+                 > 4096 px) den rechten Teil der Fläche ab. Der Einbauschatten
+                 wird stattdessen als Box-Shadow am Bezel-Lip gezeichnet. -->
             <rect 
                 x="{paddingX}" 
                 y="{paddingY}" 
                 width="{width - (paddingX * 2)}" 
                 height="{layout.height || 1080}" 
                 fill="#030814" 
-                filter="url(#screen-shadow)" 
             />
 
             <!-- Innere Gehäusefasen um das Display -->
@@ -179,14 +181,15 @@
             <rect x="{paddingX}" y="{paddingY + (layout.height || 1080) - 6}" width="{width - (paddingX * 2)}" height="6" fill="rgba(0, 0, 0, 0.8)" />
             <rect x="{paddingX + width - (paddingX * 2) - 6}" y="{paddingY}" width="6" height="{layout.height || 1080}" fill="rgba(0, 0, 0, 0.8)" />
 
-            <!-- Vertikale 50px-Trennstege zwischen Monitoren -->
+            <!-- Vertikale Trennstege zwischen Monitoren -->
             {#each gapXPositions as gapX}
+                {@const gapW = layout.gapWidth || 50}
                 <g class="bezel-post">
-                    <rect x="{gapX}" y="{paddingY}" width="50" height="{layout.height || 1080}" fill="url(#metal-accent)" />
+                    <rect x="{gapX}" y="{paddingY}" width="{gapW}" height="{layout.height || 1080}" fill="url(#metal-accent)" />
                     <rect x="{gapX}" y="{paddingY}" width="3" height="{layout.height || 1080}" fill="rgba(0, 0, 0, 0.45)" />
-                    <rect x="{gapX + 47}" y="{paddingY}" width="3" height="{layout.height || 1080}" fill="rgba(0, 0, 0, 0.45)" />
+                    <rect x="{gapX + gapW - 3}" y="{paddingY}" width="3" height="{layout.height || 1080}" fill="rgba(0, 0, 0, 0.45)" />
                     <rect x="{gapX + 3}" y="{paddingY}" width="1" height="{layout.height || 1080}" fill="rgba(255, 255, 255, 0.05)" />
-                    <rect x="{gapX + 46}" y="{paddingY}" width="1" height="{layout.height || 1080}" fill="rgba(255, 255, 255, 0.05)" />
+                    <rect x="{gapX + gapW - 4}" y="{paddingY}" width="1" height="{layout.height || 1080}" fill="rgba(255, 255, 255, 0.05)" />
                 </g>
             {/each}
 
@@ -206,11 +209,15 @@
         z-index: 5;
         overflow: visible;
         box-sizing: border-box;
+        /* Box-Shadow statt CSS-Filter: drop-shadow() legt einen Filter-Puffer
+           in Gehäusegröße an, den Chromium auf Android ab ~4096 px abschneidet
+           (fehlender rechter Gehäuseteil). */
+        border-radius: 16px;
+        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.7);
     }
     .hardware-bezel-svg {
         display: block;
         width: 100%;
         height: 100%;
-        filter: drop-shadow(0 16px 36px rgba(0, 0, 0, 0.7));
     }
 </style>

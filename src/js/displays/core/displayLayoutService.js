@@ -107,7 +107,7 @@ export function generateActiveLayout(monitorId = 'zim2x32', layoutType = 'zuganz
         } else {
             // Einzelmonitore (zim32_single, zimvitrine32, zimwide)
             layout.screens = [
-                { id: 'hauptmonitor', type: 'haupt', x: 0, y: 0, w: width, h: 1080, trainIndex: 0 }
+                { id: 'hauptmonitor', type: 'haupt', x: 0, y: 0, w: baseW, h: baseH, trainIndex: 0 }
             ];
         }
     }
@@ -152,7 +152,7 @@ export function generateActiveLayout(monitorId = 'zim2x32', layoutType = 'zuganz
         } else {
             // 1 Standard-Spalte (zim32_single, zimvitrine32)
             layout.screens = [
-                { id: 'abfahrt_single', type: 'abfahrt', x: 0, y: 0, w: width, h: 1080, colIndex: 0, maxCols: 1 }
+                { id: 'abfahrt_single', type: 'abfahrt', x: 0, y: 0, w: baseW, h: baseH, colIndex: 0, maxCols: 1 }
             ];
         }
     }
@@ -193,7 +193,7 @@ export function generateActiveLayout(monitorId = 'zim2x32', layoutType = 'zuganz
             ];
         } else {
             layout.screens = [
-                { id: 'ankunft_single', type: 'ankunft', x: 0, y: 0, w: width, h: 1080, colIndex: 0, maxCols: 1 }
+                { id: 'ankunft_single', type: 'ankunft', x: 0, y: 0, w: baseW, h: baseH, colIndex: 0, maxCols: 1 }
             ];
         }
     }
@@ -219,7 +219,7 @@ export function generateActiveLayout(monitorId = 'zim2x32', layoutType = 'zuganz
         } else {
             // Einzelbildschirm / Vitrine 32 / Stele 65h
             layout.screens = [
-                { id: 'plan_main', type: 'wagenreihung_plan', x: 0, y: 0, w: width, h: height, planOffset: 0 }
+                { id: 'plan_main', type: 'wagenreihung_plan', x: 0, y: 0, w: baseW, h: baseH, planOffset: 0 }
             ];
         }
     // ========================================================
@@ -251,7 +251,7 @@ export function generateActiveLayout(monitorId = 'zim2x32', layoutType = 'zuganz
         } else {
             // Einzelmonitor (zimvitrine32, zim32_single, zimwide, etc.)
             layout.screens = [
-                { id: 'vitrine_main', type: 'vitrine32', x: 0, y: 0, w: width, h: height, trainIndex: 0 }
+                { id: 'vitrine_main', type: 'vitrine32', x: 0, y: 0, w: baseW, h: baseH, trainIndex: 0 }
             ];
         }
     }
@@ -285,9 +285,23 @@ export function generateActiveLayout(monitorId = 'zim2x32', layoutType = 'zuganz
         } else {
             // Einzelmonitor (zim32_single, zimvitrine32, zimwide, zimultrawide)
             layout.screens = [
-                { id: 'abfahrt_zoom_single', type: 'abfahrt_zoom', x: 0, y: 0, w: width, h: 1080, colIndex: 0, maxCols: 1, maxRows: 4, showQualityIcons }
+                { id: 'abfahrt_zoom_single', type: 'abfahrt_zoom', x: 0, y: 0, w: baseW, h: baseH, colIndex: 0, maxCols: 1, maxRows: 4, showQualityIcons }
             ];
         }
+    }
+
+    // 4K Ultra-HD: Canvas und Gehäuse sind doppelt so groß, deshalb muss auch
+    // die Screen-Geometrie verdoppelt werden. Die Renderer zeichnen weiterhin
+    // in logischen Pixeln (screen.w / scaleFactor), erhalten also unverändert
+    // 1920×1080 bzw. 1080×1920.
+    if (is4k) {
+        layout.screens = layout.screens.map(screen => ({
+            ...screen,
+            x: screen.x * 2,
+            y: screen.y * 2,
+            w: screen.w * 2,
+            h: screen.h * 2
+        }));
     }
 
     return layout;
