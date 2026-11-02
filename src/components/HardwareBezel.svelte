@@ -26,9 +26,6 @@
     const isVitrine = $derived(family === 'vitrine');
     const isStele = $derived(family === 'stele');
     const isStretched = $derived(family === 'stretched');
-    // Nur Standard-/Überkopf-/Stretched-Gehäuse haben einen durchgehend
-    // deckenden Korpus. Vitrine und Stele lassen Flächen transparent.
-    const hasSolidBody = $derived(!isVitrine && !isStele);
 
     // Berechnung der X-Positionen der 50px-Mittelstege relativ zum Gehäuse.
     // Die Positionen stammen aus dem Layout (dort bereits 4K-skaliert) und
@@ -45,7 +42,7 @@
 
 <div 
     class="hardware-bezel-wrapper" 
-    style="width: {width}px; height: {height}px; background-color: {hasSolidBody ? '#050e1c' : 'transparent'};"
+    style="width: {width}px; height: {height}px;"
     aria-hidden="true"
 >
     <svg 
@@ -215,7 +212,9 @@
            begrenzt solche Puffer (v.a. Android/GPU) auf ca. 4096 px und
            schneidet dann den rechten Gehäuseteil ab. Die abgerundeten Ecken
            zeichnet bereits der SVG-Korpus (rx), der Schatten entfällt – auf dem
-           dunklen Seitenhintergrund war er ohnehin kaum sichtbar. */
+           dunklen Seitenhintergrund war er ohnehin kaum sichtbar. Der Wrapper
+           bleibt transparent, damit keine eckige Hintergrundfläche die
+           Rundungen des SVG-Korpus überdeckt. */
     }
     .hardware-bezel-svg {
         display: block;
