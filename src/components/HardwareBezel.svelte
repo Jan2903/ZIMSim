@@ -209,11 +209,13 @@
         z-index: 5;
         overflow: visible;
         box-sizing: border-box;
-        /* Box-Shadow statt CSS-Filter: drop-shadow() legt einen Filter-Puffer
-           in Gehäusegröße an, den Chromium auf Android ab ~4096 px abschneidet
-           (fehlender rechter Gehäuseteil). */
-        border-radius: 16px;
-        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.7);
+        /* Bewusst ohne Filter, Box-Shadow und border-radius: Jede dieser
+           Eigenschaften legt auf dem Gehäuse-Element (bis 6400x1600 px) einen
+           zusätzlichen Rasterpuffer/Maske in voller Elementgröße an. Chromium
+           begrenzt solche Puffer (v.a. Android/GPU) auf ca. 4096 px und
+           schneidet dann den rechten Gehäuseteil ab. Die abgerundeten Ecken
+           zeichnet bereits der SVG-Korpus (rx), der Schatten entfällt – auf dem
+           dunklen Seitenhintergrund war er ohnehin kaum sichtbar. */
     }
     .hardware-bezel-svg {
         display: block;

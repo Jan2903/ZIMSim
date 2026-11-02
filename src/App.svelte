@@ -499,10 +499,11 @@
         pointer-events: none;
         z-index: 15;
         box-sizing: border-box;
-        border: 2px solid rgba(0, 0, 0, 0.7);
-        /* Der äußere Schatten ersetzt den früheren SVG-feDropShadow der
-           Monitor-Aussparung (Chromium/Android kürzt große Filter-Puffer). */
-        box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8), 0 0 4px rgba(0, 0, 0, 0.5), 0 6px 20px rgba(0, 0, 0, 0.8);
+        /* Nur ein solider Rahmen statt Inset-/Außen-Schatten: Schatten auf
+           einem 1920-5860 px breiten Element erzeugen einen Rasterpuffer in
+           Elementgröße, den Chromium auf Android abschneidet (fehlender rechter
+           Teil der Anzeigefläche). Der Rahmen erzielt dieselbe optische Fuge. */
+        border: 3px solid rgba(0, 0, 0, 0.8);
     }
 
     /* Schwebendes Fullscreen HUD */
