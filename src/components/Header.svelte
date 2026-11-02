@@ -2,6 +2,7 @@
 <script>
     import { onMount, tick } from 'svelte';
     import ZimIcon from './ZimIcon.svelte';
+    import { selectTab } from '../js/core/state/uiState.svelte.js';
     import { downloadDisplayScreenshot } from '../js/core/utils/screenshot.js';
 
     /**
@@ -269,7 +270,7 @@
         <button 
             type="button" 
             class="header-action-btn"
-            onclick={() => window.dispatchEvent(new CustomEvent('menu-open-settings'))}
+            onclick={() => { selectTab('system'); window.dispatchEvent(new CustomEvent('menu-open-settings')); }}
             title="Einstellungen öffnen (Cmd+,)"
             aria-label="Einstellungen"
         >

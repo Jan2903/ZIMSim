@@ -228,14 +228,16 @@
 .journey-row:global(.drag-over-top) { border-top-color: var(--accent); }
 .journey-row:global(.drag-over-bottom) { border-bottom-color: var(--accent); }
 
-.journey-col-reorder { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4px; background: rgba(0,0,0,0.15); width: 28px; }
-.journey-drag-handle { cursor: grab; font-size: 14px; color: var(--text-muted); margin-bottom: 4px; user-select: none; }
+.journey-col-reorder { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4px 2px; background: rgba(0,0,0,0.15); width: 26px; }
+.journey-drag-handle { cursor: grab; font-size: 14px; color: var(--text-muted); margin-bottom: 2px; user-select: none; }
 .journey-drag-handle:active { cursor: grabbing; }
-.move-arrows { display: flex; flex-direction: column; gap: 2px; }
-.arrow-btn { padding: 0 4px; font-size: 0.8em; color: var(--text-muted); }
+.move-arrows { display: flex; flex-direction: column; gap: 1px; }
+/* Kompakte Desktop-Höhe: die globalen 44px-Touchziele würden jede Zeile auf ~120px aufblähen. */
+.arrow-btn { min-height: 18px; min-width: 20px; height: 18px; padding: 0 2px; font-size: 0.8em; color: var(--text-muted); }
 .arrow-btn:hover { color: var(--text-main); }
 
-.journey-col-visibility { display: flex; align-items: flex-start; padding: 8px 4px 8px 8px; min-width: 36px; }
+.journey-col-visibility { display: flex; align-items: center; padding: 4px 2px 4px 6px; min-width: 28px; }
+.visibility-toggle { min-height: 28px; min-width: 28px; padding: 4px; }
 
 .journey-col-coupling { position: relative; width: 20px; min-height: 100%; }
 .coupling-line { position: absolute; left: 50%; transform: translateX(-50%); width: 3px; background: var(--accent); }
@@ -244,7 +246,7 @@
 :global(.coupling-end) .coupling-line { top: 0; bottom: 50%; border-radius: 0 0 3px 3px; }
 :global(.coupling-single) .coupling-line { display: none; }
 
-.journey-col-main { flex: 1; padding: 8px 12px; min-width: 0; }
+.journey-col-main { flex: 1; padding: 5px 10px; min-width: 0; }
 .journey-summary {
     display: grid;
     grid-template-columns: 132px 34px minmax(0, 1fr) 52px 64px 72px minmax(0, 190px) 28px;
@@ -314,7 +316,7 @@
     opacity: 0.6;
     cursor: wait;
 }
-.expand-toggle { justify-self: center; }
+.expand-toggle { justify-self: center; min-height: 28px; min-width: 28px; padding: 4px; }
 
 @media (max-width: 768px) {
     .journey-col-reorder { width: 30px; }
