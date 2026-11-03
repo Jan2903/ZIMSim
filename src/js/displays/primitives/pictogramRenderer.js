@@ -237,6 +237,39 @@ const PICTOGRAM_RULES = [
 ];
 
 /**
+ * Modul-interner Cache für Piktogramm-Match-Ergebnisse.
+ * Der Info-Text ändert sich selten pro Frame; wiederholte Match-Prüfungen
+ * bei gleichen (scrollText, trainNumber)-Kombinationen werden so vermieden.
+ * Der Cache ist rein funktional und Modul-lokal (kein globaler reaktiver State).
+ * @type {Map<string, Array<object>>}
+ */
+const _pictogramMatchCache = new Map();
+
+/**
+ * Ermittelt alle passenden Piktogramm-Regeln für ein (scrollText, trainNumber)-Paar.
+ * Ergebnis wird pro Kombination gecacht.
+ * @param {string} scrollText - Der Lauftext / Info-String
+ * @param {string} trainNumber - Die Zugnummer
+ * @returns {Array<object>} Passende Piktogramm-Regeln (in PICTOGRAM_RULES-Reihenfolge)
+ */
+function _resolveMatchingRules(scrollText, trainNumber) {
+    const key = `${scrollText || ''}|||${trainNumber || ''}`;
+    const cached = _pictogramMatchCache.get(key);
+    if (cached) return cached;
+
+    const text = scrollText || '';
+    const nr = trainNumber || '';
+    const matches = [];
+    for (const rule of PICTOGRAM_RULES) {
+        if (rule.match(text, nr)) {
+            matches.push(rule);
+        }
+    }
+    _pictogramMatchCache.set(key, matches);
+    return matches;
+}
+
+/**
  * Zeichnet alle relevanten Piktogramme basierend auf dem Info-Text und der Zugnummer.
  *
  * @param {CanvasRenderingContext2D} ctx
@@ -249,12 +282,11 @@ const PICTOGRAM_RULES = [
 export function drawPictograms(ctx, scrollText, trainNumber, fullScreen, isArrival) {
     let x = fullScreen ? 100 : 50;
     if (!isArrival) {
-        for (const rule of PICTOGRAM_RULES) {
-            if (rule.match(scrollText, trainNumber)) {
-                // Zeichne die Regel in der normierten Box (y = 0)
-                drawInNormalizedBox(ctx, x, 0, INFO.PICTOGRAM_SIZE, rule.draw);
-                x += INFO.PICTOGRAM_STEP;
-            }
+        const rules = _resolveMatchingRules(scrollText, trainNumber);
+        for (const rule of rules) {
+            // Zeichne die Regel in der normierten Box (y = 0)
+            drawInNormalizedBox(ctx, x, 0, INFO.PICTOGRAM_SIZE, rule.draw);
+            x += INFO.PICTOGRAM_STEP;
         }
     }
     return x;
@@ -269,16 +301,8 @@ export function drawPictograms(ctx, scrollText, trainNumber, fullScreen, isArriv
  */
 export function getMatchingPictogramRules(scrollText, trainNumber, maxCount = 2) {
     if (!scrollText && !trainNumber) return [];
-    const text = scrollText || '';
-    const nr = trainNumber || '';
-    const matches = [];
-    for (const rule of PICTOGRAM_RULES) {
-        if (rule.match(text, nr)) {
-            matches.push(rule);
-            if (matches.length >= maxCount) break;
-        }
-    }
-    return matches;
+    const rules = _resolveMatchingRules(scrollText, trainNumber);
+    return rules.slice(0, maxCount);
 }
 
 /**
