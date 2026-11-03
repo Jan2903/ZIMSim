@@ -55,20 +55,19 @@ const PICTOGRAM_RULES = [
             ctx.strokeStyle = COLORS.WHITE;
             ctx.strokeRect(4, 4, 92, 92);
 
-            // 3 Sitze nebeneinander (DB Reservierungs-Piktogramm)
-            const seats = [28, 50, 72];
+            // Sitz in Seitenansicht (Lehne + Sitzfläche) wie im DB-ZIM-Piktogramm
             ctx.fillStyle = COLORS.WHITE;
-            for (const cx of seats) {
-                // Kopf / Lehne oben
-                ctx.beginPath();
-                ctx.arc(cx, 34, 6.5, 0, Math.PI * 2);
-                ctx.fill();
+            ctx.beginPath();
+            ctx.roundRect(24, 36, 13, 40, 3);   // Lehne
+            ctx.roundRect(24, 64, 42, 13, 3);   // Sitzfläche
+            ctx.fill();
 
-                // Sitzrücken & Sitzfläche
-                ctx.beginPath();
-                ctx.roundRect(cx - 7, 46, 14, 22, 2);
-                ctx.fill();
-            }
+            // "R" für Reservierungspflicht oben rechts
+            ctx.fillStyle = COLORS.WHITE;
+            ctx.font = FONTS.bold(44);
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            fillTextCentered(ctx, "R", 76, 26);
         }
     },
     {
