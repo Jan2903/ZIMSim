@@ -1,6 +1,9 @@
 // js/utils/config.js
 export const config = {
-    performance_mode: localStorage.getItem('zimsim_performance_mode') === 'true'
+    performance_mode: localStorage.getItem('zimsim_performance_mode') === 'true',
+    departureAlarmEnabled: localStorage.getItem('zimsim_departure_alarm_enabled') !== 'false',
+    departureAlarmLeadMinutes: parseInt(localStorage.getItem('zimsim_departure_alarm_lead_minutes'), 10) || 6,
+    departureAlarmBlinkMinutes: parseInt(localStorage.getItem('zimsim_departure_alarm_blink_minutes'), 10) || 3,
 };
 
 /**
@@ -14,6 +17,24 @@ export function setPerformanceMode(enabled) {
         localStorage.setItem('zimsim_performance_mode', String(config.performance_mode));
     } catch (e) {
         console.warn('[Config] Performance-Modus konnte nicht gespeichert werden:', e);
+    }
+}
+
+/**
+ * Setzt die Abfahrtsalarm-Einstellungen und persistiert sie.
+ * @param {object} updates
+ */
+export function setDepartureAlarm(updates) {
+    Object.assign(config, updates);
+    try {
+        if (updates.departureAlarmEnabled !== undefined)
+            localStorage.setItem('zimsim_departure_alarm_enabled', String(config.departureAlarmEnabled));
+        if (updates.departureAlarmLeadMinutes !== undefined)
+            localStorage.setItem('zimsim_departure_alarm_lead_minutes', String(config.departureAlarmLeadMinutes));
+        if (updates.departureAlarmBlinkMinutes !== undefined)
+            localStorage.setItem('zimsim_departure_alarm_blink_minutes', String(config.departureAlarmBlinkMinutes));
+    } catch (e) {
+        console.warn('[Config] Abfahrtsalarm-Einstellungen konnten nicht gespeichert werden:', e);
     }
 }
 

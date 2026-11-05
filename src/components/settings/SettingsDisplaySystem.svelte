@@ -3,7 +3,7 @@
     import { journeyStore, trainDisplay } from '../../js/core/state/stores.js';
     import { uiState } from '../../js/core/state/uiState.svelte.js';
     import { toastStore } from '../../js/core/state/toastStore.svelte.js';
-    import { config, setPerformanceMode } from '../../js/core/utils/config.js';
+    import { config, setPerformanceMode, setDepartureAlarm } from '../../js/core/utils/config.js';
     import { displayConfigStore } from '../../js/displays/core/displayConfigStore.svelte.js';
     import { MONITOR_PROFILES } from '../../js/displays/core/displayLayoutService.js';
     import LineColorEditorModal from '../LineColorEditorModal.svelte';
@@ -24,8 +24,21 @@
     // Performance-Modus (30 FPS Begrenzung)
     let isPerformanceMode = $state(config.performance_mode);
 
+    // Abfahrtsalarm (weißer Punkt neben der Abfahrtszeit)
+    let isDepartureAlarmEnabled = $state(config.departureAlarmEnabled);
+    let alarmLeadMinutes = $state(config.departureAlarmLeadMinutes);
+    let alarmBlinkMinutes = $state(config.departureAlarmBlinkMinutes);
+
     $effect(() => {
         setPerformanceMode(isPerformanceMode);
+    });
+
+    $effect(() => {
+        setDepartureAlarm({
+            departureAlarmEnabled: isDepartureAlarmEnabled,
+            departureAlarmLeadMinutes: alarmLeadMinutes,
+            departureAlarmBlinkMinutes: alarmBlinkMinutes,
+        });
     });
 
     // Die Modale liegen als position: fixed innerhalb dieses Panels und würden in einem
@@ -259,6 +272,54 @@
         </div>
     </div>
 
+    <!-- Spalte 3: Abfahrtsalarm -->
+    <div class="settings-card">
+        <div class="card-header">
+            <ZimIcon name="bell" size={18} />
+            <h3>Abfahrtsalarm</h3>
+        </div>
+        <div class="card-body">
+            <div class="checkbox-group">
+                <label class="checkbox-label">
+                    <input 
+                        type="checkbox" 
+                        id="departure_alarm_enabled_checkbox" 
+                        bind:checked={isDepartureAlarmEnabled} 
+                    >
+                    <span>Abfahrtsalarm aktivieren (weißer Punkt neben der Abfahrtszeit)</span>
+                </label>
+            </div>
+
+            <div class="form-group" style="margin-top: 14px;">
+                <label class="field-label" for="alarm_lead_minutes">Sichtbar ab (Minuten vor Abfahrt):</label>
+                <input 
+                    type="number" 
+                    id="alarm_lead_minutes" 
+                    bind:value={alarmLeadMinutes} 
+                    min="0" 
+                    max="60" 
+                    class="form-input"
+                >
+            </div>
+
+            <div class="form-group" style="margin-top: 8px;">
+                <label class="field-label" for="alarm_blink_minutes">Blinkend ab (Minuten vor Abfahrt):</label>
+                <input 
+                    type="number" 
+                    id="alarm_blink_minutes" 
+                    bind:value={alarmBlinkMinutes} 
+                    min="0" 
+                    max="60" 
+                    class="form-input"
+                >
+            </div>
+
+            <div class="info-note" style="margin-top: 12px; font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
+                Der weiße Punkt erscheint ab der eingestellten Lead-Zeit vor der Ist-Abfahrt und beginnt ab der Blink-Zeit zu pulsieren.
+            </div>
+        </div>
+    </div>
+
     <!-- Spalte 3: Datensicherung & Szenarien -->
     <div class="settings-card">
         <div class="card-header">
@@ -359,6 +420,22 @@
     .full-width-select {
         width: 100%;
         box-sizing: border-box;
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 6px 8px;
+        box-sizing: border-box;
+        background: var(--bg-input, #0f172a);
+        border: 1px solid var(--border, #334155);
+        border-radius: var(--radius-sm, 4px);
+        color: var(--text-main, #f8fafc);
+        font-size: 0.85rem;
+    }
+
+    .form-input:focus {
+        outline: none;
+        border-color: var(--accent, #e2001a);
     }
 
     @media (max-width: 600px) {

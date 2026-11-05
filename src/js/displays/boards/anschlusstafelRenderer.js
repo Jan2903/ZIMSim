@@ -1,11 +1,12 @@
 // js/displays/boards/anschlusstafelRenderer.js
 import { COLORS, FONTS } from '../../core/constants/theme.js';
 import { drawText, drawWrappedText, truncateWithEllipsis, drawLineBadge, drawInvertedTimeBox, fillTextCentered, getVerticalCenterOffset } from '../core/textUtils.js';
-import { getSimulatedTime } from '../../core/utils/config.js';
+import { getSimulatedTime, config } from '../../core/utils/config.js';
 import { lineColorService } from '../../core/services/lineColorService.svelte.js';
 import { drawDBLogo, drawAnalogClock } from '../core/sharedRenderers.js';
 import { drawQualityIcons, getMatchingPictogramRules } from '../primitives/pictogramRenderer.js';
 import { JourneyCouplingService } from '../../features/journey/services/journeyCouplingService.js';
+import { JourneyConnectionService } from '../../features/journey/services/journeyConnectionService.js';
 import { journeyStore } from '../../core/state/stores.js';
 
 /**
@@ -182,6 +183,44 @@ function getColumnGeometry(width, isPortrait) {
     const col4W = 154;
 
     return { col1X, col1W, col2X, col2W, col3X, col3W, col4X, col4W };
+}
+
+/**
+ * Liefert die effektive Abfahrtszeit als Unix-Timestamp (ms).
+ * Bevorzugt bereits geparste Echtzeitdaten (_effectiveTimeMs), fällt auf
+ * Parsing von expectedTime/scheduledTime zurück. Behandelt Tageswechsel.
+ * @param {import('../../features/journey/journey.svelte.js').Journey} train
+ * @returns {number|null} Unix-Timestamp in ms oder null wenn keine Zeit verfügbar
+ */
+function getEffectiveDepartureMs(train) {
+    const now = getSimulatedTime();
+    // Keine Abfahrtszeit gesetzt -> kein Alarm
+    if (!train.expectedTime && !train.scheduledTime && !train._effectiveTimeMs) return null;
+    return JourneyConnectionService.getJourneyTimeMs(train, now, true);
+}
+
+/**
+ * Prüft, ob der Abfahrtsalarm (weißer Punkt) für eine Fahrt angezeigt werden soll.
+ * @param {import('../../features/journey/journey.svelte.js').Journey} train
+ * @returns {{visible: boolean, blinking: boolean}}
+ */
+function getDepartureAlarmState(train) {
+    if (!config.departureAlarmEnabled) return { visible: false, blinking: false };
+    if (train.ausfall || train.isCancelled) return { visible: false, blinking: false };
+
+    const depMs = getEffectiveDepartureMs(train);
+    if (depMs == null) return { visible: false, blinking: false };
+
+    const now = getSimulatedTime().getTime();
+    const diffMinutes = (depMs - now) / 60000;
+
+    // Noch nicht in der Alarm-Zeitspanne oder bereits abgefahren
+    if (diffMinutes > config.departureAlarmLeadMinutes || diffMinutes < 0) {
+        return { visible: false, blinking: false };
+    }
+
+    const blinking = diffMinutes <= config.departureAlarmBlinkMinutes;
+    return { visible: true, blinking };
 }
 
 /**
@@ -381,6 +420,33 @@ function drawTrainRow(ctx, train, x, y, width, height, isAlt, isPortrait = false
                 minWidth: isPortrait ? 78 : 96,
                 height: isPortrait ? 30 : 40
             });
+        }
+
+        // Abfahrtsalarm: weißer Punkt links von der Abfahrtszeit (gleiche Position wie das ×-Kreuz)
+        const alarm = getDepartureAlarmState(train);
+        if (alarm.visible) {
+            const dotX = col1X - (isPortrait ? 18 : 28);
+            const dotRadius = isPortrait ? 6 : 8;
+            const dotLineWidth = isPortrait ? 2 : 3;
+            const now = Date.now();
+
+            if (alarm.blinking) {
+                // Blink-Modus: ausgefüllter weißer Kreis, langsamer ein/aus (2-Sekunden-Zyklus)
+                const shouldShow = (now % 2000) < 1000;
+                if (shouldShow) {
+                    ctx.fillStyle = COLORS.WHITE;
+                    ctx.beginPath();
+                    ctx.arc(dotX, timeY - (isPortrait ? 10 : 20), dotRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            } else {
+                // Nicht-blinkend: weißer Kreis als Umrandung (Outline)
+                ctx.strokeStyle = COLORS.WHITE;
+                ctx.lineWidth = dotLineWidth;
+                ctx.beginPath();
+                ctx.arc(dotX, timeY - (isPortrait ? 10 : 20), dotRadius, 0, Math.PI * 2);
+                ctx.stroke();
+            }
         }
     }
 
