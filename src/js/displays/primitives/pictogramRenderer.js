@@ -66,7 +66,6 @@ const PICTOGRAM_RULES = [
             ctx.fillStyle = COLORS.WHITE;
             ctx.font = FONTS.bold(44);
             ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
             fillTextCentered(ctx, "R", 76, 26);
         }
     },
@@ -87,7 +86,6 @@ const PICTOGRAM_RULES = [
             ctx.fillStyle = COLORS.WHITE;
             ctx.font = FONTS.bold(44);
             ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
             fillTextCentered(ctx, "R", 76, 26);
         }
     },
@@ -99,7 +97,6 @@ const PICTOGRAM_RULES = [
             ctx.fillStyle = COLORS.NAVY;
             ctx.font = FONTS.bold(68);
             ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
             fillTextCentered(ctx, "H", 30, 60);
             ctx.font = FONTS.bold(64);
             fillTextCentered(ctx, "+", 65, 48);
@@ -113,7 +110,6 @@ const PICTOGRAM_RULES = [
             ctx.fillStyle = COLORS.NAVY;
             ctx.font = FONTS.bold(68);
             ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
             fillTextCentered(ctx, "H", 30, 60);
             ctx.font = FONTS.bold(64);
             fillTextCentered(ctx, "-", 60, 36);
@@ -164,7 +160,6 @@ const PICTOGRAM_RULES = [
             ctx.fillStyle = COLORS.NAVY;
             ctx.font = FONTS.regular(48);
             ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
             fillTextCentered(ctx, "WC", 66, 75);
             ctx.strokeStyle = 'red';
             ctx.lineWidth = 12;
@@ -190,7 +185,6 @@ const PICTOGRAM_RULES = [
             ctx.fillStyle = COLORS.NAVY;
             ctx.font = FONTS.bold(56);
             ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
             fillTextCentered(ctx, "!", 80, 36);
         }
     },
@@ -210,7 +204,6 @@ const PICTOGRAM_RULES = [
             ctx.fillStyle = COLORS.NAVY;
             ctx.font = FONTS.bold(56);
             ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
             fillTextCentered(ctx, "!", 80, 36);
         }
     },
@@ -230,7 +223,6 @@ const PICTOGRAM_RULES = [
             ctx.fillStyle = COLORS.NAVY;
             ctx.font = FONTS.bold(56);
             ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
             fillTextCentered(ctx, "!", 80, 36);
         }
     },

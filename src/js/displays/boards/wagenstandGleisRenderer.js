@@ -11,9 +11,6 @@ import { JourneyCouplingService } from '../../features/journey/services/journeyC
 import { lineColorService } from '../../core/services/lineColorService.svelte.js';
 
 function drawVitrineHeader(ctx, width, activeFeatureIndex, progress, trackNumber, featureAlpha = 1.0) {
-    // Alle Texte dieses Headers sind vertikal um ihre y-Position zentriert.
-    ctx.textBaseline = 'middle';
-
     // 1. Clock (Left)
     drawAnalogClock(ctx, 80, 80);
     
@@ -103,8 +100,6 @@ function drawVitrineTrainLabel(ctx, journey, x, yOffset, maxWidth, displayName =
         });
     }
 
-    ctx.textBaseline = 'middle';
-
     const dest = journey.displayDestination || "";
     const destFont = FONTS.regular(65);
     ctx.font = destFont;
@@ -145,9 +140,6 @@ function drawVitrineRow(ctx, journeys, yOffset, width, platform, activeFeatureSt
         const scheduled = primary.scheduledTime || "";
         const expected = primary.expectedTime || "";
 
-        // Zeitangaben sind vertikal um ihre y-Position zentriert.
-        ctx.textBaseline = 'middle';
-
         // Time
         const timeFont = FONTS.regular(75);
         drawText(ctx, scheduled, 20, yOffset + 150, timeFont, COLORS.WHITE, 'left');
@@ -187,7 +179,6 @@ function drawVitrineRow(ctx, journeys, yOffset, width, platform, activeFeatureSt
 
         // drawFormation/drawSectors hinterlassen 'alphabetic'; hier wieder
         // vertikal zentriert zeichnen.
-        ctx.textBaseline = 'middle';
 
         const rightEdge = startX + usableWidth;
         const anchors = formationResult?.journeyAnchors || [];

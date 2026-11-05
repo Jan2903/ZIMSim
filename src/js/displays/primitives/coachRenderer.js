@@ -311,7 +311,6 @@ export function drawFullscreenClassLabels(ctx, scaledCoaches, y) {
                     drawFn: (finalX) => {
                         ctx.font = FONTS.bold(40);
                         ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
                         ctx.fillStyle = color;
                         fillTextCentered(ctx, text, finalX, y + 44);
                     }
@@ -383,7 +382,7 @@ export function drawFullscreenWagonNumbers(ctx, scaledCoaches, y) {
                         ctx.fillStyle = COLORS.WHITE;
                         ctx.font = FONTS.regular(40);
                         ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
+                        ctx.fillStyle = COLORS.WHITE;
                         fillTextCentered(ctx, text, finalX, y + 44);
                     }
                 });
@@ -414,7 +413,6 @@ export function drawCompactClassLabels(ctx, scaledCoaches, y) {
                     drawFn: (finalX) => {
                         ctx.font = FONTS.bold(40);
                         ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
                         ctx.fillStyle = COLORS.ORANGE;
                         fillTextCentered(ctx, "1.", finalX, y + 44);
                     }
@@ -480,7 +478,6 @@ export function drawCompactWagonNumbers(ctx, scaledCoaches, y) {
                         ctx.fillStyle = COLORS.WHITE;
                         ctx.font = FONTS.regular(40);
                         ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
                         fillTextCentered(ctx, numberText, finalX, y + 44);
                     }
                 });

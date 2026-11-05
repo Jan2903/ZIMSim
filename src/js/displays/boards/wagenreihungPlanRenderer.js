@@ -4,7 +4,7 @@ import { FORMATION } from '../core/constants.js';
 import { getSimulatedTime } from '../../core/utils/config.js';
 import { drawFormation, drawSectors } from '../primitives/formationRenderer.js';
 import { drawDBLogo, drawAnalogClock } from '../core/sharedRenderers.js';
-import { drawInvertedTimeBox, getVerticalCenterOffset, truncateWithEllipsis } from '../core/textUtils.js';
+import { drawInvertedTimeBox, getVerticalCenterOffset, truncateWithEllipsis, drawText } from '../core/textUtils.js';
 
 /**
  * Renderer für den Digitalen Wagenreihungsplan der DB.
@@ -81,19 +81,12 @@ function drawPlanHeader(ctx, width, height, sectorStartX, sectorUsableWidth, pla
     const clockCenterY = height * 0.50;
     drawAnalogClock(ctx, clockCenterX, clockCenterY, clockRadius, simTime);
 
-    ctx.font = FONTS.bold(isPortrait ? 38 : 42);
-    ctx.fillStyle = COLORS.WHITE;
-    ctx.textAlign = 'left';
-    ctx.fillText(timeStr, clockCenterX + clockRadius + 14, height * 0.58);
+    drawText(ctx, timeStr, clockCenterX + clockRadius + 14, height * 0.58, FONTS.bold(isPortrait ? 38 : 42), COLORS.WHITE, 'left');
 
     // 2. "Abfahrt Departure"
     const titleX = isPortrait ? 180 : 210;
-    ctx.font = FONTS.bold(isPortrait ? 36 : 42);
-    ctx.fillText('Abfahrt', titleX, height * 0.58);
-
-    ctx.font = FONTS.italic(isPortrait ? 26 : 30);
-    ctx.fillStyle = '#94a3b8';
-    ctx.fillText('Departure', titleX + (isPortrait ? 130 : 160), height * 0.58);
+    drawText(ctx, 'Abfahrt', titleX, height * 0.58, FONTS.bold(isPortrait ? 36 : 42), COLORS.WHITE, 'left');
+    drawText(ctx, 'Departure', titleX + (isPortrait ? 130 : 160), height * 0.58, FONTS.italic(isPortrait ? 26 : 30), '#94a3b8', 'left');
 
     // 3. Sektoren A bis G in Kästchen zentriert über dem Zug-Reihungsbereich
     const defaultSectors = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
@@ -122,17 +115,12 @@ function drawPlanHeader(ctx, width, height, sectorStartX, sectorUsableWidth, pla
         ctx.lineWidth = 1.5;
         ctx.strokeRect(secX - (boxSize / 2), boxY, boxSize, boxSize);
 
-        ctx.font = FONTS.bold(isPortrait ? 22 : 26);
-        ctx.fillStyle = COLORS.WHITE;
-        ctx.fillText(defaultSectors[s], secX, boxY + (boxSize * 0.72));
+        drawText(ctx, defaultSectors[s], secX, boxY + (boxSize * 0.72), FONTS.bold(isPortrait ? 22 : 26), COLORS.WHITE, 'center');
     }
 
     // 4. "Gleis" Spaltenkopf rechts
     const gleisHeaderX = width - (isPortrait ? 50 : 80);
-    ctx.font = FONTS.regular(isPortrait ? 20 : 24);
-    ctx.fillStyle = '#94a3b8';
-    ctx.textAlign = 'center';
-    ctx.fillText('Gleis', gleisHeaderX, height * 0.76);
+    drawText(ctx, 'Gleis', gleisHeaderX, height * 0.76, FONTS.regular(isPortrait ? 20 : 24), '#94a3b8', 'center');
 
     // 5. DB-Logo ganz rechts oben
     const logoX = width - (isPortrait ? 70 : 105);
@@ -167,16 +155,11 @@ function drawPlanRow(ctx, trainGroup, platform, x, y, width, height, sectorStart
 
     // 1. Zugname / Gattung (z.B. "ICE 1638")
     const trainName = primary.displayTitle;
-    ctx.font = FONTS.bold(isPortrait ? 22 : 26);
-    ctx.fillStyle = '#cbd5e1';
-    ctx.textAlign = 'left';
-    ctx.fillText(trainName, col1X, y + (height * 0.26));
+    drawText(ctx, trainName, col1X, y + (height * 0.26), FONTS.bold(isPortrait ? 22 : 26), '#cbd5e1', 'left');
 
     // 2. Abfahrtszeit (z.B. "06:07")
     const timeY = y + (height * 0.54);
-    ctx.font = FONTS.bold(isPortrait ? 38 : 46);
-    ctx.fillStyle = isAusfall ? '#ef4444' : COLORS.WHITE;
-    ctx.fillText(primary.scheduledTime || '--:--', col1X, timeY);
+    drawText(ctx, primary.scheduledTime || '--:--', col1X, timeY, FONTS.bold(isPortrait ? 38 : 46), isAusfall ? '#ef4444' : COLORS.WHITE, 'left');
 
     if (isAusfall) {
         // Zeit durchstreichen
@@ -187,9 +170,7 @@ function drawPlanRow(ctx, trainGroup, platform, x, y, width, height, sectorStart
         ctx.lineTo(col1X + (isPortrait ? 95 : 120), timeY - 12);
         ctx.stroke();
 
-        ctx.font = FONTS.bold(20);
-        ctx.fillStyle = '#ef4444';
-        ctx.fillText('Fällt aus', col1X, timeY + 30);
+        drawText(ctx, 'Fällt aus', col1X, timeY + 30, FONTS.bold(20), '#ef4444', 'left');
     } else if (hasDelay) {
         // Verspätungsfeld (invertierter, eckiger Kasten wie auf den übrigen Tafeln)
         const schedW = ctx.measureText(primary.scheduledTime || '--:--').width;
@@ -212,10 +193,7 @@ function drawPlanRow(ctx, trainGroup, platform, x, y, width, height, sectorStart
     ctx.roundRect(col1X, badgeY, badgeW, badgeH, 4);
     ctx.stroke();
 
-    ctx.font = FONTS.bold(18);
-    ctx.fillStyle = '#ef4444';
-    ctx.textAlign = 'center';
-    ctx.fillText('DB', col1X + (badgeW / 2), badgeY + 20);
+    drawText(ctx, 'DB', col1X + (badgeW / 2), badgeY + 20, FONTS.bold(18), '#ef4444', 'center');
 
     // ========================================================
     // SPALTE 2: Zielbahnhof, Zwischenhalte & Wagenreihung (Mitte)
@@ -223,21 +201,15 @@ function drawPlanRow(ctx, trainGroup, platform, x, y, width, height, sectorStart
     const col2X = sectorStartX;
 
     // 1. Zielbahnhof
-    ctx.textAlign = 'left';
-    ctx.font = FONTS.bold(isPortrait ? 34 : 42);
-    ctx.fillStyle = isAusfall ? '#94a3b8' : COLORS.WHITE;
-    const destText = primary.displayDestination;
-    ctx.fillText(destText, col2X, y + (height * 0.28));
+    drawText(ctx, destText, col2X, y + (height * 0.28), FONTS.bold(isPortrait ? 34 : 42), isAusfall ? '#94a3b8' : COLORS.WHITE, 'left');
 
     // 2. Zwischenhalte / Vias
     const vias = (primary.vias || []).join(' - ');
     if (vias) {
-        ctx.font = FONTS.regular(isPortrait ? 18 : 22);
-        ctx.fillStyle = '#94a3b8';
         let viaDisplay = vias;
         const maxViaW = sectorUsableWidth;
         viaDisplay = truncateWithEllipsis(ctx, viaDisplay, maxViaW);
-        ctx.fillText(viaDisplay, col2X, y + (height * 0.44));
+        drawText(ctx, viaDisplay, col2X, y + (height * 0.44), FONTS.regular(isPortrait ? 18 : 22), '#94a3b8', 'left');
     }
 
     // 3. Wagenreihung maßstäblich zeichnen (sauber skaliert, um Zeilenüberlauf zu verhindern)
@@ -273,8 +245,5 @@ function drawPlanRow(ctx, trainGroup, platform, x, y, width, height, sectorStart
     // ========================================================
     const gleisX = width - (isPortrait ? 50 : 80);
     const platformNum = primary.ezGleis || primary.platform || '-';
-    ctx.textAlign = 'center';
-    ctx.font = FONTS.bold(isPortrait ? 48 : 58);
-    ctx.fillStyle = primary.hasTrackChange ? '#f59e0b' : COLORS.WHITE;
-    ctx.fillText(platformNum, gleisX, y + (height * 0.58));
+    drawText(ctx, platformNum, gleisX, y + (height * 0.58), FONTS.bold(isPortrait ? 48 : 58), primary.hasTrackChange ? '#f59e0b' : COLORS.WHITE, 'center');
 }

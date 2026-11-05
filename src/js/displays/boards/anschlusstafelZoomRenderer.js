@@ -1,6 +1,6 @@
 // js/displays/boards/anschlusstafelZoomRenderer.js
 import { COLORS, FONTS } from '../../core/constants/theme.js';
-import { truncateWithEllipsis, drawLineBadge, drawInvertedTimeBox, getVerticalCenterOffset } from '../core/textUtils.js';
+import { truncateWithEllipsis, drawLineBadge, drawInvertedTimeBox, getVerticalCenterOffset, drawText } from '../core/textUtils.js';
 import { drawQualityIcons } from '../primitives/pictogramRenderer.js';
 import { lineColorService } from '../../core/services/lineColorService.svelte.js';
 import { JourneyCouplingService } from '../../features/journey/services/journeyCouplingService.js';
@@ -214,10 +214,7 @@ function drawZoomBadge(ctx, displayName, x, y, isAusfall, operator = '') {
  */
 function drawZoomTimeAndDelay(ctx, scheduledTime, expectedTime, x, y, isAusfall) {
     const plannedTime = scheduledTime || '--:--';
-    ctx.font = FONTS.bold(84);
-    ctx.textAlign = 'left';
-    ctx.fillStyle = isAusfall ? COLORS.NAVY : COLORS.WHITE;
-    ctx.fillText(plannedTime, x, y);
+    drawText(ctx, plannedTime, x, y, FONTS.bold(84), isAusfall ? COLORS.NAVY : COLORS.WHITE, 'left');
 
     // Verspätungsbox (nur bei regulären, nicht-ausgefallenen Fahrten mit Zeitabweichung)
     if (!isAusfall && expectedTime && expectedTime !== scheduledTime) {
@@ -266,18 +263,14 @@ function drawZoomMiddleColumn(ctx, train, isAusfall, x, upperY, lowerY, availabl
             ctx.rect(x, upperY - 44, availableWidth, 60);
             ctx.clip();
 
-            ctx.fillStyle = textColor;
-            ctx.textAlign = 'left';
             const tickerItem = `+++ ${infoText} `;
             const tickerItemW = ctx.measureText(tickerItem).width;
             const offset = ((renderCtx.tickerOffset || 0) * 1.6) % tickerItemW;
-            ctx.fillText(tickerItem + tickerItem + tickerItem, x - offset, upperY);
+            drawText(ctx, tickerItem + tickerItem + tickerItem, x - offset, upperY, FONTS.bold(44), textColor, 'left');
             ctx.restore();
         } else {
             // Text passt ohne Scrollen
-            ctx.fillStyle = textColor;
-            ctx.textAlign = 'left';
-            ctx.fillText(infoText, x, upperY);
+            drawText(ctx, infoText, x, upperY, FONTS.bold(44), textColor, 'left');
         }
     } else {
         // Reguläre Via-Kette
@@ -290,11 +283,7 @@ function drawZoomMiddleColumn(ctx, train, isAusfall, x, upperY, lowerY, availabl
         }
 
         if (viaStr) {
-            ctx.font = FONTS.bold(42);
-            ctx.fillStyle = isAusfall ? COLORS.NAVY : '#cbd5e1';
-            ctx.textAlign = 'left';
-            viaStr = truncateWithEllipsis(ctx, viaStr, availableWidth);
-            ctx.fillText(viaStr, x, upperY);
+            drawText(ctx, viaStr, x, upperY, FONTS.bold(42), isAusfall ? COLORS.NAVY : '#cbd5e1', 'left');
         }
     }
 
@@ -315,7 +304,7 @@ function drawZoomMiddleColumn(ctx, train, isAusfall, x, upperY, lowerY, availabl
         ctx.font = FONTS.bold(destFontSize);
     }
     destText = truncateWithEllipsis(ctx, destText, availableWidth);
-    ctx.fillText(destText, x, lowerY);
+    drawText(ctx, destText, x, lowerY, FONTS.bold(destFontSize), ctx.fillStyle, 'left');
 }
 
 /**
@@ -338,13 +327,9 @@ function drawZoomTrackColumn(ctx, scheduledTrack, changedTrack, hasTrackChange, 
         // VARIANTE A: Großes Gleis unten (Standard)
         // ========================================================
         if (isAusfall) {
-            ctx.font = FONTS.bold(96);
-            ctx.fillStyle = COLORS.NAVY;
-            ctx.textAlign = 'right';
-            ctx.fillText('-', gleisRightX, lowerY);
+            drawText(ctx, '-', gleisRightX, lowerY, FONTS.bold(96), COLORS.NAVY, 'right');
         } else if (hasTrackChange) {
             // Gleiswechsel: Neues Gleis im weißen Inverskasten (kein Altgleis)
-            ctx.font = FONTS.bold(72);
             const trackMetrics = ctx.measureText(changedTrack);
             const boxW = Math.max(120, trackMetrics.width + 36);
             const boxH = 76;
@@ -356,15 +341,10 @@ function drawZoomTrackColumn(ctx, scheduledTrack, changedTrack, hasTrackChange, 
             ctx.roundRect(boxX, boxY, boxW, boxH, 8);
             ctx.fill();
 
-            ctx.fillStyle = COLORS.NAVY;
-            ctx.textAlign = 'center';
-            ctx.fillText(changedTrack, boxX + (boxW / 2), boxY + 55);
+            drawText(ctx, changedTrack, boxX + (boxW / 2), boxY + 55, FONTS.bold(72), COLORS.NAVY, 'center');
         } else {
             // Normal: Reine Gleisnummer groß und prominent
-            ctx.font = FONTS.bold(96);
-            ctx.fillStyle = COLORS.WHITE;
-            ctx.textAlign = 'right';
-            ctx.fillText(scheduledTrack, gleisRightX, lowerY);
+            drawText(ctx, scheduledTrack, gleisRightX, lowerY, FONTS.bold(96), COLORS.WHITE, 'right');
         }
     } else {
         // ========================================================
@@ -372,13 +352,9 @@ function drawZoomTrackColumn(ctx, scheduledTrack, changedTrack, hasTrackChange, 
         // ========================================================
         // 1. Gleis in der oberen Zeile
         if (isAusfall) {
-            ctx.font = FONTS.bold(68);
-            ctx.fillStyle = COLORS.NAVY;
-            ctx.textAlign = 'right';
-            ctx.fillText('-', gleisRightX, upperY);
+            drawText(ctx, '-', gleisRightX, upperY, FONTS.bold(68), COLORS.NAVY, 'right');
         } else if (hasTrackChange) {
             // Gleiswechsel oben im Inverskasten
-            ctx.font = FONTS.bold(54);
             const trackMetrics = ctx.measureText(changedTrack);
             const boxW = Math.max(90, trackMetrics.width + 24);
             const boxH = 54;
@@ -390,14 +366,9 @@ function drawZoomTrackColumn(ctx, scheduledTrack, changedTrack, hasTrackChange, 
             ctx.roundRect(boxX, boxY, boxW, boxH, 6);
             ctx.fill();
 
-            ctx.fillStyle = COLORS.NAVY;
-            ctx.textAlign = 'center';
-            ctx.fillText(changedTrack, boxX + (boxW / 2), boxY + 40);
+            drawText(ctx, changedTrack, boxX + (boxW / 2), boxY + 40, FONTS.bold(54), COLORS.NAVY, 'center');
         } else {
-            ctx.font = FONTS.bold(68);
-            ctx.fillStyle = COLORS.WHITE;
-            ctx.textAlign = 'right';
-            ctx.fillText(scheduledTrack, gleisRightX, upperY);
+            drawText(ctx, scheduledTrack, gleisRightX, upperY, FONTS.bold(68), COLORS.WHITE, 'right');
         }
 
         // 2. Bis zu 2 Qualitätsmerkmal-Icons in der unteren Zeile
@@ -460,12 +431,6 @@ function drawEmptyZoomRow(ctx, x, y, width, height) {
  * @param {number} height
  */
 function drawNoDeparturesNotice(ctx, width, height) {
-    ctx.textAlign = 'center';
-    ctx.font = FONTS.bold(44);
-    ctx.fillStyle = '#94a3b8';
-    ctx.fillText('Keine Abfahrten im gewählten Zeitraum', width / 2, height * 0.45);
-
-    ctx.font = FONTS.italic(30);
-    ctx.fillStyle = '#64748b';
-    ctx.fillText('No departures scheduled in this time period', width / 2, (height * 0.45) + 48);
+    drawText(ctx, 'Keine Abfahrten im gewählten Zeitraum', width / 2, height * 0.45, FONTS.bold(44), '#94a3b8', 'center');
+    drawText(ctx, 'No departures scheduled in this time period', width / 2, (height * 0.45) + 48, FONTS.italic(30), '#64748b', 'center');
 }

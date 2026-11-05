@@ -51,7 +51,7 @@ export function drawSectors(ctx, sections, scaleFactor, startX = FORMATION.THRES
             ctx.strokeRect(displayPos - 22, -4, 48, 52);
         }
         
-        ctx.fillText(s.name, displayPos, baselineY);
+        drawText(ctx, s.name, displayPos, baselineY, FONTS.regular(45), COLORS.WHITE, 'center');
     });
 }
 
@@ -346,7 +346,6 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
                     ctx.fillStyle = COLORS.WHITE;
                     ctx.font = FONTS.regular(58);
                     ctx.textAlign = 'left';
-                    ctx.textBaseline = 'middle';
                     fillTextCentered(ctx, displayDest, x, y + 155);
                 }
             }
@@ -357,12 +356,11 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
                 const textWidth = ctx.measureText("X").width;
                 const safeX = getSafeCenter(x + (drawableCoach.length / 2), textWidth, x, x + drawableCoach.length);
                 
-                if (safeX !== null) {
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillStyle = COLORS.WHITE;
-                    fillTextCentered(ctx, "X", safeX, y + 44);
-                }
+                    if (safeX !== null) {
+                        ctx.textAlign = 'center';
+                        ctx.fillStyle = COLORS.WHITE;
+                        fillTextCentered(ctx, "X", safeX, y + 44);
+                    }
             } else {
                 drawFirstClassBar(ctx, drawableCoach, x, y, fullScreen);
             }
@@ -471,15 +469,15 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
             ctx.fillStyle = isBoundary
                 ? 'rgba(255, 80, 80, 0.8)'
                 : 'rgba(255, 255, 0, 0.7)';
-            ctx.fillText(`${m}m`, px, debugBaseY + 28 + getFontAscent(ctx));
+            drawText(ctx, `${m}m`, px, debugBaseY + 28 + getFontAscent(ctx), FONTS.regular(18), ctx.fillStyle, 'center');
         }
 
         // Arrow-Buffer Labels
         ctx.font = FONTS.regular(13);
         ctx.fillStyle = 'rgba(255, 80, 80, 0.6)';
         ctx.textAlign = 'center';
-        ctx.fillText('↔ Pfeil', displayStart + arrowBuffer / 2, debugBaseY + 44 + getFontAscent(ctx));
-        ctx.fillText('Pfeil ↔', platformPixelEnd + arrowBuffer / 2, debugBaseY + 44 + getFontAscent(ctx));
+        drawText(ctx, '↔ Pfeil', displayStart + arrowBuffer / 2, debugBaseY + 44 + getFontAscent(ctx), FONTS.regular(13), 'rgba(255, 80, 80, 0.6)', 'center');
+        drawText(ctx, 'Pfeil ↔', platformPixelEnd + arrowBuffer / 2, debugBaseY + 44 + getFontAscent(ctx), FONTS.regular(13), 'rgba(255, 80, 80, 0.6)', 'center');
 
         // Freie Meter-Bereiche beschriften (vor/nach Zug)
         ctx.font = FONTS.regular(14);
@@ -489,14 +487,14 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
         if (freeLeft > 80) {
             ctx.textAlign = 'center';
             const freeMLeft = Math.round(freeLeft / pixelPerMeter);
-            ctx.fillText(`← ${freeMLeft}m frei`, (platformPixelStart + trainPixelStart) / 2, debugBaseY + 56 + getFontAscent(ctx));
+            drawText(ctx, `← ${freeMLeft}m frei`, (platformPixelStart + trainPixelStart) / 2, debugBaseY + 56 + getFontAscent(ctx), FONTS.regular(14), 'rgba(255, 255, 255, 0.4)', 'center');
         }
 
         const freeRight = platformPixelEnd - trainPixelEnd;
         if (freeRight > 80) {
             ctx.textAlign = 'center';
             const freeMRight = Math.round(freeRight / pixelPerMeter);
-            ctx.fillText(`${freeMRight}m frei →`, (trainPixelEnd + platformPixelEnd) / 2, debugBaseY + 56 + getFontAscent(ctx));
+            drawText(ctx, `${freeMRight}m frei →`, (trainPixelEnd + platformPixelEnd) / 2, debugBaseY + 56 + getFontAscent(ctx), FONTS.regular(14), 'rgba(255, 255, 255, 0.4)', 'center');
         }
     }
     
