@@ -91,6 +91,33 @@ export function getVerticalCenterOffset(ctx) {
 }
 
 /**
+ * Ermittelt den vertikalen Versatz, um den die alphabetic-Baseline gegenüber
+ * einer Mittelachse verschoben werden muss, damit der *tatsächliche Text-Ink*
+ * (nicht nur die Schriftart-Box eines Fixbeispiels) vertikal zentriert erscheint.
+ *
+ * Nutzt `actualBoundingBoxAscent/Descent` des konkreten Texts. Diese Werte sind
+ * immer baseline-relativ zur alphabetic Baseline und damit browserkonsistent
+ * (im Gegensatz zu `textBaseline = 'middle'`/`'top'`). Fällt auf die
+ * Schriftart-Box-Metriken von `getVerticalCenterOffset` zurück, falls der
+ * Browser keine actualBoundingBox-Werte liefert.
+ *
+ * @param {CanvasRenderingContext2D} ctx - Kontext, dessen font bereits gesetzt ist.
+ * @param {string} text - Der zu zeichnende Text.
+ * @returns {number} Versatz in Pixeln (Baseline = Mittelachse + Versatz).
+ */
+function getTextVerticalCenterOffset(ctx, text) {
+    const metrics = ctx.measureText(text || 'Hg');
+    let ascent = metrics.actualBoundingBoxAscent;
+    let descent = metrics.actualBoundingBoxDescent;
+
+    if (!Number.isFinite(ascent) || !Number.isFinite(descent) || ascent <= 0) {
+        return getVerticalCenterOffset(ctx);
+    }
+
+    return (ascent - descent) / 2;
+}
+
+/**
  * Ermittelt den Abstand von der Oberkante der Font-Box bis zur Baseline.
  * Wird benötigt, um `textBaseline = 'top'` (engine-abhängig) zu ersetzen.
  *
@@ -116,7 +143,7 @@ export function getFontAscent(ctx) {
 export function fillTextCentered(ctx, text, x, yCenter) {
     const previousBaseline = ctx.textBaseline;
     ctx.textBaseline = 'alphabetic';
-    ctx.fillText(text, roundCoord(x), roundCoord(yCenter + getVerticalCenterOffset(ctx)));
+    ctx.fillText(text, roundCoord(x), roundCoord(yCenter + getTextVerticalCenterOffset(ctx, text)));
     // Baseline-Zustand wiederherstellen, damit aufrufender Code sich nicht ändert.
     ctx.textBaseline = previousBaseline;
 }
