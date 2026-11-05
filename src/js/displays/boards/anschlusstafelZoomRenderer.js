@@ -192,9 +192,7 @@ function drawZoomBadge(ctx, displayName, x, y, isAusfall, operator = '') {
 
     const style = lineColorService.resolveStyle(displayName, {
         operator,
-        isAusfall,
-        defaultBgColor: '#1f3d47',
-        defaultTextColor: COLORS.WHITE
+        isAusfall
     });
 
     drawLineBadge(ctx, displayName, x, badgeY, badgeW, badgeH, {

@@ -212,9 +212,7 @@ function drawAnkunftRow(ctx, train, x, y, width, height, isAlt, isPortrait) {
     const badgeText = truncateWithEllipsis(ctx, trainName, Math.max(20, maxBadgeW - badgePadding));
     const badgeW = Math.min(maxBadgeW, Math.max(isPortrait ? 80 : 100, ctx.measureText(badgeText).width + badgePadding));
     const badgeStyle = lineColorService.resolveStyle(trainName, {
-        operator: train.operator,
-        defaultBgColor: '#1e293b',
-        defaultTextColor: COLORS.WHITE
+        operator: train.operator
     });
     drawLineBadge(ctx, badgeText, trainX, badgeY, badgeW, badgeH, {
         font,

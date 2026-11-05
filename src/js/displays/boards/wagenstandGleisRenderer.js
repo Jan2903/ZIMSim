@@ -89,9 +89,7 @@ function drawVitrineTrainLabel(ctx, journey, x, yOffset, maxWidth, displayName =
         const textWidth = ctx.measureText(badgeText).width;
         const badgeWidth = Math.min(availableWidth, Math.max(20, textWidth + 2 * badgePaddingX));
         const badgeStyle = lineColorService.resolveStyle(badgeText, {
-            operator: journey.operator,
-            defaultBgColor: COLORS.DIM_GREY,
-            defaultTextColor: COLORS.WHITE
+            operator: journey.operator
         });
 
         drawLineBadge(ctx, badgeText, x, badgeCenterY - badgeHeight / 2, badgeWidth, badgeHeight, {

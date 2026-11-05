@@ -4,7 +4,8 @@ import { FORMATION } from '../core/constants.js';
 import { getSimulatedTime } from '../../core/utils/config.js';
 import { drawFormation, drawSectors } from '../primitives/formationRenderer.js';
 import { drawDBLogo, drawAnalogClock } from '../core/sharedRenderers.js';
-import { drawInvertedTimeBox, getVerticalCenterOffset, truncateWithEllipsis, drawText } from '../core/textUtils.js';
+import { drawInvertedTimeBox, getVerticalCenterOffset, truncateWithEllipsis, drawText, drawTextInRectangle } from '../core/textUtils.js';
+import { lineColorService } from '../../core/services/lineColorService.svelte.js';
 
 /**
  * Renderer für den Digitalen Wagenreihungsplan der DB.
@@ -155,7 +156,13 @@ function drawPlanRow(ctx, trainGroup, platform, x, y, width, height, sectorStart
 
     // 1. Zugname / Gattung (z.B. "ICE 1638")
     const trainName = primary.displayTitle;
-    drawText(ctx, trainName, col1X, y + (height * 0.26), FONTS.bold(isPortrait ? 22 : 26), '#cbd5e1', 'left');
+    const badgeStyle = lineColorService.resolveStyle(trainName, {
+        operator: primary.operator,
+        stationContext: platform,
+        inverted: false,
+        fullScreen: true
+    });
+    drawTextInRectangle(ctx, trainName, col1X, y + (height * 0.26), FONTS.bold(isPortrait ? 22 : 26), 'left', isPortrait ? 22 : 26, 10, renderCtx, 0, badgeStyle.backgroundColor, badgeStyle.textColor, false, false, badgeStyle.hasMatchedRule);
 
     // 2. Abfahrtszeit (z.B. "06:07")
     const timeY = y + (height * 0.54);

@@ -461,7 +461,7 @@ class LineColorService {
         const opKey = context.operator || '';
         const dsKey = context.stationContext?.ds100 || journeyStore?.stationContext?.ds100 || '';
 
-        const cacheKey = `${name}|${isInverted}|${Boolean(context.isAusfall)}|${opKey}|${dsKey}|${context.defaultBgColor || ''}|${context.defaultTextColor || ''}`;
+        const cacheKey = `${name}|${isInverted}|${Boolean(context.isAusfall)}|${opKey}|${dsKey}`;
         if (this._resolveCache.has(cacheKey)) {
             return this._resolveCache.get(cacheKey);
         }
@@ -605,14 +605,14 @@ class LineColorService {
                 rule: null
             };
         } else {
-            const fallbackBg = context.defaultBgColor || '#1f3d47';
+            const fallbackBg = context.defaultBgColor || COLORS.DIM_GREY;
             const fallbackText = context.defaultTextColor || COLORS.WHITE;
 
             return {
                 backgroundColor: fallbackBg,
                 textColor: fallbackText,
-                borderColor: 'rgba(255, 255, 255, 0.18)',
-                borderWidth: 1,
+                borderColor: 'transparent',
+                borderWidth: 0,
                 shape: 'rectangle',
                 cornerRadius: 0,
                 hasMatchedRule: false,

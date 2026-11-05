@@ -419,9 +419,7 @@ export function drawTextInRectangle(ctx, text, x, y, font, textAlign, textHeight
                 operator: renderCtx?.operator,
                 stationContext: renderCtx?.stationContext,
                 inverted,
-                fullScreen,
-                defaultBgColor: rectColor,
-                defaultTextColor: textColor
+                fullScreen
             });
 
             if (resolved.hasMatchedRule) {

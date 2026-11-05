@@ -340,9 +340,7 @@ function drawTrainRow(ctx, train, x, y, width, height, isAlt, isPortrait = false
         const font = FONTS.bold(isPortrait ? 22 : 30);
         let badgeStyle = lineColorService.resolveStyle(displayName, {
             operator: train.operator,
-            isAusfall: true,
-            defaultBgColor: '#1c6276',
-            defaultTextColor: COLORS.WHITE
+            isAusfall: true
         });
         if (badgeStyle.backgroundColor === '#ffffff' || badgeStyle.shape === 'outline') {
             badgeStyle = {
@@ -361,9 +359,7 @@ function drawTrainRow(ctx, train, x, y, width, height, isAlt, isPortrait = false
         // Reguläres Linien-/Gattungsbadge
         const font = FONTS.bold(isPortrait ? 22 : 30);
         const badgeStyle = lineColorService.resolveStyle(displayName, {
-            operator: train.operator,
-            defaultBgColor: '#1e293b',
-            defaultTextColor: COLORS.WHITE
+            operator: train.operator
         });
         drawLineBadge(ctx, displayName, col1X, badgeY, badgeW, badgeH, {
             font,

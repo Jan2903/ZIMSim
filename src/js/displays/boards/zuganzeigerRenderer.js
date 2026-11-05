@@ -149,7 +149,7 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
                 });
             }
             drawTextInRectangle(ctx, nr, 1855, 220, FONTS.regular(100), 'right', 100, 15,
-                trainRenderCtx, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true, true);
+                trainRenderCtx, 0, false, true, true);
 
             const fromDestination = primary.destinationLang || primary.destination || "";
             drawText(ctx, "Bitte nicht einsteigen", 110, 450, FONTS.regular(180), COLORS.WHITE, 'left');
@@ -164,7 +164,7 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
                 });
             }
             drawTextInRectangle(ctx, nr, 1855, 220, FONTS.regular(100), 'right', 100, 15,
-                trainRenderCtx, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true, true);
+                trainRenderCtx, 0, false, true, true);
 
             let yPos = 470;
             drawText(ctx, primary.destinationLang || primary.destination, 100, yPos, FONTS.regular(200), COLORS.WHITE, 'left');
@@ -197,7 +197,7 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
 
                     const rightAlignX = xOffset + zoneWidth - 70; // Matches 890 for 960 width
                     drawTextInRectangle(ctx, formatDisplayName(journey.effectiveDisplayName, journeyStore.nrwMode), rightAlignX, 200, FONTS.regular(75), 'right', 75, 10,
-                        { ...trainRenderCtx, operator: journey.operator }, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true, true);
+                        { ...trainRenderCtx, operator: journey.operator }, 0, false, true, true);
 
                     let yPos = 360;
                     drawText(ctx, journey.destinationLang || journey.destination, xOffset + 50, yPos, FONTS.regular(128), COLORS.WHITE, 'left');
@@ -239,7 +239,7 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
 
                     // 2. Zugname / Liniennummer
                     drawTextInRectangle(ctx, formatDisplayName(journey.effectiveDisplayName, journeyStore.nrwMode), nextX + 170, yPos - 5, FONTS.regular(badgeFont), 'right', badgeFont, 10,
-                        { ...trainRenderCtx, operator: journey.operator }, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true, true);
+                        { ...trainRenderCtx, operator: journey.operator }, 0, false, true, true);
 
                     // 3. Ziel
                     const destX = nextX + 210;
@@ -295,7 +295,7 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
         
         if (isMerged) {
             drawTextInRectangle(ctx, nr, 890, 200, FONTS.regular(75), 'right', 75, 10,
-                trainRenderCtx, 0, COLORS.DIM_GREY, COLORS.WHITE, isDisrupted, true, true);
+                trainRenderCtx, 0, isDisrupted, true, true);
         }
 
         if (ankunft) {
@@ -371,7 +371,7 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
                 
                 drawText(ctx, destText, 50, yPos, destFont, textColor, 'left');
                 drawTextInRectangle(ctx, formatDisplayName(journey.effectiveDisplayName, journeyStore.nrwMode), 890, yPos, FONTS.regular(badgeFont), 'right', badgeFont, 10,
-                    { ...trainRenderCtx, operator: journey.operator }, 0, COLORS.DIM_GREY, COLORS.WHITE, isDisrupted, true, true);
+                    { ...trainRenderCtx, operator: journey.operator }, 0, isDisrupted, true, true);
                 
                 const sectors = getPlatformSectors(journey, journeys, renderCtx.platform);
                 if (sectors) {
