@@ -1,7 +1,7 @@
 // js/displays/boards/zuganzeigerRenderer.js
 import { COLORS, FONTS } from '../../core/constants/theme.js';
 import { INFO } from '../core/constants.js';
-import { drawText, drawWrappedText, drawInfoTopText, drawTextInRectangle, drawInvertedTimeBox } from '../core/textUtils.js';
+import { drawText, drawWrappedText, drawInfoTopText, drawTextInRectangle, drawInvertedTimeBox, fillTextCentered } from '../core/textUtils.js';
 import { drawPictograms } from '../primitives/pictogramRenderer.js';
 import { calculateCoachPositions, getSectorsForCoaches, getPlatformSectors } from '../../features/formation/formationUtils.js';
 import { formatDisplayName, combineTrainNames } from '../../features/journey/trainNumberFormatter.js';
@@ -141,7 +141,10 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
     // === HAUPTMONITOR (fullScreen) ===
     if (fullScreen) {
         if (ankunft) {
-            drawText(ctx, abfahrt, 100, 220, FONTS.regular(180), COLORS.WHITE, 'left');
+            ctx.font = FONTS.regular(180);
+            ctx.fillStyle = COLORS.WHITE;
+            ctx.textAlign = 'left';
+            fillTextCentered(ctx, abfahrt, 100, 220);
             if (abfahrtA && abfahrtA !== abfahrt) {
                 drawInvertedTimeBox(ctx, abfahrtA, 500, 215, FONTS.regular(120), {
                     paddingX: 20,
@@ -149,14 +152,17 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
                 });
             }
             drawTextInRectangle(ctx, nr, 1855, 220, FONTS.regular(100), 'right', 100, 15,
-                trainRenderCtx, 0, false, true, true);
+                trainRenderCtx, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true, true);
 
             const fromDestination = primary.destinationLang || primary.destination || "";
             drawText(ctx, "Bitte nicht einsteigen", 110, 450, FONTS.regular(180), COLORS.WHITE, 'left');
             drawText(ctx, "Please do not board", 105, 670, FONTS.italic(180), COLORS.WHITE, 'left');
             drawText(ctx, 'von / from ' + fromDestination, 112, 850, FONTS.regular(70), COLORS.WHITE, 'left');
         } else if (isMerged) {
-            drawText(ctx, abfahrt, 100, 220, FONTS.regular(200), COLORS.WHITE, 'left');
+            ctx.font = FONTS.regular(200);
+            ctx.fillStyle = COLORS.WHITE;
+            ctx.textAlign = 'left';
+            fillTextCentered(ctx, abfahrt, 100, 220);
             if (abfahrtA && abfahrtA !== abfahrt) {
                 drawInvertedTimeBox(ctx, abfahrtA, 530, 215, FONTS.regular(120), {
                     paddingX: 20,
@@ -164,7 +170,7 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
                 });
             }
             drawTextInRectangle(ctx, nr, 1855, 220, FONTS.regular(100), 'right', 100, 15,
-                trainRenderCtx, 0, false, true, true);
+                trainRenderCtx, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true, true);
 
             let yPos = 470;
             drawText(ctx, primary.destinationLang || primary.destination, 100, yPos, FONTS.regular(200), COLORS.WHITE, 'left');
@@ -186,7 +192,10 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
                     const drawTime = (i === 0) || (jAbfahrt !== primary.scheduledTime || jAbfahrtA !== primary.expectedTime);
 
                     if (drawTime) {
-                        drawText(ctx, jAbfahrt, xOffset + 50, 200, FONTS.regular(120), COLORS.WHITE, 'left');
+                        ctx.font = FONTS.regular(120);
+                        ctx.fillStyle = COLORS.WHITE;
+                        ctx.textAlign = 'left';
+                        fillTextCentered(ctx, jAbfahrt, xOffset + 50, 200);
                         if (jAbfahrtA && jAbfahrtA !== jAbfahrt) {
                             drawInvertedTimeBox(ctx, jAbfahrtA, xOffset + 320, 195, FONTS.regular(90), {
                                 paddingX: 10,
@@ -197,7 +206,7 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
 
                     const rightAlignX = xOffset + zoneWidth - 70; // Matches 890 for 960 width
                     drawTextInRectangle(ctx, formatDisplayName(journey.effectiveDisplayName, journeyStore.nrwMode), rightAlignX, 200, FONTS.regular(75), 'right', 75, 10,
-                        { ...trainRenderCtx, operator: journey.operator }, 0, false, true, true);
+                        { ...trainRenderCtx, operator: journey.operator }, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true, true);
 
                     let yPos = 360;
                     drawText(ctx, journey.destinationLang || journey.destination, xOffset + 50, yPos, FONTS.regular(128), COLORS.WHITE, 'left');
@@ -225,7 +234,10 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
                     // 1. Zeit & ggf. Verspätungsbox
                     const jAbfahrt = journey.scheduledTime || "";
                     const jAbfahrtA = journey.expectedTime || "";
-                    drawText(ctx, jAbfahrt, 110, yPos, timeFont, COLORS.WHITE, 'left');
+                    ctx.font = timeFont;
+                    ctx.fillStyle = COLORS.WHITE;
+                    ctx.textAlign = 'left';
+                    fillTextCentered(ctx, jAbfahrt, 110, yPos);
 
                     let nextX = 360;
                     if (jAbfahrtA && jAbfahrtA !== jAbfahrt) {
@@ -239,7 +251,7 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
 
                     // 2. Zugname / Liniennummer
                     drawTextInRectangle(ctx, formatDisplayName(journey.effectiveDisplayName, journeyStore.nrwMode), nextX + 170, yPos - 5, FONTS.regular(badgeFont), 'right', badgeFont, 10,
-                        { ...trainRenderCtx, operator: journey.operator }, 0, false, true, true);
+                        { ...trainRenderCtx, operator: journey.operator }, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true, true);
 
                     // 3. Ziel
                     const destX = nextX + 210;
@@ -283,7 +295,10 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
         const rectBgColor = isDisrupted ? COLORS.NAVY : COLORS.WHITE;
         const rectTextColor = isDisrupted ? COLORS.WHITE : COLORS.NAVY;
 
-        drawText(ctx, abfahrt, 50, 200, FONTS.regular(120), textColor, 'left');
+        ctx.font = FONTS.regular(120);
+        ctx.fillStyle = textColor;
+        ctx.textAlign = 'left';
+        fillTextCentered(ctx, abfahrt, 50, 200);
         if (abfahrtA && abfahrtA !== abfahrt) {
             drawInvertedTimeBox(ctx, abfahrtA, 320, 195, FONTS.regular(90), {
                 paddingX: 10,
@@ -295,7 +310,7 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
         
         if (isMerged) {
             drawTextInRectangle(ctx, nr, 890, 200, FONTS.regular(75), 'right', 75, 10,
-                trainRenderCtx, 0, isDisrupted, true, true);
+                trainRenderCtx, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true, true);
         }
 
         if (ankunft) {
@@ -371,7 +386,7 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
                 
                 drawText(ctx, destText, 50, yPos, destFont, textColor, 'left');
                 drawTextInRectangle(ctx, formatDisplayName(journey.effectiveDisplayName, journeyStore.nrwMode), 890, yPos, FONTS.regular(badgeFont), 'right', badgeFont, 10,
-                    { ...trainRenderCtx, operator: journey.operator }, 0, isDisrupted, true, true);
+                    { ...trainRenderCtx, operator: journey.operator }, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true, true);
                 
                 const sectors = getPlatformSectors(journey, journeys, renderCtx.platform);
                 if (sectors) {

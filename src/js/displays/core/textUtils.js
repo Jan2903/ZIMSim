@@ -349,8 +349,7 @@ export function drawLineBadge(ctx, text, x, y, width, height, options = {}) {
         if (options.font) ctx.font = options.font;
         ctx.fillStyle = options.textColor || COLORS.WHITE;
         ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        fillTextCentered(ctx, text, x + (width / 2), roundCoord(y + (height / 2) + 1));
+        fillTextCentered(ctx, text, x + (width / 2), roundCoord(y + (height / 2)));
     }
 
     ctx.restore();
