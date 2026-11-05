@@ -249,12 +249,12 @@
             <!-- Zeit & Gleis in einer Box zusammengefasst -->
             <div class="settings-box form-row-responsive align-stretch" style="margin-bottom: 20px;">
                 <!-- Zeit Block -->
-                <div class="form-group" style="flex-direction: row; gap: 10px; flex-wrap: wrap; flex: 1 1 140px; min-width: 0;">
-                    <div class="form-group" style="min-width: 0;">
+                <div class="form-group" style="flex-direction: row; gap: 10px; flex-wrap: wrap; flex: 0 0 auto; min-width: 0;">
+                    <div class="form-group" style="flex: 0 0 auto; min-width: 0;">
                         <span class="form-group-label center">Zeit (Plan)</span>
                         <input type="text" class="jfield" bind:value={journey.scheduledTime} oninput={triggerUpdate} placeholder="z.B. 14:30" style="width: 100%; min-width: 0; text-align: center;">
                     </div>
-                    <div class="form-group" style="min-width: 0;">
+                    <div class="form-group" style="flex: 0 0 auto; min-width: 0;">
                         <span class="form-group-label center">Echtzeit</span>
                         <input type="text" class="jfield" bind:value={journey.expectedTime} oninput={triggerUpdate} placeholder="optional" style="width: 100%; min-width: 0; text-align: center; color: var(--error-color, #ff6b6b); font-weight: bold;">
                     </div>
@@ -263,12 +263,12 @@
                 <div class="settings-divider"></div>
                 
                 <!-- Gleis Block -->
-                <div class="form-group" style="flex-direction: row; gap: 10px; flex-wrap: wrap; flex: 1 1 140px; min-width: 0;">
-                    <div class="form-group" style="min-width: 0;">
+                <div class="form-group" style="flex-direction: row; gap: 10px; flex-wrap: wrap; flex: 0 0 auto; min-width: 0;">
+                    <div class="form-group" style="flex: 0 0 auto; min-width: 0;">
                         <span class="form-group-label center">Gleis/Plattf.</span>
                         <input type="text" class="jfield" bind:value={journey.platform} oninput={onTrackChanged} placeholder="z.B. 4" style="width: 100%; min-width: 0; text-align: center;">
                     </div>
-                    <div class="form-group" style="min-width: 0;">
+                    <div class="form-group" style="flex: 0 0 auto; min-width: 0;">
                         <span class="form-group-label center">Echtzeit</span>
                         <input type="text" class="jfield" bind:value={journey.ezGleis} oninput={onTrackChanged} placeholder="optional" style="width: 100%; min-width: 0; text-align: center; color: var(--error-color, #ff6b6b); font-weight: bold;">
                     </div>
