@@ -85,38 +85,8 @@ function getFontMetrics(ctx) {
  * @param {CanvasRenderingContext2D} ctx - Kontext, dessen font bereits gesetzt ist.
  * @returns {number} Versatz in Pixeln.
  */
-export function getVerticalCenterOffset(ctx, text) {
-    if (text) {
-        return getTextVerticalCenterOffset(ctx, text);
-    }
+export function getVerticalCenterOffset(ctx, _text) {
     const { ascent, descent } = getFontMetrics(ctx);
-    return (ascent - descent) / 2;
-}
-
-/**
- * Ermittelt den vertikalen Versatz, um den die alphabetic-Baseline gegenüber
- * einer Mittelachse verschoben werden muss, damit der *tatsächliche Text-Ink*
- * (nicht nur die Schriftart-Box eines Fixbeispiels) vertikal zentriert erscheint.
- *
- * Nutzt `actualBoundingBoxAscent/Descent` des konkreten Texts. Diese Werte sind
- * immer baseline-relativ zur alphabetic Baseline und damit browserkonsistent
- * (im Gegensatz zu `textBaseline = 'middle'`/`'top'`). Fällt auf die
- * Schriftart-Box-Metriken von `getVerticalCenterOffset` zurück, falls der
- * Browser keine actualBoundingBox-Werte liefert.
- *
- * @param {CanvasRenderingContext2D} ctx - Kontext, dessen font bereits gesetzt ist.
- * @param {string} text - Der zu zeichnende Text.
- * @returns {number} Versatz in Pixeln (Baseline = Mittelachse + Versatz).
- */
-function getTextVerticalCenterOffset(ctx, text) {
-    const metrics = ctx.measureText(text || 'Hg');
-    let ascent = metrics.actualBoundingBoxAscent;
-    let descent = metrics.actualBoundingBoxDescent;
-
-    if (!Number.isFinite(ascent) || !Number.isFinite(descent) || ascent <= 0) {
-        return getVerticalCenterOffset(ctx);
-    }
-
     return (ascent - descent) / 2;
 }
 
@@ -124,15 +94,15 @@ function getTextVerticalCenterOffset(ctx, text) {
  * Ermittelt den Abstand von der Oberkante der Font-Box bis zur Baseline.
  * Wird benötigt, um `textBaseline = 'top'` (engine-abhängig) zu ersetzen.
  *
+ * Basiert bewusst auf fontBoundingBox* aus getFontMetrics (font- statt glyphenabhängig),
+ * damit die Darstellung über alle Browser hinweg (Chrome vs. Firefox vs. Safari)
+ * deterministisch und auf das Pixel identisch bleibt.
+ *
  * @param {CanvasRenderingContext2D} ctx - Kontext, dessen font bereits gesetzt ist.
- * @param {string} [text] - Optional: konkreter Text für tinte-basierte Ascent-Ermittlung.
+ * @param {string} [_text] - Optional für Rückwärtskompatibilität.
  * @returns {number} Ascent in Pixeln.
  */
-export function getFontAscent(ctx, text) {
-    if (text) {
-        const ascent = ctx.measureText(text).actualBoundingBoxAscent;
-        if (Number.isFinite(ascent) && ascent > 0) return ascent;
-    }
+export function getFontAscent(ctx, _text) {
     return getFontMetrics(ctx).ascent;
 }
 
@@ -151,7 +121,7 @@ export function getFontAscent(ctx, text) {
 export function fillTextCentered(ctx, text, x, yCenter) {
     const previousBaseline = ctx.textBaseline;
     ctx.textBaseline = 'alphabetic';
-    ctx.fillText(text, roundCoord(x), roundCoord(yCenter + getTextVerticalCenterOffset(ctx, text)));
+    ctx.fillText(text, roundCoord(x), roundCoord(yCenter + getVerticalCenterOffset(ctx)));
     // Baseline-Zustand wiederherstellen, damit aufrufender Code sich nicht ändert.
     ctx.textBaseline = previousBaseline;
 }

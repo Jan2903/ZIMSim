@@ -358,8 +358,9 @@ export function drawFormation(ctx, journeys, platform, options = {}) {
                 
                     if (safeX !== null) {
                         ctx.textAlign = 'center';
+                        ctx.textBaseline = 'alphabetic';
                         ctx.fillStyle = COLORS.WHITE;
-                        fillTextCentered(ctx, "X", safeX, y + 44);
+                        ctx.fillText("X", Math.round(safeX), y + 56);
                     }
             } else {
                 drawFirstClassBar(ctx, drawableCoach, x, y, fullScreen);

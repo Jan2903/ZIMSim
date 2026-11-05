@@ -3,7 +3,8 @@ import { COLORS, FONTS } from '../../core/constants/theme.js';
 import { FORMATION, COUPLING } from '../core/constants.js';
 import { ICONS, drawIcon } from '../core/icons.js';
 import { drawInNormalizedBox } from './pictogramRenderer.js';
-import { fillTextCentered } from '../core/textUtils.js';
+// Typografische Baseline für 40px Text zentriert im 80px Wagenkasten (y bis y+80, Mitte y+40, Cap-Height ~28px -> Baseline y+54)
+const COACH_FEATURE_BASELINE_OFFSET = 54;
 
 /**
  * Berechnet die sichere x-Koordinate für ein Feature.
@@ -311,8 +312,9 @@ export function drawFullscreenClassLabels(ctx, scaledCoaches, y) {
                     drawFn: (finalX) => {
                         ctx.font = FONTS.bold(40);
                         ctx.textAlign = 'center';
+                        ctx.textBaseline = 'alphabetic';
                         ctx.fillStyle = color;
-                        fillTextCentered(ctx, text, finalX, y + 44);
+                        ctx.fillText(text, Math.round(finalX), y + COACH_FEATURE_BASELINE_OFFSET);
                     }
                 });
             }
@@ -346,7 +348,7 @@ function getAmenityIconProps(amenities) {
  * @param {number} size - Icon-Größe
  */
 export function drawAmenityIcon(ctx, finalX, y, iconKey, size) {
-    drawInNormalizedBox(ctx, finalX - size / 2, y + 42 - size / 2, size, (context) => {
+    drawInNormalizedBox(ctx, Math.round(finalX - size / 2), Math.round(y + 40 - size / 2), size, (context) => {
         drawIcon(context, iconKey, COLORS.WHITE);
     });
 }
@@ -379,11 +381,11 @@ export function drawFullscreenWagonNumbers(ctx, scaledCoaches, y) {
                     x: coach.start + coach.length / 2,
                     width: ctx.measureText(text).width,
                     drawFn: (finalX) => {
-                        ctx.fillStyle = COLORS.WHITE;
                         ctx.font = FONTS.regular(40);
                         ctx.textAlign = 'center';
+                        ctx.textBaseline = 'alphabetic';
                         ctx.fillStyle = COLORS.WHITE;
-                        fillTextCentered(ctx, text, finalX, y + 44);
+                        ctx.fillText(text, Math.round(finalX), y + COACH_FEATURE_BASELINE_OFFSET);
                     }
                 });
             }
@@ -413,8 +415,9 @@ export function drawCompactClassLabels(ctx, scaledCoaches, y) {
                     drawFn: (finalX) => {
                         ctx.font = FONTS.bold(40);
                         ctx.textAlign = 'center';
+                        ctx.textBaseline = 'alphabetic';
                         ctx.fillStyle = COLORS.ORANGE;
-                        fillTextCentered(ctx, "1.", finalX, y + 44);
+                        ctx.fillText("1.", Math.round(finalX), y + COACH_FEATURE_BASELINE_OFFSET);
                     }
                 });
             }
@@ -475,10 +478,11 @@ export function drawCompactWagonNumbers(ctx, scaledCoaches, y) {
                     x: center,
                     width: ctx.measureText(numberText).width,
                     drawFn: (finalX) => {
-                        ctx.fillStyle = COLORS.WHITE;
                         ctx.font = FONTS.regular(40);
                         ctx.textAlign = 'center';
-                        fillTextCentered(ctx, numberText, finalX, y + 44);
+                        ctx.textBaseline = 'alphabetic';
+                        ctx.fillStyle = COLORS.WHITE;
+                        ctx.fillText(numberText, Math.round(finalX), y + COACH_FEATURE_BASELINE_OFFSET);
                     }
                 });
             }
