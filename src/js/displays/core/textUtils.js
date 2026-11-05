@@ -21,6 +21,12 @@ const FALLBACK_DESCENT_RATIO = 0.18;
 const MAX_FONT_METRICS_CACHE = 64;
 const _fontMetricsCache = new Map();
 
+// Rundet Koordinaten auf ganze Pixel, um browserabhängige Subpixel-
+// Rundungsunterschiede bei Canvas-Text zu vermeiden (Chrome vs. Firefox vs. Safari).
+function roundCoord(val) {
+    return Math.round(val);
+}
+
 /**
  * Ermittelt Ascent und Descent des aktuell gesetzten Fonts.
  *
@@ -110,7 +116,7 @@ export function getFontAscent(ctx) {
 export function fillTextCentered(ctx, text, x, yCenter) {
     const previousBaseline = ctx.textBaseline;
     ctx.textBaseline = 'alphabetic';
-    ctx.fillText(text, x, yCenter + getVerticalCenterOffset(ctx));
+    ctx.fillText(text, roundCoord(x), roundCoord(yCenter + getVerticalCenterOffset(ctx)));
     // Baseline-Zustand wiederherstellen, damit aufrufender Code sich nicht ändert.
     ctx.textBaseline = previousBaseline;
 }
@@ -138,13 +144,13 @@ export function drawText(ctx, text, x, y, font, textColor, textAlign) {
     if (previousBaseline === 'middle') {
         // Layouts setzen y hier als vertikale Mittelachse (historisch 'middle').
         ctx.textBaseline = 'alphabetic';
-        ctx.fillText(text, x, y + getVerticalCenterOffset(ctx));
+        ctx.fillText(text, roundCoord(x), roundCoord(y + getVerticalCenterOffset(ctx)));
     } else if (previousBaseline === 'top') {
         // 'top' ist engine-abhängig (Glyph- vs. Font-Box); explizit über Ascent.
         ctx.textBaseline = 'alphabetic';
-        ctx.fillText(text, x, y + getFontAscent(ctx));
+        ctx.fillText(text, roundCoord(x), roundCoord(y + getFontAscent(ctx)));
     } else {
-        ctx.fillText(text, x, y);
+        ctx.fillText(text, roundCoord(x), roundCoord(y));
     }
     // Baseline-Zustand wiederherstellen, damit der Aufrufer sich nicht ändern muss.
     ctx.textBaseline = previousBaseline;
@@ -179,10 +185,10 @@ export function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight, font, tex
         
         lineCount++;
         if (maxLines === 0 || lineCount <= maxLines) {
-            drawText(ctx, line, x, y, font, textColor, textAlign);
+            drawText(ctx, line, x, roundCoord(y), font, textColor, textAlign);
         }
     }
-    return y + (line === '' ? 0 : lineHeight);
+    return roundCoord(y + (line === '' ? 0 : lineHeight));
 }
 
 /**
@@ -344,7 +350,7 @@ export function drawLineBadge(ctx, text, x, y, width, height, options = {}) {
         ctx.fillStyle = options.textColor || COLORS.WHITE;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        fillTextCentered(ctx, text, x + (width / 2), y + (height / 2) + 1);
+        fillTextCentered(ctx, text, x + (width / 2), roundCoord(y + (height / 2) + 1));
     }
 
     ctx.restore();
@@ -503,7 +509,7 @@ export function drawTextInRectangle(ctx, text, x, y, font, textAlign, textHeight
             ctx.font = font;
             ctx.fillStyle = boxTextColor;
             ctx.textAlign = textDrawAlign;
-            fillTextCentered(ctx, text, textDrawX, y);
+            fillTextCentered(ctx, text, textDrawX, roundCoord(y));
         }
     }
 }
@@ -560,7 +566,7 @@ export function drawInvertedTimeBox(ctx, text, x, yCenter, font, options = {}) {
 
     ctx.fillStyle = textColor;
     ctx.textAlign = 'center';
-    fillTextCentered(ctx, text, boxX + boxWidth / 2, yCenter);
+    fillTextCentered(ctx, text, boxX + boxWidth / 2, roundCoord(yCenter));
 
     ctx.restore();
     return { x: boxX, y: boxY, width: boxWidth, height: boxHeight };

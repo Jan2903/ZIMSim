@@ -1,6 +1,6 @@
 // js/displays/boards/ankunftstafelRenderer.js
 import { COLORS, FONTS } from '../../core/constants/theme.js';
-import { truncateWithEllipsis, drawLineBadge, drawInvertedTimeBox, getVerticalCenterOffset } from '../core/textUtils.js';
+import { truncateWithEllipsis, drawLineBadge, drawInvertedTimeBox, getVerticalCenterOffset, drawText } from '../core/textUtils.js';
 import { drawAnalogClock } from '../core/sharedRenderers.js';
 import { getSimulatedTime } from '../../core/utils/config.js';
 import { lineColorService } from '../../core/services/lineColorService.svelte.js';
@@ -75,14 +75,9 @@ export function drawAnkunftBoard(ctx, journeys = [], width = 1920, height = 1080
  */
 function drawNoArrivalsMessage(ctx, width, topY, availableHeight, isPortrait) {
     const centerY = topY + (availableHeight / 2);
-    ctx.textAlign = 'center';
-    ctx.font = FONTS.bold(isPortrait ? 30 : 38);
-    ctx.fillStyle = '#94a3b8';
-    ctx.fillText('Keine Ankünfte im gewählten Zeitraum', width / 2, centerY - 15);
+    drawText(ctx, 'Keine Ankünfte im gewählten Zeitraum', width / 2, centerY - 15, FONTS.bold(isPortrait ? 30 : 38), '#94a3b8', 'center');
 
-    ctx.font = FONTS.italic(isPortrait ? 22 : 26);
-    ctx.fillStyle = '#64748b';
-    ctx.fillText('No arrivals scheduled in this time period', width / 2, centerY + 25);
+    drawText(ctx, 'No arrivals scheduled in this time period', width / 2, centerY + 25, FONTS.italic(isPortrait ? 22 : 26), '#64748b', 'center');
 }
 
 /**
@@ -108,15 +103,15 @@ function drawAnkunftHeader(ctx, width, height, renderCtx) {
     ctx.font = FONTS.bold(height > 90 ? 46 : 40);
     ctx.fillStyle = COLORS.WHITE;
     ctx.textAlign = 'left';
-    ctx.fillText(timeStr, clockCenterX + clockRadius + 16, height * 0.62);
+    drawText(ctx, timeStr, clockCenterX + clockRadius + 16, height * 0.62, FONTS.bold(height > 90 ? 46 : 40), COLORS.WHITE, 'left');
 
     // Titel "Ankunft Arrivals"
     ctx.font = FONTS.bold(height > 90 ? 46 : 40);
-    ctx.fillText('Ankunft', 210, height * 0.62);
+    drawText(ctx, 'Ankunft', 210, height * 0.62, FONTS.bold(height > 90 ? 46 : 40), COLORS.WHITE, 'left');
 
     ctx.font = FONTS.italic(height > 90 ? 32 : 28);
     ctx.fillStyle = '#94a3b8';
-    ctx.fillText('Arrivals', 360, height * 0.62);
+    drawText(ctx, 'Arrivals', 360, height * 0.62, FONTS.italic(height > 90 ? 32 : 28), '#94a3b8', 'left');
 
     // DB-Logo rechts
     const logoX = width - 80;
@@ -130,7 +125,7 @@ function drawAnkunftHeader(ctx, width, height, renderCtx) {
     ctx.font = FONTS.bold(26);
     ctx.fillStyle = '#ef4444';
     ctx.textAlign = 'center';
-    ctx.fillText('DB', logoX + 27, logoY + 28);
+    drawText(ctx, 'DB', logoX + 27, logoY + 28, FONTS.bold(26), '#ef4444', 'center');
 }
 
 /**
@@ -145,21 +140,20 @@ function drawSubHeader(ctx, width, topY, height, isPortrait) {
     ctx.textAlign = 'left';
 
     const textY = topY + (height * 0.72);
+    const subFont = FONTS.regular(isPortrait ? 22 : 20);
 
     if (isPortrait) {
-        ctx.fillText('Geplant', 30, textY);
-        ctx.fillText('Erwartet', 125, textY);
-        ctx.fillText('Zug', 225, textY);
-        ctx.fillText('Startbahnhof', 360, textY);
-        ctx.textAlign = 'right';
-        ctx.fillText('Gleis', width - 40, textY);
+        drawText(ctx, 'Geplant', 30, textY, subFont, '#94a3b8', 'left');
+        drawText(ctx, 'Erwartet', 125, textY, subFont, '#94a3b8', 'left');
+        drawText(ctx, 'Zug', 225, textY, subFont, '#94a3b8', 'left');
+        drawText(ctx, 'Startbahnhof', 360, textY, subFont, '#94a3b8', 'left');
+        drawText(ctx, 'Gleis', width - 40, textY, subFont, '#94a3b8', 'right');
     } else {
-        ctx.fillText('Geplant', 35, textY);
-        ctx.fillText('Erwartet', 160, textY);
-        ctx.fillText('Zug', 310, textY);
-        ctx.fillText('Startbahnhof / Herkunft', 500, textY);
-        ctx.textAlign = 'right';
-        ctx.fillText('Gleis', width - 60, textY);
+        drawText(ctx, 'Geplant', 35, textY, subFont, '#94a3b8', 'left');
+        drawText(ctx, 'Erwartet', 160, textY, subFont, '#94a3b8', 'left');
+        drawText(ctx, 'Zug', 310, textY, subFont, '#94a3b8', 'left');
+        drawText(ctx, 'Startbahnhof / Herkunft', 500, textY, subFont, '#94a3b8', 'left');
+        drawText(ctx, 'Gleis', width - 60, textY, subFont, '#94a3b8', 'right');
     }
 }
 
@@ -178,11 +172,8 @@ function drawAnkunftRow(ctx, train, x, y, width, height, isAlt, isPortrait) {
     const fontSize = isPortrait ? 30 : 34;
 
     // 1. Geplante Ankunftszeit
-    ctx.font = FONTS.bold(fontSize);
-    ctx.textAlign = 'left';
-    ctx.fillStyle = isAusfall ? '#ef4444' : COLORS.WHITE;
     const plannedTime = train.scheduledTime || '--:--';
-    ctx.fillText(plannedTime, isPortrait ? 30 : 35, textY);
+    drawText(ctx, plannedTime, isPortrait ? 30 : 35, textY, FONTS.bold(fontSize), isAusfall ? '#ef4444' : COLORS.WHITE, 'left');
     const scheduledCenterY = textY - getVerticalCenterOffset(ctx);
 
     if (isAusfall) {
@@ -198,9 +189,7 @@ function drawAnkunftRow(ctx, train, x, y, width, height, isAlt, isPortrait) {
     // 2. Erwartete Ankunftszeit (Verspätung)
     const expX = isPortrait ? 125 : 160;
     if (isAusfall) {
-        ctx.font = FONTS.bold(isPortrait ? 22 : 24);
-        ctx.fillStyle = '#ef4444';
-        ctx.fillText('Fällt aus', expX, textY);
+        drawText(ctx, 'Fällt aus', expX, textY, FONTS.bold(isPortrait ? 22 : 24), '#ef4444', 'left');
     } else if (train.expectedTime && train.expectedTime !== train.scheduledTime) {
         drawInvertedTimeBox(ctx, train.expectedTime, expX, scheduledCenterY, FONTS.bold(isPortrait ? 26 : 28), {
             paddingX: 8,
@@ -252,11 +241,11 @@ function drawAnkunftRow(ctx, train, x, y, width, height, isAlt, isPortrait) {
     const maxOriginW = isPortrait ? (width - originX - 160) : (width - originX - 300);
     originStation = truncateWithEllipsis(ctx, originStation, maxOriginW);
 
-    ctx.fillText(originStation, originX, textY);
+    drawText(ctx, originStation, originX, textY, FONTS.bold(fontSize), isAusfall ? '#94a3b8' : COLORS.WHITE, 'left');
 
     if (hasAirport) {
         const oWidth = ctx.measureText(originStation).width;
-        ctx.fillText(' ✈', originX + oWidth + 5, textY);
+        drawText(ctx, ' ✈', originX + oWidth + 5, textY, FONTS.bold(fontSize), isAusfall ? '#94a3b8' : COLORS.WHITE, 'left');
     }
 
     // 5. Gleis (Rechtsbündig)
@@ -265,7 +254,7 @@ function drawAnkunftRow(ctx, train, x, y, width, height, isAlt, isPortrait) {
     ctx.textAlign = 'right';
     ctx.font = FONTS.bold(fontSize + 2);
     ctx.fillStyle = train.hasTrackChange ? '#f59e0b' : COLORS.WHITE;
-    ctx.fillText(platform, gleisX, textY);
+    drawText(ctx, platform, gleisX, textY, FONTS.bold(fontSize + 2), train.hasTrackChange ? '#f59e0b' : COLORS.WHITE, 'right');
 }
 
 function drawEmptyAnkunftRow(ctx, x, y, width, height, isAlt) {

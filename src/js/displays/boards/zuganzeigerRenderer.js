@@ -84,7 +84,6 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
     let x = drawPictograms(ctx, scrollText, nr, fullScreen, ankunft);
 
     ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
 
     // Lauftext bestimmen
     let infoToScroll = scrollText;
