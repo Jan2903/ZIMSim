@@ -218,7 +218,7 @@ function drawZoomTimeAndDelay(ctx, scheduledTime, expectedTime, x, y, isAusfall)
     if (!isAusfall && expectedTime && expectedTime !== scheduledTime) {
         const timeWidth = ctx.measureText(plannedTime).width;
         const boxX = x + timeWidth + 16;
-        const scheduledCenterY = y - getVerticalCenterOffset(ctx);
+        const scheduledCenterY = y - getVerticalCenterOffset(ctx, expectedTime);
 
         drawInvertedTimeBox(ctx, expectedTime, boxX, scheduledCenterY, FONTS.bold(38), {
             minWidth: 126,

@@ -375,7 +375,7 @@ function drawTrainRow(ctx, train, x, y, width, height, isAlt, isPortrait = false
             // Verspätungskasten: Invertierter, ausgefüllter weißer eckiger (nicht gerundeter) Kasten
             const schedW = ctx.measureText(schedTime).width;
             const delayBoxX = col1X + schedW + (isPortrait ? 10 : 12);
-            const scheduledCenterY = timeY - getVerticalCenterOffset(ctx);
+            const scheduledCenterY = timeY - getVerticalCenterOffset(ctx, train.expectedTime);
 
             drawInvertedTimeBox(ctx, train.expectedTime, delayBoxX, scheduledCenterY, FONTS.bold(isPortrait ? 22 : 32), {
                 minWidth: isPortrait ? 78 : 96,

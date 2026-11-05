@@ -182,7 +182,7 @@ function drawPlanRow(ctx, trainGroup, platform, x, y, width, height, sectorStart
         // Verspätungsfeld (invertierter, eckiger Kasten wie auf den übrigen Tafeln)
         const schedW = ctx.measureText(primary.scheduledTime || '--:--').width;
         const delayX = col1X + schedW + 12;
-        const scheduledCenterY = timeY - getVerticalCenterOffset(ctx);
+        const scheduledCenterY = timeY - getVerticalCenterOffset(ctx, primary.expectedTime);
 
         drawInvertedTimeBox(ctx, primary.expectedTime, delayX, scheduledCenterY, FONTS.bold(isPortrait ? 22 : 26), {
             minWidth: isPortrait ? 85 : 100,

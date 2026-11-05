@@ -174,7 +174,7 @@ function drawAnkunftRow(ctx, train, x, y, width, height, isAlt, isPortrait) {
     // 1. Geplante Ankunftszeit
     const plannedTime = train.scheduledTime || '--:--';
     drawText(ctx, plannedTime, isPortrait ? 30 : 35, textY, FONTS.bold(fontSize), isAusfall ? '#ef4444' : COLORS.WHITE, 'left');
-    const scheduledCenterY = textY - getVerticalCenterOffset(ctx);
+    const scheduledCenterY = textY - getVerticalCenterOffset(ctx, train.expectedTime);
 
     if (isAusfall) {
         // Zeit durchstreichen

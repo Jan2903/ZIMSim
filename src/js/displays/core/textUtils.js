@@ -85,7 +85,10 @@ function getFontMetrics(ctx) {
  * @param {CanvasRenderingContext2D} ctx - Kontext, dessen font bereits gesetzt ist.
  * @returns {number} Versatz in Pixeln.
  */
-export function getVerticalCenterOffset(ctx) {
+export function getVerticalCenterOffset(ctx, text) {
+    if (text) {
+        return getTextVerticalCenterOffset(ctx, text);
+    }
     const { ascent, descent } = getFontMetrics(ctx);
     return (ascent - descent) / 2;
 }
@@ -122,9 +125,14 @@ function getTextVerticalCenterOffset(ctx, text) {
  * Wird benötigt, um `textBaseline = 'top'` (engine-abhängig) zu ersetzen.
  *
  * @param {CanvasRenderingContext2D} ctx - Kontext, dessen font bereits gesetzt ist.
+ * @param {string} [text] - Optional: konkreter Text für tinte-basierte Ascent-Ermittlung.
  * @returns {number} Ascent in Pixeln.
  */
-export function getFontAscent(ctx) {
+export function getFontAscent(ctx, text) {
+    if (text) {
+        const ascent = ctx.measureText(text).actualBoundingBoxAscent;
+        if (Number.isFinite(ascent) && ascent > 0) return ascent;
+    }
     return getFontMetrics(ctx).ascent;
 }
 
@@ -171,11 +179,11 @@ export function drawText(ctx, text, x, y, font, textColor, textAlign) {
     if (previousBaseline === 'middle') {
         // Layouts setzen y hier als vertikale Mittelachse (historisch 'middle').
         ctx.textBaseline = 'alphabetic';
-        ctx.fillText(text, roundCoord(x), roundCoord(y + getVerticalCenterOffset(ctx)));
+        ctx.fillText(text, roundCoord(x), roundCoord(y + getVerticalCenterOffset(ctx, text)));
     } else if (previousBaseline === 'top') {
         // 'top' ist engine-abhängig (Glyph- vs. Font-Box); explizit über Ascent.
         ctx.textBaseline = 'alphabetic';
-        ctx.fillText(text, roundCoord(x), roundCoord(y + getFontAscent(ctx)));
+        ctx.fillText(text, roundCoord(x), roundCoord(y + getFontAscent(ctx, text)));
     } else {
         ctx.fillText(text, roundCoord(x), roundCoord(y));
     }
