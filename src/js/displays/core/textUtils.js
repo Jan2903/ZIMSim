@@ -320,9 +320,9 @@ export function drawLineBadge(ctx, text, x, y, width, height, options = {}) {
 
     ctx.save();
 
-    // 1. Pfad definieren
+    // 1. Pfad definieren (ganzzahlig, damit Box und Text konsistent ausgerichtet sind)
     ctx.beginPath();
-    ctx.roundRect(x, y, width, height, radius);
+    ctx.roundRect(roundCoord(x), roundCoord(y), roundCoord(width), roundCoord(height), roundCoord(radius));
 
     // 2. Füllung & Rahmen
     if (shape === 'outline') {
@@ -470,7 +470,7 @@ export function drawTextInRectangle(ctx, text, x, y, font, textAlign, textHeight
         }
 
         ctx.beginPath();
-        ctx.roundRect(boxX, boxY, boxWidth, boxHeight, boxRadius);
+        ctx.roundRect(roundCoord(boxX), roundCoord(boxY), roundCoord(boxWidth), roundCoord(boxHeight), roundCoord(boxRadius));
 
         if (isOutline || (inverted && boxBorderColor && boxBorderColor !== 'transparent')) {
             if (boxBg && boxBg !== 'transparent') {
@@ -549,14 +549,14 @@ export function drawInvertedTimeBox(ctx, text, x, yCenter, font, options = {}) {
     const { ascent, descent } = getFontMetrics(ctx);
     const boxWidth = Math.max(minWidth, textWidth + 2 * paddingX);
     const boxHeight = height !== null ? height : ascent + descent + 2 * paddingY;
-    const boxX = x;
-    const boxY = yCenter - boxHeight / 2;
+    const boxX = roundCoord(x);
+    const boxY = roundCoord(yCenter - boxHeight / 2);
 
     ctx.beginPath();
     if (cornerRadius > 0 && typeof ctx.roundRect === 'function') {
-        ctx.roundRect(boxX, boxY, boxWidth, boxHeight, cornerRadius);
+        ctx.roundRect(boxX, boxY, roundCoord(boxWidth), roundCoord(boxHeight), roundCoord(cornerRadius));
     } else {
-        ctx.rect(boxX, boxY, boxWidth, boxHeight);
+        ctx.rect(boxX, boxY, roundCoord(boxWidth), roundCoord(boxHeight));
     }
     ctx.fillStyle = backgroundColor;
     ctx.fill();
