@@ -157,7 +157,10 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
             const fromDestination = primary.destinationLang || primary.destination || "";
             drawText(ctx, "Bitte nicht einsteigen", 110, 450, FONTS.regular(180), COLORS.WHITE, 'left');
             drawText(ctx, "Please do not board", 105, 670, FONTS.italic(180), COLORS.WHITE, 'left');
-            drawText(ctx, 'von / from ' + fromDestination, 112, 850, FONTS.regular(70), COLORS.WHITE, 'left');
+            ctx.font = FONTS.regular(70);
+            ctx.fillStyle = COLORS.WHITE;
+            ctx.textAlign = 'left';
+            fillTextCentered(ctx, 'von / from ' + fromDestination, 112, 850);
         } else if (isMerged) {
             ctx.font = FONTS.regular(200);
             ctx.fillStyle = COLORS.WHITE;
@@ -173,7 +176,10 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
                 trainRenderCtx, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true, true);
 
             let yPos = 470;
-            drawText(ctx, primary.destinationLang || primary.destination, 100, yPos, FONTS.regular(200), COLORS.WHITE, 'left');
+            ctx.font = FONTS.regular(200);
+            ctx.fillStyle = COLORS.WHITE;
+            ctx.textAlign = 'left';
+            fillTextCentered(ctx, primary.destinationLang || primary.destination, 100, yPos);
             const viaText = (primary.vias || []).join(' - ');
             drawWrappedText(ctx, viaText, 112, yPos + 200,  1800,100,FONTS.regular(75), COLORS.WHITE, 'left', 2);
         } else {
@@ -209,7 +215,10 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
                         { ...trainRenderCtx, operator: journey.operator }, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true, true);
 
                     let yPos = 360;
-                    drawText(ctx, journey.destinationLang || journey.destination, xOffset + 50, yPos, FONTS.regular(128), COLORS.WHITE, 'left');
+                    ctx.font = FONTS.regular(128);
+                    ctx.fillStyle = COLORS.WHITE;
+                    ctx.textAlign = 'left';
+                    fillTextCentered(ctx, journey.destinationLang || journey.destination, xOffset + 50, yPos);
                     yPos += 160;
                     const viaText = (journey.vias || []).join(' - ');
                     drawWrappedText(ctx, viaText, xOffset + 50, yPos, zoneWidth - 100, 100, FONTS.regular(75), COLORS.WHITE, 'left', 3);
@@ -256,7 +265,10 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
                     // 3. Ziel
                     const destX = nextX + 210;
                     let destText = journey.destinationLang || journey.destination;
-                    drawText(ctx, destText, destX, yPos, destFont, COLORS.WHITE, 'left');
+                    ctx.font = destFont;
+                    ctx.fillStyle = COLORS.WHITE;
+                    ctx.textAlign = 'left';
+                    fillTextCentered(ctx, destText, destX, yPos);
 
                     // 4. Abschnitte / Sektoren (rechtsbündig)
                     const sectors = getPlatformSectors(journey, journeys, renderCtx.platform);
@@ -343,7 +355,10 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
                 destText = primary.destinationKurz || primary.destination;
             }
             
-            drawText(ctx, destText, 50, yPos, FONTS.regular(128), textColor, 'left');
+            ctx.font = FONTS.regular(128);
+            ctx.fillStyle = textColor;
+            ctx.textAlign = 'left';
+            fillTextCentered(ctx, destText, 50, yPos);
             yPos += 160;
             
             let infoToDraw = null;
@@ -384,7 +399,9 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
                     destText = journey.destinationKurz || journey.destination;
                 }
                 
-                drawText(ctx, destText, 50, yPos, destFont, textColor, 'left');
+                ctx.fillStyle = textColor;
+                ctx.textAlign = 'left';
+                fillTextCentered(ctx, destText, 50, yPos);
                 drawTextInRectangle(ctx, formatDisplayName(journey.effectiveDisplayName, journeyStore.nrwMode), 890, yPos, FONTS.regular(badgeFont), 'right', badgeFont, 10,
                     { ...trainRenderCtx, operator: journey.operator }, 0, COLORS.DIM_GREY, COLORS.WHITE, false, true, true);
                 
