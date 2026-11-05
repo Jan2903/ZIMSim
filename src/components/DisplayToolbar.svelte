@@ -384,9 +384,6 @@
         .label-text {
             display: none;
         }
-        .shortcut-text {
-            display: none;
-        }
         .display-toolbar-btn {
             min-height: 44px;
             min-width: 44px;

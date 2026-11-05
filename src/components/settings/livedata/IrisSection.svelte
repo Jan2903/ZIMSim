@@ -183,10 +183,10 @@
             DB IRIS liefert reine Fahrplandaten. Wagenreihungen ([W]) und Formationen werden modular über die gewählte Quelle bezogen.
         </p>
 
-        <label class="field-label" style="display: block; margin-bottom: 4px;">
+        <label class="field-label" for="iris-formation-source" style="display: block; margin-bottom: 4px;">
             Quelle für Wagenreihungen (IRIS-Fahrten):
         </label>
-        <select class="form-select" bind:value={liveDataConfig.formationSource}>
+        <select id="iris-formation-source" class="form-select" bind:value={liveDataConfig.formationSource}>
             <option value="db_navigator">DB Navigator (Wagenreihung-Indikator, exakte Gleisposition)</option>
             <option value="dbweb">bahn.de Web API (Zwischenhalte, RIS-Gründe)</option>
         </select>
