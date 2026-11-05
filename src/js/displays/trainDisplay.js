@@ -48,7 +48,7 @@ export class TrainDisplay {
     }
 
     get currentLayout() {
-        return this._customLayout || displayConfigStore.currentLayout;
+        return displayConfigStore.currentLayout || this._customLayout;
     }
 
     set currentLayout(val) {

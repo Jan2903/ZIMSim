@@ -89,8 +89,6 @@
      */
     function handleMonitorChange(monitorId) {
         displayConfigStore.setMonitorId(monitorId);
-        trainDisplay.updateAll();
-        window.dispatchEvent(new Event('resize'));
     }
 
     /**

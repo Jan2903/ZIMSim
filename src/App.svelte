@@ -52,6 +52,7 @@
     let wrapperHeight = $derived(displayConfigStore.wrapperHeight);
     let canvasOffsetX = $derived(displayConfigStore.canvasOffsetX);
     let canvasOffsetY = $derived(displayConfigStore.canvasOffsetY);
+    let currentLayout = $derived(displayConfigStore.currentLayout);
 
     /**
      * Schaltet das Gehäuse-Overlay (Rahmen & Steg) um.
@@ -450,11 +451,11 @@
                     height={wrapperHeight} 
                     paddingX={canvasOffsetX} 
                     paddingY={canvasOffsetY} 
-                    layout={trainDisplay.currentLayout} 
+                    layout={currentLayout} 
                 />
                 <div 
                     class="display-bezel-lip" 
-                    style="left: {canvasOffsetX}px; top: {canvasOffsetY}px; width: {trainDisplay.currentLayout.width}px; height: {trainDisplay.currentLayout.height}px;"
+                    style="left: {canvasOffsetX}px; top: {canvasOffsetY}px; width: {currentLayout.width}px; height: {currentLayout.height}px;"
                 ></div>
             {/if}
 
