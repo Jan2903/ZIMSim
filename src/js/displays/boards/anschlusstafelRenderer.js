@@ -99,41 +99,31 @@ export function drawVoranzeigerBoard(ctx, journeys = [], width = 1920, height = 
         ctx.globalAlpha = renderCtx.departurePageAlpha;
     }
 
-    if (consolidatedTrains.length === 0) {
-        // Hinweis bei keinen Abfahrten
-        const centerY = HEADER_HEIGHT + (usableTrainHeight / 2);
-        drawText(ctx, 'Keine Abfahrten im gewählten Zeitraum', width / 2, centerY - 15, FONTS.bold(isPortrait ? 30 : 38), '#94a3b8', 'center');
-        drawText(ctx, 'No departures scheduled in this time period', width / 2, centerY + 25, FONTS.italic(isPortrait ? 22 : 26), '#64748b', 'center');
-    } else {
-        for (let i = 0; i < availableTrainRows; i++) {
-            const rowY = HEADER_HEIGHT + (i * trainRowHeight);
-            const train = visibleTrains[i];
+    for (let i = 0; i < availableTrainRows; i++) {
+        const rowY = HEADER_HEIGHT + (i * trainRowHeight);
+        const train = visibleTrains[i];
 
-            if (train) {
-                const prevTrain = visibleTrains[i - 1];
-                const nextTrain = visibleTrains[i + 1];
+        if (!train) continue;
 
-                const isCoupledWithPrev = !!(prevTrain && (
-                    (train.couplingGroupId && train.couplingGroupId === prevTrain.couplingGroupId) ||
-                    (train.coupled && prevTrain.coupled && train.platform === prevTrain.platform && train.scheduledTime === prevTrain.scheduledTime)
-                ));
+        const prevTrain = visibleTrains[i - 1];
+        const nextTrain = visibleTrains[i + 1];
 
-                const isCoupledWithNext = !!(nextTrain && (
-                    (train.couplingGroupId && train.couplingGroupId === nextTrain.couplingGroupId) ||
-                    (train.coupled && nextTrain.coupled && train.platform === nextTrain.platform && train.scheduledTime === nextTrain.scheduledTime)
-                ));
+        const isCoupledWithPrev = !!(prevTrain && (
+            (train.couplingGroupId && train.couplingGroupId === prevTrain.couplingGroupId) ||
+            (train.coupled && prevTrain.coupled && train.platform === prevTrain.platform && train.scheduledTime === prevTrain.scheduledTime)
+        ));
 
-                drawTrainRow(ctx, train, 0, rowY, width, trainRowHeight, i % 2 === 1, isPortrait, {
-                    isCoupledWithPrev,
-                    isCoupledWithNext,
-                    prevTrain,
-                    nextTrain
-                });
-            } else {
-                // Leere Zeilen bei dünnem Fahrplan auffüllen
-                drawEmptyRow(ctx, 0, rowY, width, trainRowHeight, i % 2 === 1, isPortrait);
-            }
-        }
+        const isCoupledWithNext = !!(nextTrain && (
+            (train.couplingGroupId && train.couplingGroupId === nextTrain.couplingGroupId) ||
+            (train.coupled && nextTrain.coupled && train.platform === nextTrain.platform && train.scheduledTime === nextTrain.scheduledTime)
+        ));
+
+        drawTrainRow(ctx, train, 0, rowY, width, trainRowHeight, i % 2 === 1, isPortrait, {
+            isCoupledWithPrev,
+            isCoupledWithNext,
+            prevTrain,
+            nextTrain
+        });
     }
     ctx.restore();
 
@@ -494,30 +484,6 @@ function drawTrainRow(ctx, train, x, y, width, height, isAlt, isPortrait = false
             drawQualityIcons(ctx, qualityText, displayName, leftX, iconY, iconSize, gap, 2, 'left');
         }
     }
-}
-
-/**
- * Zeichnet eine saubere leere Zeile bei unvollständiger Belegung mit segmentierten Teilstrichen oben.
- * @param {CanvasRenderingContext2D} ctx - Canvas Kontext
- * @param {number} x - X-Position
- * @param {number} y - Y-Position (oberer Rand)
- * @param {number} width - Zeilenbreite
- * @param {number} height - Zeilenhöhe
- * @param {boolean} isAlt - Alternierender Zeilenhintergrund
- * @param {boolean} [isPortrait=false] - Ob Hochformat aktiv ist
- * @returns {void}
- */
-function drawEmptyRow(ctx, x, y, width, height, isAlt, isPortrait = false) {
-    ctx.fillStyle = COLORS.MIDNIGHT_BLUE;
-    ctx.fillRect(x, y, width, height);
-
-    const { col1X, col1W, col2X, col2W, col3X, col3W, col4X, col4W } = getColumnGeometry(width, isPortrait);
-
-    ctx.fillStyle = COLORS.WHITE;
-    ctx.fillRect(col1X, y, col1W, 2);
-    ctx.fillRect(col2X, y, col2W, 2);
-    ctx.fillRect(col3X, y, col3W, 2);
-    ctx.fillRect(col4X, y, col4W, 2);
 }
 
 /**
