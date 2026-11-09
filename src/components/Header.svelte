@@ -180,6 +180,7 @@
     <div class="header-brand">
         <h1 class="header-title">ZugInfoMonitor</h1>
         <span class="header-badge">ZIMSim</span>
+        <span class="header-badge-beta">BETA</span>
     </div>
     
     <div class="header-actions">
@@ -330,6 +331,19 @@
         border-radius: 4px;
         letter-spacing: 0.5px;
         text-transform: uppercase;
+    }
+
+    .header-badge-beta {
+        font-size: 0.68rem;
+        font-weight: 700;
+        background: rgba(239, 68, 68, 0.15);
+        color: #fca5a5;
+        border: 1px solid rgba(239, 68, 68, 0.35);
+        padding: 2px 6px;
+        border-radius: 4px;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        margin-left: 6px;
     }
 
     .header-actions {

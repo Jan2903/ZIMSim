@@ -6,7 +6,7 @@
     import { ScreenSyncService } from './js/core/services/screenSyncService.js';
     import { ansagenStore } from './js/audio/ansagenStore.svelte.js';
     import { displayConfigStore } from './js/displays/core/displayConfigStore.svelte.js';
-    import { selectTab } from './js/core/state/uiState.svelte.js';
+    import { selectTab, uiState } from './js/core/state/uiState.svelte.js';
     import Header from './components/Header.svelte';
     import DisplayToolbar from './components/DisplayToolbar.svelte';
     import SettingsPanel from './components/SettingsPanel.svelte';
@@ -17,6 +17,7 @@
     import ConfirmDialog from './components/ConfirmDialog.svelte';
     import ZimIcon from './components/ZimIcon.svelte';
     import HardwareBezel from './components/HardwareBezel.svelte';
+    import SettingsFooter from './components/settings/SettingsFooter.svelte';
     import { lineColorService } from './js/core/services/lineColorService.svelte.js';
 
     let modalsComp = $state();
@@ -455,6 +456,10 @@
 />
 
 <SettingsPanel {modalsComp} />
+
+{#if uiState.activeTab}
+    <SettingsFooter />
+{/if}
 
 <Modals bind:this={modalsComp} />
 
