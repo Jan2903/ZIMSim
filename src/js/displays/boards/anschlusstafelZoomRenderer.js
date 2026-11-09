@@ -4,6 +4,7 @@ import { truncateWithEllipsis, drawLineBadge, drawInvertedTimeBox, getVerticalCe
 import { drawQualityIcons } from '../primitives/pictogramRenderer.js';
 import { lineColorService } from '../../core/services/lineColorService.svelte.js';
 import { JourneyCouplingService } from '../../features/journey/services/journeyCouplingService.js';
+import { JourneyViaService } from '../../features/journey/services/journeyViaService.js';
 import { journeyStore } from '../../core/state/stores.js';
 
 /**
@@ -272,16 +273,27 @@ function drawZoomMiddleColumn(ctx, train, isAusfall, x, upperY, lowerY, availabl
         }
     } else {
         // Reguläre Via-Kette
-        let viaStr = '';
-        if (train.vias && train.vias.length > 0) {
-            viaStr = train.vias.join(' – ');
-        }
-        if (train.verkehrtAb && train.verkehrtAb !== '0') {
-            viaStr = `Verkehrt ab ${train.verkehrtAb} – ${viaStr}`;
+        const viaFont = FONTS.bold(42);
+        const viaPrefix = (train.verkehrtAb && train.verkehrtAb !== '0')
+            ? `Verkehrt ab ${train.verkehrtAb}`
+            : '';
+        const viaNames = JourneyViaService.getDisplayVias(train, {
+            maxWidth: availableWidth,
+            maxLines: 1,
+            font: viaFont,
+            separator: ' – ',
+            prefix: viaPrefix ? `${viaPrefix} – ` : ''
+        }).map(s => s.nameKurz || s.name).join(' – ');
+
+        let viaStr = viaNames;
+        if (viaPrefix) {
+            viaStr = viaNames ? `${viaPrefix} – ${viaNames}` : viaPrefix;
         }
 
         if (viaStr) {
-            drawText(ctx, viaStr, x, upperY, FONTS.bold(42), isAusfall ? COLORS.NAVY : '#cbd5e1', 'left');
+            ctx.font = viaFont;
+            viaStr = truncateWithEllipsis(ctx, viaStr, availableWidth);
+            drawText(ctx, viaStr, x, upperY, viaFont, isAusfall ? COLORS.NAVY : '#cbd5e1', 'left');
         }
     }
 

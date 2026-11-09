@@ -7,6 +7,7 @@ import { drawDBLogo, drawAnalogClock } from '../core/sharedRenderers.js';
 import { drawQualityIcons, getMatchingPictogramRules } from '../primitives/pictogramRenderer.js';
 import { JourneyCouplingService } from '../../features/journey/services/journeyCouplingService.js';
 import { JourneyConnectionService } from '../../features/journey/services/journeyConnectionService.js';
+import { JourneyViaService } from '../../features/journey/services/journeyViaService.js';
 import { journeyStore } from '../../core/state/stores.js';
 
 /**
@@ -461,12 +462,27 @@ function drawTrainRow(ctx, train, x, y, width, height, isAlt, isPortrait = false
     if (isAusfall) {
         drawText(ctx, 'Fahrt fällt aus', col2X, viaY, FONTS.bold(isPortrait ? 24 : 32), COLORS.MIDNIGHT_BLUE, 'left');
     } else {
-        let viaStr = (train.vias && train.vias.length > 0) ? train.vias.join(' – ') : '';
-        if (train.verkehrtAb && train.verkehrtAb !== '0') {
-            viaStr = `Verkehrt ab ${train.verkehrtAb} – ${viaStr}`;
+        const viaFont = FONTS.bold(isPortrait ? 20 : 30);
+        const viaPrefix = (train.verkehrtAb && train.verkehrtAb !== '0')
+            ? `Verkehrt ab ${train.verkehrtAb}`
+            : '';
+        const viaNames = JourneyViaService.getDisplayVias(train, {
+            maxWidth: col2W - 20,
+            maxLines: 1,
+            font: viaFont,
+            separator: ' – ',
+            prefix: viaPrefix ? `${viaPrefix} – ` : ''
+        }).map(s => s.nameKurz || s.name).join(' – ');
+
+        let viaStr = viaNames;
+        if (viaPrefix) {
+            viaStr = viaNames ? `${viaPrefix} – ${viaNames}` : viaPrefix;
         }
+        ctx.font = viaFont;
         viaStr = truncateWithEllipsis(ctx, viaStr, col2W - 20);
-        drawText(ctx, viaStr, col2X, viaY, FONTS.bold(isPortrait ? 20 : 30), secondaryColor, 'left');
+        if (viaStr) {
+            drawText(ctx, viaStr, col2X, viaY, viaFont, secondaryColor, 'left');
+        }
     }
 
     // B. Unteres Sub-Element: Fahrtziel

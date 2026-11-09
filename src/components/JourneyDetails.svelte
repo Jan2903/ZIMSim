@@ -169,6 +169,7 @@
         journey.stops.forEach(s => {
             if (!s.cancelled && s.boardingType !== 'ein') {
                 s.showAsVia = !anyOn;
+                s.viaManual = true;
             }
         });
         triggerUpdate();

@@ -373,11 +373,14 @@ export class Journey {
         return this.formation && !this.formation.isEmpty;
     }
 
+    /** Halte, die aktuell als Anzeige-Via markiert und sichtbar sind (chronologisch) */
+    get viaStops() {
+        return this.stops.filter(s => s.showAsVia && (!s.cancelled || this.isCancelled) && s.boardingType !== 'ein');
+    }
+
     /** Dynamisch berechnete Vias anhand der Halteliste (für Anzeige) */
     get vias() {
-        return this.stops
-            .filter(s => s.showAsVia && (!s.cancelled || this.isCancelled) && s.boardingType !== 'ein')
-            .map(s => s.nameKurz || s.name);
+        return this.viaStops.map(s => s.nameKurz || s.name);
     }
 
     /** Dynamisch berechnete Vias für die Ansagen */
@@ -447,13 +450,14 @@ export class Journey {
             this.destination = this.stops[this.stops.length - 1]?.name || '';
         }
 
-        // Vias werden dynamisch über die Stops-Liste gesteuert
-        const hasVias = this.stops.some(s => s.showAsVia);
-        const hasAudioVias = this.stops.some(s => s.audioVia);
-        if (!hasVias && !this.ankunft) {
+        // Vias werden dynamisch über die Stops-Liste gesteuert.
+        // Automatische Auswahl nur, wenn keine manuelle Markierung vorliegt.
+        const hasManualVias = this.stops.some(s => s.viaManual);
+        const hasManualAudioVias = this.stops.some(s => s.audioViaManual);
+        if (!hasManualVias && !this.ankunft) {
             this.autoGenerateVias();
         }
-        if (!hasAudioVias && !this.ankunft) {
+        if (!hasManualAudioVias && !this.ankunft) {
             this.autoGenerateAudioVias(viaOptions.maxVias ?? 4, viaOptions.sortMode ?? 2, viaOptions.allVias ?? false);
         }
 

@@ -46,11 +46,13 @@
 
     function toggleVia(stop) {
         stop.showAsVia = !stop.showAsVia;
+        stop.viaManual = true;
         triggerUpdate();
     }
 
     function toggleAudioVia(stop) {
         stop.audioVia = !stop.audioVia;
+        stop.audioViaManual = true;
         triggerUpdate();
     }
 

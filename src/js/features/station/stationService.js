@@ -59,10 +59,11 @@ export class StationService {
                         j.stops.forEach(s => s.enrichWithStationData());
                     }
                     if (!j.ankunft && j.stops && j.stops.length > 0) {
-                        if (!j.stops.some(s => s.audioVia)) {
+                        // Nur automatisch neu aufbauen, wenn keine manuelle Auswahl existiert.
+                        if (!j.stops.some(s => s.audioViaManual)) {
                             j.autoGenerateAudioVias(ansagenStore.effectiveMaxVias, ansagenStore.viaSortMode, ansagenStore.allVias);
                         }
-                        if (!j.stops.some(s => s.showAsVia)) {
+                        if (!j.stops.some(s => s.viaManual)) {
                             j.autoGenerateVias();
                         }
                     }

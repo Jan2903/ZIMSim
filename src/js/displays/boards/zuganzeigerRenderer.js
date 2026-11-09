@@ -6,6 +6,7 @@ import { drawPictograms } from '../primitives/pictogramRenderer.js';
 import { calculateCoachPositions, getSectorsForCoaches, getPlatformSectors } from '../../features/formation/formationUtils.js';
 import { formatDisplayName, combineTrainNames } from '../../features/journey/trainNumberFormatter.js';
 import { JourneyCouplingService } from '../../features/journey/services/journeyCouplingService.js';
+import { JourneyViaService } from '../../features/journey/services/journeyViaService.js';
 import { journeyStore } from '../../core/state/stores.js';
 
 function areJourneysMerged(journeys) {
@@ -180,8 +181,14 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
             ctx.fillStyle = COLORS.WHITE;
             ctx.textAlign = 'left';
             fillTextCentered(ctx, primary.destinationLang || primary.destination, 100, yPos);
-            const viaText = (primary.vias || []).join(' - ');
-            drawWrappedText(ctx, viaText, 112, yPos + 200,  1800,100,FONTS.regular(75), COLORS.WHITE, 'left', 2);
+            const viaText = JourneyViaService.getDisplayVias(primary, {
+                maxWidth: 1800,
+                maxLines: 2,
+                font: FONTS.regular(75)
+            }).map(s => s.nameKurz || s.name).join(' - ');
+            if (viaText) {
+                drawWrappedText(ctx, viaText, 112, yPos + 200,  1800,100,FONTS.regular(75), COLORS.WHITE, 'left', 2);
+            }
         } else {
             const maxTrains = Math.min(journeys.length, 4);
 
@@ -220,8 +227,14 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
                     ctx.textAlign = 'left';
                     fillTextCentered(ctx, journey.destinationLang || journey.destination, xOffset + 50, yPos);
                     yPos += 160;
-                    const viaText = (journey.vias || []).join(' - ');
-                    drawWrappedText(ctx, viaText, xOffset + 50, yPos, zoneWidth - 100, 100, FONTS.regular(75), COLORS.WHITE, 'left', 3);
+                    const viaText = JourneyViaService.getDisplayVias(journey, {
+                        maxWidth: zoneWidth - 100,
+                        maxLines: 3,
+                        font: FONTS.regular(75)
+                    }).map(s => s.nameKurz || s.name).join(' - ');
+                    if (viaText) {
+                        drawWrappedText(ctx, viaText, xOffset + 50, yPos, zoneWidth - 100, 100, FONTS.regular(75), COLORS.WHITE, 'left', 3);
+                    }
                 }
             } else {
                 // Bei mehr als 2 Zügen/Zielen (3 oder 4): Vertikal untereinander mit Klammer wie Nebenmonitor
@@ -277,9 +290,16 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
                     }
 
                     // 5. Optionale Vias (nur bei 3 Zügen, bei 4 Zeilen Platzgründe)
-                    if (maxTrains === 3 && journey.vias && journey.vias.length > 0) {
-                        const viaText = journey.vias.slice(0, 4).join(' - ');
-                        drawWrappedText(ctx, viaText, destX, yPos + 60, 950, 60, viaFont, COLORS.WHITE, 'left', 1);
+                    if (maxTrains === 3) {
+                        const viaText = JourneyViaService.getDisplayVias(journey, {
+                            maxWidth: 950,
+                            maxLines: 1,
+                            font: viaFont,
+                            maxCount: 4
+                        }).map(s => s.nameKurz || s.name).join(' - ');
+                        if (viaText) {
+                            drawWrappedText(ctx, viaText, destX, yPos + 60, 950, 60, viaFont, COLORS.WHITE, 'left', 1);
+                        }
                     }
                 }
 
@@ -370,12 +390,18 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
                 const viaFont = FONTS.regular(isDisrupted ? 70 : 75);
                 drawWrappedText(ctx, infoToDraw, 50, yPos, 880, 100, viaFont, textColor, 'left', 3);
             } else if (!ausfall) {
-                let viaText = (primary.vias || []).join(' - ');
+                let viaText = JourneyViaService.getDisplayVias(primary, {
+                    maxWidth: 880,
+                    maxLines: 3,
+                    font: FONTS.regular(isDisrupted ? 70 : 75)
+                }).map(s => s.nameKurz || s.name).join(' - ');
                 if (verkehrtAb !== "0") {
                     viaText = 'Verkehrt heute ab / Departing today from ' + verkehrtAb;
                 }
                 const viaFont = FONTS.regular(isDisrupted ? 70 : 75);
-                drawWrappedText(ctx, viaText, 50, yPos, 880, 100, viaFont, textColor, 'left', 3);
+                if (viaText) {
+                    drawWrappedText(ctx, viaText, 50, yPos, 880, 100, viaFont, textColor, 'left', 3);
+                }
             }
         } else {
             const maxTrains = Math.min(journeys.length, 4);

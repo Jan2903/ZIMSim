@@ -8,6 +8,7 @@ import { getSimulatedTime } from '../../core/utils/config.js';
 import { formatHHMM } from '../../core/utils/dateUtils.js';
 import { combineTrainNames } from '../../features/journey/trainNumberFormatter.js';
 import { JourneyCouplingService } from '../../features/journey/services/journeyCouplingService.js';
+import { JourneyViaService } from '../../features/journey/services/journeyViaService.js';
 import { lineColorService } from '../../core/services/lineColorService.svelte.js';
 
 function drawVitrineHeader(ctx, width, activeFeatureIndex, progress, trackNumber, featureAlpha = 1.0) {
@@ -104,16 +105,25 @@ function drawVitrineTrainLabel(ctx, journey, x, yOffset, maxWidth, displayName =
     const destText = truncateWithEllipsis(ctx, dest, availableWidth);
     drawText(ctx, destText, x, yOffset + 135, destFont, COLORS.WHITE, 'left');
 
-    const vias = (journey.vias || []).join(" - ");
-    if (vias) {
-        const destWidth = ctx.measureText(destText + " ").width;
-        const viaFont = FONTS.regular(35);
-        const viaMaxWidth = Math.max(0, availableWidth - destWidth - 10);
-        ctx.font = viaFont;
-        const viaText = viaMaxWidth > 10
-            ? truncateWithEllipsis(ctx, "über " + vias, viaMaxWidth)
-            : "";
-        if (viaText) {
+    const viaFont = FONTS.regular(35);
+    const destWidth = ctx.measureText(destText + " ").width;
+    const viaMaxWidth = Math.max(0, availableWidth - destWidth - 10);
+
+    // Nur zeichnen, wenn nach dem Zielbahnhof überhaupt sinnvoll Platz bleibt.
+    ctx.font = viaFont;
+    const viaPrefix = "über ";
+    const minViaWidth = ctx.measureText(viaPrefix).width + 40;
+    if (viaMaxWidth >= minViaWidth) {
+        const viaNames = JourneyViaService.getDisplayVias(journey, {
+            maxWidth: viaMaxWidth,
+            maxLines: 1,
+            font: viaFont,
+            separator: " - ",
+            prefix: viaPrefix
+        }).map(s => s.nameKurz || s.name).join(" - ");
+
+        if (viaNames) {
+            const viaText = truncateWithEllipsis(ctx, viaPrefix + viaNames, viaMaxWidth);
             drawText(ctx, viaText, x + destWidth + 10, yOffset + 133, viaFont, COLORS.WHITE, 'left');
         }
     }

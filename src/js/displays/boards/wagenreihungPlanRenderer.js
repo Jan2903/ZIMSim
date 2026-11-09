@@ -6,6 +6,7 @@ import { drawFormation, drawSectors } from '../primitives/formationRenderer.js';
 import { drawDBLogo, drawAnalogClock } from '../core/sharedRenderers.js';
 import { drawInvertedTimeBox, getVerticalCenterOffset, truncateWithEllipsis, drawText, drawTextInRectangle } from '../core/textUtils.js';
 import { lineColorService } from '../../core/services/lineColorService.svelte.js';
+import { JourneyViaService } from '../../features/journey/services/journeyViaService.js';
 
 /**
  * Renderer für den Digitalen Wagenreihungsplan der DB.
@@ -211,12 +212,17 @@ function drawPlanRow(ctx, trainGroup, platform, x, y, width, height, sectorStart
     drawText(ctx, destText, col2X, y + (height * 0.28), FONTS.bold(isPortrait ? 34 : 42), isAusfall ? '#94a3b8' : COLORS.WHITE, 'left');
 
     // 2. Zwischenhalte / Vias
-    const vias = (primary.vias || []).join(' - ');
-    if (vias) {
-        let viaDisplay = vias;
-        const maxViaW = sectorUsableWidth;
-        viaDisplay = truncateWithEllipsis(ctx, viaDisplay, maxViaW);
-        drawText(ctx, viaDisplay, col2X, y + (height * 0.44), FONTS.regular(isPortrait ? 18 : 22), '#94a3b8', 'left');
+    const viaFont = FONTS.regular(isPortrait ? 18 : 22);
+    const viaText = JourneyViaService.getDisplayVias(primary, {
+        maxWidth: sectorUsableWidth,
+        maxLines: 1,
+        font: viaFont,
+        separator: ' - '
+    }).map(s => s.nameKurz || s.name).join(' - ');
+    if (viaText) {
+        ctx.font = viaFont;
+        const viaDisplay = truncateWithEllipsis(ctx, viaText, sectorUsableWidth);
+        drawText(ctx, viaDisplay, col2X, y + (height * 0.44), viaFont, '#94a3b8', 'left');
     }
 
     // 3. Wagenreihung maßstäblich zeichnen (sauber skaliert, um Zeilenüberlauf zu verhindern)
