@@ -6,6 +6,7 @@
     import { LAYOUT_TYPES } from '../js/displays/core/displayLayoutService.js';
     import { trainDisplay } from '../js/core/state/stores.js';
     import { selectTab } from '../js/core/state/uiState.svelte.js';
+    import { watchReducedTransparency } from '../js/core/utils/systemPreferences.js';
 
     /**
      * @typedef {Object} Props
@@ -59,12 +60,10 @@
     }
 
     onMount(() => {
-        // Reduce Transparency vom Backend abhören
-        if (typeof window !== 'undefined' && window.__TAURI__) {
-            window.__TAURI__.event.listen('reduce-transparency-changed', (event) => {
-                reduceTransparency = event.payload;
-            });
-        }
+        // Systemeinstellung "Transparenz reduzieren" beobachten (CSS-Media-Query)
+        return watchReducedTransparency((value) => {
+            reduceTransparency = value;
+        });
     });
 </script>
 

@@ -2,6 +2,7 @@
     import { onMount } from 'svelte';
     import { journeyStore, trainDisplay } from './js/core/state/stores.js';
     import { downloadDisplayScreenshot } from './js/core/utils/screenshot.js';
+    import { watchReducedTransparency } from './js/core/utils/systemPreferences.js';
     import { ScreenSyncService } from './js/core/services/screenSyncService.js';
     import { ansagenStore } from './js/audio/ansagenStore.svelte.js';
     import { displayConfigStore } from './js/displays/core/displayConfigStore.svelte.js';
@@ -53,18 +54,6 @@
     let canvasOffsetX = $derived(displayConfigStore.canvasOffsetX);
     let canvasOffsetY = $derived(displayConfigStore.canvasOffsetY);
     let currentLayout = $derived(displayConfigStore.currentLayout);
-
-    /**
-     * Schaltet das Gehäuse-Overlay (Rahmen & Steg) um.
-     * @returns {void}
-     */
-    function toggleBezel() {
-        displayConfigStore.toggleBezel();
-        setTimeout(() => {
-            handleResize();
-            trainDisplay.updateAll();
-        }, 50);
-    }
 
     /**
      * Schaltet zwischen Fit- und Scroll-Modus um.
@@ -155,49 +144,6 @@
                 ? { svgElement, width: wrapperWidth, height: wrapperHeight, offsetX: canvasOffsetX, offsetY: canvasOffsetY }
                 : null
         });
-    }
-
-    // Tauri Menu Events verarbeiten
-    function handleMenuEvent(eventName, detail) {
-        switch (eventName) {
-            case 'menu-open-settings':
-                selectTab('system');
-                const el = document.querySelector('.settings-container');
-                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                break;
-            case 'menu-add-journey':
-                journeyStore.addJourney();
-                break;
-            case 'menu-import-journeys':
-                // TODO: Import dialog
-                break;
-            case 'menu-export-journeys':
-                // TODO: Export dialog
-                break;
-            case 'menu-screenshot':
-                downloadScreenshot();
-                break;
-            case 'menu-toggle-fullscreen':
-                toggleFullscreen();
-                break;
-            case 'menu-set-scale-fit':
-                if (displayScaleMode !== 'fit') toggleScaleMode();
-                break;
-            case 'menu-set-scale-1to1':
-                if (displayScaleMode !== 'scroll') toggleScaleMode();
-                break;
-            case 'menu-toggle-bezel':
-                toggleBezel();
-                break;
-            case 'menu-open-screen':
-                if (detail && Array.isArray(detail)) {
-                    openScreen(detail[0], detail[1]);
-                }
-                break;
-            case 'menu-show-shortcuts':
-                // TODO: Shortcuts modal
-                break;
-        }
     }
 
     // Reaktiver Effekt für Canvas Re-Renders und State-Broadcasts
@@ -310,6 +256,32 @@
         setTimeout(handleResize, 50);
     }
 
+    /**
+     * Schaltet das Gehäuse-Overlay (Rahmen & Steg) um.
+     * @returns {void}
+     */
+    function toggleBezel() {
+        displayConfigStore.toggleBezel();
+        setTimeout(() => {
+            handleResize();
+            trainDisplay.updateAll();
+        }, 50);
+    }
+
+    /**
+     * Prüft, ob aktuell ein Texteingabefeld den Fokus hat.
+     * Verhindert, dass Menü-Shortcuts das Tippen in Formularfeldern stören.
+     * @returns {boolean}
+     */
+    function isTextInputFocused() {
+        const el = document.activeElement;
+        if (!el) return false;
+        return el.tagName === 'INPUT'
+            || el.tagName === 'TEXTAREA'
+            || el.tagName === 'SELECT'
+            || el.isContentEditable;
+    }
+
     function onKeyDown(e) {
         if (e.key === 'Escape' && (isFullscreen || isKiosk)) {
             exitFullscreenMode();
@@ -324,6 +296,22 @@
         } else if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === '4') {
             e.preventDefault();
             downloadScreenshot();
+        } else if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && !isTextInputFocused()) {
+            // Shortcuts, die früher über die Accelerators des nativen Menüs liefen
+            const key = e.key.toLowerCase();
+            if (key === '0') {
+                e.preventDefault();
+                displayConfigStore.setScaleMode('fit');
+            } else if (key === '1') {
+                e.preventDefault();
+                displayConfigStore.setScaleMode('scroll');
+            } else if (key === 'b') {
+                e.preventDefault();
+                toggleBezel();
+            } else if (key === 'n') {
+                e.preventDefault();
+                journeyStore.addJourney();
+            }
         }
     }
 
@@ -366,27 +354,11 @@
         window.addEventListener('keydown', onKeyDown);
         setTimeout(handleResize, 100);
         
-        // Tauri Menu Events abhören
-        if (typeof window !== 'undefined' && window.__TAURI__) {
-            const events = [
-                'menu-open-settings', 'menu-add-journey', 'menu-import-journeys',
-                'menu-export-journeys', 'menu-screenshot', 'menu-toggle-fullscreen',
-                'menu-set-scale-fit', 'menu-set-scale-1to1', 'menu-toggle-bezel',
-                'menu-open-screen', 'menu-show-shortcuts'
-            ];
-            
-            events.forEach(eventName => {
-                window.__TAURI__.event.listen(eventName, (event) => {
-                    handleMenuEvent(eventName, event.payload);
-                });
-            });
+        // Systemeinstellung "Transparenz reduzieren" beobachten (CSS-Media-Query)
+        const unwatchReducedTransparency = watchReducedTransparency((value) => {
+            reduceTransparency = value;
+        });
 
-            // Reduce Transparency Event
-            window.__TAURI__.event.listen('reduce-transparency-changed', (event) => {
-                reduceTransparency = event.payload;
-            });
-        }
-        
         return () => {
             window.removeEventListener('resize', handleResize);
             if (window.visualViewport) {
@@ -396,6 +368,7 @@
             window.removeEventListener('keydown', onKeyDown);
             if (observer) observer.disconnect();
             if (hudTimeout) clearTimeout(hudTimeout);
+            unwatchReducedTransparency();
         };
     });
 </script>

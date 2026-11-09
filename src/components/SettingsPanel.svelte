@@ -8,6 +8,7 @@
     import JourneyList from './JourneyList.svelte';
     import CollapsibleSection from './CollapsibleSection.svelte';
     import ZimIcon from './ZimIcon.svelte';
+    import { watchReducedTransparency } from '../js/core/utils/systemPreferences.js';
 
     // Fachspezifische Einstellungs-Unterkomponenten
     import SettingsStationTime from './settings/SettingsStationTime.svelte';
@@ -98,12 +99,10 @@
     }
 
     onMount(() => {
-        // Reduce Transparency vom Backend abhören
-        if (typeof window !== 'undefined' && window.__TAURI__) {
-            window.__TAURI__.event.listen('reduce-transparency-changed', (event) => {
-                reduceTransparency = event.payload;
-            });
-        }
+        // Systemeinstellung "Transparenz reduzieren" beobachten (CSS-Media-Query)
+        return watchReducedTransparency((value) => {
+            reduceTransparency = value;
+        });
     });
 </script>
 

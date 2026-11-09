@@ -2,6 +2,7 @@
 <script>
     import { onMount } from 'svelte';
     import ZimIcon from './ZimIcon.svelte';
+    import { watchReducedTransparency } from '../js/core/utils/systemPreferences.js';
 
     /**
      * @typedef {Object} Props
@@ -116,12 +117,10 @@
     });
 
     onMount(() => {
-        // Reduce Transparency vom Backend abhören
-        if (typeof window !== 'undefined' && window.__TAURI__) {
-            window.__TAURI__.event.listen('reduce-transparency-changed', (event) => {
-                reduceTransparency = event.payload;
-            });
-        }
+        // Systemeinstellung "Transparenz reduzieren" beobachten (CSS-Media-Query)
+        return watchReducedTransparency((value) => {
+            reduceTransparency = value;
+        });
     });
 </script>
 
