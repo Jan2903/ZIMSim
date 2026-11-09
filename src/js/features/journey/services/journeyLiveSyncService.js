@@ -358,6 +358,9 @@ export class JourneyLiveSyncService {
             // Haltestellen mit Station-DB anreichern
             journey.stops.forEach(s => s.enrichWithStationData());
 
+            // Halteliste hat sich geändert → haltbezogene Auto-Texte aktualisieren.
+            journeyStore.syncDynamicTexts();
+
             trainDisplay.updateAll();
             return { success: true, stopsCount: journey.stops.length };
         } catch (err) {

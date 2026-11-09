@@ -45,7 +45,7 @@ export class JourneyViaService {
             .filter(Boolean);
         if (stopNames.length === 0) return false;
 
-        const destNames = [journey.destination, journey.destinationLang, journey.destinationKurz]
+        const destNames = [journey.destination, journey.destinationOverride, journey.destinationLang, journey.destinationKurz]
             .filter(Boolean)
             .map(n => this._normalizeStationName(n))
             .filter(Boolean);

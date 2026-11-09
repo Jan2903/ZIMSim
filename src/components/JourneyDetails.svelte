@@ -118,6 +118,9 @@
     }
 
     function triggerUpdate() {
+        // Manuelle Halt-/Ziel-Änderungen müssen die haltbezogenen Auto-Texte
+        // sofort neu erzeugen.
+        journeyStore.syncDynamicTexts();
         trainDisplay.updateAll();
     }
 

@@ -18,10 +18,13 @@
 
     function handleDndFinalize(e) {
         journey.stops = e.detail.items;
-        trainDisplay.updateAll();
+        triggerUpdate();
     }
 
     function triggerUpdate() {
+        // Manuelle Halt-Änderungen (Ausfall, Zusatzhalt, Name) müssen die
+        // haltbezogenen Auto-Texte sofort neu erzeugen.
+        trainDisplay.journeyStore.syncDynamicTexts();
         trainDisplay.updateAll();
     }
 

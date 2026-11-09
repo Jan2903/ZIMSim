@@ -7,6 +7,7 @@ import { JourneyCouplingService } from './services/journeyCouplingService.js';
 import { JourneyLinkingService } from './services/journeyLinkingService.js';
 import { JourneyFilterService } from './services/journeyFilterService.js';
 import { DynamicTextService } from './services/dynamicTextService.js';
+import { InfoTextVisibilityService } from './services/infoTextVisibilityService.js';
 import { JourneyImportService } from './services/journeyImportService.js';
 import { JourneyStorageService } from './services/journeyStorageService.js';
 import { JourneyConnectionService } from './services/journeyConnectionService.js';
@@ -14,6 +15,7 @@ import { formationRuleService } from '../formation/formationRuleService.svelte.j
 import { calculatePlatformSectors, calculatePlatformFirstClassSectors, getPlatformForJourney } from '../formation/formationUtils.js';
 import { setFormatOptionsProvider } from './trainNumberFormatter.js';
 import { StorageService } from '../../core/services/storageService.js';
+import { displayConfigStore } from '../../displays/core/displayConfigStore.svelte.js';
 
 /**
  * Zentrale Datenverwaltung (Façade & reaktiver Svelte 5 Store).
@@ -246,6 +248,9 @@ export class JourneyStore {
             formationRuleService.applyRulesToJourney(journey);
         }
         this.journeys.push(journey);
+        // In Anschlusstafel-Layouts müssen neu hinzugekommene Kontexttexte
+        // sofort gemäß Layout-Regel ausgeblendet werden.
+        this.applyInfoTextVisibilityForCurrentLayout();
         if (!data.sectors || !data.sectorsFirstClass) {
             this.updateJourneySectors(journey);
             if (data.sectors) journey.sectors = data.sectors;
@@ -306,8 +311,9 @@ export class JourneyStore {
         );
         if (couplingChanged) {
             this.updateAllJourneySectors();
-            this.syncDynamicTexts();
         }
+        // Nach jedem IRIS-Update die haltbezogenen Auto-Texte aktualisieren.
+        this.syncDynamicTexts();
     }
 
     // ==========================================
@@ -564,11 +570,31 @@ export class JourneyStore {
     // ==========================================
 
     /**
-     * Synchronisiert dynamisch generierte Infotexte (Ankunftstext, Zugteilung)
-     * als verwaltbare Bausteine im infoTexts-Array der jeweiligen Journey.
+     * Synchronisiert dynamisch generierte Infotexte (Ankunftstext, Zugteilung,
+     * haltbezogene Meldungen) als verwaltbare Bausteine im infoTexts-Array
+     * der jeweiligen Journey.
      */
     syncDynamicTexts() {
         DynamicTextService.sync(this.journeys, this.stationContext.platform, this.stationContext.stationName);
+        // Neu erzeugte Texte müssen sofort der Layout-Sichtbarkeitsregel folgen.
+        this.applyInfoTextVisibilityForCurrentLayout();
+    }
+
+    /**
+     * Wendet die InfoText-Sichtbarkeit für einen konkreten Layouttyp an.
+     * @param {string} layoutType
+     * @returns {void}
+     */
+    applyInfoTextVisibility(layoutType) {
+        InfoTextVisibilityService.applyForLayoutType(this.journeys, layoutType);
+    }
+
+    /**
+     * Wendet die InfoText-Sichtbarkeit für das aktuell gespeicherte Layout an.
+     * @returns {void}
+     */
+    applyInfoTextVisibilityForCurrentLayout() {
+        this.applyInfoTextVisibility(displayConfigStore.layoutType);
     }
 
     // ==========================================
@@ -837,6 +863,8 @@ export class JourneyStore {
      */
     importAll(data) {
         JourneyStorageService.importState(this, data);
+        // Importierte Sichtbarkeits-Flags bewusst durch die Layout-Regel ersetzen.
+        this.applyInfoTextVisibilityForCurrentLayout();
     }
 
     // ==========================================
