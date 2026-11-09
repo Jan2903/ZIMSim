@@ -318,13 +318,6 @@
                 </div>
             </div>
 
-            <!-- Stationsnamen-Varianten -->
-            <div class="sub-section" style="margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px;">
-                <span class="field-label" style="margin-bottom: 8px;">Stationsnamen-Aussprache (Varianten):</span>
-
-                <VoiceVariantSection rows={variantRows} />
-            </div>
-
             <!-- Zusätzliche Ansagenelemente -->
             <div class="sub-section" style="margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px;">
                 <span class="field-label" style="margin-bottom: 8px;">Zusätzliche Ansagenelemente:</span>
@@ -365,32 +358,30 @@
                 </div>
             </div>
 
-            <!-- Optionale Audio-Quelle (dezent, eingeklappt) -->
-            <details class="audio-package-details">
-                <summary class="audio-package-summary">
-                    <span class="audio-package-title">
-                        <ZimIcon name={ansagenStore.status === 'loaded' ? 'check' : 'volume_low'} size={14} />
-                        <span>Audio-Paket {ansagenStore.status === 'loaded' ? 'verknüpft' : '(optional)'}</span>
-                    </span>
-                    {#if ansagenStore.status === 'loaded'}
-                        <span class="audio-package-file" title={ansagenStore.fileName}>{ansagenStore.fileName}</span>
-                    {/if}
-                </summary>
-                <div class="audio-package-content">
+            <!-- Optionale Audio-Quelle (dezent) -->
+            <div class="audio-package">
+                <div class="audio-package-actions">
                     <button type="button" class="btn-secondary btn-sm audio-package-btn" onclick={handleZipLoad}>
                         <ZimIcon name="volume_low" size={14} />
-                        <span>{ansagenStore.status === 'loaded' ? 'Anderes ZIP-Paket laden' : 'Audio-ZIP laden'}</span>
+                        <span>{ansagenStore.status === 'loaded' ? 'Anderes ZIP laden' : 'ZIP laden'}</span>
                     </button>
                     {#if ansagenStore.status === 'loaded'}
-                        <button type="button" class="btn-secondary btn-sm audio-package-btn" onclick={() => ansagenStore.clearFileRef()}>
+                        <span class="audio-package-file" title={ansagenStore.fileName}>{ansagenStore.fileName}</span>
+                        <button type="button" class="btn-secondary btn-sm audio-package-btn" onclick={() => ansagenStore.clearFileRef()} title="Verknüpfung aufheben">
                             <ZimIcon name="close" size={14} />
-                            <span>Verknüpfung aufheben</span>
                         </button>
                     {/if}
-                    <!-- Fallback hidden file input -->
-                    <input type="file" bind:this={audioZipInput} style="display: none;" accept=".zip" onchange={handleWebZipUpload}>
                 </div>
-            </details>
+                <!-- Fallback hidden file input -->
+                <input type="file" bind:this={audioZipInput} style="display: none;" accept=".zip" onchange={handleWebZipUpload}>
+
+                {#if ansagenStore.status === 'loaded'}
+                    <div class="sub-section audio-variants">
+                        <span class="field-label" style="margin-bottom: 8px;">Stationsnamen-Aussprache (Varianten):</span>
+                        <VoiceVariantSection rows={variantRows} />
+                    </div>
+                {/if}
+            </div>
         </div>
     </div>
 
@@ -593,83 +584,46 @@
         margin-bottom: 8px;
     }
 
-    /* Dezente, eingeklappte Audio-Paket-Verwaltung */
-    .audio-package-details {
+    /* Dezente Audio-Paket-Verwaltung */
+    .audio-package {
         margin-top: 18px;
         padding-top: 10px;
         border-top: 1px solid var(--border, #334155);
     }
 
-    .audio-package-summary {
+    .audio-package-actions {
         display: flex;
         align-items: center;
         gap: 8px;
-        min-height: 34px;
-        padding: 4px 2px;
-        font-size: 0.78rem;
-        color: var(--text-muted, #94a3b8);
-        cursor: pointer;
-        user-select: none;
-        list-style: none;
-    }
-
-    .audio-package-summary::-webkit-details-marker {
-        display: none;
-    }
-
-    .audio-package-summary::before {
-        content: "";
-        flex-shrink: 0;
-        width: 6px;
-        height: 6px;
-        border-right: 1.5px solid currentColor;
-        border-bottom: 1.5px solid currentColor;
-        transform: rotate(-45deg);
-        transition: transform 0.2s ease;
-    }
-
-    .audio-package-details[open] > .audio-package-summary::before {
-        transform: rotate(45deg);
-    }
-
-    .audio-package-summary:hover {
-        color: var(--text-main, #f8fafc);
-    }
-
-    .audio-package-title {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        min-width: 0;
+        flex-wrap: wrap;
     }
 
     .audio-package-file {
         min-width: 0;
-        margin-left: auto;
+        flex: 1 1 120px;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        opacity: 0.75;
-    }
-
-    .audio-package-content {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        margin: 4px 0 2px 14px;
+        font-size: 0.78rem;
+        color: var(--text-muted, #94a3b8);
+        opacity: 0.85;
     }
 
     .audio-package-btn {
         background: transparent;
         border-color: transparent;
         color: var(--text-muted, #94a3b8);
-        font-size: 0.76rem;
+        font-size: 0.78rem;
         padding: 4px 8px;
     }
 
     .audio-package-btn:hover {
         background: rgba(255, 255, 255, 0.06);
         color: var(--text-main, #f8fafc);
+    }
+
+    .audio-variants {
+        margin-top: 12px;
     }
 
     .track-pairs-list {
@@ -873,19 +827,17 @@
             font-size: 16px;
         }
 
-        .audio-package-summary {
-            min-height: 40px;
+        .audio-package-actions {
+            gap: 6px;
         }
 
-        .audio-package-content {
-            flex-direction: column;
-            align-items: stretch;
-            margin-left: 0;
+        .audio-package-file {
+            flex-basis: 100%;
+            order: 3;
         }
 
         .audio-package-btn {
             justify-content: flex-start;
-            width: 100%;
         }
     }
 
