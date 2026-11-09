@@ -5,6 +5,7 @@ import { drawQualityIcons } from '../primitives/pictogramRenderer.js';
 import { lineColorService } from '../../core/services/lineColorService.svelte.js';
 import { JourneyCouplingService } from '../../features/journey/services/journeyCouplingService.js';
 import { JourneyViaService } from '../../features/journey/services/journeyViaService.js';
+import { getHaltMessageText, getQualityText, drawScrollingText } from '../core/infoTextDisplayUtils.js';
 import { journeyStore } from '../../core/state/stores.js';
 
 /**
@@ -156,7 +157,7 @@ function drawZoomRow(ctx, train, x, y, width, height, renderCtx = {}, screenOpti
         hasTrackChange,
         isAusfall,
         showQualityIcons,
-        train.scrollText,
+        getQualityText(train),
         train.name,
         gleisRightX,
         upperY,
@@ -240,59 +241,34 @@ function drawZoomTimeAndDelay(ctx, scheduledTime, expectedTime, x, y, isAusfall)
  * @param {object} renderCtx - Render-Kontext mit tickerOffset
  */
 function drawZoomMiddleColumn(ctx, train, isAusfall, x, upperY, lowerY, availableWidth, renderCtx) {
-    // 1. OBERE ZEILE: Infotext (falls vorhanden) oder Via-Kette
-    let infoText = '';
-    if (isAusfall) {
-        infoText = train.scrollText || train.delayReason || 'Fahrt fällt aus';
-    } else if (train.scrollText) {
-        infoText = train.scrollText;
-    } else if (train.delayReason) {
-        infoText = train.delayReason;
-    }
+    // 1. OBERE ZEILE: Haltbezogene Meldung (falls vorhanden) oder Via-Kette
+    const haltText = getHaltMessageText(train);
 
-    if (infoText) {
-        ctx.font = FONTS.bold(44);
-        const textWidth = ctx.measureText(infoText).width;
-        const textColor = isAusfall ? COLORS.NAVY : '#cbd5e1';
-
-        if (textWidth > availableWidth) {
-            // Ticker / Marquee mit Canvas-Clipping
-            ctx.save();
-            ctx.beginPath();
-            ctx.rect(x, upperY - 44, availableWidth, 60);
-            ctx.clip();
-
-            const tickerItem = `+++ ${infoText} `;
-            const tickerItemW = ctx.measureText(tickerItem).width;
-            const offset = ((renderCtx.tickerOffset || 0) * 1.6) % tickerItemW;
-            drawText(ctx, tickerItem + tickerItem + tickerItem, x - offset, upperY, FONTS.bold(44), textColor, 'left');
-            ctx.restore();
-        } else {
-            // Text passt ohne Scrollen
-            drawText(ctx, infoText, x, upperY, FONTS.bold(44), textColor, 'left');
-        }
+    if (haltText) {
+        drawScrollingText(
+            ctx,
+            haltText,
+            x,
+            upperY,
+            availableWidth,
+            FONTS.bold(44),
+            isAusfall ? COLORS.NAVY : '#cbd5e1',
+            renderCtx,
+            { speed: 1.6, clipHeight: 60 }
+        );
     } else {
-        // Reguläre Via-Kette
+        // Reguläre Via-Kette (ohne "Verkehrt ab"-Präfix)
         const viaFont = FONTS.bold(42);
-        const viaPrefix = (train.verkehrtAb && train.verkehrtAb !== '0')
-            ? `Verkehrt ab ${train.verkehrtAb}`
-            : '';
         const viaNames = JourneyViaService.getDisplayVias(train, {
             maxWidth: availableWidth,
             maxLines: 1,
             font: viaFont,
-            separator: ' – ',
-            prefix: viaPrefix ? `${viaPrefix} – ` : ''
+            separator: ' – '
         }).map(s => s.nameKurz || s.name).join(' – ');
 
-        let viaStr = viaNames;
-        if (viaPrefix) {
-            viaStr = viaNames ? `${viaPrefix} – ${viaNames}` : viaPrefix;
-        }
-
-        if (viaStr) {
+        if (viaNames) {
             ctx.font = viaFont;
-            viaStr = truncateWithEllipsis(ctx, viaStr, availableWidth);
+            const viaStr = truncateWithEllipsis(ctx, viaNames, availableWidth);
             drawText(ctx, viaStr, x, upperY, viaFont, isAusfall ? COLORS.NAVY : '#cbd5e1', 'left');
         }
     }

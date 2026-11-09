@@ -12,6 +12,7 @@ import { drawAnkunftBoard } from './boards/ankunftstafelRenderer.js';
 import { drawWagenreihungPlan } from './boards/wagenreihungPlanRenderer.js';
 import { drawAnschlusstafelZoomBoard } from './boards/anschlusstafelZoomRenderer.js';
 import { displayConfigStore } from './core/displayConfigStore.svelte.js';
+import { InfoTextVisibilityService } from '../features/journey/services/infoTextVisibilityService.js';
 import { ScreenSyncService } from '../core/services/screenSyncService.js';
 import { ScreenAssignmentService } from './core/screenAssignmentService.js';
 
@@ -43,6 +44,7 @@ export class TrainDisplay {
         this.disruptionPageIndex = 0;
         this.disruptionPageAlpha = 1.0;
         this.tickerOffset = 0;
+        this._lastLayoutType = null;
 
         this._startAnimationLoop();
     }
@@ -254,6 +256,23 @@ export class TrainDisplay {
      */
     setLayout(layout) {
         if (!layout) return;
+
+        // Layouttyp-Wechsel erkennen (nicht die vollständige Signatur): ein
+        // Monitorwechsel bei gleichem Anzeigetyp darf die Sichtbarkeit nicht zurücksetzen.
+        const nextLayoutType = layout.layoutType;
+        if (nextLayoutType !== this._lastLayoutType) {
+            this._lastLayoutType = nextLayoutType;
+
+            // 1. Auto-Texte aktualisieren, damit neue Typen existieren.
+            //    syncDynamicTexts() wendet danach bereits die Layout-Regel an.
+            this.journeyStore.syncDynamicTexts();
+
+            // 2. Sichtbarkeit gemäß neuem Layout setzen (auch beim ersten Aufruf).
+            InfoTextVisibilityService.applyForLayoutType(
+                this.journeyStore.journeys,
+                nextLayoutType
+            );
+        }
 
         // Layout-Objekte werden vom Store bei jeder Änderung neu erzeugt.
         // Über einen Vergleich der serialisierten Daten erkennen wir, ob sich

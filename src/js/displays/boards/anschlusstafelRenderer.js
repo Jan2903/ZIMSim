@@ -8,6 +8,7 @@ import { drawQualityIcons, getMatchingPictogramRules } from '../primitives/picto
 import { JourneyCouplingService } from '../../features/journey/services/journeyCouplingService.js';
 import { JourneyConnectionService } from '../../features/journey/services/journeyConnectionService.js';
 import { JourneyViaService } from '../../features/journey/services/journeyViaService.js';
+import { getHaltMessageText, getQualityText, drawScrollingText } from '../core/infoTextDisplayUtils.js';
 import { journeyStore } from '../../core/state/stores.js';
 
 /**
@@ -124,7 +125,8 @@ export function drawVoranzeigerBoard(ctx, journeys = [], width = 1920, height = 
             isCoupledWithPrev,
             isCoupledWithNext,
             prevTrain,
-            nextTrain
+            nextTrain,
+            renderCtx
         });
     }
     ctx.restore();
@@ -455,33 +457,55 @@ function drawTrainRow(ctx, train, x, y, width, height, isAlt, isPortrait = false
     // SPALTE 2: ÜBER / VIA (oben) & ZIEL / DESTINATION (unten) + VERBINDUNGS-KLAMMER
     // ----------------------------------------------------
 
-    // A. Oberes Sub-Element: Vias / "Fahrt fällt aus"
+    // A. Oberes Sub-Element: Haltbezogene Meldungen / Vias / "Fahrt fällt aus"
     const viaY = y + (height * 0.30);
+    const viaFont = FONTS.bold(isPortrait ? 20 : 30);
+    const maxViaWidth = col2W - 20;
+    const rowRenderCtx = coupledInfo.renderCtx || {};
     ctx.textAlign = 'left';
 
     if (isAusfall) {
-        drawText(ctx, 'Fahrt fällt aus', col2X, viaY, FONTS.bold(isPortrait ? 24 : 32), COLORS.MIDNIGHT_BLUE, 'left');
+        drawScrollingText(
+            ctx,
+            getHaltMessageText(train),
+            col2X,
+            viaY,
+            maxViaWidth,
+            FONTS.bold(isPortrait ? 24 : 32),
+            COLORS.MIDNIGHT_BLUE,
+            rowRenderCtx,
+            { speed: 1.8, clipHeight: isPortrait ? 34 : 46 }
+        );
     } else {
-        const viaFont = FONTS.bold(isPortrait ? 20 : 30);
-        const viaPrefix = (train.verkehrtAb && train.verkehrtAb !== '0')
-            ? `Verkehrt ab ${train.verkehrtAb}`
-            : '';
-        const viaNames = JourneyViaService.getDisplayVias(train, {
-            maxWidth: col2W - 20,
-            maxLines: 1,
-            font: viaFont,
-            separator: ' – ',
-            prefix: viaPrefix ? `${viaPrefix} – ` : ''
-        }).map(s => s.nameKurz || s.name).join(' – ');
+        const haltText = getHaltMessageText(train);
 
-        let viaStr = viaNames;
-        if (viaPrefix) {
-            viaStr = viaNames ? `${viaPrefix} – ${viaNames}` : viaPrefix;
-        }
-        ctx.font = viaFont;
-        viaStr = truncateWithEllipsis(ctx, viaStr, col2W - 20);
-        if (viaStr) {
-            drawText(ctx, viaStr, col2X, viaY, viaFont, secondaryColor, 'left');
+        if (haltText) {
+            // Haltbezogene Meldung ersetzt die Via-Kette vollständig.
+            drawScrollingText(
+                ctx,
+                haltText,
+                col2X,
+                viaY,
+                maxViaWidth,
+                viaFont,
+                secondaryColor,
+                rowRenderCtx,
+                { speed: 1.8, clipHeight: isPortrait ? 34 : 46 }
+            );
+        } else {
+            // Bestehende Via-Kette (ohne "Verkehrt ab"-Präfix)
+            const viaNames = JourneyViaService.getDisplayVias(train, {
+                maxWidth: maxViaWidth,
+                maxLines: 1,
+                font: viaFont,
+                separator: ' – '
+            }).map(s => s.nameKurz || s.name).join(' – ');
+
+            ctx.font = viaFont;
+            const viaStr = truncateWithEllipsis(ctx, viaNames, maxViaWidth);
+            if (viaStr) {
+                drawText(ctx, viaStr, col2X, viaY, viaFont, secondaryColor, 'left');
+            }
         }
     }
 
@@ -535,6 +559,10 @@ function drawTrainRow(ctx, train, x, y, width, height, isAlt, isPortrait = false
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(boxX, boxY, boxW, boxH);
 
+        // Textfarbe explizit setzen: durch das weiße Rechteck stand die
+        // Textfarbe zuvor ebenfalls auf Weiß (unsichtbarer Gleiswechsel-Text).
+        ctx.fillStyle = COLORS.MIDNIGHT_BLUE;
+        ctx.textAlign = 'center';
         fillTextCentered(ctx, newTrack, boxX + (boxW / 2), boxY + (boxH / 2));
     } else {
         drawText(ctx, cleanTrack, col3X + (col3W / 2), gleisY, FONTS.bold(isPortrait ? 38 : 70), COLORS.WHITE, 'center');
@@ -544,17 +572,7 @@ function drawTrainRow(ctx, train, x, y, width, height, isAlt, isPortrait = false
     // SPALTE 4: PIKTOGRAMME (Qualitätsmerkmale aus pictogramRenderer, max. 2, linksbündig)
     // ----------------------------------------------------
     if (!isAusfall) {
-        let qualityText = train.scrollText || '';
-        if (train.infoTexts && Array.isArray(train.infoTexts)) {
-            const fullInfo = train.infoTexts.map(t => t.text || '').join(' ');
-            if (fullInfo) qualityText += (qualityText ? ' ' : '') + fullInfo;
-        }
-        if (train.hasReservation || train.needsReservation || /flx|flixtrain/i.test(train.displayTitle || '')) {
-            qualityText += ' Zug reservierungspflichtig';
-        }
-        if (train.hasBike || train.bike || (train.amenities && (train.amenities.includes('bike') || train.amenities.includes('bicycle')))) {
-            qualityText += ' Fahrradmitnahme reservierungspflichtig';
-        }
+        const qualityText = getQualityText(train);
 
         const iconSize = isPortrait ? 36 : 52;
         const iconY = destY - (isPortrait ? 28 : 46);
