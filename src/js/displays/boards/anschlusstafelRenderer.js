@@ -242,19 +242,35 @@ function drawHeader(ctx, width, height, renderCtx, isPortrait) {
     }
 
     // 4. Zweisprachige Spaltenbeschriftungen (Trennstriche werden von den Zeilen oben gerendert)
+    //    Deutscher Teil fett, englischer Teil kursiv (wie Titel "Abfahrt Departure")
     const subY1 = isPortrait ? 74 : 74;
     const subY2 = isPortrait ? 94 : 96;
     const subFont = FONTS.bold(isPortrait ? 14 : 19);
+    const subItalic = FONTS.italic(isPortrait ? 14 : 19);
 
-    drawText(ctx, 'Zug / Train', col1X, subY1, subFont, '#e2e8f0', 'left');
-    drawText(ctx, 'Zeit / Time', col1X, subY2, subFont, '#e2e8f0', 'left');
+    // Zeichnet zweisprachigen Label: "Deutsch / English" mit Englisch kursiv versetzt
+    function drawSubLabel(text, x, y, align) {
+        const [de, en] = text.split(' / ');
+        ctx.font = subFont;
+        const deW = ctx.measureText(de).width;
+        ctx.font = subItalic;
+        const enW = ctx.measureText(en).width;
+        const gap = 6;
+        const totalW = deW + gap + enW;
+        const startX = align === 'center' ? x - totalW / 2 : x;
+        drawText(ctx, de, startX, y, subFont, '#e2e8f0', 'left');
+        drawText(ctx, en, startX + deW + gap, y, subItalic, '#e2e8f0', 'left');
+    }
+
+    drawSubLabel('Zug / Train', col1X, subY1, 'left');
+    drawSubLabel('Zeit / Time', col1X, subY2, 'left');
 
     // Spalte 2: Über / Via & Ziel / Destination
-    drawText(ctx, 'Über / Via', col2X, subY1, subFont, '#e2e8f0', 'left');
-    drawText(ctx, 'Ziel / Destination', col2X, subY2, subFont, '#e2e8f0', 'left');
+    drawSubLabel('Über / Via', col2X, subY1, 'left');
+    drawSubLabel('Ziel / Destination', col2X, subY2, 'left');
 
     // Spalte 3: Gleis / Track (zentriert über der Gleisspalte auf Grundlinie von Zeit & Ziel)
-    drawText(ctx, 'Gleis / Track', col3X + (col3W / 2), subY2, subFont, '#e2e8f0', 'center');
+    drawSubLabel('Gleis / Track', col3X + (col3W / 2), subY2, 'center');
 }
 
 /**
