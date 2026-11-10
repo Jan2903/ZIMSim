@@ -216,15 +216,12 @@ function drawHeader(ctx, width, height, renderCtx, isPortrait) {
     drawDigitalClock(ctx, simTime, timeX, clockCenterY, { fontSize: isPortrait ? 28 : 42 });
 
     // 2. Titel: "Abfahrt Departure" (bündig über der Über/Ziel-Spalte)
-    const titleX = isPortrait ? (timeX + 80) : col2X;
-    ctx.font = FONTS.bold(isPortrait ? 30 : 44);
-    ctx.fillStyle = COLORS.WHITE;
-    fillTextCentered(ctx, 'Abfahrt', titleX, clockCenterY);
-
-    const abfahrtW = ctx.measureText('Abfahrt').width;
-    ctx.font = FONTS.italic(isPortrait ? 24 : 40);
-    ctx.fillStyle = COLORS.WHITE;
-    fillTextCentered(ctx, 'Departure', titleX + abfahrtW + 12, clockCenterY);
+    const titleX = col2X;
+    let subFont;
+    let subItalic;
+    subFont = FONTS.bold(isPortrait ? 30 : 44);
+    subItalic = FONTS.italic(isPortrait ? 30 : 44);
+    drawSubLabel('Abfahrt Departure', col2X, clockCenterY, 'left', " ");
 
     // 3. Oben rechts: DB-Logo aus sharedRenderers (über der Symbol-Spalte rechtsbündig)
     const logoW = isPortrait ? 52 : 72;
@@ -245,12 +242,12 @@ function drawHeader(ctx, width, height, renderCtx, isPortrait) {
     //    Deutscher Teil fett, englischer Teil kursiv (wie Titel "Abfahrt Departure")
     const subY1 = isPortrait ? 74 : 74;
     const subY2 = isPortrait ? 94 : 96;
-    const subFont = FONTS.bold(isPortrait ? 14 : 19);
-    const subItalic = FONTS.italic(isPortrait ? 14 : 19);
+    subFont = FONTS.bold(isPortrait ? 14 : 19);
+    subItalic = FONTS.italic(isPortrait ? 14 : 19);
 
     // Zeichnet zweisprachigen Label: "Deutsch / English" mit Englisch kursiv versetzt
-    function drawSubLabel(text, x, y, align) {
-        const [de, en] = text.split(' / ');
+    function drawSubLabel(text, x, y, align, regex = " / ") {
+        const [de, en] = text.split(regex);
         ctx.font = subFont;
         const deW = ctx.measureText(de).width;
         ctx.font = subItalic;
