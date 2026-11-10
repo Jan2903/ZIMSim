@@ -245,6 +245,18 @@ export class TrainDisplay {
     // ==========================================
 
     /**
+     * Prüft, ob das aktuelle Layout Bildschirme mit Voranzeiger-/Anschlusstafel-Typ enthält.
+     * @returns {boolean}
+     */
+    hasDeparturePagingLayout() {
+        return Boolean(
+            this.currentLayout && this.currentLayout.screens && this.currentLayout.screens.some(
+                s => s.type === 'voranzeiger' || s.type === 'abfahrt' || s.type === 'abfahrt_zoom' || s.type === 'abfahrt_portrait'
+            )
+        );
+    }
+
+    /**
      * Synchronisiert das aktive Layout mit dem TrainDisplay.
      * Wird von der UI aufgerufen, wenn sich Monitor, Anzeigetyp oder Gehäuse
      * ändern. Bei einem echten Layoutwechsel werden alle Scroll-Overlays
@@ -262,6 +274,7 @@ export class TrainDisplay {
         const nextLayoutType = layout.layoutType;
         if (nextLayoutType !== this._lastLayoutType) {
             this._lastLayoutType = nextLayoutType;
+            displayConfigStore.setDeparturePage(0);
 
             // 1. Auto-Texte aktualisieren, damit neue Typen existieren.
             //    syncDynamicTexts() wendet danach bereits die Layout-Regel an.
@@ -447,7 +460,7 @@ export class TrainDisplay {
             }
 
             // 3. Voranzeiger Pagination & Ticker Loop (aktiv wenn Layout einen Abfahrts-/Voranzeiger-Screen hat)
-            const hasVoranzeiger = this.currentLayout && this.currentLayout.screens && this.currentLayout.screens.some(s => s.type === 'voranzeiger' || s.type === 'abfahrt' || s.type === 'abfahrt_zoom' || s.type === 'abfahrt_portrait');
+            const hasVoranzeiger = this.hasDeparturePagingLayout();
             if (hasVoranzeiger) {
                 // Ticker kontinuierlich scrollen
                 this.tickerOffset += 1.8;
@@ -463,14 +476,22 @@ export class TrainDisplay {
                     this.disruptionPageAlpha = 1.0;
                 }
 
-                // Abfahrts-Pagination (10 Sekunden Verweildauer)
-                const depCycle = now % 10000;
-                this.departurePageIndex = Math.floor(now / 10000);
-                if (depCycle < 800) {
-                    this.departurePageAlpha = depCycle / 800;
-                } else if (depCycle > 9200) {
-                    this.departurePageAlpha = 1.0 - ((depCycle - 9200) / 800);
+                // Abfahrts-Pagination (10 Sekunden Verweildauer bei aktiviertem Auto-Paging)
+                if (config.voranzeigerAutoPage) {
+                    const depCycle = now % 10000;
+                    const autoPageIndex = Math.floor(now / 10000);
+                    displayConfigStore.setDeparturePage(autoPageIndex);
+                    this.departurePageIndex = displayConfigStore.departurePageIndex;
+
+                    if (depCycle < 800) {
+                        this.departurePageAlpha = depCycle / 800;
+                    } else if (depCycle > 9200) {
+                        this.departurePageAlpha = 1.0 - ((depCycle - 9200) / 800);
+                    } else {
+                        this.departurePageAlpha = 1.0;
+                    }
                 } else {
+                    this.departurePageIndex = displayConfigStore.departurePageIndex;
                     this.departurePageAlpha = 1.0;
                 }
 

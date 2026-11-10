@@ -7,6 +7,8 @@ import { JourneyCouplingService } from '../../features/journey/services/journeyC
 import { JourneyViaService } from '../../features/journey/services/journeyViaService.js';
 import { getHaltMessageText, getQualityText, drawScrollingText } from '../core/infoTextDisplayUtils.js';
 import { journeyStore } from '../../core/state/stores.js';
+import { config } from '../../core/utils/config.js';
+import { displayConfigStore } from '../core/displayConfigStore.svelte.js';
 
 /**
  * Dedizierter Renderer für die DB-Anschlusstafel im Zoom-Layout (4 Zeilen Vollbild).
@@ -57,12 +59,15 @@ export function drawAnschlusstafelZoomBoard(ctx, journeys = [], width = 1920, he
 
     const trainsPerPage = MAX_ROWS * maxCols;
     const totalTrainPages = Math.max(1, Math.ceil(consolidatedTrains.length / trainsPerPage));
+    displayConfigStore.setTotalDeparturePages(totalTrainPages);
+
     const activeTrainPage = (renderCtx.departurePageIndex || 0) % totalTrainPages;
     const pageOffset = (activeTrainPage * trainsPerPage) + (colIndex * MAX_ROWS);
     const visibleTrains = consolidatedTrains.slice(pageOffset, pageOffset + MAX_ROWS);
 
     ctx.save();
-    if (renderCtx.departurePageAlpha !== undefined && totalTrainPages > 1) {
+    // Sanfte Überblendung für Abfahrts-Paging (nur bei aktiviertem Auto-Paging)
+    if (config.voranzeigerAutoPage && renderCtx.departurePageAlpha !== undefined && totalTrainPages > 1) {
         ctx.globalAlpha = renderCtx.departurePageAlpha;
     }
 

@@ -28,6 +28,10 @@ class DisplayConfigStore {
     // 7. Skalierungsmodus ('fit' = an Bildschirmbreite anpassen, 'scroll' = 1:1 Detailansicht)
     scaleMode = $state(localStorage.getItem('zimsim_scale_mode') || 'fit');
 
+    // 8. Paginierung für Anschlusstafeln / Voranzeiger
+    departurePageIndex = $state(0);
+    totalDeparturePages = $state(1);
+
     /**
      * Berechnet reaktiv das aktuelle Layout-Objekt basierend auf Monitor, Typ, Gehäuse und Pop-Out-Ziel.
      */
@@ -86,6 +90,9 @@ class DisplayConfigStore {
      * @param {string} type - 'zuganzeiger' | 'anschlusstafel' | 'ankunftstafel' | 'wagenreihungsplan' | 'wagenstand_gleis'
      */
     setLayoutType(type) {
+        if (this.layoutType !== type) {
+            this.setDeparturePage(0);
+        }
         this.layoutType = type;
         localStorage.setItem('zimsim_layout_type', type);
     }
@@ -123,6 +130,49 @@ class DisplayConfigStore {
      */
     toggleScaleMode() {
         this.setScaleMode(this.scaleMode === 'fit' ? 'scroll' : 'fit');
+    }
+
+    /**
+     * Schaltet zur nächsten Seite der Anschlusstafel.
+     */
+    nextDeparturePage() {
+        if (this.totalDeparturePages > 1) {
+            this.departurePageIndex = (this.departurePageIndex + 1) % this.totalDeparturePages;
+        }
+    }
+
+    /**
+     * Schaltet zur vorherigen Seite der Anschlusstafel.
+     */
+    prevDeparturePage() {
+        if (this.totalDeparturePages > 1) {
+            this.departurePageIndex = (this.departurePageIndex - 1 + this.totalDeparturePages) % this.totalDeparturePages;
+        }
+    }
+
+    /**
+     * Setzt den aktuellen Seitenindex der Anschlusstafel direkt.
+     * @param {number} index
+     */
+    setDeparturePage(index) {
+        const target = Math.max(0, index || 0);
+        if (this.departurePageIndex !== target) {
+            this.departurePageIndex = target;
+        }
+    }
+
+    /**
+     * Aktualisiert die Gesamtseitenzahl der Anschlusstafel und passt den Index an, falls nötig.
+     * @param {number} total
+     */
+    setTotalDeparturePages(total) {
+        const safeTotal = Math.max(1, total || 1);
+        if (this.totalDeparturePages !== safeTotal) {
+            this.totalDeparturePages = safeTotal;
+        }
+        if (this.departurePageIndex >= safeTotal) {
+            this.departurePageIndex = 0;
+        }
     }
 }
 

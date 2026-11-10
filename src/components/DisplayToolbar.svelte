@@ -23,6 +23,11 @@
     // Aktiver Wagenreihungs-Modus ('rotierend' | 'wagennummern' | 'ausstattung' | 'klasse')
     let activeFeature = $state('wagennummern');
 
+    // Ob aktuell ein Abfahrts-/Anschlusstafel-Layout aktiv ist
+    let isAnschlusstafelLayout = $derived(
+        ['anschlusstafel', 'anschlusstafel_zoom', 'anschlusstafel_zoom_icons'].includes(displayConfigStore.layoutType)
+    );
+
     // Reduce Transparency State für CSS-Fallback
     let reduceTransparency = $state(false);
 
@@ -154,6 +159,50 @@
                             <option value="klasse">WR: Klasse</option>
                             <option value="rotierend">WR: Rotierend</option>
                         </select>
+                    </div>
+                </div>
+            {/if}
+
+            <!-- Paginierung für Anschlusstafeln (Seiten blättern) -->
+            {#if isAnschlusstafelLayout}
+                <div class="toolbar-control-group paging-control-group" title="Seiten blättern (Pfeiltasten Links / Rechts)">
+                    <span class="toolbar-label">
+                        <ZimIcon name="board" size={14} />
+                        <span class="label-text">Seite:</span>
+                    </span>
+                    
+                    <div class="segment-switch-compact paging-segment" role="group" aria-label="Seiten-Navigation">
+                        <button 
+                            type="button" 
+                            class="segment-compact-btn paging-btn" 
+                            disabled={displayConfigStore.totalDeparturePages <= 1}
+                            onclick={() => {
+                                displayConfigStore.prevDeparturePage();
+                                trainDisplay.updateAll();
+                            }}
+                            title="Vorherige Seite (Pfeil links)"
+                            aria-label="Vorherige Seite"
+                        >
+                            <ZimIcon name="chevron_left" size={13} />
+                        </button>
+                        
+                        <span class="paging-counter-text" aria-live="polite">
+                            {displayConfigStore.departurePageIndex + 1} / {displayConfigStore.totalDeparturePages}
+                        </span>
+
+                        <button 
+                            type="button" 
+                            class="segment-compact-btn paging-btn" 
+                            disabled={displayConfigStore.totalDeparturePages <= 1}
+                            onclick={() => {
+                                displayConfigStore.nextDeparturePage();
+                                trainDisplay.updateAll();
+                            }}
+                            title="Nächste Seite (Pfeil rechts)"
+                            aria-label="Nächste Seite"
+                        >
+                            <ZimIcon name="chevron_right" size={13} />
+                        </button>
                     </div>
                 </div>
             {/if}
@@ -297,6 +346,24 @@
     .segment-compact-btn:focus-visible {
         outline: var(--focus-ring);
         outline-offset: var(--focus-ring-offset);
+    }
+
+    .segment-compact-btn:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+    }
+
+    .paging-counter-text {
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: var(--text-main);
+        padding: 0 8px;
+        white-space: nowrap;
+        user-select: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 48px;
     }
 
     .display-toolbar-actions {

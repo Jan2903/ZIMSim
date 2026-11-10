@@ -1,7 +1,7 @@
 // js/displays/boards/anschlusstafelRenderer.js
 import { COLORS, FONTS } from '../../core/constants/theme.js';
 import { drawText, drawWrappedText, truncateWithEllipsis, drawLineBadge, drawInvertedTimeBox, fillTextCentered, getVerticalCenterOffset } from '../core/textUtils.js';
-import { getSimulatedTime } from '../../core/utils/config.js';
+import { getSimulatedTime, config } from '../../core/utils/config.js';
 import { lineColorService } from '../../core/services/lineColorService.svelte.js';
 import { drawDBLogo, drawAnalogClock, drawDigitalClock } from '../core/sharedRenderers.js';
 import { getDepartureAlarmState, drawDepartureAlarmMarker } from '../core/departureAlarmRenderer.js';
@@ -10,6 +10,7 @@ import { JourneyCouplingService } from '../../features/journey/services/journeyC
 import { JourneyViaService } from '../../features/journey/services/journeyViaService.js';
 import { getHaltMessageText, getQualityText, drawScrollingText } from '../core/infoTextDisplayUtils.js';
 import { journeyStore } from '../../core/state/stores.js';
+import { displayConfigStore } from '../core/displayConfigStore.svelte.js';
 
 /**
  * Vollständiger dynamischer Renderer für Voranzeiger und Abfahrtstafeln (Anschlusstafel).
@@ -18,7 +19,7 @@ import { journeyStore } from '../../core/state/stores.js';
  * - Dynamische Kopfzeile ("Abfahrt Departure", Station, Live-Uhrzeit)
  * - Flexible Abfahrtszeilen mit Echtzeit-Status, Verspätungen, Ausfällen, Vias und Gleiswechsel-Inverskästen
  * - Platzierung von Störungen/Infoscreens IMMER GANZ UNTEN (als statische Zeile(n) oder Ticker-Lauftext)
- * - Automatisches Abfahrts-Paging (10s) und Störungs-Paging (6s)
+ * - Optionales oder manuelles Abfahrts-Paging und Störungs-Paging (6s)
  */
 
 /**
@@ -84,21 +85,23 @@ export function drawVoranzeigerBoard(ctx, journeys = [], width = 1920, height = 
     const consolidatedTrains = JourneyCouplingService.consolidateMergedTrains(trains, journeyStore.nrwMode);
     const trainsPerPage = availableTrainRows * maxCols;
     const totalTrainPages = Math.max(1, Math.ceil(consolidatedTrains.length / trainsPerPage));
+    displayConfigStore.setTotalDeparturePages(totalTrainPages);
+
     const activeTrainPage = (renderCtx.departurePageIndex || 0) % totalTrainPages;
     const pageOffset = (activeTrainPage * trainsPerPage) + (colIndex * availableTrainRows);
     const visibleTrains = consolidatedTrains.slice(pageOffset, pageOffset + availableTrainRows);
 
-    // Render-Kontext für Header-Seitenzähler ("Seite X/Y") anreichern
+    // Render-Kontext anreichern
     renderCtx.totalTrainPages = totalTrainPages;
     renderCtx.activeTrainPage = activeTrainPage;
 
-    // 6. Kopfzeile zeichnen (nach Pagination-Berechnung, damit Seitenzahl verfügbar ist)
+    // 6. Kopfzeile zeichnen
     drawHeader(ctx, width, HEADER_HEIGHT, renderCtx, isPortrait);
 
     // 7. Züge rendern
     ctx.save();
-    // Sanfte Überblendung für Abfahrts-Paging
-    if (renderCtx.departurePageAlpha !== undefined && totalTrainPages > 1) {
+    // Sanfte Überblendung für Abfahrts-Paging (nur bei aktiviertem Auto-Paging)
+    if (config.voranzeigerAutoPage && renderCtx.departurePageAlpha !== undefined && totalTrainPages > 1) {
         ctx.globalAlpha = renderCtx.departurePageAlpha;
     }
 
@@ -229,14 +232,6 @@ function drawHeader(ctx, width, height, renderCtx, isPortrait) {
     const logoX = col4X + col4W - logoW;
     const logoY = clockCenterY;
     drawDBLogo(ctx, logoX, logoY, logoW, logoH);
-
-    // Optionaler Seitenindikator bei Pagination links neben dem DB-Logo
-    if (renderCtx.totalTrainPages && renderCtx.totalTrainPages > 1) {
-        ctx.font = FONTS.regular(isPortrait ? 20 : 26);
-        ctx.fillStyle = '#94a3b8';
-        ctx.textAlign = 'right';
-        fillTextCentered(ctx, `Seite ${(renderCtx.activeTrainPage || 0) + 1}/${renderCtx.totalTrainPages}`, logoX - 20, clockCenterY);
-    }
 
     // 4. Zweisprachige Spaltenbeschriftungen (Trennstriche werden von den Zeilen oben gerendert)
     //    Deutscher Teil fett, englischer Teil kursiv (wie Titel "Abfahrt Departure")

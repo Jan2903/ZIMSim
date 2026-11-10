@@ -3,7 +3,7 @@
     import { journeyStore, trainDisplay } from '../../js/core/state/stores.js';
     import { uiState } from '../../js/core/state/uiState.svelte.js';
     import { toastStore } from '../../js/core/state/toastStore.svelte.js';
-    import { config, setPerformanceMode, setDepartureAlarm } from '../../js/core/utils/config.js';
+    import { config, setPerformanceMode, setDepartureAlarm, setVoranzeigerAutoPage } from '../../js/core/utils/config.js';
     import { displayConfigStore } from '../../js/displays/core/displayConfigStore.svelte.js';
     import { MONITOR_PROFILES } from '../../js/displays/core/displayLayoutService.js';
     import LineColorEditorModal from '../LineColorEditorModal.svelte';
@@ -24,6 +24,9 @@
     // Performance-Modus (30 FPS Begrenzung)
     let isPerformanceMode = $state(config.performance_mode);
 
+    // Automatischer Seitenwechsel für Anschlusstafeln (10s Zyklus)
+    let isVoranzeigerAutoPage = $state(config.voranzeigerAutoPage);
+
     // Abfahrtsalarm (weißer Punkt neben der Abfahrtszeit)
     let isDepartureAlarmEnabled = $state(config.departureAlarmEnabled);
     let alarmLeadMinutes = $state(config.departureAlarmLeadMinutes);
@@ -31,6 +34,11 @@
 
     $effect(() => {
         setPerformanceMode(isPerformanceMode);
+    });
+
+    $effect(() => {
+        setVoranzeigerAutoPage(isVoranzeigerAutoPage);
+        trainDisplay.updateAll();
     });
 
     $effect(() => {
@@ -259,6 +267,10 @@
                 <label class="checkbox-label">
                     <input type="checkbox" id="performance_mode_checkbox" bind:checked={isPerformanceMode}>
                     <span>Performance-Modus (Begrenzung auf 30 FPS für schwächere Hardware)</span>
+                </label>
+                <label class="checkbox-label" style="margin-top: 8px;">
+                    <input type="checkbox" id="voranzeiger_auto_page_checkbox" bind:checked={isVoranzeigerAutoPage}>
+                    <span>Automatischer Seitenwechsel für Anschlusstafeln (alle 10s bei mehr Abfahrten als Zeilen)</span>
                 </label>
                 <label class="checkbox-label" style="margin-top: 8px;">
                     <input type="checkbox" bind:checked={uiState.hideLinkedArrivals}>

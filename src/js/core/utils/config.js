@@ -4,7 +4,22 @@ export const config = {
     departureAlarmEnabled: localStorage.getItem('zimsim_departure_alarm_enabled') !== 'false',
     departureAlarmLeadMinutes: parseInt(localStorage.getItem('zimsim_departure_alarm_lead_minutes'), 10) || 6,
     departureAlarmBlinkMinutes: parseInt(localStorage.getItem('zimsim_departure_alarm_blink_minutes'), 10) || 3,
+    voranzeigerAutoPage: localStorage.getItem('zimsim_voranzeiger_auto_page') === 'true',
 };
+
+/**
+ * Setzt den automatischen Seitenwechsel für Anschlusstafeln/Voranzeiger und persistiert die Einstellung.
+ * @param {boolean} enabled
+ * @returns {void}
+ */
+export function setVoranzeigerAutoPage(enabled) {
+    config.voranzeigerAutoPage = Boolean(enabled);
+    try {
+        localStorage.setItem('zimsim_voranzeiger_auto_page', String(config.voranzeigerAutoPage));
+    } catch (e) {
+        console.warn('[Config] Voranzeiger-AutoPage konnte nicht gespeichert werden:', e);
+    }
+}
 
 /**
  * Setzt den Performance-Modus (30-FPS-Begrenzung) und persistiert die Einstellung.

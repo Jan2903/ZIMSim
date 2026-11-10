@@ -313,6 +313,19 @@
                 e.preventDefault();
                 journeyStore.addJourney();
             }
+        } else if (!isTextInputFocused() && !e.metaKey && !e.ctrlKey && !e.altKey) {
+            // Manuelle Paginierung für Anschlusstafeln (ArrowLeft / ArrowRight / PageUp / PageDown)
+            if (trainDisplay.hasDeparturePagingLayout()) {
+                if (e.key === 'ArrowRight' || e.key === 'PageDown') {
+                    e.preventDefault();
+                    displayConfigStore.nextDeparturePage();
+                    trainDisplay.updateAll();
+                } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+                    e.preventDefault();
+                    displayConfigStore.prevDeparturePage();
+                    trainDisplay.updateAll();
+                }
+            }
         }
     }
 
@@ -396,6 +409,35 @@
     <!-- Schwebendes Exit-HUD im Vollbild / Kiosk-Modus -->
     {#if isFullscreen || isKiosk}
         <div class="fullscreen-hud" class:hud-visible={hudVisible} class:reduce-transparency={reduceTransparency}>
+            {#if trainDisplay.hasDeparturePagingLayout() && displayConfigStore.totalDeparturePages > 1}
+                <button 
+                    type="button" 
+                    class="fullscreen-hud-btn" 
+                    onclick={() => {
+                        displayConfigStore.prevDeparturePage();
+                        trainDisplay.updateAll();
+                    }}
+                    title="Vorherige Seite (Pfeil links)"
+                    aria-label="Vorherige Seite"
+                >
+                    <ZimIcon name="chevron_left" size={16} />
+                </button>
+                <span class="fullscreen-hud-page">
+                    {displayConfigStore.departurePageIndex + 1} / {displayConfigStore.totalDeparturePages}
+                </span>
+                <button 
+                    type="button" 
+                    class="fullscreen-hud-btn" 
+                    onclick={() => {
+                        displayConfigStore.nextDeparturePage();
+                        trainDisplay.updateAll();
+                    }}
+                    title="Nächste Seite (Pfeil rechts)"
+                    aria-label="Nächste Seite"
+                >
+                    <ZimIcon name="chevron_right" size={16} />
+                </button>
+            {/if}
             <button 
                 type="button" 
                 class="fullscreen-hud-btn" 
@@ -406,6 +448,35 @@
                 <span>Vollbild beenden</span>
             </button>
         </div>
+    {/if}
+
+    <!-- Schwebende Pfeiltasten am linken und rechten Rand bei Mehrseiten-Anschlusstafeln -->
+    {#if trainDisplay.hasDeparturePagingLayout() && displayConfigStore.totalDeparturePages > 1}
+        <button 
+            type="button" 
+            class="display-edge-arrow left" 
+            onclick={() => {
+                displayConfigStore.prevDeparturePage();
+                trainDisplay.updateAll();
+            }}
+            title="Vorherige Seite (Pfeil links)"
+            aria-label="Vorherige Seite"
+        >
+            <ZimIcon name="chevron_left" size={24} />
+        </button>
+
+        <button 
+            type="button" 
+            class="display-edge-arrow right" 
+            onclick={() => {
+                displayConfigStore.nextDeparturePage();
+                trainDisplay.updateAll();
+            }}
+            title="Nächste Seite (Pfeil rechts)"
+            aria-label="Nächste Seite"
+        >
+            <ZimIcon name="chevron_right" size={24} />
+        </button>
     {/if}
 
     <div 
@@ -495,13 +566,33 @@
         pointer-events: none;
         transition: opacity 0.3s ease, transform 0.3s ease;
         transform: translateY(-10px);
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
     .fullscreen-hud.hud-visible {
         opacity: 1;
         pointer-events: auto;
         transform: translateY(0);
     }
-    .fullscreen-hud.reduce-transparency .fullscreen-hud-btn {
+    .fullscreen-hud-page {
+        color: #fff;
+        font-size: 0.88rem;
+        font-weight: 600;
+        padding: 0 12px;
+        user-select: none;
+        white-space: nowrap;
+        background: rgba(18, 18, 24, 0.85);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 8px;
+        height: 44px;
+        display: inline-flex;
+        align-items: center;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+    }
+    .fullscreen-hud.reduce-transparency .fullscreen-hud-btn,
+    .fullscreen-hud.reduce-transparency .fullscreen-hud-page {
         backdrop-filter: none;
         -webkit-backdrop-filter: none;
         background: var(--bg-card);
@@ -532,5 +623,48 @@
     .fullscreen-hud-btn:focus-visible {
         outline: var(--focus-ring);
         outline-offset: var(--focus-ring-offset);
+    }
+
+    /* Schwebende Navigations-Pfeile am Rand der Anschlusstafel */
+    .display-edge-arrow {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 50;
+        background: rgba(18, 18, 24, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: #fff;
+        width: 48px;
+        height: 80px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.2s ease, background 0.2s ease, transform 0.2s ease;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    }
+    .display-wrapper:hover .display-edge-arrow,
+    .display-edge-arrow:focus-visible {
+        opacity: 0.8;
+    }
+    .display-edge-arrow:hover {
+        opacity: 1;
+        background: rgba(226, 0, 26, 0.85);
+        border-color: var(--accent);
+        transform: translateY(-50%) scale(1.05);
+    }
+    .display-edge-arrow:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: var(--focus-ring-offset);
+    }
+    .display-edge-arrow.left {
+        left: 14px;
+    }
+    .display-edge-arrow.right {
+        right: 14px;
     }
 </style>
