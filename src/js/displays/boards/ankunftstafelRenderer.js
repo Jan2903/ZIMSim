@@ -1,7 +1,7 @@
 // js/displays/boards/ankunftstafelRenderer.js
 import { COLORS, FONTS } from '../../core/constants/theme.js';
 import { truncateWithEllipsis, drawLineBadge, drawInvertedTimeBox, getVerticalCenterOffset, drawText } from '../core/textUtils.js';
-import { drawAnalogClock } from '../core/sharedRenderers.js';
+import { drawAnalogClock, drawDigitalClock } from '../core/sharedRenderers.js';
 import { getSimulatedTime } from '../../core/utils/config.js';
 import { lineColorService } from '../../core/services/lineColorService.svelte.js';
 
@@ -92,18 +92,17 @@ function drawAnkunftHeader(ctx, width, height, renderCtx) {
     ctx.fillRect(0, height - 2, width, 2);
 
     const simTime = getSimulatedTime();
-    const timeStr = simTime.toTimeString().slice(0, 5); // "17:51"
 
-    // Uhrzeit links (Analoge Uhr + Digitalzeit)
+    // Uhrzeit links (Analoge Uhr + Digitalzeit mit blinkendem Doppelpunkt)
     const clockRadius = height > 90 ? 28 : 24;
     const clockCenterX = 30 + clockRadius;
     const clockCenterY = height * 0.50;
     drawAnalogClock(ctx, clockCenterX, clockCenterY, clockRadius, simTime);
 
-    ctx.font = FONTS.bold(height > 90 ? 46 : 40);
-    ctx.fillStyle = COLORS.WHITE;
-    ctx.textAlign = 'left';
-    drawText(ctx, timeStr, clockCenterX + clockRadius + 16, height * 0.62, FONTS.bold(height > 90 ? 46 : 40), COLORS.WHITE, 'left');
+    drawDigitalClock(ctx, simTime, clockCenterX + clockRadius + 16, height * 0.62, {
+        fontSize: height > 90 ? 46 : 40,
+        verticalAlign: 'baseline'
+    });
 
     // Titel "Ankunft Arrivals"
     ctx.font = FONTS.bold(height > 90 ? 46 : 40);

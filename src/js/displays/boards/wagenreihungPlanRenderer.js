@@ -3,7 +3,7 @@ import { COLORS, FONTS } from '../../core/constants/theme.js';
 import { FORMATION } from '../core/constants.js';
 import { getSimulatedTime } from '../../core/utils/config.js';
 import { drawFormation, drawSectors } from '../primitives/formationRenderer.js';
-import { drawDBLogo, drawAnalogClock } from '../core/sharedRenderers.js';
+import { drawDBLogo, drawAnalogClock, drawDigitalClock } from '../core/sharedRenderers.js';
 import { drawInvertedTimeBox, getVerticalCenterOffset, truncateWithEllipsis, drawText, drawTextInRectangle } from '../core/textUtils.js';
 import { lineColorService } from '../../core/services/lineColorService.svelte.js';
 import { JourneyViaService } from '../../features/journey/services/journeyViaService.js';
@@ -75,15 +75,17 @@ function drawPlanHeader(ctx, width, height, sectorStartX, sectorUsableWidth, pla
     ctx.fillRect(0, height - 2, width, 2);
 
     const simTime = getSimulatedTime();
-    const timeStr = simTime.toTimeString().slice(0, 5); // "05:48"
 
-    // 1. Uhrzeit links (Analoge Uhr + Digitalzeit)
+    // 1. Uhrzeit links (Analoge Uhr + Digitalzeit mit blinkendem Doppelpunkt)
     const clockRadius = isPortrait ? 22 : 26;
     const clockCenterX = (isPortrait ? 20 : 30) + clockRadius;
     const clockCenterY = height * 0.50;
     drawAnalogClock(ctx, clockCenterX, clockCenterY, clockRadius, simTime);
 
-    drawText(ctx, timeStr, clockCenterX + clockRadius + 14, height * 0.58, FONTS.bold(isPortrait ? 38 : 42), COLORS.WHITE, 'left');
+    drawDigitalClock(ctx, simTime, clockCenterX + clockRadius + 14, height * 0.58, {
+        fontSize: isPortrait ? 38 : 42,
+        verticalAlign: 'baseline'
+    });
 
     // 2. "Abfahrt Departure"
     const titleX = isPortrait ? 180 : 210;

@@ -2,6 +2,7 @@
 import { COLORS, FONTS } from '../../core/constants/theme.js';
 import { drawText, fillTextCentered } from './textUtils.js';
 import { getSimulatedTime } from '../../core/utils/config.js';
+import { isBlinkPhaseOn } from '../../core/utils/blinkUtils.js';
 
 /**
  * Zeichnet das DB-Logo (abgerundetes Rechteck mit Text "DB")
@@ -81,4 +82,69 @@ export function drawAnalogClock(ctx, x, y, radius = 35, customTime = null) {
     ctx.beginPath();
     ctx.arc(x, y, 2, 0, Math.PI * 2);
     ctx.fill();
+}
+
+/**
+ * Zeichnet eine digitale Uhrzeit (HH:MM) mit optional blinkendem Doppelpunkt.
+ *
+ * Stunden, Doppelpunkt und Minuten werden als separate Segmente gezeichnet,
+ * damit die Minuten beim Ausblenden des Doppelpunkts nicht verrutschen.
+ * Der Doppelpunkt nutzt dieselbe Blinkphase wie der Abfahrtsalarm
+ * (siehe isBlinkPhaseOn), sodass beide Elemente synchron blinken.
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Date} time - Anzuzeigende Uhrzeit.
+ * @param {number} x - Linke Kante des Textes.
+ * @param {number} y - Vertikale Position: Mittelachse bei 'center', sonst wie ctx.textBaseline.
+ * @param {object} [options={}] - Darstellungsoptionen.
+ * @param {number} [options.fontSize=42] - Schriftgröße in Pixeln.
+ * @param {string} [options.color=COLORS.WHITE] - Textfarbe.
+ * @param {boolean} [options.blinkColon=true] - Ob der Doppelpunkt blinken soll.
+ * @param {'center'|'baseline'} [options.verticalAlign='center'] - Interpretationsart von y.
+ * @returns {number} Gesamtbreite der gezeichneten Uhrzeit in Pixeln.
+ */
+export function drawDigitalClock(ctx, time, x, y, options = {}) {
+    const {
+        fontSize = 42,
+        color = COLORS.WHITE,
+        blinkColon = true,
+        verticalAlign = 'center'
+    } = options;
+
+    const hours = String(time.getHours()).padStart(2, '0');
+    const minutes = String(time.getMinutes()).padStart(2, '0');
+    const font = FONTS.bold(fontSize);
+
+    ctx.font = font;
+    ctx.textAlign = 'left';
+
+    const hoursWidth = ctx.measureText(hours).width;
+    const colonWidth = ctx.measureText(':').width;
+    const minutesWidth = ctx.measureText(minutes).width;
+
+    /**
+     * Zeichnet ein Segment an seiner linken Kante.
+     * @param {string} text - Segmenttext.
+     * @param {number} segmentX - Linke Kante des Segments.
+     * @returns {void}
+     */
+    const drawSegment = (text, segmentX) => {
+        if (verticalAlign === 'center') {
+            ctx.fillStyle = color;
+            fillTextCentered(ctx, text, segmentX, y);
+        } else {
+            drawText(ctx, text, segmentX, y, font, color, 'left');
+        }
+    };
+
+    drawSegment(hours, x);
+
+    // Doppelpunkt phasengleich zum Abfahrtsalarm ein-/ausblenden.
+    if (!blinkColon || isBlinkPhaseOn()) {
+        drawSegment(':', x + hoursWidth);
+    }
+
+    drawSegment(minutes, x + hoursWidth + colonWidth);
+
+    return hoursWidth + colonWidth + minutesWidth;
 }

@@ -3,9 +3,9 @@ import { COLORS, FONTS } from '../../core/constants/theme.js';
 import { FORMATION } from '../core/constants.js';
 import { drawFormation, drawSectors } from '../primitives/formationRenderer.js';
 import { drawLineBadge, drawText, drawInvertedTimeBox, truncateWithEllipsis } from '../core/textUtils.js';
-import { drawDBLogo, drawAnalogClock } from '../core/sharedRenderers.js';
+import { drawDBLogo, drawAnalogClock, drawDigitalClock } from '../core/sharedRenderers.js';
+import { getDepartureAlarmState, drawDepartureAlarmMarker } from '../core/departureAlarmRenderer.js';
 import { getSimulatedTime } from '../../core/utils/config.js';
-import { formatHHMM } from '../../core/utils/dateUtils.js';
 import { combineTrainNames } from '../../features/journey/trainNumberFormatter.js';
 import { JourneyCouplingService } from '../../features/journey/services/journeyCouplingService.js';
 import { JourneyViaService } from '../../features/journey/services/journeyViaService.js';
@@ -15,10 +15,9 @@ function drawVitrineHeader(ctx, width, activeFeatureIndex, progress, trackNumber
     // 1. Clock (Left)
     drawAnalogClock(ctx, 80, 80);
     
-    // Digital Time
+    // Digital Time (mit blinkendem Doppelpunkt)
     const now = getSimulatedTime();
-    const timeStr = formatHHMM(now);
-    drawText(ctx, timeStr, 150, 110, FONTS.bold(86), COLORS.WHITE, 'left');
+    drawDigitalClock(ctx, now, 150, 110, { fontSize: 86, verticalAlign: 'baseline' });
 
     // 2. Progress Bar & Features (Center)
     const features = [
@@ -144,20 +143,38 @@ function drawVitrineRow(ctx, journeys, yOffset, width, platform, activeFeatureSt
 
     const primary = journeys[0];
     
+    // Linker Rand der Zeit-Spalte: lässt Platz für den Abfahrtsalarm-Punkt.
+    const timeX = 56;
+    const timeBaselineY = yOffset + 150;
+
     if (drawLayer === 'all' || drawLayer === 'static') {
         const scheduled = primary.scheduledTime || "";
         const expected = primary.expectedTime || "";
 
         // Time
         const timeFont = FONTS.regular(75);
-        drawText(ctx, scheduled, 20, yOffset + 150, timeFont, COLORS.WHITE, 'left');
+        drawText(ctx, scheduled, timeX, timeBaselineY, timeFont, COLORS.WHITE, 'left');
 
         if (expected && expected !== scheduled) {
             const scheduledWidth = ctx.measureText(scheduled).width;
-            drawInvertedTimeBox(ctx, expected, 20 + scheduledWidth + 12, yOffset + 150, FONTS.bold(48), {
+            drawInvertedTimeBox(ctx, expected, timeX + scheduledWidth + 12, timeBaselineY, FONTS.bold(48), {
                 paddingX: 10,
                 minWidth: 100,
                 height: 55
+            });
+        }
+    }
+
+    // Abfahrtsalarm: blinkender Punkt links neben der Abfahrtszeit.
+    // Nur im dynamischen Layer zeichnen, damit er nicht dauerhaft im
+    // statischen Layer eingebrannt wird und synchron mit der Uhr blinkt.
+    if (drawLayer === 'dynamic') {
+        const alarm = getDepartureAlarmState(primary);
+        if (alarm.visible) {
+            drawDepartureAlarmMarker(ctx, timeX - 36, timeBaselineY - 26, {
+                radius: 8,
+                lineWidth: 3,
+                blinking: alarm.blinking
             });
         }
     }
