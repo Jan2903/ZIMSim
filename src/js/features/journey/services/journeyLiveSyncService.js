@@ -9,7 +9,8 @@ import { DbWebProviderService } from '../../../core/services/dbWebProviderServic
 import {
     getProviderLabel,
     getProviderMetaField,
-    mapVerkehrsmittel
+    mapVerkehrsmittel,
+    PROVIDER_CAPABILITIES
 } from '../../../core/services/liveDataProviderService.js';
 
 /**
@@ -77,6 +78,8 @@ export class JourneyLiveSyncService {
      */
     static _matchDepartures(entries, targetJourneys, providerId) {
         const metaField = getProviderMetaField(providerId);
+        // Nur Quellen mit verlässlichem [W]-Indikator dürfen die Verfügbarkeit setzen.
+        const canIndicate = PROVIDER_CAPABILITIES[providerId]?.formationIndicator === true;
         let matched = 0;
 
         for (const entry of entries) {
@@ -102,7 +105,10 @@ export class JourneyLiveSyncService {
                 );
 
                 if (numMatch || timeMatch) {
-                    j.hasFormationAvailable = entry.formationAvailable !== false;
+                    // Nur bei echtem Indikator ([W]) die Verfügbarkeit setzen; DBweb lässt den bisherigen Wert unverändert.
+                    if (canIndicate) {
+                        j.hasFormationAvailable = j.hasFormationAvailable || entry.formationAvailable === true;
+                    }
                     if (metaField && entry.providerMeta) {
                         j[metaField] = entry.providerMeta;
                     }
@@ -157,6 +163,8 @@ export class JourneyLiveSyncService {
         }
 
         const metaField = getProviderMetaField(providerId);
+        // Nur Quellen mit verlässlichem [W]-Indikator markieren Fahrten als verfügbar.
+        const canIndicate = PROVIDER_CAPABILITIES[providerId]?.formationIndicator === true;
         const seenKeys = new Set();
         const createdJourneys = [];
 
@@ -173,7 +181,7 @@ export class JourneyLiveSyncService {
 
             const journey = JourneyImportService.fromNormalizedEntry(entry, isArrival);
             journey.ankunft = isArrival;
-            journey.hasFormationAvailable = entry.formationAvailable !== false;
+            journey.hasFormationAvailable = canIndicate && entry.formationAvailable === true;
             if (metaField && entry.providerMeta) {
                 journey[metaField] = entry.providerMeta;
             }
@@ -370,12 +378,17 @@ export class JourneyLiveSyncService {
     }
 
     /**
-     * Lädt automatisch die Wagenreihung für sichtbare Fahrten (z.B. Haupt- und Nebenmonitor) nach,
-     * sofern für diese eine Wagenreihung verfügbar ([W]) aber noch nicht geladen ist.
+     * Lädt automatisch die Wagenreihung für sichtbare Fahrten (z.B. Haupt- und Nebenmonitor) nach.
+     * Bei aktivem `requireIndicator` werden nur Fahrten mit verfügbarer Wagenreihung ([W]) geladen,
+     * ohne Indikator reicht es, dass noch keine Wagenreihung geladen wurde.
      * @param {number} [maxTrains=2] - Maximale Anzahl Fahrten, die sequenziell nachgeladen werden
+     * @param {object} [options] - Optionen für die Auswahl der Fahrten
+     * @param {boolean} [options.requireIndicator=true] - `[W]`-Indikator als Voraussetzung verlangen
      * @returns {Promise<number>} Anzahl erfolgreich geladener Formationen
      */
-    static async autoFetchActiveFormations(maxTrains = 2) {
+    static async autoFetchActiveFormations(maxTrains = 2, options = { requireIndicator: true }) {
+        // `?? true`: Auch bei explizit übergebenem leeren Optionsobjekt bleibt der Indikator Voraussetzung.
+        const requireIndicator = options.requireIndicator ?? true;
         const visibleJourneys = journeyStore.getVisibleJourneys();
         let fetched = 0;
 
@@ -383,7 +396,8 @@ export class JourneyLiveSyncService {
             if (fetched >= maxTrains) break;
 
             const hasCoaches = j.formation?.groups?.some(g => g.coaches?.length > 0);
-            if (j.hasFormationAvailable && !hasCoaches && !j.isFetchingFormation) {
+            const indicatorOk = requireIndicator ? j.hasFormationAvailable : true;
+            if (indicatorOk && !hasCoaches && !j.isFetchingFormation) {
                 const res = await this.fetchFormationForJourney(j);
                 if (res.success) {
                     fetched++;

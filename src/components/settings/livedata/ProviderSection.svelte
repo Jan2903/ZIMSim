@@ -1,8 +1,8 @@
 <!-- src/components/settings/livedata/ProviderSection.svelte -->
 <script>
-    import { journeyStore, trainDisplay } from '../../../js/core/state/stores.js';
+    import { journeyStore } from '../../../js/core/state/stores.js';
     import { liveDataConfig } from '../../../js/core/state/liveDataConfig.svelte.js';
-    import { irisConfig } from '../../../js/core/services/irisPollingService.svelte.js';
+    import { irisPollingService, irisConfig } from '../../../js/core/services/irisPollingService.svelte.js';
     import { toastStore } from '../../../js/core/state/toastStore.svelte.js';
     import { getNonCorsAvailability } from '../../../js/core/services/apiClient.js';
     import { getProviderCapabilities, getProviderLabel } from '../../../js/core/services/liveDataProviderService.js';
@@ -24,12 +24,16 @@
     // Plattformabhängige Verfügbarkeit der Nicht-CORS-APIs (DB Navigator / bahn.de)
     const availability = $derived(getNonCorsAvailability());
 
-    // Status für Board Fetch, Hybrid-Sync und Formations-Abruf
+    // Status für Board Fetch und Formations-Abruf
     let isFetchingBoard = $state(false);
     let isFetchingFormations = $state(false);
     let fetchResult = $state(null);
-    let isSyncingHybrid = $state(false);
-    let hybridSyncResult = $state(null);
+
+    // Alte Ergebnismeldungen beim Quellenwechsel verwerfen
+    $effect(() => {
+        providerId;
+        fetchResult = null;
+    });
 
     /**
      * Lädt die Abfahrts- oder Ankunftstafel des aktiven Providers.
@@ -50,6 +54,13 @@
 
         const isArrival = liveDataConfig.board.queryType === 'arrivals';
 
+        // Jedes Laden einer Provider-Tafel beendet ein laufendes IRIS-Polling,
+        // damit der nächste Poll die frisch geladenen Fahrten nicht wieder entfernt.
+        if (irisPollingService.isActive) {
+            irisPollingService.stop();
+            toastStore.info('IRIS-Polling pausiert, damit die geladenen Live-Daten erhalten bleiben.');
+        }
+
         isFetchingBoard = true;
         fetchResult = null;
 
@@ -68,10 +79,12 @@
                 };
 
                 // Wagenreihungen für sichtbare Züge nachladen, falls aktiviert
-                if (liveDataConfig.board.fetchFormation) {
+                if (liveDataConfig.autoFetchFormations) {
                     isFetchingFormations = true;
                     try {
-                        await JourneyLiveSyncService.autoFetchActiveFormations(2);
+                        await JourneyLiveSyncService.autoFetchActiveFormations(2, {
+                            requireIndicator: capabilities.formationIndicator
+                        });
                     } finally {
                         isFetchingFormations = false;
                     }
@@ -90,64 +103,6 @@
             };
         } finally {
             isFetchingBoard = false;
-        }
-    }
-
-    /**
-     * Gleicht bestehende Fahrten (z.B. aus IRIS) mit dem aktiven Provider ab,
-     * um die Wagenreihungs-Verfügbarkeit ([W]) freizuschalten, ohne die detaillierten
-     * IRIS-Halte zu überschreiben.
-     * @returns {Promise<void>}
-     */
-    async function syncHybrid() {
-        const stationId = journeyStore.stationContext.stationId;
-        if (!stationId) {
-            toastStore.warning('Bitte zuerst eine Station auswählen!');
-            return;
-        }
-
-        const avail = getNonCorsAvailability();
-        if (avail.blocked) {
-            hybridSyncResult = {
-                success: false,
-                message: `${providerLabel} ${avail.reason}`
-            };
-            return;
-        }
-
-        isSyncingHybrid = true;
-        hybridSyncResult = null;
-        try {
-            const res = await JourneyLiveSyncService.enrichJourneys(providerId, {
-                stationId: stationId,
-                lookbehindMinutes: irisConfig.lookbehindMinutes ?? 30,
-                chunks: 2
-            });
-            hybridSyncResult = {
-                success: true,
-                message: `${res.matchedCount} von ${res.totalDepartures} ${providerLabel} Fahrten abgeglichen, [W] Verfügbarkeit aktualisiert.`
-            };
-        } catch (e) {
-            console.error(`[ProviderSection] Fehler beim Hybrid-Abgleich mit ${providerLabel}:`, e);
-            hybridSyncResult = {
-                success: false,
-                message: `Fehler beim Abgleich mit ${providerLabel}.`
-            };
-        } finally {
-            isSyncingHybrid = false;
-        }
-    }
-
-    /**
-     * Lädt manuell Wagenreihungen für sichtbare Züge nach.
-     * @returns {Promise<void>}
-     */
-    async function fetchVisibleFormations() {
-        isFetchingFormations = true;
-        try {
-            await JourneyLiveSyncService.autoFetchActiveFormations(2);
-        } finally {
-            isFetchingFormations = false;
         }
     }
 </script>
@@ -207,15 +162,7 @@
     <!-- Verkehrsmittel-Filter -->
     <ProviderMoTFilter />
 
-    <!-- Optionen -->
-    <div class="checkbox-group" style="margin-top: 12px;">
-        <label class="checkbox-label">
-            <input type="checkbox" bind:checked={liveDataConfig.board.fetchFormation}>
-            <span>Wagenreihungen nach dem Laden automatisch für sichtbare Züge abrufen</span>
-        </label>
-    </div>
-
-    <!-- Aktions-Buttons für Ersetzen / Anhängen / Wagenreihung -->
+    <!-- Aktions-Buttons für Ersetzen / Anhängen -->
     <div style="display: flex; gap: 8px; margin-top: 14px;">
         <button
             type="button"
@@ -238,17 +185,6 @@
             <ZimIcon name="plus" size={14} />
             <span>Anhängen</span>
         </button>
-        <button
-            type="button"
-            class="btn-secondary"
-            style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;"
-            onclick={fetchVisibleFormations}
-            disabled={isFetchingFormations || isFetchingBoard}
-            title="Wagenreihungen für sichtbare Züge aktualisieren"
-        >
-            <ZimIcon name="train_fast" size={14} />
-            <span>{isFetchingFormations ? 'Lädt...' : '[W]'}</span>
-        </button>
     </div>
 
     {#if fetchResult}
@@ -256,30 +192,6 @@
             {fetchResult.message}
         </div>
     {/if}
-
-    <!-- Hybrid-Abgleich für bestehende Fahrten (z. B. aus IRIS) -->
-    <div class="sub-section" style="margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px;">
-        <div class="field-label">Hybrid-Abgleich für bestehende Fahrten (z. B. aus IRIS):</div>
-        <p class="hint-text" style="margin: 0 0 10px 0;">
-            Gleicht alle aktuell in ZIMSim geladenen Fahrten mit {providerLabel} ab. Behält die detaillierten Halte,
-            exakten Zeiten und RIS-Gründe der vorhandenen Quelle bei und ergänzt die Wagenreihung ([W]).
-        </p>
-        <button
-            type="button"
-            class="btn-secondary"
-            style="width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px;"
-            onclick={syncHybrid}
-            disabled={isSyncingHybrid}
-        >
-            <ZimIcon name="restart" size={14} />
-            <span>{isSyncingHybrid ? 'Gleiche ab...' : 'Formations-Verfügbarkeit abgleichen ([W])'}</span>
-        </button>
-        {#if hybridSyncResult}
-            <div class="sync-result-msg" class:is-success={hybridSyncResult.success} style="margin-top: 8px; font-size: 0.8rem;">
-                {hybridSyncResult.message}
-            </div>
-        {/if}
-    </div>
 
     <!-- Haltestellensuche über die jeweilige Quelle -->
     <ProviderStationSearch {providerId} />
@@ -296,7 +208,7 @@
         </ul>
         <div class="hint-text">
             Nicht vorhandene Fähigkeiten lassen sich nicht aktivieren - die API liefert die Daten schlicht nicht.
-            Beide Quellen lassen sich jedoch parallel nutzen und über den Hybrid-Abgleich miteinander kombinieren.
+            Beide Quellen lassen sich kombinieren: IRIS liefert den Fahrplan, die Wagenreihungen der IRIS-Fahrten ergänzt der Formationsblock.
         </div>
     </div>
 </div>

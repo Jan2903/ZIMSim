@@ -267,7 +267,7 @@
             </div>
         {/if}
 
-        <!-- Tab 3: Live-Daten (IRIS & DB Navigator) -->
+        <!-- Tab 3: Live-Daten (IRIS, DB Navigator & DBweb) -->
         {#if uiState.mountedTabs.includes('livedata')}
             <div
                 class="tab-pane"

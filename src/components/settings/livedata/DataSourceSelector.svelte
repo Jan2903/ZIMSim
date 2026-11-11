@@ -15,8 +15,8 @@
 
     /**
      * @typedef {Object} Props
-     * @property {string} selectedDataSource - Aktive Datenquelle ('iris' | 'db_navigator' | 'dbweb')
-     * @property {(source: string) => void} [onSelectSource] - Optionaler Callback bei Wechsel der Datenquelle
+     * @property {string} selectedDataSource - Angezeigte Detailansicht ('iris' | 'db_navigator' | 'dbweb')
+     * @property {(source: string) => void} [onSelectSource] - Optionaler Callback bei Wechsel der Detailansicht
      */
     let { selectedDataSource = $bindable('iris'), onSelectSource } = $props();
 
@@ -77,7 +77,7 @@
     }
 
     /**
-     * Setzt die aktive Schnittstelle und informiert übergeordnete Listener.
+     * Wechselt die Detailansicht und informiert übergeordnete Listener.
      * @param {string} source
      */
     function handleSelect(source) {
@@ -105,7 +105,7 @@
     </div>
     <div class="card-body">
         <!-- Datenquellen-Segment -->
-        <div class="field-label">Aktives Optionsprofil:</div>
+        <div class="field-label">Angezeigte Detailansicht:</div>
         <div class="source-selector">
             <label class="source-card" class:active={selectedDataSource === 'iris'}>
                 <input type="radio" name="data_source" value="iris" bind:group={selectedDataSource} onchange={() => handleSelect('iris')}>
@@ -151,9 +151,8 @@
         </div>
 
         <div class="source-hint">
-            Das Profil bestimmt, welche Optionen rechts angezeigt werden. Die Datenquelle selbst
-            wird über die Aktions-Buttons des jeweiligen Profils geladen - jede Quelle lässt sich
-            weiterhin einzeln oder gemeinsam nutzen.
+            Die Ansicht wechselt nur den Detailblock rechts. Quellen werden nicht parallel geladen:
+            DB IRIS liefert den Fahrplan, DB Navigator/bahn.de ergänzen Wagenreihungen (Hybrid).
         </div>
 
         <!-- Plattform- und CORS-Status-Banner -->

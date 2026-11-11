@@ -4,39 +4,49 @@
     import ZimIcon from '../ZimIcon.svelte';
     import DataSourceSelector from './livedata/DataSourceSelector.svelte';
     import IrisSection from './livedata/IrisSection.svelte';
+    import FormationSection from './livedata/FormationSection.svelte';
     import ProviderSection from './livedata/ProviderSection.svelte';
 
-    // Aktives Optionsprofil: 'iris' | 'db_navigator' | 'dbweb'
-    let selectedDataSource = $state(liveDataConfig.profile || 'iris');
+    // Aktive Detailansicht: 'iris' | 'db_navigator' | 'dbweb' (Migrationsfallback auf 'iris')
+    let selectedDataSource = $state(
+        ['iris', 'db_navigator', 'dbweb'].includes(liveDataConfig.profile) ? liveDataConfig.profile : 'iris'
+    );
 </script>
 
 <div class="settings-tab-grid">
     <!-- Spalte 1: Datenquellen-Auswahl, Plattform-Status & Python-Bridge -->
     <DataSourceSelector bind:selectedDataSource />
 
-    <!-- Spalte 2: Konfiguration des gewählten Datenquellen-Profils -->
-    <div class="settings-card">
-        <div class="card-header">
-            <ZimIcon name="settings" size={18} />
-            <h3>
-                {#if selectedDataSource === 'iris'}
-                    DB IRIS Einstellungen (Fahrplan & Echtzeit)
-                {:else if selectedDataSource === 'db_navigator'}
-                    DB Navigator Optionen (Fahrplan & Wagenreihung)
-                {:else if selectedDataSource === 'dbweb'}
-                    DBweb Optionen (bahn.de Web API)
-                {:else}
-                    Live-Daten Konfiguration
-                {/if}
-            </h3>
-        </div>
-        <div class="card-body">
-            {#if selectedDataSource === 'iris'}
+    <!-- Spalte 2: IRIS-Basis (immer), Formationsblock (immer) und Provider-Details -->
+    <div class="settings-stack">
+        <div class="settings-card">
+            <div class="card-header">
+                <ZimIcon name="settings" size={18} />
+                <h3>Live-Daten Basis (DB IRIS)</h3>
+            </div>
+            <div class="card-body">
                 <IrisSection />
-            {:else if selectedDataSource === 'db_navigator' || selectedDataSource === 'dbweb'}
-                <ProviderSection providerId={selectedDataSource} />
-            {/if}
+                <FormationSection />
+            </div>
         </div>
+
+        {#if selectedDataSource === 'db_navigator' || selectedDataSource === 'dbweb'}
+            <div class="settings-card">
+                <div class="card-header">
+                    <ZimIcon name="settings" size={18} />
+                    <h3>
+                        {#if selectedDataSource === 'db_navigator'}
+                            DB Navigator Optionen (Fahrplan & Wagenreihung)
+                        {:else}
+                            DBweb Optionen (bahn.de Web API)
+                        {/if}
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <ProviderSection providerId={selectedDataSource} />
+                </div>
+            </div>
+        {/if}
     </div>
 </div>
 
@@ -46,6 +56,12 @@
         grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
         gap: 16px;
         align-items: start;
+    }
+
+    .settings-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
     }
 
     @media (max-width: 600px) {

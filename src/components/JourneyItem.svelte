@@ -192,7 +192,7 @@
                         <button
                             type="button"
                             class="badge badge-formation-available"
-                            title="Wagenreihung verfügbar (DB Navigator) - Klicken zum Laden"
+                            title="Wagenreihung verfügbar – klicken zum Laden"
                             disabled={journey.isFetchingFormation}
                             onclick={fetchWagenreihung}
                         >
