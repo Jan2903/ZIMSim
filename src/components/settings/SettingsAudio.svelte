@@ -363,7 +363,7 @@
                 <div class="audio-package-actions">
                     <button type="button" class="btn-secondary btn-sm audio-package-btn" onclick={handleZipLoad}>
                         <ZimIcon name="volume_low" size={14} />
-                        <span>{ansagenStore.status === 'loaded' ? 'Anderes ZIP laden' : 'ZIP laden'}</span>
+                        <span>{ansagenStore.status === 'loaded' ? ' ' : ' '}</span>
                     </button>
                     {#if ansagenStore.status === 'loaded'}
                         <span class="audio-package-file" title={ansagenStore.fileName}>{ansagenStore.fileName}</span>

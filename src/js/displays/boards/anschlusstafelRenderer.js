@@ -219,12 +219,12 @@ function drawHeader(ctx, width, height, renderCtx, isPortrait) {
     drawDigitalClock(ctx, simTime, timeX, clockCenterY, { fontSize: isPortrait ? 28 : 42 });
 
     // 2. Titel: "Abfahrt Departure" (bündig über der Über/Ziel-Spalte)
-    const titleX = col2X;
+    const depY = isPortrait ? 40 : 46;
     let subFont;
     let subItalic;
     subFont = FONTS.bold(isPortrait ? 30 : 44);
     subItalic = FONTS.italic(isPortrait ? 30 : 44);
-    drawSubLabel('Abfahrt Departure', col2X, clockCenterY, 'left', " ");
+    drawSubLabel('Abfahrt Departure', col2X, depY, 'left', " ");
 
     // 3. Oben rechts: DB-Logo aus sharedRenderers (über der Symbol-Spalte rechtsbündig)
     const logoW = isPortrait ? 52 : 72;
@@ -261,8 +261,8 @@ function drawHeader(ctx, width, height, renderCtx, isPortrait) {
     drawSubLabel('Über / Via', col2X, subY1, 'left');
     drawSubLabel('Ziel / Destination', col2X, subY2, 'left');
 
-    // Spalte 3: Gleis / Track (zentriert über der Gleisspalte auf Grundlinie von Zeit & Ziel)
-    drawSubLabel('Gleis / Track', col3X + (col3W / 2), subY2, 'center');
+    // Spalte 3: Gleis / Track
+    drawSubLabel('Gleis / Track', col3X, subY2, 'left');
 }
 
 /**
