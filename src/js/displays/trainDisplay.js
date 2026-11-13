@@ -7,7 +7,6 @@ import { drawTrainInfo, shouldRenderFormation } from './boards/zuganzeigerRender
 import { drawListeRow, drawVoranzeigerBoard } from './boards/anschlusstafelRenderer.js';
 import { drawVitrine32Wagenstand } from './boards/wagenstandGleisRenderer.js';
 import { drawAnkunftBoard } from './boards/ankunftstafelRenderer.js';
-import { drawWagenreihungPlan } from './boards/wagenreihungPlanRenderer.js';
 import { drawAnschlusstafelZoomBoard } from './boards/anschlusstafelZoomRenderer.js';
 import { displayConfigStore } from './core/displayConfigStore.svelte.js';
 import { InfoTextVisibilityService } from '../features/journey/services/infoTextVisibilityService.js';
@@ -173,8 +172,7 @@ export class TrainDisplay {
         const loop = () => {
             const layout = this.currentLayout;
             const isVitrine = layout?.layoutType === 'wagenstand_gleis' ||
-                              layout?.screens?.some(s => s.type === 'vitrine32') ||
-                              layout?.layoutType === 'wagenreihungsplan';
+                              layout?.screens?.some(s => s.type === 'vitrine32');
             const now = Date.now();
 
             const frame = computeAnimationFrame(this.anim, now, {
@@ -550,10 +548,6 @@ export class TrainDisplay {
             case 'ankunft':
             case 'ankunft_portrait':
                 drawAnkunftBoard(ctx, journeys, width, height, renderCtx, screen);
-                break;
-
-            case 'wagenreihung_plan':
-                drawWagenreihungPlan(ctx, journeyGroups || [], this.journeyStore.platform, width, height, renderCtx, screen);
                 break;
 
             case 'liste':

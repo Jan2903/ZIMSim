@@ -1,5 +1,28 @@
 // js/displays/core/displayConfigStore.svelte.js
-import { generateActiveLayout } from './displayLayoutService.js';
+import { generateActiveLayout, LAYOUT_TYPES } from './displayLayoutService.js';
+
+/**
+ * Prüft, ob ein fachlicher Anzeigetyp überhaupt existiert.
+ * Entfernte oder unbekannte Typen (z. B. 'wagenreihungsplan') würden sonst
+ * ein Layout ohne Screens erzeugen und die Anzeige leer lassen.
+ *
+ * @param {string|null} type - Zu prüfender Layout-Typ
+ * @returns {boolean} true, wenn der Typ in LAYOUT_TYPES existiert
+ */
+function isValidLayoutType(type) {
+    return LAYOUT_TYPES.some(entry => entry.id === type);
+}
+
+/**
+ * Liest den gespeicherten Anzeigetyp aus dem localStorage und fällt bei
+ * unbekannten/entfernten Typen auf 'zuganzeiger' zurück.
+ *
+ * @returns {string} Gültiger Layout-Typ
+ */
+function getInitialLayoutType() {
+    const stored = localStorage.getItem('zimsim_layout_type');
+    return isValidLayoutType(stored) ? stored : 'zuganzeiger';
+}
 
 /**
  * Zentraler reaktiver Svelte 5 Store für die Anzeige-Konfiguration.
@@ -9,8 +32,8 @@ class DisplayConfigStore {
     // 1. Hardware-Monitor (z.B. 'zim2x32', 'zim3x32', 'zim32_single', 'zimvitrine32', 'zimvitrine65h', 'zimwide', 'zimultrawide')
     monitorId = $state(localStorage.getItem('zimsim_monitor_id') || 'zim2x32');
 
-    // 2. Fachlicher Anzeigetyp (z.B. 'zuganzeiger', 'anschlusstafel', 'ankunftstafel', 'wagenreihungsplan')
-    layoutType = $state(localStorage.getItem('zimsim_layout_type') || 'zuganzeiger');
+    // 2. Fachlicher Anzeigetyp (z.B. 'zuganzeiger', 'anschlusstafel', 'ankunftstafel', 'wagenstand_gleis')
+    layoutType = $state(getInitialLayoutType());
 
     // 3. Gehäuse-Sichtbarkeit
     showBezel = $state(localStorage.getItem('zimsim_show_bezel') !== 'false');
@@ -87,14 +110,17 @@ class DisplayConfigStore {
 
     /**
      * Wechselt den fachlichen DB-Anzeigetyp.
-     * @param {string} type - 'zuganzeiger' | 'anschlusstafel' | 'ankunftstafel' | 'wagenreihungsplan' | 'wagenstand_gleis'
+     * Unbekannte/entfernte Typen werden auf 'zuganzeiger' abgebildet.
+     *
+     * @param {string} type - 'zuganzeiger' | 'anschlusstafel' | 'ankunftstafel' | 'wagenstand_gleis'
      */
     setLayoutType(type) {
-        if (this.layoutType !== type) {
+        const nextType = isValidLayoutType(type) ? type : 'zuganzeiger';
+        if (this.layoutType !== nextType) {
             this.setDeparturePage(0);
         }
-        this.layoutType = type;
-        localStorage.setItem('zimsim_layout_type', type);
+        this.layoutType = nextType;
+        localStorage.setItem('zimsim_layout_type', nextType);
     }
 
     /**

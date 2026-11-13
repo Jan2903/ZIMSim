@@ -123,36 +123,42 @@ export class CanvasLayerService {
         if (!ctx || !screen) return;
 
         ctx.save();
-        if (clearMode !== 'none') {
-            ctx.clearRect(screen.x, screen.y, screen.w, screen.h);
+        try {
+            if (clearMode !== 'none') {
+                ctx.clearRect(screen.x, screen.y, screen.w, screen.h);
 
-            if (clearMode === 'opaque') {
-                // Bereich des Monitors mit der Standard-Canvas-Farbe (navy) füllen
-                ctx.fillStyle = COLORS.MIDNIGHT_BLUE;
-                ctx.fillRect(screen.x, screen.y, screen.w, screen.h);
+                if (clearMode === 'opaque') {
+                    // Bereich des Monitors mit der Standard-Canvas-Farbe (navy) füllen
+                    ctx.fillStyle = COLORS.MIDNIGHT_BLUE;
+                    ctx.fillRect(screen.x, screen.y, screen.w, screen.h);
+                }
             }
+
+            ctx.translate(screen.x, screen.y);
+            ctx.beginPath();
+            ctx.rect(0, 0, screen.w, screen.h);
+            ctx.clip();
+
+            // Textzustand deterministisch zurücksetzen: save/restore isoliert bereits
+            // pro Screen, dieser Reset hält den Startzustand zusätzlich explizit
+            // fest (Renderer setzen textBaseline/textAlign unterschiedlich).
+            ctx.textBaseline = 'alphabetic';
+            ctx.textAlign = 'left';
+
+            // HiDPI / 4K Vektor-Skalierung falls im Layout definiert
+            const scaleFactor = this._getLayout()?.scaleFactor || 1;
+            if (scaleFactor !== 1) {
+                ctx.scale(scaleFactor, scaleFactor);
+                drawFunction(ctx, screen.w / scaleFactor, screen.h / scaleFactor);
+            } else {
+                drawFunction(ctx, screen.w, screen.h);
+            }
+        } finally {
+            // Auch bei einem Renderer-Fehler zurücksetzen: sonst bleiben Translate,
+            // Clip-Region und ggf. Skalierung aktiv und blockieren alle folgenden
+            // Screens desselben Frames (und der State-Stack wächst pro Frame).
+            ctx.restore();
         }
-
-        ctx.translate(screen.x, screen.y);
-        ctx.beginPath();
-        ctx.rect(0, 0, screen.w, screen.h);
-        ctx.clip();
-
-        // Textzustand deterministisch zurücksetzen: save/restore isoliert bereits
-        // pro Screen, dieser Reset hält den Startzustand zusätzlich explizit
-        // fest (Renderer setzen textBaseline/textAlign unterschiedlich).
-        ctx.textBaseline = 'alphabetic';
-        ctx.textAlign = 'left';
-
-        // HiDPI / 4K Vektor-Skalierung falls im Layout definiert
-        const scaleFactor = this._getLayout()?.scaleFactor || 1;
-        if (scaleFactor !== 1) {
-            ctx.scale(scaleFactor, scaleFactor);
-            drawFunction(ctx, screen.w / scaleFactor, screen.h / scaleFactor);
-        } else {
-            drawFunction(ctx, screen.w, screen.h);
-        }
-        ctx.restore();
     }
 
     /**

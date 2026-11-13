@@ -19,7 +19,6 @@ export const LAYOUT_TYPES = [
     { id: 'zuganzeiger', name: 'Zuganzeiger (Bahnsteig / Gleis)' },
     { id: 'anschlusstafel', name: 'Anschlusstafel (Nur Abfahrten)' },
     { id: 'ankunftstafel', name: 'Ankunftstafel (Nur Ankünfte)' },
-    { id: 'wagenreihungsplan', name: 'Digitaler Wagenreihungsplan' },
     { id: 'wagenstand_gleis', name: 'Wagenstandsanzeiger (Gleis)' },
     { id: 'anschlusstafel_zoom', name: 'Anschlusstafel Zoom 4× (Großes Gleis)' },
     { id: 'anschlusstafel_zoom_icons', name: 'Anschlusstafel Zoom 4× (mit Qualitätsmerkmalen)' }
@@ -100,9 +99,9 @@ export function generateActiveLayout(monitorId = 'zim2x32', layoutType = 'zuganz
                 { id: 'nebenmonitor_2', type: 'neben_rotierend', x: 2880, y: 0, w: 960, h: 1080 }
             ];
         } else if (prof.id === 'zimvitrine65h') {
-            // Stele Hochkant: Zeigt Wagenreihungsplan mit Reihung & Sektoren
+            // Stele Hochkant: Zeigt den Wagenstandsanzeiger mit Reihung & Sektoren
             layout.screens = [
-                { id: 'stele_zuganzeiger', type: 'wagenreihung_plan', x: 0, y: 0, w: 1080, h: 1920, planOffset: 0 }
+                { id: 'stele_zuganzeiger', type: 'vitrine32', x: 0, y: 0, w: 1080, h: 1920, trainIndex: 0 }
             ];
         } else {
             // Einzelmonitore (zim32_single, zimvitrine32, zimwide)
@@ -199,33 +198,9 @@ export function generateActiveLayout(monitorId = 'zim2x32', layoutType = 'zuganz
     }
 
     // ========================================================
-    // 4. ANZEIGETYP: DIGITALER WAGENREIHUNGSPLAN
+    // 4. ANZEIGETYP: WAGENSTANDSANZEIGER (Gleis-Vitrine / Kombi)
     // ========================================================
-    else if (layoutType === 'wagenreihungsplan') {
-        if (prof.id === 'zim2x32') {
-            const slot2X = withBezel ? 1970 : 1920;
-            layout.screens = [
-                { id: 'plan_col1', type: 'wagenreihung_plan', x: 0, y: 0, w: 1920, h: 1080, planOffset: 0 },
-                { id: 'plan_col2', type: 'wagenreihung_plan', x: slot2X, y: 0, w: 1920, h: 1080, planOffset: 4 }
-            ];
-        } else if (prof.id === 'zim3x32') {
-            const slot2X = withBezel ? 1970 : 1920;
-            const slot3X = withBezel ? 3940 : 3840;
-            layout.screens = [
-                { id: 'plan_col1', type: 'wagenreihung_plan', x: 0, y: 0, w: 1920, h: 1080, planOffset: 0 },
-                { id: 'plan_col2', type: 'wagenreihung_plan', x: slot2X, y: 0, w: 1920, h: 1080, planOffset: 4 },
-                { id: 'plan_col3', type: 'wagenreihung_plan', x: slot3X, y: 0, w: 1920, h: 1080, planOffset: 8 }
-            ];
-        } else {
-            // Einzelbildschirm / Vitrine 32 / Stele 65h
-            layout.screens = [
-                { id: 'plan_main', type: 'wagenreihung_plan', x: 0, y: 0, w: baseW, h: baseH, planOffset: 0 }
-            ];
-        }
-    // ========================================================
-    // 5. ANZEIGETYP: WAGENSTANDSANZEIGER (Gleis-Vitrine / Kombi)
-    // ========================================================
-    } else if (layoutType === 'wagenstand_gleis') {
+    else if (layoutType === 'wagenstand_gleis') {
         if (prof.id === 'zim2x32') {
             // Klassische DB-Bahnsteigkombination: Links Zuganzeiger, Rechts 32" Wagenstandsanzeiger
             const slot2X = withBezel ? 1970 : 1920;
@@ -244,9 +219,9 @@ export function generateActiveLayout(monitorId = 'zim2x32', layoutType = 'zuganz
                 { id: 'vitrine_right', type: 'vitrine32', x: slot3X, y: 0, w: 1920, h: 1080, trainIndex: 0 }
             ];
         } else if (prof.id === 'zimvitrine65h') {
-            // Hochkant-Stele: Zeigt den digitalen Wagenreihungsplan
+            // Hochkant-Stele: Zeigt den Wagenstandsanzeiger
             layout.screens = [
-                { id: 'stele_plan', type: 'wagenreihung_plan', x: 0, y: 0, w: 1080, h: 1920, planOffset: 0 }
+                { id: 'stele_plan', type: 'vitrine32', x: 0, y: 0, w: 1080, h: 1920, trainIndex: 0 }
             ];
         } else {
             // Einzelmonitor (zimvitrine32, zim32_single, zimwide, etc.)
@@ -257,7 +232,7 @@ export function generateActiveLayout(monitorId = 'zim2x32', layoutType = 'zuganz
     }
 
     // ========================================================
-    // 6. ANZEIGETYP: ANSCHLUSSTAFEL ZOOM (4 Zeilen pro FullHD-Bildschirm)
+    // 5. ANZEIGETYP: ANSCHLUSSTAFEL ZOOM (4 Zeilen pro FullHD-Bildschirm)
     // ========================================================
     else if (layoutType === 'anschlusstafel_zoom' || layoutType === 'anschlusstafel_zoom_icons') {
         const showQualityIcons = layoutType === 'anschlusstafel_zoom_icons';
@@ -311,7 +286,7 @@ export function generateActiveLayout(monitorId = 'zim2x32', layoutType = 'zuganz
  * Erzeugt dynamisch das Layout für einen einzelnen Pop-Out-Monitor (?screen=1, ?screen=2, ?screen=3).
  * Garantiert 100% randlose, exakt passende Darstellung in 1080p oder 4K Ultra-HD.
  * 
- * @param {string} [layoutType='zuganzeiger'] - 'zuganzeiger' | 'anschlusstafel' | 'anschlusstafel_zoom' | 'ankunftstafel' | 'wagenreihungsplan' | 'wagenstand_gleis'
+ * @param {string} [layoutType='zuganzeiger'] - 'zuganzeiger' | 'anschlusstafel' | 'anschlusstafel_zoom' | 'ankunftstafel' | 'wagenstand_gleis'
  * @param {string|number} [targetScreen='1'] - '1', '2' oder '3'
  * @param {boolean} [is4k=false] - 4K Ultra-HD Skalierungs-Flag
  * @returns {object} Layout-Objekt für den Einzelschirm
@@ -382,14 +357,7 @@ export function generateTargetScreenLayout(layoutType = 'zuganzeiger', targetScr
             { id: `ankunft_col${screenNum}`, type: 'ankunft', x: 0, y: 0, w: sWidth, h: sHeight, colIndex: colIdx, maxCols: 3 }
         ];
     }
-    // 4. WAGENREIHUNGSPLAN
-    else if (layoutType === 'wagenreihungsplan') {
-        const offset = (screenNum - 1) * 4;
-        layout.screens = [
-            { id: `plan_col${screenNum}`, type: 'wagenreihung_plan', x: 0, y: 0, w: sWidth, h: sHeight, planOffset: offset }
-        ];
-    }
-    // 5. WAGENSTANDSANZEIGER (Gleis-Vitrine)
+    // 4. WAGENSTANDSANZEIGER (Gleis-Vitrine)
     else if (layoutType === 'wagenstand_gleis') {
         if (screenNum === 1) {
             layout.screens = [

@@ -24,14 +24,11 @@ export class ScreenAssignmentService {
 
         const hasAnkunft = screens.some(s => s.type === 'ankunft' || s.type === 'ankunft_portrait');
         const hasAbfahrt = screens.some(s => s.type === 'abfahrt' || s.type === 'abfahrt_portrait' || s.type === 'voranzeiger' || s.type === 'abfahrt_zoom');
-        const hasWagenreihungPlan = screens.some(s => s.type === 'wagenreihung_plan');
 
         if (hasAnkunft) {
             this._assignAnkunft(assignments, screens, journeyStore);
         } else if (hasAbfahrt) {
             this._assignVoranzeiger(assignments, layout, journeyStore);
-        } else if (hasWagenreihungPlan) {
-            this._assignWagenreihungPlan(assignments, layout, journeyStore);
         } else {
             const rotResult = this._assignStandard(assignments, layout, journeyStore, activePageIndex);
             rotatingPages = rotResult.rotatingPages;
@@ -236,23 +233,6 @@ export class ScreenAssignmentService {
         for (const screen of screens) {
             assignments.set(screen.id, {
                 journeys: allVisibleJourneys,
-                zugID: 1,
-            });
-        }
-    }
-
-    /**
-     * Wagenreihungsplan-Layout: Bildschirme erhalten alle Journey-Gruppen.
-     *
-     * @param {Map<string, object>} assignments
-     * @param {object} layout
-     * @param {object} journeyStore
-     */
-    static _assignWagenreihungPlan(assignments, layout, journeyStore) {
-        const groups = this.getVisibleJourneyGroups(journeyStore, layout);
-        for (const screen of (layout?.screens || [])) {
-            assignments.set(screen.id, {
-                journeyGroups: groups,
                 zugID: 1,
             });
         }
