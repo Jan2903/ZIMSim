@@ -27,16 +27,29 @@
     const isStele = $derived(family === 'stele');
     const isStretched = $derived(family === 'stretched');
 
+    // 4K-Gehäuse sind physikalisch doppelt so groß. Die SVG-Geometrie ist in
+    // logischen Pixeln definiert; die Ansicht wird entsprechend
+    // herunterskaliert, damit Rahmen, Stege und Sockel proportional exakt
+    // identisch zum Full-HD-Gehäuse bleiben (4K = ×2 des FHD-Gehäuses).
+    const scaleFactor = $derived(layout.scaleFactor && layout.scaleFactor > 0 ? layout.scaleFactor : 1);
+    const vbWidth = $derived(width / scaleFactor);
+    const vbHeight = $derived(height / scaleFactor);
+    const padX = $derived(paddingX / scaleFactor);
+    const padY = $derived(paddingY / scaleFactor);
+    const displayHeight = $derived((layout.height || (isStele ? 1920 : 1080)) / scaleFactor);
+    const gapWidth = $derived((layout.gapWidth || 50) / scaleFactor);
+
     // Berechnung der X-Positionen der 50px-Mittelstege relativ zum Gehäuse.
     // Die Positionen stammen aus dem Layout (dort bereits 4K-skaliert) und
     // liegen im Canvas-Raum; das Gehäuse ist um paddingX (= casingOffsetX)
-    // verschoben.
+    // verschoben. Für die logische SVG-Ansicht werden beide Werte durch den
+    // Skalierungsfaktor geteilt.
     let gapXPositions = $derived.by(() => {
         if (!layout.hasBezelGap || !layout.gapWidth) return [];
         const gaps = Array.isArray(layout.gaps) && layout.gaps.length
             ? layout.gaps
             : (layout.gapX !== undefined ? [layout.gapX] : []);
-        return gaps.map(gapX => paddingX + gapX);
+        return gaps.map(gapX => (paddingX + gapX) / scaleFactor);
     });
 </script>
 
@@ -47,7 +60,7 @@
 >
     <svg 
         class="hardware-bezel-svg" 
-        viewBox="0 0 {width} {height}" 
+        viewBox="0 0 {vbWidth} {vbHeight}" 
         width="{width}" 
         height="{height}"
         preserveAspectRatio="none"
@@ -83,15 +96,15 @@
 
         {#if isVitrine}
             <!-- VITRINEN-BAUFORM: Standfüße nach unten -->
-            <rect x="240" y="{height - 180}" width="70" height="180" fill="url(#bezel-alu-grad)" stroke="#334155" stroke-width="2" />
-            <rect x="{width - 310}" y="{height - 180}" width="70" height="180" fill="url(#bezel-alu-grad)" stroke="#334155" stroke-width="2" />
+            <rect x="240" y="{vbHeight - 180}" width="70" height="180" fill="url(#bezel-alu-grad)" stroke="#334155" stroke-width="2" />
+            <rect x="{vbWidth - 310}" y="{vbHeight - 180}" width="70" height="180" fill="url(#bezel-alu-grad)" stroke="#334155" stroke-width="2" />
             
             <!-- Vitrinen-Hauptrahmen -->
             <rect 
                 x="0" 
                 y="0" 
-                width="{width}" 
-                height="{height - 100}" 
+                width="{vbWidth}" 
+                height="{vbHeight - 100}" 
                 rx="12" 
                 fill="url(#bezel-alu-grad)" 
                 stroke="#334155" 
@@ -99,18 +112,18 @@
             />
             <!-- Display-Ausschnitt -->
             <rect 
-                x="{paddingX}" 
-                y="{paddingY}" 
-                width="{width - (paddingX * 2)}" 
-                height="{layout.height || 1080}" 
+                x="{padX}" 
+                y="{padY}" 
+                width="{vbWidth - (padX * 2)}" 
+                height="{displayHeight}" 
                 fill="#030814" 
             />
         {:else if isStele}
             <!-- STELE-BAUFORM (Portrait 9:16 mit massivem Sockel unten) -->
             <rect 
                 x="120" 
-                y="{height - 180}" 
-                width="{width - 240}" 
+                y="{vbHeight - 180}" 
+                width="{vbWidth - 240}" 
                 height="180" 
                 fill="#1e293b" 
                 stroke="#334155" 
@@ -118,8 +131,8 @@
             />
             <rect 
                 x="140" 
-                y="{height - 30}" 
-                width="{width - 280}" 
+                y="{vbHeight - 30}" 
+                width="{vbWidth - 280}" 
                 height="20" 
                 fill="#0f172a" 
             />
@@ -127,8 +140,8 @@
             <rect 
                 x="0" 
                 y="0" 
-                width="{width}" 
-                height="{height - 140}" 
+                width="{vbWidth}" 
+                height="{vbHeight - 140}" 
                 rx="14" 
                 fill="url(#bezel-bg-grad)" 
                 stroke="#0e2852" 
@@ -136,10 +149,10 @@
             />
             <!-- Display-Ausschnitt 1080x1920 -->
             <rect 
-                x="{paddingX}" 
-                y="{paddingY}" 
-                width="{width - (paddingX * 2)}" 
-                height="{layout.height || 1920}" 
+                x="{padX}" 
+                y="{padY}" 
+                width="{vbWidth - (padX * 2)}" 
+                height="{displayHeight}" 
                 fill="#030814" 
             />
         {:else}
@@ -147,8 +160,8 @@
             <rect 
                 x="0" 
                 y="0" 
-                width="{width}" 
-                height="{height}" 
+                width="{vbWidth}" 
+                height="{vbHeight}" 
                 rx="16" 
                 fill="url(#bezel-bg-grad)" 
                 stroke="#0e2852" 
@@ -156,8 +169,8 @@
             />
 
             <!-- Obere Gehäuseblende mit Fuge -->
-            <rect x="20" y="20" width="{width - 40}" height="3" fill="rgba(0, 0, 0, 0.8)" />
-            <rect x="20" y="23" width="{width - 40}" height="1" fill="rgba(255, 255, 255, 0.12)" />
+            <rect x="20" y="20" width="{vbWidth - 40}" height="3" fill="rgba(0, 0, 0, 0.8)" />
+            <rect x="20" y="23" width="{vbWidth - 40}" height="1" fill="rgba(255, 255, 255, 0.12)" />
 
             <!-- Aussparung für die Monitore -->
             <!-- Bewusst ohne SVG-Filter: Chromium (v.a. Android/GPU) begrenzt
@@ -165,34 +178,34 @@
                  > 4096 px) den rechten Teil der Fläche ab. Der Einbauschatten
                  wird stattdessen als Box-Shadow am Bezel-Lip gezeichnet. -->
             <rect 
-                x="{paddingX}" 
-                y="{paddingY}" 
-                width="{width - (paddingX * 2)}" 
-                height="{layout.height || 1080}" 
+                x="{padX}" 
+                y="{padY}" 
+                width="{vbWidth - (padX * 2)}" 
+                height="{displayHeight}" 
                 fill="#030814" 
             />
 
             <!-- Innere Gehäusefasen um das Display -->
-            <rect x="{paddingX}" y="{paddingY}" width="{width - (paddingX * 2)}" height="6" fill="rgba(0, 0, 0, 0.8)" />
-            <rect x="{paddingX}" y="{paddingY}" width="6" height="{layout.height || 1080}" fill="rgba(0, 0, 0, 0.8)" />
-            <rect x="{paddingX}" y="{paddingY + (layout.height || 1080) - 6}" width="{width - (paddingX * 2)}" height="6" fill="rgba(0, 0, 0, 0.8)" />
-            <rect x="{paddingX + width - (paddingX * 2) - 6}" y="{paddingY}" width="6" height="{layout.height || 1080}" fill="rgba(0, 0, 0, 0.8)" />
+            <rect x="{padX}" y="{padY}" width="{vbWidth - (padX * 2)}" height="6" fill="rgba(0, 0, 0, 0.8)" />
+            <rect x="{padX}" y="{padY}" width="6" height="{displayHeight}" fill="rgba(0, 0, 0, 0.8)" />
+            <rect x="{padX}" y="{padY + displayHeight - 6}" width="{vbWidth - (padX * 2)}" height="6" fill="rgba(0, 0, 0, 0.8)" />
+            <rect x="{padX + vbWidth - (padX * 2) - 6}" y="{padY}" width="6" height="{displayHeight}" fill="rgba(0, 0, 0, 0.8)" />
 
             <!-- Vertikale Trennstege zwischen Monitoren -->
             {#each gapXPositions as gapX}
-                {@const gapW = layout.gapWidth || 50}
+                {@const gapW = gapWidth}
                 <g class="bezel-post">
-                    <rect x="{gapX}" y="{paddingY}" width="{gapW}" height="{layout.height || 1080}" fill="url(#metal-accent)" />
-                    <rect x="{gapX}" y="{paddingY}" width="3" height="{layout.height || 1080}" fill="rgba(0, 0, 0, 0.45)" />
-                    <rect x="{gapX + gapW - 3}" y="{paddingY}" width="3" height="{layout.height || 1080}" fill="rgba(0, 0, 0, 0.45)" />
-                    <rect x="{gapX + 3}" y="{paddingY}" width="1" height="{layout.height || 1080}" fill="rgba(255, 255, 255, 0.05)" />
-                    <rect x="{gapX + gapW - 4}" y="{paddingY}" width="1" height="{layout.height || 1080}" fill="rgba(255, 255, 255, 0.05)" />
+                    <rect x="{gapX}" y="{padY}" width="{gapW}" height="{displayHeight}" fill="url(#metal-accent)" />
+                    <rect x="{gapX}" y="{padY}" width="3" height="{displayHeight}" fill="rgba(0, 0, 0, 0.45)" />
+                    <rect x="{gapX + gapW - 3}" y="{padY}" width="3" height="{displayHeight}" fill="rgba(0, 0, 0, 0.45)" />
+                    <rect x="{gapX + 3}" y="{padY}" width="1" height="{displayHeight}" fill="rgba(255, 255, 255, 0.05)" />
+                    <rect x="{gapX + gapW - 4}" y="{padY}" width="1" height="{displayHeight}" fill="rgba(255, 255, 255, 0.05)" />
                 </g>
             {/each}
 
             <!-- Untere Gehäuseblende mit Fuge -->
-            <rect x="20" y="{height - 23}" width="{width - 40}" height="1" fill="rgba(255, 255, 255, 0.12)" />
-            <rect x="20" y="{height - 20}" width="{width - 40}" height="3" fill="rgba(0, 0, 0, 0.8)" />
+            <rect x="20" y="{vbHeight - 23}" width="{vbWidth - 40}" height="1" fill="rgba(255, 255, 255, 0.12)" />
+            <rect x="20" y="{vbHeight - 20}" width="{vbWidth - 40}" height="3" fill="rgba(0, 0, 0, 0.8)" />
         {/if}
     </svg>
 </div>

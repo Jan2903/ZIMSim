@@ -1,4 +1,5 @@
 // src/js/displays/core/screenAssignmentService.js
+import { getBoardTokens } from './boardTokenService.js';
 
 /**
  * @fileoverview Zustandslose Service-Klasse für die layout-spezifische
@@ -41,7 +42,7 @@ export class ScreenAssignmentService {
             const groups = this.getVisibleJourneyGroups(journeyStore, layout);
             vitrineScreens.forEach(screen => {
                 assignments.set(screen.id, {
-                    journeyGroups: groups.slice(0, 3),
+                    journeyGroups: groups.slice(0, this.getVitrineRowCount(screen)),
                     zugID: 1,
                 });
             });
@@ -208,7 +209,7 @@ export class ScreenAssignmentService {
                 });
             } else if (screen.type === 'vitrine32') {
                 assignments.set(screen.id, {
-                    journeyGroups: groups.slice(0, 3),
+                    journeyGroups: groups.slice(0, this.getVitrineRowCount(screen)),
                     zugID: 1,
                 });
             } else {
@@ -250,7 +251,7 @@ export class ScreenAssignmentService {
         for (const screen of (layout?.screens || [])) {
             if (screen.type === 'vitrine32') {
                 assignments.set(screen.id, {
-                    journeyGroups: groups.slice(0, 3),
+                    journeyGroups: groups.slice(0, this.getVitrineRowCount(screen)),
                     zugID: 1,
                 });
             }
@@ -277,6 +278,25 @@ export class ScreenAssignmentService {
                 journeys: journeyStore.getJourneysForSlot(slot, options),
                 zugID: slot,
             });
+        }
+    }
+
+    /**
+     * Liefert die Anzahl der Wagenstand-Zeilen für einen Vitrinen-Screen.
+     * Die Zeilenzahl stammt aus den Board-Tokens der aktiven Variante
+     * (Full HD: 3 quer / 5 hoch, 4K: 4 quer / 6 hoch), damit auch im
+     * Hochformat mehr Züge zugewiesen werden als Wagen angezeigt werden.
+     *
+     * @param {object} screen - Screen vom Typ 'vitrine32'
+     * @returns {number} Anzahl der darzustellenden Zuggruppen
+     */
+    static getVitrineRowCount(screen) {
+        try {
+            const tokens = getBoardTokens('wagenstand_gleis', { variantId: screen?.variant });
+            return Math.max(1, tokens.meta.rowCount || 3);
+        } catch (err) {
+            console.warn('[ScreenAssignmentService] Wagenstand-Tokens nicht auflösbar:', err);
+            return 3;
         }
     }
 

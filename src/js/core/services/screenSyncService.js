@@ -1,5 +1,6 @@
 // js/core/services/screenSyncService.js
 import { displayConfigStore } from '../../displays/core/displayConfigStore.svelte.js';
+import { BOARD_VARIANTS } from '../../displays/core/boardTokenService.js';
 
 /**
  * @fileoverview Multi-Monitor-Synchronisation über HTML5 BroadcastChannel.
@@ -149,19 +150,25 @@ export class ScreenSyncService {
      * Erzeugt eine relative URL für einen Zielbildschirm (100% kompatibel mit GitHub Pages Sub-Pfaden).
      * 
      * @param {number|string} screenIndex - 1, 2 oder 3
-     * @param {boolean} [is4k=false] - Ob 4K-Auflösung genutzt werden soll
+     * @param {string|null} [variantId=null] - Darstellungsvariante ('fhd_landscape' | 'uhd_landscape' | 'fhd_portrait' | 'uhd_portrait')
      * @param {boolean} [kiosk=true] - Ob Kiosk-Modus aktiv sein soll
      * @param {string|null} [layoutType=null] - Aktueller DB-Anzeigetyp
      * @returns {string} Die absolute Ziel-URL
      */
-    static getScreenUrl(screenIndex, is4k = false, kiosk = true, layoutType = null) {
+    static getScreenUrl(screenIndex, variantId = null, kiosk = true, layoutType = null) {
         const url = new URL(window.location.href);
         url.searchParams.set('screen', String(screenIndex));
         if (kiosk) url.searchParams.set('kiosk', '1');
         else url.searchParams.delete('kiosk');
 
-        if (is4k) url.searchParams.set('res', '4k');
-        else url.searchParams.delete('res');
+        // Variante statt des früheren ?res=4k-Flags. Die Auflösungsklasse
+        // (FHD/4K) und die Ausrichtung stecken vollständig in der ID.
+        const activeVariant = BOARD_VARIANTS[variantId] ? variantId : displayConfigStore.activeVariantId;
+        if (BOARD_VARIANTS[activeVariant]) url.searchParams.set('variant', activeVariant);
+        else url.searchParams.delete('variant');
+
+        // Altes Flag entfernen, falls es noch in einer geteilten URL steckt.
+        url.searchParams.delete('res');
 
         const activeLayout = layoutType || displayConfigStore.layoutType;
         if (activeLayout) url.searchParams.set('layout', activeLayout);
@@ -174,16 +181,19 @@ export class ScreenSyncService {
      * Öffnet einen spezifischen Monitor in einem neuen Fenster / Pop-Out.
      * 
      * @param {number|string} screenIndex - 1 (Hauptmonitor), 2 (Nebenmonitore) oder 3 (Zusatzanzeiger)
-     * @param {boolean} [is4k=false]
+     * @param {string|null} [variantId=null] - Darstellungsvariante des Pop-Out-Fensters
      * @param {boolean} [kiosk=true]
      * @param {string|null} [layoutType=null]
      * @returns {Window|null} Das geöffnete Fenster
      */
-    static openScreenWindow(screenIndex, is4k = false, kiosk = true, layoutType = null) {
-        const targetUrl = this.getScreenUrl(screenIndex, is4k, kiosk, layoutType);
+    static openScreenWindow(screenIndex, variantId = null, kiosk = true, layoutType = null) {
+        const targetUrl = this.getScreenUrl(screenIndex, variantId, kiosk, layoutType);
+        const variant = BOARD_VARIANTS[variantId] || BOARD_VARIANTS[displayConfigStore.activeVariantId] || BOARD_VARIANTS.fhd_landscape;
         const windowName = `zim_display_screen_${screenIndex}`;
-        const width = is4k ? 3840 : 1920;
-        const height = is4k ? 2160 : 1080;
+        // Fenstergröße = physikalische Panelgröße der Variante (FHD 1920×1080
+        // bzw. 1080×1920, 4K jeweils doppelt).
+        const width = variant.panelW * variant.scale;
+        const height = variant.panelH * variant.scale;
 
         return window.open(
             targetUrl,

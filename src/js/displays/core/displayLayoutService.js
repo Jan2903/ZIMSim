@@ -1,4 +1,5 @@
 // js/displays/core/displayLayoutService.js
+import { BOARD_VARIANTS, adaptVariantOrientation, isUhdVariant } from './boardTokenService.js';
 
 /**
  * Service zur dynamischen Generierung von Layout-Objekten
@@ -25,38 +26,55 @@ export const LAYOUT_TYPES = [
 ];
 
 /**
+ * Liefert die physische Ausrichtung eines Monitor-Profils.
+ *
+ * @param {string} monitorId - ID aus MONITOR_PROFILES
+ * @returns {'landscape'|'portrait'} Ausrichtung
+ */
+export function getMonitorOrientation(monitorId) {
+    const prof = MONITOR_PROFILES.find(p => p.id === monitorId) || MONITOR_PROFILES[0];
+    return prof.h > prof.defaultW ? 'portrait' : 'landscape';
+}
+
+/**
  * Erzeugt dynamisch das vollständige Layout-Objekt für TrainDisplay und App.svelte.
- * Unterstützt Gesamtanzeigen, Multi-Monitor Pop-Outs (targetScreen) und 4K Ultra-HD.
+ * Unterstützt Gesamtanzeigen, Multi-Monitor Pop-Outs (targetScreen) und die
+ * vier Darstellungsvarianten (Full HD / 4K je Quer- und Hochformat).
  * 
  * @param {string} [monitorId='zim2x32'] - Gewählter Monitor
  * @param {string} [layoutType='zuganzeiger'] - Gewählter DB-Anzeigetyp
  * @param {boolean} [withBezel=true] - Ob Gehäuse aktiv ist
  * @param {string|number|null} [targetScreen=null] - Ziel-Einzelschirm ('1', '2', '3' oder null für Gesamtanzeige)
- * @param {boolean} [is4k=false] - Ob 4K Ultra-HD Skalierung aktiv ist
+ * @param {string|null} [boardVariantId=null] - 'fhd_landscape' | 'uhd_landscape' | 'fhd_portrait' | 'uhd_portrait'
  * @returns {object} Das konfigurierte Layout-Objekt
  */
-export function generateActiveLayout(monitorId = 'zim2x32', layoutType = 'zuganzeiger', withBezel = true, targetScreen = null, is4k = false) {
+export function generateActiveLayout(monitorId = 'zim2x32', layoutType = 'zuganzeiger', withBezel = true, targetScreen = null, boardVariantId = null) {
     // ----------------------------------------------------
     // Multi-Monitor Pop-Outs (?screen=1, ?screen=2, ?screen=3)
     // Rendern exakt einen Einzelschirm in nativer Auflösung ohne Gehäuseränder
     // ----------------------------------------------------
     if (targetScreen) {
-        return generateTargetScreenLayout(layoutType, targetScreen, is4k);
+        return generateTargetScreenLayout(layoutType, targetScreen, boardVariantId);
     }
 
     const prof = MONITOR_PROFILES.find(p => p.id === monitorId) || MONITOR_PROFILES[0];
-    const scaleFactor = is4k ? 2.0 : 1.0;
+    // Die Ausrichtung folgt dem Hardware-Profil; die Auflösungsklasse kommt
+    // aus der gewählten Variante.
+    const variantId = adaptVariantOrientation(boardVariantId, getMonitorOrientation(prof.id));
+    const is4k = isUhdVariant(variantId);
+    const scaleFactor = BOARD_VARIANTS[variantId].scale;
     const baseW = withBezel ? prof.defaultW : prof.framelessW;
     const baseH = prof.h;
     const width = is4k ? baseW * 2 : baseW;
     const height = is4k ? baseH * 2 : baseH;
 
     const layout = {
-        id: `${prof.id}_${is4k ? '4k_' : ''}${layoutType}`,
+        id: `${prof.id}_${variantId}_${layoutType}`,
         family: prof.family,
         width,
         height,
         scaleFactor,
+        boardVariant: variantId,
         casingWidth: is4k ? prof.casingW * 2 : prof.casingW,
         casingHeight: is4k ? prof.casingH * 2 : prof.casingH,
         casingOffsetX: is4k ? prof.offX * 2 : prof.offX,
@@ -144,9 +162,10 @@ export function generateActiveLayout(monitorId = 'zim2x32', layoutType = 'zuganz
                 { id: 'abfahrt_col2', type: 'abfahrt', x: colW, y: 0, w: colW, h: 1080, colIndex: 1, maxCols: 2 }
             ];
         } else if (prof.id === 'zimvitrine65h') {
-            // 1 vertikale Spalte mit bis zu 18-20 Abfahrten
+            // 1 vertikale Spalte. Die Zeilenzahl kommt aus den Board-Tokens
+            // (16 im FullHD-, 20 im 4K-Hochformat).
             layout.screens = [
-                { id: 'abfahrt_stele', type: 'abfahrt_portrait', x: 0, y: 0, w: 1080, h: 1920, maxRows: 18 }
+                { id: 'abfahrt_stele', type: 'abfahrt_portrait', x: 0, y: 0, w: 1080, h: 1920 }
             ];
         } else {
             // 1 Standard-Spalte (zim32_single, zimvitrine32)
@@ -265,6 +284,10 @@ export function generateActiveLayout(monitorId = 'zim2x32', layoutType = 'zuganz
         }
     }
 
+    // Varianten-ID an jeden Screen stempeln. Renderer lesen sie, um ihre
+    // Board-Tokens (inkl. 4K-Overrides wie der Zeilenzahl) aufzulösen.
+    layout.screens = layout.screens.map(screen => ({ ...screen, variant: variantId }));
+
     // 4K Ultra-HD: Canvas und Gehäuse sind doppelt so groß, deshalb muss auch
     // die Screen-Geometrie verdoppelt werden. Die Renderer zeichnen weiterhin
     // in logischen Pixeln (screen.w / scaleFactor), erhalten also unverändert
@@ -284,25 +307,31 @@ export function generateActiveLayout(monitorId = 'zim2x32', layoutType = 'zuganz
 
 /**
  * Erzeugt dynamisch das Layout für einen einzelnen Pop-Out-Monitor (?screen=1, ?screen=2, ?screen=3).
- * Garantiert 100% randlose, exakt passende Darstellung in 1080p oder 4K Ultra-HD.
+ * Garantiert 100% randlose, exakt passende Darstellung in der gewählten
+ * Darstellungsvariante (Full HD / 4K, Quer- oder Hochformat).
  * 
  * @param {string} [layoutType='zuganzeiger'] - 'zuganzeiger' | 'anschlusstafel' | 'anschlusstafel_zoom' | 'ankunftstafel' | 'wagenstand_gleis'
  * @param {string|number} [targetScreen='1'] - '1', '2' oder '3'
- * @param {boolean} [is4k=false] - 4K Ultra-HD Skalierungs-Flag
+ * @param {string|null} [boardVariantId=null] - 'fhd_landscape' | 'uhd_landscape' | 'fhd_portrait' | 'uhd_portrait'
  * @returns {object} Layout-Objekt für den Einzelschirm
  */
-export function generateTargetScreenLayout(layoutType = 'zuganzeiger', targetScreen = '1', is4k = false) {
+export function generateTargetScreenLayout(layoutType = 'zuganzeiger', targetScreen = '1', boardVariantId = null) {
     const screenNum = parseInt(targetScreen, 10) || 1;
-    const sWidth = is4k ? 3840 : 1920;
-    const sHeight = is4k ? 2160 : 1080;
-    const scaleFactor = is4k ? 2.0 : 1.0;
+    // Die logischen Panelmaße stammen aus der Variante; der Canvas skaliert
+    // für 4K mit ctx.scale(scale).
+    const variantId = BOARD_VARIANTS[boardVariantId] ? boardVariantId : 'fhd_landscape';
+    const variant = BOARD_VARIANTS[variantId];
+    const sWidth = variant.panelW * variant.scale;
+    const sHeight = variant.panelH * variant.scale;
+    const scaleFactor = variant.scale;
 
     const layout = {
-        id: `target_screen_${screenNum}_${is4k ? '4k_' : ''}${layoutType}`,
+        id: `target_screen_${screenNum}_${variantId}_${layoutType}`,
         family: 'standard',
         width: sWidth,
         height: sHeight,
         scaleFactor,
+        boardVariant: variantId,
         casingWidth: 0,
         casingHeight: 0,
         casingOffsetX: 0,
@@ -369,6 +398,9 @@ export function generateTargetScreenLayout(layoutType = 'zuganzeiger', targetScr
             ];
         }
     }
+
+    // Varianten-ID an jeden Screen stempeln (Renderer wählen darüber ihre Tokens).
+    layout.screens = layout.screens.map(screen => ({ ...screen, variant: variantId }));
 
     return layout;
 }

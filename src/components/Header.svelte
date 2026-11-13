@@ -5,13 +5,15 @@
     import { selectTab } from '../js/core/state/uiState.svelte.js';
     import { downloadDisplayScreenshot } from '../js/core/utils/screenshot.js';
     import { watchReducedTransparency } from '../js/core/utils/systemPreferences.js';
+    import { displayConfigStore } from '../js/displays/core/displayConfigStore.svelte.js';
+    import { getVariantId, getVariantOrientation } from '../js/displays/core/boardTokenService.js';
 
     /**
      * @typedef {Object} Props
      * @property {() => void} [onScreenshot] - Callback für den Screenshot-Download
      * @property {() => void} [onToggleFullscreen] - Callback für Vollbild
      * @property {boolean} [isFullscreen] - Status ob Vollbild aktiv ist
-     * @property {(screenIndex: number|string, use4k?: boolean) => void} [onOpenScreen] - Callback für Pop-Out Monitore
+     * @property {(screenIndex: number|string, variantId?: string|null) => void} [onOpenScreen] - Callback für Pop-Out Monitore
      */
     let { 
         onScreenshot, 
@@ -27,6 +29,12 @@
     let monitorMenuOpen = $state(false);
     let monitorMenuEl = $state(null);
     let monitorButtonEl = $state(null);
+
+    // Pop-Out-Varianten: Die Auflösungsklasse (Full HD / 4K) ist wählbar,
+    // die Ausrichtung (Quer-/Hochformat) folgt dem aktiven Monitor.
+    const popOutOrientation = $derived(getVariantOrientation(displayConfigStore.activeVariantId));
+    const fhdVariant = $derived(getVariantId(popOutOrientation, false));
+    const uhdVariant = $derived(getVariantId(popOutOrientation, true));
 
     /**
      * Führt den Screenshot-Download aus.
@@ -126,11 +134,11 @@
     /**
      * Öffnet einen Monitor und schließt das Menü.
      * @param {number} screenIndex
-     * @param {boolean} use4k
+     * @param {string|null} variantId - Darstellungsvariante des Pop-Out-Fensters
      */
-    function openMonitor(screenIndex, use4k) {
+    function openMonitor(screenIndex, variantId) {
         closeMonitorMenu({ restoreFocus: true });
-        onOpenScreen?.(screenIndex, use4k);
+        onOpenScreen?.(screenIndex, variantId);
     }
 
     /**
@@ -241,15 +249,15 @@
                     >
                         <div class="dropdown-group" role="group" aria-label="Full-HD (1080p)">
                             <div class="dropdown-header" aria-hidden="true">Full-HD (1080p)</div>
-                            <button type="button" role="menuitem" tabindex="-1" class="dropdown-item" onclick={() => openMonitor(1, false)}>
+                            <button type="button" role="menuitem" tabindex="-1" class="dropdown-item" onclick={() => openMonitor(1, fhdVariant)}>
                                 <ZimIcon name="popout" size={14} />
                                 <span>Monitor 1 (Hauptmonitor)</span>
                             </button>
-                            <button type="button" role="menuitem" tabindex="-1" class="dropdown-item" onclick={() => openMonitor(2, false)}>
+                            <button type="button" role="menuitem" tabindex="-1" class="dropdown-item" onclick={() => openMonitor(2, fhdVariant)}>
                                 <ZimIcon name="popout" size={14} />
                                 <span>Monitor 2 (Nebenmonitore)</span>
                             </button>
-                            <button type="button" role="menuitem" tabindex="-1" class="dropdown-item" onclick={() => openMonitor(3, false)}>
+                            <button type="button" role="menuitem" tabindex="-1" class="dropdown-item" onclick={() => openMonitor(3, fhdVariant)}>
                                 <ZimIcon name="popout" size={14} />
                                 <span>Monitor 3 (Zusatzanzeiger)</span>
                             </button>
@@ -257,15 +265,15 @@
                         <div class="dropdown-divider" role="separator"></div>
                         <div class="dropdown-group" role="group" aria-label="4K Ultra-HD (2160p)">
                             <div class="dropdown-header" aria-hidden="true">4K Ultra-HD (2160p)</div>
-                            <button type="button" role="menuitem" tabindex="-1" class="dropdown-item" onclick={() => openMonitor(1, true)}>
+                            <button type="button" role="menuitem" tabindex="-1" class="dropdown-item" onclick={() => openMonitor(1, uhdVariant)}>
                                 <ZimIcon name="popout" size={14} />
                                 <span>Monitor 1 (4K)</span>
                             </button>
-                            <button type="button" role="menuitem" tabindex="-1" class="dropdown-item" onclick={() => openMonitor(2, true)}>
+                            <button type="button" role="menuitem" tabindex="-1" class="dropdown-item" onclick={() => openMonitor(2, uhdVariant)}>
                                 <ZimIcon name="popout" size={14} />
                                 <span>Monitor 2 (4K)</span>
                             </button>
-                            <button type="button" role="menuitem" tabindex="-1" class="dropdown-item" onclick={() => openMonitor(3, true)}>
+                            <button type="button" role="menuitem" tabindex="-1" class="dropdown-item" onclick={() => openMonitor(3, uhdVariant)}>
                                 <ZimIcon name="popout" size={14} />
                                 <span>Monitor 3 (4K)</span>
                             </button>

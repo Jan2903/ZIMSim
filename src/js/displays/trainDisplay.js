@@ -141,11 +141,11 @@ export class TrainDisplay {
     /**
      * Setzt einen spezifischen Zielmonitor für Multi-Monitor / Kiosk-Modus.
      * @param {string|number|null} screenNumber - '1', '2', '3' oder null für Gesamtansicht
-     * @param {boolean} [is4k=false] - Ob 4K-Auflösung aktiviert werden soll
+     * @param {string|null} [variantId=null] - Darstellungsvariante ('fhd_landscape' | 'uhd_landscape' | 'fhd_portrait' | 'uhd_portrait')
      * @param {boolean} [withBezel=false] - Ob Gehäuse-Modus gewünscht wird
      */
-    setTargetScreen(screenNumber, is4k = false, withBezel = false) {
-        displayConfigStore.setTargetScreen(screenNumber === 'all' ? null : screenNumber, is4k);
+    setTargetScreen(screenNumber, variantId = null, withBezel = false) {
+        displayConfigStore.setTargetScreen(screenNumber === 'all' ? null : screenNumber, variantId);
         if (withBezel !== undefined && (!screenNumber || screenNumber === 'all')) {
             displayConfigStore.showBezel = withBezel;
         }
@@ -563,7 +563,8 @@ export class TrainDisplay {
                     activeFeatureStr: this.anim.activeFeature,
                     progress: this.anim.vitrineProgress,
                     featureAlpha: this.anim.featureAlpha,
-                    drawLayer: layer
+                    drawLayer: layer,
+                    variant: screen.variant
                 });
                 break;
             }

@@ -1,5 +1,6 @@
 // js/displays/core/displayConfigStore.svelte.js
-import { generateActiveLayout, LAYOUT_TYPES } from './displayLayoutService.js';
+import { generateActiveLayout, getMonitorOrientation, LAYOUT_TYPES } from './displayLayoutService.js';
+import { BOARD_VARIANTS, adaptVariantOrientation, getVariantId, isUhdVariant } from './boardTokenService.js';
 
 /**
  * Prüft, ob ein fachlicher Anzeigetyp überhaupt existiert.
@@ -25,6 +26,34 @@ function getInitialLayoutType() {
 }
 
 /**
+ * Prüft, ob eine Darstellungsvarianten-ID existiert.
+ *
+ * @param {string|null} variantId - Zu prüfende Varianten-ID
+ * @returns {boolean} true, wenn die Variante in BOARD_VARIANTS existiert
+ */
+function isValidBoardVariant(variantId) {
+    return Boolean(variantId && BOARD_VARIANTS[variantId]);
+}
+
+/**
+ * Liest die gespeicherte Darstellungsvariante. Fehlt sie (oder ist sie
+ * unbekannt), wird die FullHD-Variante der Monitor-Ausrichtung gewählt.
+ *
+ * @param {string} monitorId - Aktives Hardware-Profil
+ * @returns {string} Gültige Varianten-ID
+ */
+function getInitialBoardVariant(monitorId) {
+    const stored = localStorage.getItem('zimsim_board_variant');
+    if (isValidBoardVariant(stored)) {
+        // Ausrichtung folgt immer dem gespeicherten Monitor (Auflösungsklasse
+        // bleibt erhalten), auch wenn beide Einstellungen getrennt persistiert
+        // wurden und zwischenzeitlich auseinanderlaufen konnten.
+        return adaptVariantOrientation(stored, getMonitorOrientation(monitorId));
+    }
+    return getVariantId(getMonitorOrientation(monitorId), false);
+}
+
+/**
  * Zentraler reaktiver Svelte 5 Store für die Anzeige-Konfiguration.
  * Verwaltet die vollständige Entkopplung von Hardware-Monitor und DB-Anzeigetyp.
  */
@@ -45,22 +74,44 @@ class DisplayConfigStore {
     // 5. Multi-Screen / Pop-Out Zielmonitor (z.B. '1', '2', '3' oder null für Hauptansicht)
     targetScreen = $state(null);
 
-    // 6. 4K Ultra-HD Skalierungs-Flag
-    is4k = $state(false);
+    // 6. Darstellungsvariante der Hauptansicht ('fhd_landscape', 'uhd_landscape', 'fhd_portrait', 'uhd_portrait')
+    boardVariant = $state(getInitialBoardVariant(this.monitorId));
 
-    // 7. Skalierungsmodus ('fit' = an Bildschirmbreite anpassen, 'scroll' = 1:1 Detailansicht)
+    // 7. Darstellungsvariante eines Pop-Out-Fensters. Wird nur ausgewertet,
+    // solange ein Zielschirm aktiv ist, und nie persistiert, damit ein
+    // 4K-Pop-Out die Hauptansicht nicht umstellt.
+    popOutVariant = $state(null);
+
+    // 8. Skalierungsmodus ('fit' = an Bildschirmbreite anpassen, 'scroll' = 1:1 Detailansicht)
     scaleMode = $state(localStorage.getItem('zimsim_scale_mode') || 'fit');
 
-    // 8. Paginierung für Anschlusstafeln / Voranzeiger
+    // 9. Paginierung für Anschlusstafeln / Voranzeiger
     departurePageIndex = $state(0);
     totalDeparturePages = $state(1);
+
+    /**
+     * Aktive Varianten-ID: Bei aktivem Pop-Out gilt dessen Variante,
+     * ansonsten die in der Hauptansicht gewählte – stets an die Ausrichtung
+     * des aktuellen Hardware-Monitors angepasst (Auflösungsklasse bleibt).
+     */
+    activeVariantId = $derived.by(() => {
+        if (this.targetScreen && isValidBoardVariant(this.popOutVariant)) {
+            return this.popOutVariant;
+        }
+        return adaptVariantOrientation(this.boardVariant, getMonitorOrientation(this.monitorId));
+    });
+
+    /**
+     * Ob die aktive Darstellung in 4K gerendert wird.
+     */
+    is4k = $derived.by(() => isUhdVariant(this.activeVariantId));
 
     /**
      * Berechnet reaktiv das aktuelle Layout-Objekt basierend auf Monitor, Typ, Gehäuse und Pop-Out-Ziel.
      */
     currentLayout = $derived.by(() => {
         const withBezel = !this.targetScreen && this.showBezel && !this.isFullscreen && !this.isKiosk;
-        return generateActiveLayout(this.monitorId, this.layoutType, withBezel, this.targetScreen, this.is4k);
+        return generateActiveLayout(this.monitorId, this.layoutType, withBezel, this.targetScreen, this.activeVariantId);
     });
 
     /**
@@ -100,12 +151,36 @@ class DisplayConfigStore {
     });
 
     /**
-     * Wechselt den Hardware-Monitor.
+     * Wechselt den Hardware-Monitor. Die Auflösungsklasse (Full HD / 4K) der
+     * Darstellungsvariante bleibt erhalten, die Ausrichtung folgt dem neuen
+     * Monitor (Quer- ↔ Hochformat).
      * @param {string} id
      */
     setMonitorId(id) {
         this.monitorId = id;
         localStorage.setItem('zimsim_monitor_id', id);
+
+        const adapted = adaptVariantOrientation(this.boardVariant, getMonitorOrientation(id));
+        if (adapted !== this.boardVariant) {
+            this.boardVariant = adapted;
+            localStorage.setItem('zimsim_board_variant', adapted);
+        }
+    }
+
+    /**
+     * Wechselt die Darstellungsvariante der Hauptansicht.
+     * Unbekannte IDs werden ignoriert; die Ausrichtung wird an den aktuellen
+     * Monitor angepasst (Auflösungsklasse bleibt).
+     *
+     * @param {string} variantId - 'fhd_landscape' | 'uhd_landscape' | 'fhd_portrait' | 'uhd_portrait'
+     * @returns {void}
+     */
+    setBoardVariant(variantId) {
+        if (!isValidBoardVariant(variantId)) return;
+        const adapted = adaptVariantOrientation(variantId, getMonitorOrientation(this.monitorId));
+        if (adapted === this.boardVariant) return;
+        this.boardVariant = adapted;
+        localStorage.setItem('zimsim_board_variant', adapted);
     }
 
     /**
@@ -126,12 +201,12 @@ class DisplayConfigStore {
     /**
      * Konfiguriert den Zielmonitor für Multi-Monitor / Pop-Out Fenster.
      * @param {string|number|null} screenNumber - '1', '2', '3' oder null für Hauptansicht
-     * @param {boolean} [use4k=false] - Ob 4K-Auflösung genutzt wird
+     * @param {string|null} [variantId=null] - Darstellungsvariante des Pop-Out-Fensters
      * @returns {void}
      */
-    setTargetScreen(screenNumber, use4k = false) {
+    setTargetScreen(screenNumber, variantId = null) {
         this.targetScreen = screenNumber ? String(screenNumber) : null;
-        this.is4k = Boolean(use4k);
+        this.popOutVariant = this.targetScreen && isValidBoardVariant(variantId) ? variantId : null;
     }
 
     /**

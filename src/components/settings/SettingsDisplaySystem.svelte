@@ -5,7 +5,8 @@
     import { toastStore } from '../../js/core/state/toastStore.svelte.js';
     import { config, setPerformanceMode, setDepartureAlarm, setVoranzeigerAutoPage } from '../../js/core/utils/config.js';
     import { displayConfigStore } from '../../js/displays/core/displayConfigStore.svelte.js';
-    import { MONITOR_PROFILES } from '../../js/displays/core/displayLayoutService.js';
+    import { MONITOR_PROFILES, getMonitorOrientation } from '../../js/displays/core/displayLayoutService.js';
+    import { getVariantId, isUhdVariant } from '../../js/displays/core/boardTokenService.js';
     import LineColorEditorModal from '../LineColorEditorModal.svelte';
     import FormationRuleEditorModal from '../FormationRuleEditorModal.svelte';
     import ZimIcon from '../ZimIcon.svelte';
@@ -31,6 +32,13 @@
     let isDepartureAlarmEnabled = $state(config.departureAlarmEnabled);
     let alarmLeadMinutes = $state(config.departureAlarmLeadMinutes);
     let alarmBlinkMinutes = $state(config.departureAlarmBlinkMinutes);
+
+    // Darstellungsvariante: Die Auflösungsklasse (Full HD / 4K) ist wählbar,
+    // die Ausrichtung folgt dem Hardware-Monitor (Quer- bzw. Hochformat).
+    const monitorOrientation = $derived(getMonitorOrientation(displayConfigStore.monitorId));
+    const fhdVariantId = $derived(getVariantId(monitorOrientation, false));
+    const uhdVariantId = $derived(getVariantId(monitorOrientation, true));
+    const selectedVariantId = $derived(getVariantId(monitorOrientation, isUhdVariant(displayConfigStore.boardVariant)));
 
     $effect(() => {
         setPerformanceMode(isPerformanceMode);
@@ -113,6 +121,19 @@
     }
 
     /**
+     * Wechselt die Darstellungsvariante der Hauptansicht (Full HD / 4K).
+     * @param {string} variantId
+     * @returns {void}
+     */
+    function handleVariantChange(variantId) {
+        displayConfigStore.setBoardVariant(variantId);
+        setTimeout(() => {
+            trainDisplay.updateAll();
+            window.dispatchEvent(new Event('resize'));
+        }, 50);
+    }
+
+    /**
      * Schaltet die Gehäusesimulation um.
      * @returns {void}
      */
@@ -146,6 +167,23 @@
                         <option value={prof.id}>{prof.name}</option>
                     {/each}
                 </select>
+            </div>
+
+            <div class="form-group" style="margin-top: 14px;">
+                <label for="board_variant_select" class="field-label">Darstellungsvariante:</label>
+                <select 
+                    id="board_variant_select"
+                    class="form-select full-width-select" 
+                    value={selectedVariantId}
+                    onchange={(e) => handleVariantChange(e.currentTarget.value)}
+                    aria-label="Darstellungsvariante auswählen"
+                >
+                    <option value={fhdVariantId}>Full HD (1080p)</option>
+                    <option value={uhdVariantId}>4K Ultra HD (2160p)</option>
+                </select>
+                <div class="info-note" style="margin-top: 8px; font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
+                    Die Ausrichtung folgt dem Monitorprofil (Quer- bzw. Hochformat). 4K ist ein eigenes Design mit mehr Zeilen (z. B. 4 statt 3 Züge im Wagenstand).
+                </div>
             </div>
 
             <div class="checkbox-group" style="margin-top: 14px;">

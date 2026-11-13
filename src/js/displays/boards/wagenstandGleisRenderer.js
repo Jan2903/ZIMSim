@@ -10,14 +10,30 @@ import { combineTrainNames } from '../../features/journey/trainNumberFormatter.j
 import { JourneyCouplingService } from '../../features/journey/services/journeyCouplingService.js';
 import { JourneyViaService } from '../../features/journey/services/journeyViaService.js';
 import { lineColorService } from '../../core/services/lineColorService.svelte.js';
+import { getBoardTokens } from '../core/boardTokenService.js';
 
-function drawVitrineHeader(ctx, width, activeFeatureIndex, progress, trackNumber, featureAlpha = 1.0) {
+/**
+ * Zeichnet die Kopfzeile der Gleis-Vitrine.
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} width - Displaybreite in logischen Pixeln
+ * @param {number} activeFeatureIndex - Index der aktiven Ausstattungsseite
+ * @param {number} progress - Fortschritt der Feature-Rotation (0..1)
+ * @param {string|number} trackNumber - Angezeigtes Gleis
+ * @param {object} t - Aufgelöste Board-Tokens der aktiven Variante
+ * @param {number} [featureAlpha=1.0] - Überblend-Alpha der Feature-Texte
+ * @returns {void}
+ */
+function drawVitrineHeader(ctx, width, activeFeatureIndex, progress, trackNumber, t, featureAlpha = 1.0) {
     // 1. Clock (Left)
-    drawAnalogClock(ctx, 80, 80);
+    drawAnalogClock(ctx, t.header.clock.x, t.header.clock.y, t.header.clock.radius);
     
     // Digital Time (mit blinkendem Doppelpunkt)
     const now = getSimulatedTime();
-    drawDigitalClock(ctx, now, 150, 110, { fontSize: 86, verticalAlign: 'baseline' });
+    drawDigitalClock(ctx, now, t.header.digitalClock.x, t.header.digitalClock.y, {
+        fontSize: t.header.digitalClock.fontSize,
+        verticalAlign: 'baseline'
+    });
 
     // 2. Progress Bar & Features (Center)
     const features = [
@@ -30,35 +46,34 @@ function drawVitrineHeader(ctx, width, activeFeatureIndex, progress, trackNumber
     const currentFeat = features[activeFeatureIndex];
 
     // Progress bar line
-    const barWidth = 400;
+    const barWidth = t.header.progress.width;
     const barX = cx - barWidth / 2;
-    const barY = 110;
+    const barY = t.header.progress.y;
     ctx.fillStyle = COLORS.DIM_GREY;
-    ctx.fillRect(barX, barY, barWidth, 8);
+    ctx.fillRect(barX, barY, barWidth, t.header.progress.height);
     ctx.fillStyle = COLORS.WHITE;
-    ctx.fillRect(barX, barY, barWidth * progress, 8);
+    ctx.fillRect(barX, barY, barWidth * progress, t.header.progress.height);
 
     // Feature text
-    ctx.font = FONTS.regular(35);
+    ctx.font = FONTS.regular(t.header.feature.deSize);
     const w1 = ctx.measureText(currentFeat.de).width;
-    ctx.font = FONTS.italic(35);
+    ctx.font = FONTS.italic(t.header.feature.enSize);
     const w2 = ctx.measureText(currentFeat.en).width;
     
-    const totalW = w1 + 10 + w2;
     const startX = barX;
 
     ctx.save();
     ctx.globalAlpha = featureAlpha;
-    drawText(ctx, currentFeat.de, startX, 80, FONTS.regular(35), COLORS.WHITE, 'left');
-    drawText(ctx, currentFeat.en, startX + w1 + 10, 80, FONTS.italic(35), COLORS.WHITE, 'left');
+    drawText(ctx, currentFeat.de, startX, t.header.feature.y, FONTS.regular(t.header.feature.deSize), COLORS.WHITE, 'left');
+    drawText(ctx, currentFeat.en, startX + w1 + t.header.feature.gap, t.header.feature.y, FONTS.italic(t.header.feature.enSize), COLORS.WHITE, 'left');
     ctx.restore();
 
     // 3. Track & DB Logo (Right)
-    drawText(ctx, 'Gleis', width - 420, 80, FONTS.regular(35), COLORS.WHITE, 'right');
-    drawText(ctx, 'Platform', width - 300, 80, FONTS.italic(35), COLORS.WHITE, 'right');
-    drawText(ctx, trackNumber || "", width - 280, 90, FONTS.bold(66), COLORS.WHITE, 'left');
+    drawText(ctx, 'Gleis', width - t.header.track.gleisFromRight, t.header.track.labelY, FONTS.regular(t.header.track.labelSize), COLORS.WHITE, 'right');
+    drawText(ctx, 'Platform', width - t.header.track.platformFromRight, t.header.track.labelY, FONTS.italic(t.header.track.labelSize), COLORS.WHITE, 'right');
+    drawText(ctx, trackNumber || "", width - t.header.track.numberFromRight, t.header.track.numberY, FONTS.bold(t.header.track.numberSize), COLORS.WHITE, 'left');
     
-    drawDBLogo(ctx, width - 110, 80);
+    drawDBLogo(ctx, width - t.header.logo.fromRight, t.header.logo.y, t.header.logo.width, t.header.logo.height);
 }
 
 /**
@@ -69,25 +84,26 @@ function drawVitrineHeader(ctx, width, activeFeatureIndex, progress, trackNumber
  * @param {number} x - Linke Kante des tatsächlichen Zugteil-Beginns.
  * @param {number} yOffset - Oberer Rand der Vitrine-Zeile.
  * @param {number} maxWidth - Verfügbare Breite bis zum nächsten Zugteil.
+ * @param {object} t - Aufgelöste Board-Tokens der aktiven Variante
  * @param {string|null} [displayName=null] - Optionaler kombinierter Zugname.
  * @returns {void}
  */
-function drawVitrineTrainLabel(ctx, journey, x, yOffset, maxWidth, displayName = null) {
+function drawVitrineTrainLabel(ctx, journey, x, yOffset, maxWidth, t, displayName = null) {
     if (!journey) return;
 
     const availableWidth = Math.max(20, maxWidth);
     const name = displayName || journey.displayTitle || "";
-    const labelFont = FONTS.bold(30);
-    const badgeHeight = 40;
-    const badgeCenterY = yOffset + 65;
+    const labelFont = FONTS.bold(t.label.font);
+    const badgeHeight = t.label.badgeHeight;
+    const badgeCenterY = yOffset + t.label.badgeCenterYOffset;
 
     if (name) {
         ctx.font = labelFont;
-        const badgePaddingX = 14;
+        const badgePaddingX = t.label.paddingX;
         const maxTextWidth = Math.max(1, availableWidth - 2 * badgePaddingX);
         const badgeText = truncateWithEllipsis(ctx, name, maxTextWidth);
         const textWidth = ctx.measureText(badgeText).width;
-        const badgeWidth = Math.min(availableWidth, Math.max(20, textWidth + 2 * badgePaddingX));
+        const badgeWidth = Math.min(availableWidth, Math.max(t.label.minWidth, textWidth + 2 * badgePaddingX));
         const badgeStyle = lineColorService.resolveStyle(badgeText, {
             operator: journey.operator
         });
@@ -99,14 +115,14 @@ function drawVitrineTrainLabel(ctx, journey, x, yOffset, maxWidth, displayName =
     }
 
     const dest = journey.displayDestination || "";
-    const destFont = FONTS.regular(65);
+    const destFont = FONTS.regular(t.label.destFont);
     ctx.font = destFont;
     const destText = truncateWithEllipsis(ctx, dest, availableWidth);
-    drawText(ctx, destText, x, yOffset + 135, destFont, COLORS.WHITE, 'left');
+    drawText(ctx, destText, x, yOffset + t.label.destYOffset, destFont, COLORS.WHITE, 'left');
 
-    const viaFont = FONTS.regular(35);
+    const viaFont = FONTS.regular(t.label.viaFont);
     const destWidth = ctx.measureText(destText + " ").width;
-    const viaMaxWidth = Math.max(0, availableWidth - destWidth - 10);
+    const viaMaxWidth = Math.max(0, availableWidth - destWidth - t.label.viaGap);
 
     // Nur zeichnen, wenn nach dem Zielbahnhof überhaupt sinnvoll Platz bleibt.
     ctx.font = viaFont;
@@ -123,16 +139,33 @@ function drawVitrineTrainLabel(ctx, journey, x, yOffset, maxWidth, displayName =
 
         if (viaNames) {
             const viaText = truncateWithEllipsis(ctx, viaPrefix + viaNames, viaMaxWidth);
-            drawText(ctx, viaText, x + destWidth + 10, yOffset + 133, viaFont, COLORS.WHITE, 'left');
+            drawText(ctx, viaText, x + destWidth + t.label.viaGap, yOffset + t.label.viaYOffset, viaFont, COLORS.WHITE, 'left');
         }
     }
 }
 
-function drawVitrineRow(ctx, journeys, yOffset, width, platform, activeFeatureStr, startX, usableWidth, featureAlpha = 1.0, drawLayer = 'all') {
+/**
+ * Zeichnet eine Vitrine-Zeile (Trennlinie, Abfahrtszeit, Formation, Labels).
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {object[]} journeys - Züge dieser Zeile
+ * @param {number} yOffset - Oberer Rand der Zeile
+ * @param {number} width - Displaybreite
+ * @param {object} platform - Bahnsteig-Objekt
+ * @param {string} activeFeatureStr - Aktives Ausstattungsmerkmal
+ * @param {number} startX - Linke Kante des Bahnsteigbereichs
+ * @param {number} usableWidth - Breite des Bahnsteigbereichs
+ * @param {object} t - Aufgelöste Board-Tokens der aktiven Variante
+ * @param {number} [featureAlpha=1.0] - Überblend-Alpha der Features
+ * @param {string} [drawLayer='all'] - 'all' | 'static' | 'dynamic'
+ * @returns {void}
+ */
+function drawVitrineRow(ctx, journeys, yOffset, width, platform, activeFeatureStr, startX, usableWidth, t, featureAlpha = 1.0, drawLayer = 'all') {
     if (drawLayer === 'all' || drawLayer === 'static') {
-        // Horizontale Trennlinie
+        // Horizontale Trennlinie (bewusst außerhalb der Zeilen-Skalierung,
+        // damit sie immer die volle Displaybreite abdeckt)
         ctx.strokeStyle = COLORS.WHITE;
-        ctx.lineWidth = 2;
+        ctx.lineWidth = t.row.separator.lineWidth;
         ctx.beginPath();
         ctx.moveTo(0, yOffset); 
         ctx.lineTo(width, yOffset);
@@ -142,25 +175,36 @@ function drawVitrineRow(ctx, journeys, yOffset, width, platform, activeFeatureSt
     if (!journeys || journeys.length === 0) return;
 
     const primary = journeys[0];
-    
+
+    // Zeileninhalt um `rowScale` skalieren. Die virtuelle Zeile ist breiter
+    // als das Display; dadurch nutzt die mitskalierte Formation weiterhin
+    // die volle physische Breite.
+    const s = t.meta.rowScale;
+    const virtualStartX = startX / s;
+    const virtualUsableWidth = usableWidth / s;
+
+    ctx.save();
+    ctx.translate(0, yOffset);
+    ctx.scale(s, s);
+
     // Linker Rand der Zeit-Spalte: lässt Platz für den Abfahrtsalarm-Punkt.
-    const timeX = 56;
-    const timeBaselineY = yOffset + 150;
+    const timeX = t.row.time.x;
+    const timeBaselineY = t.row.time.baselineOffset;
 
     if (drawLayer === 'all' || drawLayer === 'static') {
         const scheduled = primary.scheduledTime || "";
         const expected = primary.expectedTime || "";
 
         // Time
-        const timeFont = FONTS.regular(75);
+        const timeFont = FONTS.regular(t.row.time.fontSize);
         drawText(ctx, scheduled, timeX, timeBaselineY, timeFont, COLORS.WHITE, 'left');
 
         if (expected && expected !== scheduled) {
             const scheduledWidth = ctx.measureText(scheduled).width;
-            drawInvertedTimeBox(ctx, expected, timeX + scheduledWidth + 12, timeBaselineY, FONTS.bold(48), {
-                paddingX: 10,
-                minWidth: 100,
-                height: 55
+            drawInvertedTimeBox(ctx, expected, timeX + scheduledWidth + t.row.delay.offsetX, timeBaselineY, FONTS.bold(t.row.delay.fontSize), {
+                paddingX: t.row.delay.paddingX,
+                minWidth: t.row.delay.minWidth,
+                height: t.row.delay.height
             });
         }
     }
@@ -171,9 +215,9 @@ function drawVitrineRow(ctx, journeys, yOffset, width, platform, activeFeatureSt
     if (drawLayer === 'dynamic') {
         const alarm = getDepartureAlarmState(primary);
         if (alarm.visible) {
-            drawDepartureAlarmMarker(ctx, timeX - 36, timeBaselineY - 26, {
-                radius: 8,
-                lineWidth: 3,
+            drawDepartureAlarmMarker(ctx, timeX - t.row.alarm.offsetX, timeBaselineY - t.row.alarm.offsetY, {
+                radius: t.row.alarm.radius,
+                lineWidth: t.row.alarm.lineWidth,
                 blinking: alarm.blinking
             });
         }
@@ -181,14 +225,14 @@ function drawVitrineRow(ctx, journeys, yOffset, width, platform, activeFeatureSt
 
     // Formation zeichnen und Startposition abfragen
     ctx.save();
-    ctx.translate(0, yOffset + 100);
+    ctx.translate(0, t.row.formation.offsetY);
     const formationResult = drawFormation(ctx, journeys, platform, {
         fullScreen: true,
         activeFeature: activeFeatureStr,
         hideSectors: true,
         hideDestinations: true,
-        customStartX: startX,
-        customUsableWidth: usableWidth,
+        customStartX: virtualStartX,
+        customUsableWidth: virtualUsableWidth,
         featureAlpha: featureAlpha,
         isVitrine: true,
         drawLayer: drawLayer
@@ -205,7 +249,7 @@ function drawVitrineRow(ctx, journeys, yOffset, width, platform, activeFeatureSt
         // drawFormation/drawSectors hinterlassen 'alphabetic'; hier wieder
         // vertikal zentriert zeichnen.
 
-        const rightEdge = startX + usableWidth;
+        const rightEdge = virtualStartX + virtualUsableWidth;
         const anchors = formationResult?.journeyAnchors || [];
         const merged = JourneyCouplingService.areJourneysMerged(journeys);
 
@@ -217,17 +261,29 @@ function drawVitrineRow(ctx, journeys, yOffset, width, platform, activeFeatureSt
 
             parts.forEach((part, index) => {
                 const maxX = index < parts.length - 1 ? parts[index + 1].x - 12 : rightEdge;
-                drawVitrineTrainLabel(ctx, part.journey, part.x, yOffset, maxX - part.x);
+                drawVitrineTrainLabel(ctx, part.journey, part.x, 0, maxX - part.x, t);
             });
         } else {
             const combinedName = journeys.length > 1 ? combineTrainNames(journeys) : null;
-            drawVitrineTrainLabel(ctx, primary, textX, yOffset, rightEdge - textX, combinedName);
+            drawVitrineTrainLabel(ctx, primary, textX, 0, rightEdge - textX, t, combinedName);
         }
     }
+
+    // Skalierung der Zeile wieder aufheben.
+    ctx.restore();
 }
 
 /**
  * Hauptfunktion für das ZIMVitrine32Wagenstand Layout
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {object[][]} journeyGroups - Züge je Zeile
+ * @param {object} platform - Bahnsteig-Objekt
+ * @param {number} width - Displaybreite
+ * @param {number} height - Displayhöhe
+ * @param {string|number} trackNumber - Angezeigtes Gleis
+ * @param {object} [animOptions={}] - Animations- und Variantenoptionen
+ * @returns {void}
  */
 export function drawVitrine32Wagenstand(ctx, journeyGroups, platform, width, height, trackNumber, animOptions = {}) {
     const {
@@ -235,15 +291,19 @@ export function drawVitrine32Wagenstand(ctx, journeyGroups, platform, width, hei
         activeFeatureStr = 'wagennummern',
         progress = 0,
         featureAlpha = 1.0,
-        drawLayer = 'all'
+        drawLayer = 'all',
+        variant = null
     } = animOptions;
 
+    // Geometrie- und Schriftwerte der aktiven Darstellungsvariante.
+    const t = getBoardTokens('wagenstand_gleis', { variantId: variant, width, height });
+
     if (drawLayer === 'all' || drawLayer === 'dynamic') {
-        drawVitrineHeader(ctx, width, activeFeatureIndex, progress, trackNumber, featureAlpha);
+        drawVitrineHeader(ctx, width, activeFeatureIndex, progress, trackNumber, t, featureAlpha);
     }
 
-    const startX = Math.round(width * 0.15);
-    const usableWidth = Math.round(width * 0.70);
+    const startX = Math.round(width * t.layout.startXRatio);
+    const usableWidth = Math.round(width * t.layout.usableWidthRatio);
     const arrowBuffer = FORMATION.ARROW_BUFFER;
     const meterAreaPixels = usableWidth - 2 * arrowBuffer;
     const pixelPerMeter = meterAreaPixels / (platform.length || 420);
@@ -252,7 +312,7 @@ export function drawVitrine32Wagenstand(ctx, journeyGroups, platform, width, hei
     if (drawLayer === 'all' || drawLayer === 'static') {
         // Draw platform sectors at the top
         ctx.save();
-        ctx.translate(0, 160);
+        ctx.translate(0, t.sectors.translateY);
         drawSectors(ctx, platform.sections, pixelPerMeter, meterOrigin, true);
         ctx.restore();
 
@@ -265,24 +325,25 @@ export function drawVitrine32Wagenstand(ctx, journeyGroups, platform, width, hei
         
         // Draw the red dot at the top of the line
         ctx.beginPath();
-        ctx.arc(redLineX, 190, 16, 0, Math.PI * 2);
+        ctx.arc(redLineX, t.sectors.redDotY, t.sectors.redDotRadius, 0, Math.PI * 2);
         ctx.fill();
 
         // Line downwards
-        ctx.lineWidth = 3;
+        ctx.lineWidth = t.sectors.redLineWidth;
         ctx.beginPath();
-        ctx.moveTo(redLineX, 230);
+        ctx.moveTo(redLineX, t.sectors.redLineStartY);
         ctx.lineTo(redLineX, height);
         ctx.stroke();
     }
 
-    const startY = 225;
-    // Zeilenhöhe bleibt auf 1080 logische Pixel abgestimmt (Render-Skalierung
-    // übernimmt trainDisplay); nur die Breite wird proportional skaliert.
-    const rowHeight = 300;
+    const startY = t.meta.startY;
+    // Zeilenhöhe wird pro Variante aus den Tokens bestimmt; die
+    // Render-Skalierung übernimmt trainDisplay.
+    const rowHeight = t.meta.rowHeight;
+    const rowCount = t.meta.rowCount;
 
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < rowCount; i++) {
         const journeys = journeyGroups[i] || [];
-        drawVitrineRow(ctx, journeys, startY + (i * rowHeight), width, platform, activeFeatureStr, startX, usableWidth, featureAlpha, drawLayer);
+        drawVitrineRow(ctx, journeys, startY + (i * rowHeight), width, platform, activeFeatureStr, startX, usableWidth, t, featureAlpha, drawLayer);
     }
 }

@@ -30,7 +30,9 @@
     const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
     const targetScreen = urlParams.get('screen'); // z.B. '1', '2', '3' oder null
     const isKiosk = urlParams.get('kiosk') === '1' || urlParams.get('fullscreen') === '1';
-    const is4k = urlParams.get('res') === '4k';
+    // Darstellungsvariante aus der URL ('fhd_landscape' | 'uhd_landscape' |
+    // 'fhd_portrait' | 'uhd_portrait'). Ersetzt das frühere ?res=4k-Flag.
+    const variantParam = urlParams.get('variant');
     const targetLayout = urlParams.get('layout');
 
     // Hybrid-Modus für Mobile/Desktop: 'fit' (an Bildschirm anpassen) oder 'scroll' (Mindestbreite mit Scrollbalken)
@@ -97,7 +99,7 @@
             cleanUrl.searchParams.delete('kiosk');
             cleanUrl.searchParams.delete('screen');
             cleanUrl.searchParams.delete('fullscreen');
-            cleanUrl.searchParams.delete('res');
+            cleanUrl.searchParams.delete('variant');
             window.location.href = cleanUrl.href;
         }
     }
@@ -118,10 +120,10 @@
     /**
      * Öffnet einen spezifischen Monitor in einem neuen Fenster / Pop-Out.
      * @param {number|string} screenIndex - 1, 2 oder 3
-     * @param {boolean} [use4k=false]
+     * @param {string|null} [variantId=null] - Darstellungsvariante des Pop-Outs
      */
-    function openScreen(screenIndex, use4k = false) {
-        ScreenSyncService.openScreenWindow(screenIndex, use4k, true, displayConfigStore.layoutType);
+    function openScreen(screenIndex, variantId = null) {
+        ScreenSyncService.openScreenWindow(screenIndex, variantId, true, displayConfigStore.layoutType);
     }
 
     /**
@@ -337,14 +339,20 @@
 
         // Multi-Screen / Kiosk Setup
         if (targetScreen) {
-            displayConfigStore.setTargetScreen(targetScreen, is4k);
-            trainDisplay.setTargetScreen(targetScreen, is4k, false);
+            // Pop-out: Variante kommt aus der URL und gilt nur für dieses Fenster.
+            displayConfigStore.setTargetScreen(targetScreen, variantParam);
+            trainDisplay.setTargetScreen(targetScreen, variantParam, false);
             if (isKiosk || targetScreen !== '1') {
                 ansagenStore.muted = true; // Sekundäre Monitore stumm schalten
             }
             ScreenSyncService.initSlave(journeyStore, trainDisplay);
         } else {
-            displayConfigStore.setTargetScreen(null, is4k);
+            // Hauptansicht: Variante aus der URL übernehmen (wird an die
+            // Ausrichtung des Monitors angepasst) und persistieren.
+            if (variantParam) {
+                displayConfigStore.setBoardVariant(variantParam);
+            }
+            displayConfigStore.setTargetScreen(null);
             ScreenSyncService.initMaster(journeyStore);
             trainDisplay.updateAll();
         }
