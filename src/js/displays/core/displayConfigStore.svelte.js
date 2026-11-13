@@ -1,5 +1,5 @@
 // js/displays/core/displayConfigStore.svelte.js
-import { generateActiveLayout, getMonitorOrientation, LAYOUT_TYPES } from './displayLayoutService.js';
+import { generateActiveLayout, getMonitorOrientation, LAYOUT_TYPES, MONITOR_PRESETS, resolvePresetProfile } from './displayLayoutService.js';
 import { BOARD_VARIANTS, adaptVariantOrientation, getVariantId, isUhdVariant } from './boardTokenService.js';
 
 /**
@@ -90,6 +90,21 @@ class DisplayConfigStore {
     totalDeparturePages = $state(1);
 
     /**
+     * Intern aufgelöstes Display-Profil (nur Glas/Geometrie). Die UI wählt
+     * weiterhin ein Preset (`monitorId`); Display und Gehäuse sind aber schon
+     * getrennt verfügbar, damit sie später unabhängig gewählt werden können.
+     */
+    displayId = $derived.by(() => resolvePresetProfile(this.monitorId).display.id);
+
+    /**
+     * Intern aufgelöstes Gehäuse-Profil (nur Rahmen/Optik). Bei deaktiviertem
+     * Gehäuse ist das Profil `none`, unabhängig vom gewählten Preset.
+     */
+    chassisId = $derived.by(() => this.showBezel
+        ? resolvePresetProfile(this.monitorId).chassis.id
+        : 'none');
+
+    /**
      * Aktive Varianten-ID: Bei aktivem Pop-Out gilt dessen Variante,
      * ansonsten die in der Hauptansicht gewählte – stets an die Ausrichtung
      * des aktuellen Hardware-Monitors angepasst (Auflösungsklasse bleibt).
@@ -165,6 +180,35 @@ class DisplayConfigStore {
             this.boardVariant = adapted;
             localStorage.setItem('zimsim_board_variant', adapted);
         }
+    }
+
+    /**
+     * Setzt Display und Gehäuse unabhängig voneinander.
+     *
+     * Vorbereitung für die spätere Zwei-Achsen-UI (Display-Auswahl +
+     * Gehäuse-Auswahl). Solange die Oberfläche nur Presets anbietet, wird die
+     * Kombination auf das passende Preset abgebildet. `chassisId === 'none'`
+     * entspricht dem abgeschalteten Gehäuse.
+     *
+     * @param {string} displayId - ID aus DISPLAY_PROFILES
+     * @param {string} chassisId - ID aus CHASSIS_PROFILES
+     * @returns {boolean} true, wenn die Kombination übernommen wurde
+     */
+    setDisplayAndChassis(displayId, chassisId) {
+        const preset = chassisId === 'none'
+            ? MONITOR_PRESETS.find(p => p.displayId === displayId)
+            : MONITOR_PRESETS.find(p => p.displayId === displayId && p.chassisId === chassisId);
+        if (!preset) {
+            console.warn(`[DisplayConfig] Keine Hardware für ${displayId} + ${chassisId} hinterlegt.`);
+            return false;
+        }
+
+        this.setMonitorId(preset.id);
+        if (chassisId === 'none' && this.showBezel) {
+            this.showBezel = false;
+            localStorage.setItem('zimsim_show_bezel', 'false');
+        }
+        return true;
     }
 
     /**

@@ -4,17 +4,205 @@ import { BOARD_VARIANTS, adaptVariantOrientation, isUhdVariant } from './boardTo
 /**
  * Service zur dynamischen Generierung von Layout-Objekten
  * basierend auf der Kreuzung von Hardware-Monitor und DB-Anzeigetyp.
+ *
+ * Die Hardware ist seit der Trennung von Display und Gehäuse in zwei
+ * unabhängige Achsen aufgeteilt:
+ *
+ *   DISPLAY_PROFILES – nur das Display: Segmente (physische Panels), die
+ *                      Unterteilung in Slots (Zuganzeiger) und in Spalten
+ *                      (Listen-Boards). Keine Rahmen- oder Gehäusewerte.
+ *   CHASSIS_PROFILES – nur das Gehäuse: Stegdicke (gapWidth), Innenabstand
+ *                      (padding), Sockel (extraBottom) und Optik (style).
+ *   MONITOR_PRESETS  – Kombinationen beider Achsen. Das sind die Einträge im
+ *                      Hardware-Dropdown und die Werte in localStorage.
+ *
+ * Damit ist die Vitrine kein eigenes Display mehr, sondern ein Gehäuse um ein
+ * 1×-FullHD-Panel; die Stele ist dasselbe Panel im Hochformat mit Sockel.
  */
 
-export const MONITOR_PROFILES = [
-    { id: 'zim2x32', name: 'ZIM 2×32" / 2×43" Doppel', defaultW: 3890, framelessW: 3840, h: 1080, casingW: 4430, casingH: 1600, offX: 270, offY: 260, hasBezelGap: true, gapWidth: 50, gapX: 1920, family: 'standard' },
-    { id: 'zim3x32', name: 'ZIM 3×32" Triple', defaultW: 5860, framelessW: 5760, h: 1080, casingW: 6400, casingH: 1600, offX: 270, offY: 260, hasBezelGap: true, gapWidth: 50, gaps: [1920, 3940], family: 'standard' },
-    { id: 'zim32_single', name: 'ZIM 32" / 43" / 46" Einzel', defaultW: 1920, framelessW: 1920, h: 1080, casingW: 2460, casingH: 1600, offX: 270, offY: 260, hasBezelGap: false, family: 'standard' },
-    { id: 'zimvitrine32', name: 'ZIMvitrine 32" Stand', defaultW: 1920, framelessW: 1920, h: 1080, casingW: 2120, casingH: 1380, offX: 100, offY: 100, hasBezelGap: false, family: 'vitrine' },
-    { id: 'zimvitrine65h', name: 'ZIMvitrine 65h Stele (9:16)', defaultW: 1080, framelessW: 1080, h: 1920, casingW: 1240, casingH: 2220, offX: 80, offY: 100, hasBezelGap: false, family: 'stele' },
-    { id: 'zimwide', name: 'ZIMwide Bar-Type (21:9)', defaultW: 2560, framelessW: 2560, h: 1080, casingW: 2760, casingH: 1260, offX: 100, offY: 90, hasBezelGap: false, family: 'stretched' },
-    { id: 'zimultrawide', name: 'ZIMultrawide (32:9 nahtlos)', defaultW: 3840, framelessW: 3840, h: 1080, casingW: 4040, casingH: 1260, offX: 100, offY: 90, hasBezelGap: false, family: 'stretched' },
+/**
+ * Display-Profile (nur Glas/Geometrie).
+ *
+ * `segments` beschreibt die physischen Panels ohne Steg. Die absolute
+ * X-Position ergibt sich erst mit der Stegdicke des Gehäuses. `slots` ist die
+ * Zuganzeiger-Unterteilung (kann Panels halbieren); `null` bedeutet „ein
+ * Screen pro Segment“. `listColumnsPerSegment` legt fest, in wie viele
+ * Spalten ein Segment bei Listen-Boards (Anschluss-/Ankunftstafel) zerfällt.
+ *
+ * `legacyOverrides` dokumentiert bewusst das bisherige Verhalten einzelner
+ * Displays, das noch nicht vereinheitlicht ist (siehe TODO in P3).
+ */
+export const DISPLAY_PROFILES = {
+    fhd_1x1_landscape: {
+        id: 'fhd_1x1_landscape',
+        name: '1× Full HD (Quer)',
+        orientation: 'landscape',
+        panelH: 1080,
+        segments: [{ w: 1920 }],
+        slots: null,
+        listColumnsPerSegment: 1
+    },
+    fhd_2x1_landscape: {
+        id: 'fhd_2x1_landscape',
+        name: '2× Full HD (Quer)',
+        orientation: 'landscape',
+        panelH: 1080,
+        segments: [{ w: 1920 }, { w: 1920 }],
+        // Klassische ZIM-Aufteilung: links Hauptmonitor, rechts zwei Hälften.
+        slots: [
+            { id: 'hauptmonitor', type: 'haupt', segment: 0, offset: 0, w: 1920, trainIndex: 0 },
+            { id: 'nebenmonitor_1', type: 'neben', segment: 1, offset: 0, w: 960, trainIndex: 1 },
+            { id: 'nebenmonitor_2', type: 'neben_rotierend', segment: 1, offset: 960, w: 960 }
+        ],
+        listColumnsPerSegment: 1
+    },
+    fhd_3x1_landscape: {
+        id: 'fhd_3x1_landscape',
+        name: '3× Full HD (Quer)',
+        orientation: 'landscape',
+        panelH: 1080,
+        segments: [{ w: 1920 }, { w: 1920 }, { w: 1920 }],
+        // Erstes Panel voll, danach zwei Panels mit je zwei Hälften.
+        slots: [
+            { id: 'hauptmonitor', type: 'haupt', segment: 0, offset: 0, w: 1920, trainIndex: 0 },
+            { id: 'nebenmonitor_1', type: 'neben', segment: 1, offset: 0, w: 960, trainIndex: 1 },
+            { id: 'nebenmonitor_2', type: 'neben_rotierend', segment: 1, offset: 960, w: 960 },
+            { id: 'nebenmonitor_3', type: 'neben', segment: 2, offset: 0, w: 960, trainIndex: 2 },
+            { id: 'nebenmonitor_4', type: 'neben_rotierend', segment: 2, offset: 960, w: 960 }
+        ],
+        listColumnsPerSegment: 1,
+        // TODO(P3): Altwerte aus der früheren Profil-Matrix. Der zweite Wert
+        // sitzt um eine Stegbreite zu weit rechts (der Steg wird dadurch 50 px
+        // in das dritte Panel gezeichnet). Bewusst unverändert, damit die
+        // Trennung von Display und Gehäuse keine Darstellungsänderung bringt.
+        legacyGaps: [1920, 3940]
+    },
+    fhd_1x1_portrait: {
+        id: 'fhd_1x1_portrait',
+        name: '1× Full HD (Hoch)',
+        orientation: 'portrait',
+        panelH: 1920,
+        segments: [{ w: 1080 }],
+        slots: null,
+        listColumnsPerSegment: 1,
+        // TODO(P3): Altverhalten der Stele. Der Zuganzeiger zeigt dort aktuell
+        // den Wagenstandsanzeiger, der Zoom fällt auf die normale Liste zurück.
+        // Diese Overrides halten P1 verhaltensgleich und sind später löschbar.
+        legacyOverrides: {
+            zuganzeiger: { id: 'stele_zuganzeiger', type: 'vitrine32' },
+            anschlusstafel: { id: 'abfahrt_stele', omitColumnMeta: true },
+            ankunftstafel: { id: 'ankunft_stele', maxRows: 20, omitColumnMeta: true },
+            wagenstand_gleis: { id: 'stele_plan' },
+            anschlusstafel_zoom: { id: 'abfahrt_zoom_stele', type: 'abfahrt_portrait', maxRows: 8, omitColumnMeta: true },
+            anschlusstafel_zoom_icons: { id: 'abfahrt_zoom_stele', type: 'abfahrt_portrait', maxRows: 8, omitColumnMeta: true }
+        }
+    },
+    wide_1x1_landscape: {
+        id: 'wide_1x1_landscape',
+        name: '1× 21:9 (Quer)',
+        orientation: 'landscape',
+        panelH: 1080,
+        segments: [{ w: 2560 }],
+        slots: null,
+        listColumnsPerSegment: 2,
+        // TODO(P6): echtes Gerät mit gestrecktem Panel. Bis dahin werden die
+        // 1920er-Tokens unverändert auf 2560 px Breite gezeichnet.
+        renderMode: 'stretch'
+    },
+    ultrawide_1x1_landscape: {
+        id: 'ultrawide_1x1_landscape',
+        name: '1× 32:9 (Quer, nahtlos)',
+        orientation: 'landscape',
+        panelH: 1080,
+        segments: [{ w: 3840 }],
+        // Nahtloses Panel: die Zuganzeiger-Hälften liegen im selben Segment.
+        slots: [
+            { id: 'hauptmonitor', type: 'haupt', segment: 0, offset: 0, w: 1920, trainIndex: 0 },
+            { id: 'nebenmonitor_1', type: 'neben', segment: 0, offset: 1920, w: 960, trainIndex: 1 },
+            { id: 'nebenmonitor_2', type: 'neben_rotierend', segment: 0, offset: 2880, w: 960 }
+        ],
+        listColumnsPerSegment: 2,
+        // TODO(P6): siehe wide_1x1_landscape.
+        renderMode: 'stretch'
+    }
+};
+
+/**
+ * Gehäuse-Profile (nur Rahmen/Optik).
+ *
+ * `gapWidth` ist die Dicke des Mittelstegs zwischen zwei Segmenten und der
+ * einzige Punkt, an dem das Gehäuse die Display-Geometrie beeinflusst.
+ * `padding` ist der Rahmenrand links/rechts bzw. oben/unten, `extraBottom`
+ * zusätzlicher Platz für Sockel/Füße.
+ */
+export const CHASSIS_PROFILES = {
+    overhead: {
+        id: 'overhead',
+        name: 'Überkopf-Gehäuse',
+        style: 'standard',
+        orientation: 'any',
+        padding: { x: 270, y: 260 },
+        gapWidth: 50,
+        extraBottom: 0
+    },
+    vitrine: {
+        id: 'vitrine',
+        name: 'Vitrine (Stand)',
+        style: 'vitrine',
+        orientation: 'landscape',
+        padding: { x: 100, y: 100 },
+        gapWidth: 0,
+        // Standfüße unterhalb des Rahmens (casingH 1380 = 1080 + 2×100 + 100).
+        extraBottom: 100
+    },
+    stele: {
+        id: 'stele',
+        name: 'Stele (Sockel)',
+        style: 'stele',
+        orientation: 'portrait',
+        padding: { x: 80, y: 100 },
+        gapWidth: 0,
+        extraBottom: 100
+    },
+    bar: {
+        id: 'bar',
+        name: 'Bar-Type',
+        style: 'stretched',
+        orientation: 'landscape',
+        padding: { x: 100, y: 90 },
+        gapWidth: 0,
+        extraBottom: 0
+    },
+    none: {
+        id: 'none',
+        name: 'Ohne Gehäuse',
+        style: 'none',
+        orientation: 'any',
+        padding: { x: 0, y: 0 },
+        gapWidth: 0,
+        extraBottom: 0
+    }
+};
+
+/**
+ * Kombinationen aus Display und Gehäuse. Diese Liste ist die einzige Quelle
+ * für das Hardware-Dropdown und für die persistierte `zimsim_monitor_id`.
+ */
+export const MONITOR_PRESETS = [
+    { id: 'zim2x32', name: '2x ZIM FHD', displayId: 'fhd_2x1_landscape', chassisId: 'overhead' },
+    { id: 'zim3x32', name: '3x ZIM FHD', displayId: 'fhd_3x1_landscape', chassisId: 'overhead' },
+    { id: 'zim32_single', name: '1x ZIM FHD', displayId: 'fhd_1x1_landscape', chassisId: 'overhead' },
+    { id: 'zimvitrine32', name: 'ZIMvitrine 32" Stand', displayId: 'fhd_1x1_landscape', chassisId: 'vitrine' },
+    { id: 'zimvitrine65h', name: 'ZIMvitrine 65h Stele (9:16)', displayId: 'fhd_1x1_portrait', chassisId: 'stele' },
+    { id: 'zimwide', name: 'ZIMwide Bar-Type (21:9)', displayId: 'wide_1x1_landscape', chassisId: 'bar' },
+    { id: 'zimultrawide', name: 'ZIMultrawide (32:9 nahtlos)', displayId: 'ultrawide_1x1_landscape', chassisId: 'bar' }
 ];
+
+/**
+ * Legacy-Alias für die bestehende UI (`SettingsDisplaySystem.svelte`).
+ * Die Einträge enthalten weiterhin `id` und `name`.
+ */
+export const MONITOR_PROFILES = MONITOR_PRESETS;
 
 export const LAYOUT_TYPES = [
     { id: 'zuganzeiger', name: 'Zuganzeiger (Bahnsteig / Gleis)' },
@@ -26,21 +214,312 @@ export const LAYOUT_TYPES = [
 ];
 
 /**
+ * Liefert Preset, Display- und Gehäuseprofil zu einer Hardware-ID.
+ * Unbekannte IDs fallen wie bisher auf das erste Preset zurück.
+ *
+ * @param {string} [presetId='zim2x32'] - ID aus MONITOR_PRESETS
+ * @returns {{preset: object, display: object, chassis: object}} Aufgelöste Profile
+ */
+export function resolvePresetProfile(presetId = 'zim2x32') {
+    const preset = MONITOR_PRESETS.find(p => p.id === presetId) || MONITOR_PRESETS[0];
+    return {
+        preset,
+        display: DISPLAY_PROFILES[preset.displayId] || DISPLAY_PROFILES.fhd_2x1_landscape,
+        chassis: CHASSIS_PROFILES[preset.chassisId] || CHASSIS_PROFILES.overhead
+    };
+}
+
+/**
  * Liefert die physische Ausrichtung eines Monitor-Profils.
  *
  * @param {string} monitorId - ID aus MONITOR_PROFILES
  * @returns {'landscape'|'portrait'} Ausrichtung
  */
 export function getMonitorOrientation(monitorId) {
-    const prof = MONITOR_PROFILES.find(p => p.id === monitorId) || MONITOR_PROFILES[0];
-    return prof.h > prof.defaultW ? 'portrait' : 'landscape';
+    const { display } = resolvePresetProfile(monitorId);
+    return display.orientation;
+}
+
+/**
+ * Berechnet die X-Positionen der Segmente inklusive Steg sowie die
+ * Gesamtbreite des Displayinhalts.
+ *
+ * Ohne Steg (gapWidth = 0) liegen die Segmente direkt aneinander; das ist
+ * exakt das bisherige rahmenlose Verhalten.
+ *
+ * @param {object} display - Display-Profil
+ * @param {number} gapWidth - Stegdicke zwischen zwei Segmenten
+ * @returns {{starts: number[], contentW: number, gapStarts: number[]}} Geometrie
+ */
+function buildGeometry(display, gapWidth) {
+    const starts = [];
+    let x = 0;
+    display.segments.forEach((segment, index) => {
+        if (index > 0) x += gapWidth;
+        starts.push(x);
+        x += segment.w;
+    });
+    return {
+        starts,
+        contentW: x,
+        // Position des Stegbeginns (entspricht dem bisherigen gapX/gaps).
+        gapStarts: starts.slice(1).map(start => start - gapWidth)
+    };
+}
+
+/**
+ * Erzeugt die Screens der aktiven Anzeigeart in logischen FullHD-Pixeln.
+ *
+ * Die Regeln sind bewusst generisch und ersetzen die frühere
+ * Profil-für-Profil-Matrix:
+ *   - Zuganzeiger: Slots des Displays (oder ein Screen pro Segment)
+ *   - Listen-Boards: ein Screen je Spalte (`listColumnsPerSegment`)
+ *   - Zoom: ein Screen je Segment (kein Aufteilen)
+ *   - Wagenstand: Slots übernehmen, das letzte Segment wird zur Vitrine
+ *
+ * @param {object} display - Display-Profil
+ * @param {string} layoutType - Aktiver DB-Anzeigetyp
+ * @param {{starts: number[], contentW: number, gapStarts: number[]}} geo - Geometrie
+ * @returns {Array<object>} Screen-Definitionen
+ */
+function buildScreens(display, layoutType, geo) {
+    const portrait = display.orientation === 'portrait';
+    const lastSegment = display.segments.length - 1;
+    const screens = [];
+
+    const toScreen = (slot) => ({
+        id: slot.id,
+        type: slot.type,
+        x: geo.starts[slot.segment] + slot.offset,
+        y: 0,
+        w: slot.w,
+        h: display.panelH,
+        ...(slot.trainIndex !== undefined ? { trainIndex: slot.trainIndex } : {})
+    });
+
+    if (layoutType === 'zuganzeiger') {
+        if (display.slots) {
+            display.slots.forEach(slot => screens.push(toScreen(slot)));
+        } else {
+            // Einzelscreen: das Segment ist der ganze Monitor.
+            display.segments.forEach((segment, index) => {
+                screens.push({
+                    id: index === 0 ? 'hauptmonitor' : `hauptmonitor_${index + 1}`,
+                    type: 'haupt',
+                    x: geo.starts[index],
+                    y: 0,
+                    w: segment.w,
+                    h: display.panelH,
+                    trainIndex: 0
+                });
+            });
+        }
+    } else if (layoutType === 'wagenstand_gleis') {
+        // Alle Slots des letzten Segments weichen dem Wagenstandsanzeiger.
+        (display.slots || [])
+            .filter(slot => slot.segment !== lastSegment)
+            .forEach(slot => screens.push(toScreen(slot)));
+
+        screens.push({
+            id: display.segments.length > 1 ? 'vitrine_right' : 'vitrine_main',
+            type: 'vitrine32',
+            x: geo.starts[lastSegment],
+            y: 0,
+            w: display.segments[lastSegment].w,
+            h: display.panelH,
+            trainIndex: 0
+        });
+    } else if (layoutType === 'anschlusstafel' || layoutType === 'ankunftstafel') {
+        const perSegment = display.listColumnsPerSegment;
+        const totalCols = display.segments.length * perSegment;
+        const baseType = layoutType === 'anschlusstafel'
+            ? (portrait ? 'abfahrt_portrait' : 'abfahrt')
+            : (portrait ? 'ankunft_portrait' : 'ankunft');
+        const idPrefix = layoutType === 'anschlusstafel' ? 'abfahrt' : 'ankunft';
+
+        display.segments.forEach((segment, segmentIndex) => {
+            const colW = segment.w / perSegment;
+            for (let col = 0; col < perSegment; col++) {
+                const colIndex = segmentIndex * perSegment + col;
+                screens.push({
+                    id: totalCols > 1 ? `${idPrefix}_col${colIndex + 1}` : `${idPrefix}_single`,
+                    type: baseType,
+                    x: geo.starts[segmentIndex] + col * colW,
+                    y: 0,
+                    w: colW,
+                    h: display.panelH,
+                    colIndex,
+                    maxCols: totalCols
+                });
+            }
+        });
+    } else if (layoutType === 'anschlusstafel_zoom' || layoutType === 'anschlusstafel_zoom_icons') {
+        // Zoom bleibt bewusst bei einem Screen pro Segment (kein Aufteilen),
+        // damit der bisherige Aufbau von wide/ultrawide erhalten bleibt.
+        const showQualityIcons = layoutType === 'anschlusstafel_zoom_icons';
+        const totalCols = display.segments.length;
+
+        display.segments.forEach((segment, segmentIndex) => {
+            screens.push({
+                id: totalCols > 1 ? `abfahrt_zoom_col${segmentIndex + 1}` : 'abfahrt_zoom_single',
+                type: 'abfahrt_zoom',
+                x: geo.starts[segmentIndex],
+                y: 0,
+                w: segment.w,
+                h: display.panelH,
+                colIndex: segmentIndex,
+                maxCols: totalCols,
+                maxRows: 4,
+                showQualityIcons
+            });
+        });
+    }
+
+    return screens;
+}
+
+/**
+ * Wendet die dokumentierten Alt-Overrides eines Displays an.
+ * Die Overrides betreffen nur Ein-Screen-Aufbauten (aktuell die Stele).
+ *
+ * @param {object} display - Display-Profil
+ * @param {string} layoutType - Aktiver DB-Anzeigetyp
+ * @param {Array<object>} screens - Generierte Screens
+ * @returns {Array<object>} Angepasste Screens
+ */
+function applyLegacyOverrides(display, layoutType, screens) {
+    const override = display.legacyOverrides?.[layoutType];
+    if (!override) return screens;
+
+    return screens.map(screen => {
+        const next = { ...screen };
+        if (override.id) next.id = override.id;
+        if (override.type) next.type = override.type;
+        if (override.maxRows !== undefined) next.maxRows = override.maxRows;
+        if (override.omitColumnMeta) {
+            delete next.colIndex;
+            delete next.maxCols;
+        }
+        return next;
+    });
+}
+
+/**
+ * Erzeugt das vollständige Layout-Objekt aus Display- und Gehäuseprofil.
+ *
+ * @param {object} [options={}] - Layout-Optionen
+ * @param {string|null} [options.presetId=null] - Preset-ID (setzt Display + Gehäuse)
+ * @param {string|null} [options.displayId=null] - Display-Profil (überschreibt Preset)
+ * @param {string|null} [options.chassisId=null] - Gehäuse-Profil (überschreibt Preset)
+ * @param {string} [options.layoutType='zuganzeiger'] - DB-Anzeigetyp
+ * @param {boolean} [options.withBezel=true] - Ob das Gehäuse aktiv ist
+ * @param {string|null} [options.variantId=null] - 'fhd_landscape' | 'uhd_landscape' | 'fhd_portrait' | 'uhd_portrait'
+ * @param {object|null} [options.chassisOverrides=null] - Spätere UI-Overrides (z. B. Stegdicke)
+ * @param {string|number|null} [options.targetScreen=null] - Pop-Out-Zielschirm
+ * @returns {object} Das konfigurierte Layout-Objekt
+ */
+export function createLayout({
+    presetId = null,
+    displayId = null,
+    chassisId = null,
+    layoutType = 'zuganzeiger',
+    withBezel = true,
+    variantId = null,
+    chassisOverrides = null,
+    targetScreen = null
+} = {}) {
+    // ----------------------------------------------------
+    // Multi-Monitor Pop-Outs (?screen=1, ?screen=2, ?screen=3)
+    // Rendern exakt einen Einzelschirm in nativer Auflösung ohne Gehäuseränder
+    // ----------------------------------------------------
+    if (targetScreen) {
+        return generateTargetScreenLayout(layoutType, targetScreen, variantId);
+    }
+
+    const preset = presetId
+        ? (MONITOR_PRESETS.find(p => p.id === presetId) || MONITOR_PRESETS[0])
+        : null;
+    const display = DISPLAY_PROFILES[displayId || preset?.displayId] || DISPLAY_PROFILES.fhd_2x1_landscape;
+    const baseChassis = CHASSIS_PROFILES[chassisId || preset?.chassisId] || CHASSIS_PROFILES.overhead;
+
+    // Overrides werden kopiert, damit die Profil-Tabellen unveränderlich bleiben.
+    const chassis = chassisOverrides
+        ? {
+            ...baseChassis,
+            ...chassisOverrides,
+            padding: { ...baseChassis.padding, ...(chassisOverrides.padding || {}) }
+        }
+        : baseChassis;
+
+    // Die Ausrichtung folgt dem Display-Profil; die Auflösungsklasse kommt
+    // aus der gewählten Variante.
+    const variant = adaptVariantOrientation(variantId, display.orientation);
+    const is4k = isUhdVariant(variant);
+    const scaleFactor = BOARD_VARIANTS[variant].scale;
+    const scale = (value) => value * scaleFactor;
+
+    const gapWidth = withBezel ? chassis.gapWidth : 0;
+    const geo = buildGeometry(display, gapWidth);
+    const hasGap = withBezel && gapWidth > 0 && display.segments.length > 1;
+
+    const monitorId = preset ? preset.id : `${display.id}+${baseChassis.id}`;
+    const layout = {
+        id: `${monitorId}_${variant}_${layoutType}`,
+        family: baseChassis.style,
+        width: scale(geo.contentW),
+        height: scale(display.panelH),
+        scaleFactor,
+        boardVariant: variant,
+        // Gehäuse-Geometrie nur bei aktivem Gehäuse. Die Werte werden nicht
+        // mehr pro Profil gepflegt, sondern aus Rand + Innenabstand abgeleitet.
+        casingWidth: withBezel ? scale(geo.contentW + 2 * chassis.padding.x) : 0,
+        casingHeight: withBezel ? scale(display.panelH + 2 * chassis.padding.y + chassis.extraBottom) : 0,
+        casingOffsetX: withBezel ? scale(chassis.padding.x) : 0,
+        casingOffsetY: withBezel ? scale(chassis.padding.y) : 0,
+        hasBezelGap: hasGap,
+        gapWidth: hasGap ? scale(gapWidth) : 0,
+        // `gapX` ist der Legacy-Einzelsteg und nur bei Zweifach-Gehäusen
+        // aussagekräftig; bei Dreifach-Gehäusen gewinnt `gaps`. Der Wert wird
+        // daher nur dort skaliert, sonst wie bisher logisch 1920 beibehalten.
+        gapX: display.segments.length === 2 ? scale(geo.gapStarts[0]) : 1920,
+        gaps: display.legacyGaps
+            ? display.legacyGaps.map(scale)
+            : (display.segments.length > 2 ? geo.gapStarts.map(scale) : undefined),
+        boardType: 'default',
+        monitorId,
+        layoutType,
+        screens: []
+    };
+
+    const screens = applyLegacyOverrides(display, layoutType, buildScreens(display, layoutType, geo))
+        .map(screen => ({ ...screen, variant }));
+
+    // 4K Ultra-HD: Canvas und Gehäuse sind doppelt so groß, deshalb muss auch
+    // die Screen-Geometrie verdoppelt werden. Die Renderer zeichnen weiterhin
+    // in logischen Pixeln (screen.w / scaleFactor), erhalten also unverändert
+    // 1920×1080 bzw. 1080×1920.
+    layout.screens = is4k
+        ? screens.map(screen => ({
+            ...screen,
+            x: screen.x * 2,
+            y: screen.y * 2,
+            w: screen.w * 2,
+            h: screen.h * 2
+        }))
+        : screens;
+
+    return layout;
 }
 
 /**
  * Erzeugt dynamisch das vollständige Layout-Objekt für TrainDisplay und App.svelte.
  * Unterstützt Gesamtanzeigen, Multi-Monitor Pop-Outs (targetScreen) und die
  * vier Darstellungsvarianten (Full HD / 4K je Quer- und Hochformat).
- * 
+ *
+ * Kompatibilitäts-Adapter für `displayConfigStore`: löst das Preset auf und
+ * delegiert an `createLayout`. `withBezel === false` entspricht dem Gehäuse
+ * `none` (kein Rahmen, kein Steg).
+ *
  * @param {string} [monitorId='zim2x32'] - Gewählter Monitor
  * @param {string} [layoutType='zuganzeiger'] - Gewählter DB-Anzeigetyp
  * @param {boolean} [withBezel=true] - Ob Gehäuse aktiv ist
@@ -49,267 +528,21 @@ export function getMonitorOrientation(monitorId) {
  * @returns {object} Das konfigurierte Layout-Objekt
  */
 export function generateActiveLayout(monitorId = 'zim2x32', layoutType = 'zuganzeiger', withBezel = true, targetScreen = null, boardVariantId = null) {
-    // ----------------------------------------------------
-    // Multi-Monitor Pop-Outs (?screen=1, ?screen=2, ?screen=3)
-    // Rendern exakt einen Einzelschirm in nativer Auflösung ohne Gehäuseränder
-    // ----------------------------------------------------
-    if (targetScreen) {
-        return generateTargetScreenLayout(layoutType, targetScreen, boardVariantId);
-    }
-
-    const prof = MONITOR_PROFILES.find(p => p.id === monitorId) || MONITOR_PROFILES[0];
-    // Die Ausrichtung folgt dem Hardware-Profil; die Auflösungsklasse kommt
-    // aus der gewählten Variante.
-    const variantId = adaptVariantOrientation(boardVariantId, getMonitorOrientation(prof.id));
-    const is4k = isUhdVariant(variantId);
-    const scaleFactor = BOARD_VARIANTS[variantId].scale;
-    const baseW = withBezel ? prof.defaultW : prof.framelessW;
-    const baseH = prof.h;
-    const width = is4k ? baseW * 2 : baseW;
-    const height = is4k ? baseH * 2 : baseH;
-
-    const layout = {
-        id: `${prof.id}_${variantId}_${layoutType}`,
-        family: prof.family,
-        width,
-        height,
-        scaleFactor,
-        boardVariant: variantId,
-        casingWidth: is4k ? prof.casingW * 2 : prof.casingW,
-        casingHeight: is4k ? prof.casingH * 2 : prof.casingH,
-        casingOffsetX: is4k ? prof.offX * 2 : prof.offX,
-        casingOffsetY: is4k ? prof.offY * 2 : prof.offY,
-        hasBezelGap: withBezel && prof.hasBezelGap,
-        gapWidth: prof.gapWidth ? (is4k ? prof.gapWidth * 2 : prof.gapWidth) : 0,
-        gapX: prof.gapX ? (is4k ? prof.gapX * 2 : prof.gapX) : 1920,
-        gaps: prof.gaps ? prof.gaps.map(g => is4k ? g * 2 : g) : undefined,
-        boardType: 'default',
-        monitorId: prof.id,
+    const { preset } = resolvePresetProfile(monitorId);
+    return createLayout({
+        presetId: preset.id,
         layoutType,
-        screens: []
-    };
-
-    // ========================================================
-    // 1. ANZEIGETYP: ZUGANZEIGER (Bahnsteig / Gleisanzeige)
-    // ========================================================
-    if (layoutType === 'zuganzeiger') {
-        if (prof.id === 'zim2x32') {
-            const slot2X = withBezel ? 1970 : 1920;
-            layout.screens = [
-                { id: 'hauptmonitor', type: 'haupt', x: 0, y: 0, w: 1920, h: 1080, trainIndex: 0 },
-                { id: 'nebenmonitor_1', type: 'neben', x: slot2X, y: 0, w: 960, h: 1080, trainIndex: 1 },
-                { id: 'nebenmonitor_2', type: 'neben_rotierend', x: slot2X + 960, y: 0, w: 960, h: 1080 }
-            ];
-        } else if (prof.id === 'zim3x32') {
-            const slot2X = withBezel ? 1970 : 1920;
-            const slot3X = withBezel ? 3940 : 3840;
-            layout.screens = [
-                { id: 'hauptmonitor', type: 'haupt', x: 0, y: 0, w: 1920, h: 1080, trainIndex: 0 },
-                { id: 'nebenmonitor_1', type: 'neben', x: slot2X, y: 0, w: 960, h: 1080, trainIndex: 1 },
-                { id: 'nebenmonitor_2', type: 'neben_rotierend', x: slot2X + 960, y: 0, w: 960, h: 1080 },
-                { id: 'nebenmonitor_3', type: 'neben', x: slot3X, y: 0, w: 960, h: 1080, trainIndex: 2 },
-                { id: 'nebenmonitor_4', type: 'neben_rotierend', x: slot3X + 960, y: 0, w: 960, h: 1080 }
-            ];
-        } else if (prof.id === 'zimultrawide') {
-            layout.screens = [
-                { id: 'hauptmonitor', type: 'haupt', x: 0, y: 0, w: 1920, h: 1080, trainIndex: 0 },
-                { id: 'nebenmonitor_1', type: 'neben', x: 1920, y: 0, w: 960, h: 1080, trainIndex: 1 },
-                { id: 'nebenmonitor_2', type: 'neben_rotierend', x: 2880, y: 0, w: 960, h: 1080 }
-            ];
-        } else if (prof.id === 'zimvitrine65h') {
-            // Stele Hochkant: Zeigt den Wagenstandsanzeiger mit Reihung & Sektoren
-            layout.screens = [
-                { id: 'stele_zuganzeiger', type: 'vitrine32', x: 0, y: 0, w: 1080, h: 1920, trainIndex: 0 }
-            ];
-        } else {
-            // Einzelmonitore (zim32_single, zimvitrine32, zimwide)
-            layout.screens = [
-                { id: 'hauptmonitor', type: 'haupt', x: 0, y: 0, w: baseW, h: baseH, trainIndex: 0 }
-            ];
-        }
-    }
-
-    // ========================================================
-    // 2. ANZEIGETYP: ANSCHLUSSTAFEL (Nur Abfahrten)
-    // ========================================================
-    else if (layoutType === 'anschlusstafel') {
-        if (prof.id === 'zim2x32') {
-            // 2 Spalten nebeneinander
-            const slot2X = withBezel ? 1970 : 1920;
-            layout.screens = [
-                { id: 'abfahrt_col1', type: 'abfahrt', x: 0, y: 0, w: 1920, h: 1080, colIndex: 0, maxCols: 2 },
-                { id: 'abfahrt_col2', type: 'abfahrt', x: slot2X, y: 0, w: 1920, h: 1080, colIndex: 1, maxCols: 2 }
-            ];
-        } else if (prof.id === 'zim3x32') {
-            // 3 Spalten nebeneinander (3x Voranzeiger!)
-            const slot2X = withBezel ? 1970 : 1920;
-            const slot3X = withBezel ? 3940 : 3840;
-            layout.screens = [
-                { id: 'abfahrt_col1', type: 'abfahrt', x: 0, y: 0, w: 1920, h: 1080, colIndex: 0, maxCols: 3 },
-                { id: 'abfahrt_col2', type: 'abfahrt', x: slot2X, y: 0, w: 1920, h: 1080, colIndex: 1, maxCols: 3 },
-                { id: 'abfahrt_col3', type: 'abfahrt', x: slot3X, y: 0, w: 1920, h: 1080, colIndex: 2, maxCols: 3 }
-            ];
-        } else if (prof.id === 'zimultrawide') {
-            layout.screens = [
-                { id: 'abfahrt_col1', type: 'abfahrt', x: 0, y: 0, w: 1920, h: 1080, colIndex: 0, maxCols: 2 },
-                { id: 'abfahrt_col2', type: 'abfahrt', x: 1920, y: 0, w: 1920, h: 1080, colIndex: 1, maxCols: 2 }
-            ];
-        } else if (prof.id === 'zimwide') {
-            // Gestrecktes 21:9 Panel: 2 kompakte Spalten
-            const colW = 1280;
-            layout.screens = [
-                { id: 'abfahrt_col1', type: 'abfahrt', x: 0, y: 0, w: colW, h: 1080, colIndex: 0, maxCols: 2 },
-                { id: 'abfahrt_col2', type: 'abfahrt', x: colW, y: 0, w: colW, h: 1080, colIndex: 1, maxCols: 2 }
-            ];
-        } else if (prof.id === 'zimvitrine65h') {
-            // 1 vertikale Spalte. Die Zeilenzahl kommt aus den Board-Tokens
-            // (16 im FullHD-, 20 im 4K-Hochformat).
-            layout.screens = [
-                { id: 'abfahrt_stele', type: 'abfahrt_portrait', x: 0, y: 0, w: 1080, h: 1920 }
-            ];
-        } else {
-            // 1 Standard-Spalte (zim32_single, zimvitrine32)
-            layout.screens = [
-                { id: 'abfahrt_single', type: 'abfahrt', x: 0, y: 0, w: baseW, h: baseH, colIndex: 0, maxCols: 1 }
-            ];
-        }
-    }
-
-    // ========================================================
-    // 3. ANZEIGETYP: ANKUNFTSTAFEL (Nur Ankünfte)
-    // ========================================================
-    else if (layoutType === 'ankunftstafel') {
-        if (prof.id === 'zim2x32') {
-            const slot2X = withBezel ? 1970 : 1920;
-            layout.screens = [
-                { id: 'ankunft_col1', type: 'ankunft', x: 0, y: 0, w: 1920, h: 1080, colIndex: 0, maxCols: 2 },
-                { id: 'ankunft_col2', type: 'ankunft', x: slot2X, y: 0, w: 1920, h: 1080, colIndex: 1, maxCols: 2 }
-            ];
-        } else if (prof.id === 'zim3x32') {
-            const slot2X = withBezel ? 1970 : 1920;
-            const slot3X = withBezel ? 3940 : 3840;
-            layout.screens = [
-                { id: 'ankunft_col1', type: 'ankunft', x: 0, y: 0, w: 1920, h: 1080, colIndex: 0, maxCols: 3 },
-                { id: 'ankunft_col2', type: 'ankunft', x: slot2X, y: 0, w: 1920, h: 1080, colIndex: 1, maxCols: 3 },
-                { id: 'ankunft_col3', type: 'ankunft', x: slot3X, y: 0, w: 1920, h: 1080, colIndex: 2, maxCols: 3 }
-            ];
-        } else if (prof.id === 'zimultrawide') {
-            layout.screens = [
-                { id: 'ankunft_col1', type: 'ankunft', x: 0, y: 0, w: 1920, h: 1080, colIndex: 0, maxCols: 2 },
-                { id: 'ankunft_col2', type: 'ankunft', x: 1920, y: 0, w: 1920, h: 1080, colIndex: 1, maxCols: 2 }
-            ];
-        } else if (prof.id === 'zimwide') {
-            const colW = 1280;
-            layout.screens = [
-                { id: 'ankunft_col1', type: 'ankunft', x: 0, y: 0, w: colW, h: 1080, colIndex: 0, maxCols: 2 },
-                { id: 'ankunft_col2', type: 'ankunft', x: colW, y: 0, w: colW, h: 1080, colIndex: 1, maxCols: 2 }
-            ];
-        } else if (prof.id === 'zimvitrine65h') {
-            // 20 Zeilen Ankünfte untereinander
-            layout.screens = [
-                { id: 'ankunft_stele', type: 'ankunft_portrait', x: 0, y: 0, w: 1080, h: 1920, maxRows: 20 }
-            ];
-        } else {
-            layout.screens = [
-                { id: 'ankunft_single', type: 'ankunft', x: 0, y: 0, w: baseW, h: baseH, colIndex: 0, maxCols: 1 }
-            ];
-        }
-    }
-
-    // ========================================================
-    // 4. ANZEIGETYP: WAGENSTANDSANZEIGER (Gleis-Vitrine / Kombi)
-    // ========================================================
-    else if (layoutType === 'wagenstand_gleis') {
-        if (prof.id === 'zim2x32') {
-            // Klassische DB-Bahnsteigkombination: Links Zuganzeiger, Rechts 32" Wagenstandsanzeiger
-            const slot2X = withBezel ? 1970 : 1920;
-            layout.screens = [
-                { id: 'hauptmonitor', type: 'haupt', x: 0, y: 0, w: 1920, h: 1080, trainIndex: 0 },
-                { id: 'vitrine_right', type: 'vitrine32', x: slot2X, y: 0, w: 1920, h: 1080, trainIndex: 0 }
-            ];
-        } else if (prof.id === 'zim3x32') {
-            // Triple: Haupt + Neben + Wagenstand
-            const slot2X = withBezel ? 1970 : 1920;
-            const slot3X = withBezel ? 3940 : 3840;
-            layout.screens = [
-                { id: 'hauptmonitor', type: 'haupt', x: 0, y: 0, w: 1920, h: 1080, trainIndex: 0 },
-                { id: 'nebenmonitor_1', type: 'neben', x: slot2X, y: 0, w: 960, h: 1080, trainIndex: 1 },
-                { id: 'nebenmonitor_2', type: 'neben_rotierend', x: slot2X + 960, y: 0, w: 960, h: 1080 },
-                { id: 'vitrine_right', type: 'vitrine32', x: slot3X, y: 0, w: 1920, h: 1080, trainIndex: 0 }
-            ];
-        } else if (prof.id === 'zimvitrine65h') {
-            // Hochkant-Stele: Zeigt den Wagenstandsanzeiger
-            layout.screens = [
-                { id: 'stele_plan', type: 'vitrine32', x: 0, y: 0, w: 1080, h: 1920, trainIndex: 0 }
-            ];
-        } else {
-            // Einzelmonitor (zimvitrine32, zim32_single, zimwide, etc.)
-            layout.screens = [
-                { id: 'vitrine_main', type: 'vitrine32', x: 0, y: 0, w: baseW, h: baseH, trainIndex: 0 }
-            ];
-        }
-    }
-
-    // ========================================================
-    // 5. ANZEIGETYP: ANSCHLUSSTAFEL ZOOM (4 Zeilen pro FullHD-Bildschirm)
-    // ========================================================
-    else if (layoutType === 'anschlusstafel_zoom' || layoutType === 'anschlusstafel_zoom_icons') {
-        const showQualityIcons = layoutType === 'anschlusstafel_zoom_icons';
-        if (prof.id === 'zim2x32') {
-            // 2 Spalten nebeneinander – je 4 große Abfahrtszeilen pro Bildschirm
-            const slot2X = withBezel ? 1970 : 1920;
-            layout.screens = [
-                { id: 'abfahrt_zoom_col1', type: 'abfahrt_zoom', x: 0, y: 0, w: 1920, h: 1080, colIndex: 0, maxCols: 2, maxRows: 4, showQualityIcons },
-                { id: 'abfahrt_zoom_col2', type: 'abfahrt_zoom', x: slot2X, y: 0, w: 1920, h: 1080, colIndex: 1, maxCols: 2, maxRows: 4, showQualityIcons }
-            ];
-        } else if (prof.id === 'zim3x32') {
-            // 3 Spalten nebeneinander – je 4 große Abfahrtszeilen pro Bildschirm
-            const slot2X = withBezel ? 1970 : 1920;
-            const slot3X = withBezel ? 3940 : 3840;
-            layout.screens = [
-                { id: 'abfahrt_zoom_col1', type: 'abfahrt_zoom', x: 0, y: 0, w: 1920, h: 1080, colIndex: 0, maxCols: 3, maxRows: 4, showQualityIcons },
-                { id: 'abfahrt_zoom_col2', type: 'abfahrt_zoom', x: slot2X, y: 0, w: 1920, h: 1080, colIndex: 1, maxCols: 3, maxRows: 4, showQualityIcons },
-                { id: 'abfahrt_zoom_col3', type: 'abfahrt_zoom', x: slot3X, y: 0, w: 1920, h: 1080, colIndex: 2, maxCols: 3, maxRows: 4, showQualityIcons }
-            ];
-        } else if (prof.id === 'zimvitrine65h') {
-            // Stele Hochkant: 8 große Zeilen (entspricht 4 auf FullHD-Verhältnis)
-            layout.screens = [
-                { id: 'abfahrt_zoom_stele', type: 'abfahrt_portrait', x: 0, y: 0, w: 1080, h: 1920, maxRows: 8, showQualityIcons }
-            ];
-        } else {
-            // Einzelmonitor (zim32_single, zimvitrine32, zimwide, zimultrawide)
-            layout.screens = [
-                { id: 'abfahrt_zoom_single', type: 'abfahrt_zoom', x: 0, y: 0, w: baseW, h: baseH, colIndex: 0, maxCols: 1, maxRows: 4, showQualityIcons }
-            ];
-        }
-    }
-
-    // Varianten-ID an jeden Screen stempeln. Renderer lesen sie, um ihre
-    // Board-Tokens (inkl. 4K-Overrides wie der Zeilenzahl) aufzulösen.
-    layout.screens = layout.screens.map(screen => ({ ...screen, variant: variantId }));
-
-    // 4K Ultra-HD: Canvas und Gehäuse sind doppelt so groß, deshalb muss auch
-    // die Screen-Geometrie verdoppelt werden. Die Renderer zeichnen weiterhin
-    // in logischen Pixeln (screen.w / scaleFactor), erhalten also unverändert
-    // 1920×1080 bzw. 1080×1920.
-    if (is4k) {
-        layout.screens = layout.screens.map(screen => ({
-            ...screen,
-            x: screen.x * 2,
-            y: screen.y * 2,
-            w: screen.w * 2,
-            h: screen.h * 2
-        }));
-    }
-
-    return layout;
+        withBezel,
+        variantId: boardVariantId,
+        targetScreen
+    });
 }
 
 /**
  * Erzeugt dynamisch das Layout für einen einzelnen Pop-Out-Monitor (?screen=1, ?screen=2, ?screen=3).
  * Garantiert 100% randlose, exakt passende Darstellung in der gewählten
  * Darstellungsvariante (Full HD / 4K, Quer- oder Hochformat).
- * 
+ *
  * @param {string} [layoutType='zuganzeiger'] - 'zuganzeiger' | 'anschlusstafel' | 'anschlusstafel_zoom' | 'ankunftstafel' | 'wagenstand_gleis'
  * @param {string|number} [targetScreen='1'] - '1', '2' oder '3'
  * @param {string|null} [boardVariantId=null] - 'fhd_landscape' | 'uhd_landscape' | 'fhd_portrait' | 'uhd_portrait'
