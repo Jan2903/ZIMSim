@@ -70,12 +70,10 @@ export const DISPLAY_PROFILES = {
             { id: 'nebenmonitor_3', type: 'neben', segment: 2, offset: 0, w: 960, trainIndex: 2 },
             { id: 'nebenmonitor_4', type: 'neben_rotierend', segment: 2, offset: 960, w: 960 }
         ],
-        listColumnsPerSegment: 1,
-        // TODO(P3): Altwerte aus der früheren Profil-Matrix. Der zweite Wert
-        // sitzt um eine Stegbreite zu weit rechts (der Steg wird dadurch 50 px
-        // in das dritte Panel gezeichnet). Bewusst unverändert, damit die
-        // Trennung von Display und Gehäuse keine Darstellungsänderung bringt.
-        legacyGaps: [1920, 3940]
+        listColumnsPerSegment: 1
+        // P3: Die früheren `legacyGaps` ([1920, 3940]) sind entfernt. Der
+        // zweite Steg saß 50 px zu weit rechts (im dritten Panel); `gaps`
+        // wird jetzt aus `gapStarts` abgeleitet.
     },
     fhd_1x1_portrait: {
         id: 'fhd_1x1_portrait',
@@ -85,13 +83,16 @@ export const DISPLAY_PROFILES = {
         segments: [{ w: 1080 }],
         slots: null,
         listColumnsPerSegment: 1,
-        // TODO(P3): Altverhalten der Stele. Der Zuganzeiger zeigt dort aktuell
-        // den Wagenstandsanzeiger, der Zoom fällt auf die normale Liste zurück.
-        // Diese Overrides halten P1 verhaltensgleich und sind später löschbar.
+        // Bewusste Hochformat-Abweichungen der Stele (P3-Entscheidung):
+        // Der Zuganzeiger zeigt dort den Wagenstandsanzeiger, weil der
+        // Zuganzeiger-Renderer feste Querformat-Positionen (1920×1080) nutzt.
+        // Der Zoom fällt auf die normale Liste mit 8 Zeilen zurück, weil der
+        // Zoom-Renderer feste Querformat-Spalten verwendet. Beides bleibt so,
+        // bis es eigene Hochformat-Renderer gibt.
         legacyOverrides: {
             zuganzeiger: { id: 'stele_zuganzeiger', type: 'vitrine32' },
             anschlusstafel: { id: 'abfahrt_stele', omitColumnMeta: true },
-            ankunftstafel: { id: 'ankunft_stele', maxRows: 20, omitColumnMeta: true },
+            ankunftstafel: { id: 'ankunft_stele', omitColumnMeta: true },
             wagenstand_gleis: { id: 'stele_plan' },
             anschlusstafel_zoom: { id: 'abfahrt_zoom_stele', type: 'abfahrt_portrait', maxRows: 8, omitColumnMeta: true },
             anschlusstafel_zoom_icons: { id: 'abfahrt_zoom_stele', type: 'abfahrt_portrait', maxRows: 8, omitColumnMeta: true }
@@ -185,8 +186,18 @@ export const CHASSIS_PROFILES = {
 };
 
 /**
+ * Erlaubter Bereich der Stegdicke in logischen Pixeln.
+ * Der Regler in den Einstellungen übersetzt seinen Wert direkt in
+ * `chassisOverrides.gapWidth`; die Unter-/Obergrenze wird hier zentral
+ * gepflegt, damit Store und UI nicht auseinanderlaufen.
+ */
+export const CHASSIS_GAP_RANGE = { min: 0, max: 100 };
+
+/**
  * Kombinationen aus Display und Gehäuse. Diese Liste ist die einzige Quelle
- * für das Hardware-Dropdown und für die persistierte `zimsim_monitor_id`.
+ * für das Legacy-Dropdown und für die persistierte `zimsim_monitor_id`.
+ * Seit P4 wählt die UI Display und Gehäuse getrennt; die Presets bleiben als
+ * kompatible Kurzformen (URLs, ältere Clients, ScreenSync) erhalten.
  */
 export const MONITOR_PRESETS = [
     { id: 'zim2x32', name: '2x ZIM FHD', displayId: 'fhd_2x1_landscape', chassisId: 'overhead' },
@@ -230,14 +241,84 @@ export function resolvePresetProfile(presetId = 'zim2x32') {
 }
 
 /**
+ * Liefert die physische Ausrichtung eines Display-Profils.
+ * Unbekannte IDs fallen wie bei `resolvePresetProfile` auf das
+ * Standard-Display zurück.
+ *
+ * @param {string} displayId - ID aus DISPLAY_PROFILES
+ * @returns {'landscape'|'portrait'} Ausrichtung
+ */
+export function getDisplayOrientation(displayId) {
+    const display = DISPLAY_PROFILES[displayId] || DISPLAY_PROFILES.fhd_2x1_landscape;
+    return display.orientation;
+}
+
+/**
  * Liefert die physische Ausrichtung eines Monitor-Profils.
+ * Kompatibilitäts-Helfer für die Preset-basierte UI; intern wird bereits
+ * über `getDisplayOrientation` aufgelöst.
  *
  * @param {string} monitorId - ID aus MONITOR_PROFILES
  * @returns {'landscape'|'portrait'} Ausrichtung
  */
 export function getMonitorOrientation(monitorId) {
     const { display } = resolvePresetProfile(monitorId);
-    return display.orientation;
+    return getDisplayOrientation(display.id);
+}
+
+/**
+ * Prüft, ob ein Gehäuse zu einer Display-Ausrichtung passt.
+ * Gehäuse mit `orientation: 'any'` (Überkopf, ohne Gehäuse) passen immer.
+ *
+ * @param {string} chassisId - ID aus CHASSIS_PROFILES
+ * @param {'landscape'|'portrait'} orientation - Ausrichtung des Displays
+ * @returns {boolean} true, wenn das Gehäuse dort montiert werden kann
+ */
+export function isChassisCompatible(chassisId, orientation) {
+    const chassis = CHASSIS_PROFILES[chassisId];
+    if (!chassis) return false;
+    return chassis.orientation === 'any' || chassis.orientation === orientation;
+}
+
+/**
+ * Liefert die für eine Display-Ausrichtung wählbaren Gehäuse in
+ * Profil-Reihenfolge. Das ist die Datenquelle für das Gehäuse-Dropdown;
+ * `none` (ohne Gehäuse) ist immer enthalten.
+ *
+ * @param {'landscape'|'portrait'} orientation - Ausrichtung des Displays
+ * @returns {Array<object>} Kompatible Gehäuse-Profile
+ */
+export function getChassisOptions(orientation) {
+    return Object.values(CHASSIS_PROFILES).filter(chassis => isChassisCompatible(chassis.id, orientation));
+}
+
+/**
+ * Liefert die im Gehäuseprofil hinterlegte Stegdicke in logischen Pixeln.
+ * Unbekannte IDs liefern 0 (kein Steg).
+ *
+ * @param {string} chassisId - ID aus CHASSIS_PROFILES
+ * @returns {number} Stegdicke in logischen Pixeln
+ */
+export function getChassisGapWidth(chassisId) {
+    return CHASSIS_PROFILES[chassisId]?.gapWidth || 0;
+}
+
+/**
+ * Natürliches Gehäuse eines Displays: das Gehäuse seines Presets, sonst das
+ * erste kompatible Gehäuse mit Rahmen. Wird benötigt, wenn die Ausrichtung
+ * wechselt (z. B. Quer → Hoch) und das bisherige Gehäuse dort nicht passt,
+ * oder wenn die Gehäusesimulation wieder eingeschaltet wird.
+ *
+ * @param {string} displayId - ID aus DISPLAY_PROFILES
+ * @returns {string} ID aus CHASSIS_PROFILES (im Zweifel 'none')
+ */
+export function getDefaultChassisForDisplay(displayId) {
+    const orientation = getDisplayOrientation(displayId);
+    const presetChassisId = MONITOR_PRESETS.find(preset => preset.displayId === displayId)?.chassisId;
+    if (presetChassisId && isChassisCompatible(presetChassisId, orientation)) {
+        return presetChassisId;
+    }
+    return getChassisOptions(orientation).find(chassis => chassis.id !== 'none')?.id || 'none';
 }
 
 /**
@@ -482,9 +563,7 @@ export function createLayout({
         // aussagekräftig; bei Dreifach-Gehäusen gewinnt `gaps`. Der Wert wird
         // daher nur dort skaliert, sonst wie bisher logisch 1920 beibehalten.
         gapX: display.segments.length === 2 ? scale(geo.gapStarts[0]) : 1920,
-        gaps: display.legacyGaps
-            ? display.legacyGaps.map(scale)
-            : (display.segments.length > 2 ? geo.gapStarts.map(scale) : undefined),
+        gaps: display.segments.length > 2 ? geo.gapStarts.map(scale) : undefined,
         boardType: 'default',
         monitorId,
         layoutType,

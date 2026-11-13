@@ -5,7 +5,14 @@
     import { toastStore } from '../../js/core/state/toastStore.svelte.js';
     import { config, setPerformanceMode, setDepartureAlarm, setVoranzeigerAutoPage } from '../../js/core/utils/config.js';
     import { displayConfigStore } from '../../js/displays/core/displayConfigStore.svelte.js';
-    import { MONITOR_PROFILES, getMonitorOrientation } from '../../js/displays/core/displayLayoutService.js';
+    import {
+        CHASSIS_GAP_RANGE,
+        DISPLAY_PROFILES,
+        getChassisOptions,
+        getDefaultChassisForDisplay,
+        getDisplayOrientation,
+        isChassisCompatible
+    } from '../../js/displays/core/displayLayoutService.js';
     import { getVariantId, isUhdVariant } from '../../js/displays/core/boardTokenService.js';
     import LineColorEditorModal from '../LineColorEditorModal.svelte';
     import FormationRuleEditorModal from '../FormationRuleEditorModal.svelte';
@@ -34,11 +41,34 @@
     let alarmBlinkMinutes = $state(config.departureAlarmBlinkMinutes);
 
     // Darstellungsvariante: Die Auflösungsklasse (Full HD / 4K) ist wählbar,
-    // die Ausrichtung folgt dem Hardware-Monitor (Quer- bzw. Hochformat).
-    const monitorOrientation = $derived(getMonitorOrientation(displayConfigStore.monitorId));
-    const fhdVariantId = $derived(getVariantId(monitorOrientation, false));
-    const uhdVariantId = $derived(getVariantId(monitorOrientation, true));
-    const selectedVariantId = $derived(getVariantId(monitorOrientation, isUhdVariant(displayConfigStore.boardVariant)));
+    // die Ausrichtung folgt dem Display (Quer- bzw. Hochformat).
+    const displayOptions = Object.values(DISPLAY_PROFILES);
+    const displayOrientation = $derived(getDisplayOrientation(displayConfigStore.displayId));
+    // Gehäuse werden nach Ausrichtung gefiltert; `any` (Überkopf, ohne Gehäuse)
+    // ist immer dabei.
+    const chassisOptions = $derived(getChassisOptions(displayOrientation));
+    const fhdVariantId = $derived(getVariantId(displayOrientation, false));
+    const uhdVariantId = $derived(getVariantId(displayOrientation, true));
+    const selectedVariantId = $derived(getVariantId(displayOrientation, isUhdVariant(displayConfigStore.boardVariant)));
+
+    // Layout-Änderungen wirken über `currentLayout` sofort; Canvas und
+    // Skalierungs-Wrapper brauchen danach einen Neuaufbau. Mehrfachaufrufe
+    // (z. B. beim Ziehen des Stegdicke-Reglers) werden gebündelt.
+    let refreshTimer = null;
+
+    /**
+     * Stößt nach einer Hardware-Änderung Neuzeichnung und Resize an.
+     * @param {number} [delay=50] - Verzögerung in Millisekunden
+     * @returns {void}
+     */
+    function refreshDisplay(delay = 50) {
+        if (refreshTimer) clearTimeout(refreshTimer);
+        refreshTimer = setTimeout(() => {
+            refreshTimer = null;
+            trainDisplay.updateAll();
+            window.dispatchEvent(new Event('resize'));
+        }, delay);
+    }
 
     $effect(() => {
         setPerformanceMode(isPerformanceMode);
@@ -112,12 +142,41 @@
     }
 
     /**
-     * Wechselt das Monitor-Hardwareprofil.
-     * @param {string} monitorId
+     * Wechselt das Display (Panel-Verbund) unabhängig vom Gehäuse.
+     * Das aktuelle Gehäuse bleibt erhalten, wenn es die neue Ausrichtung
+     * erlaubt; sonst wird das erste passende Gehäuse gewählt.
+     *
+     * @param {string} displayId - ID aus DISPLAY_PROFILES
      * @returns {void}
      */
-    function handleMonitorChange(monitorId) {
-        displayConfigStore.setMonitorId(monitorId);
+    function handleDisplayChange(displayId) {
+        const orientation = getDisplayOrientation(displayId);
+        const chassisId = isChassisCompatible(displayConfigStore.chassisId, orientation)
+            ? displayConfigStore.chassisId
+            : getDefaultChassisForDisplay(displayId);
+
+        if (!displayConfigStore.setDisplayAndChassis(displayId, chassisId)) return;
+        refreshDisplay();
+    }
+
+    /**
+     * Wechselt das Gehäuse (Rahmen) unabhängig vom Display.
+     * @param {string} chassisId - ID aus CHASSIS_PROFILES ('none' = ohne Gehäuse)
+     * @returns {void}
+     */
+    function handleChassisChange(chassisId) {
+        if (!displayConfigStore.setDisplayAndChassis(displayConfigStore.displayId, chassisId)) return;
+        refreshDisplay();
+    }
+
+    /**
+     * Übernimmt die Stegdicke live aus dem Regler (0–100 px).
+     * @param {string|number} value - Reglerwert in logischen Pixeln
+     * @returns {void}
+     */
+    function handleChassisGapInput(value) {
+        displayConfigStore.setChassisGap(value);
+        refreshDisplay(30);
     }
 
     /**
@@ -127,22 +186,7 @@
      */
     function handleVariantChange(variantId) {
         displayConfigStore.setBoardVariant(variantId);
-        setTimeout(() => {
-            trainDisplay.updateAll();
-            window.dispatchEvent(new Event('resize'));
-        }, 50);
-    }
-
-    /**
-     * Schaltet die Gehäusesimulation um.
-     * @returns {void}
-     */
-    function handleBezelChange() {
-        displayConfigStore.toggleBezel();
-        setTimeout(() => {
-            trainDisplay.updateAll();
-            window.dispatchEvent(new Event('resize'));
-        }, 50);
+        refreshDisplay();
     }
 </script>
 
@@ -155,18 +199,55 @@
         </div>
         <div class="card-body">
             <div class="form-group">
-                <label for="monitor_profile_select" class="field-label">Monitor-Hardwareprofil:</label>
+                <label for="display_profile_select" class="field-label">Display (Panel-Verbund):</label>
                 <select 
-                    id="monitor_profile_select"
+                    id="display_profile_select"
                     class="form-select full-width-select" 
-                    value={displayConfigStore.monitorId}
-                    onchange={(e) => handleMonitorChange(e.currentTarget.value)}
-                    aria-label="Hardware-Monitorprofil auswählen"
+                    value={displayConfigStore.displayId}
+                    onchange={(e) => handleDisplayChange(e.currentTarget.value)}
+                    aria-label="Display auswählen"
                 >
-                    {#each MONITOR_PROFILES as prof}
-                        <option value={prof.id}>{prof.name}</option>
+                    {#each displayOptions as display}
+                        <option value={display.id}>{display.name}</option>
                     {/each}
                 </select>
+            </div>
+
+            <div class="form-group" style="margin-top: 14px;">
+                <label for="chassis_profile_select" class="field-label">Gehäuse (Rahmen):</label>
+                <select 
+                    id="chassis_profile_select"
+                    class="form-select full-width-select" 
+                    value={displayConfigStore.chassisId}
+                    onchange={(e) => handleChassisChange(e.currentTarget.value)}
+                    aria-label="Gehäuse auswählen"
+                >
+                    {#each chassisOptions as chassis}
+                        <option value={chassis.id}>{chassis.name}</option>
+                    {/each}
+                </select>
+                <div class="info-note" style="margin-top: 8px; font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
+                    Angeboten werden nur Gehäuse, die zur Ausrichtung des Displays passen. „Ohne Gehäuse“ entspricht der früheren Gehäusesimulation „aus“ (Tastenkürzel Strg+B).
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 14px;">
+                <label for="chassis_gap_slider" class="field-label">Stegdicke: {displayConfigStore.chassisGapWidth} px</label>
+                <input 
+                    type="range" 
+                    id="chassis_gap_slider" 
+                    class="form-range"
+                    min={CHASSIS_GAP_RANGE.min} 
+                    max={CHASSIS_GAP_RANGE.max} 
+                    step="1"
+                    value={displayConfigStore.chassisGapWidth}
+                    disabled={displayConfigStore.chassisId === 'none'}
+                    oninput={(e) => handleChassisGapInput(e.currentTarget.value)}
+                    aria-label="Stegdicke zwischen zwei Panels"
+                >
+                <div class="info-note" style="margin-top: 4px; font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
+                    Der Steg sitzt zwischen zwei Panels; bei einem einzelnen Panel und ohne Gehäuse bleibt der Regler wirkungslos. Beim Wechsel zwischen zwei Gehäusen gilt wieder deren Vorgabe.
+                </div>
             </div>
 
             <div class="form-group" style="margin-top: 14px;">
@@ -182,24 +263,12 @@
                     <option value={uhdVariantId}>4K Ultra HD (2160p)</option>
                 </select>
                 <div class="info-note" style="margin-top: 8px; font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
-                    Die Ausrichtung folgt dem Monitorprofil (Quer- bzw. Hochformat). 4K ist ein eigenes Design mit mehr Zeilen (z. B. 4 statt 3 Züge im Wagenstand).
+                    Die Ausrichtung folgt dem Display (Quer- bzw. Hochformat). 4K ist ein eigenes Design mit mehr Zeilen (z. B. 4 statt 3 Züge im Wagenstand).
                 </div>
             </div>
 
-            <div class="checkbox-group" style="margin-top: 14px;">
-                <label class="checkbox-label">
-                    <input 
-                        type="checkbox" 
-                        id="show_bezel_checkbox"
-                        checked={displayConfigStore.showBezel} 
-                        onchange={handleBezelChange}
-                    >
-                    <span>Gehäusesimulation anzeigen (DB-Nachtblau RAL 5022 mit Steg)</span>
-                </label>
-            </div>
-
             <div class="info-note" style="margin-top: 12px; font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
-                Hinweis: Das Gehäuse simuliert den originalen DB-Rahmen samt Display-Steg. Auf Smartphones wird empfohlen, das Gehäuse deaktiviert zu lassen, um die maximale Bildfläche für die Anzeige zu nutzen.
+                Hinweis: Das Gehäuse simuliert den originalen DB-Rahmen samt Display-Steg. Auf Smartphones wird empfohlen, „Ohne Gehäuse“ zu wählen, um die maximale Bildfläche für die Anzeige zu nutzen.
             </div>
         </div>
     </div>
@@ -486,6 +555,18 @@
     .form-input:focus {
         outline: none;
         border-color: var(--accent, #e2001a);
+    }
+
+    /* Stegdicke-Regler: gleiche Farbwelt wie die Formularfelder */
+    .form-range {
+        width: 100%;
+        box-sizing: border-box;
+        accent-color: var(--accent, #e2001a);
+    }
+
+    .form-range:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
     }
 
     @media (max-width: 600px) {

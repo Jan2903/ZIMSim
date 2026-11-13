@@ -3,6 +3,7 @@
 // bestimmen, Basis-Tokens mit Varianten-Overrides mischen und breitenrelative
 // Spalten in absolute Pixel umrechnen.
 import { ANSCHLUSSTAFEL_TOKENS } from '../boards/anschlusstafelTokens.js';
+import { ANKUNFTSTAFEL_TOKENS } from '../boards/ankunftstafelTokens.js';
 import { WAGENSTAND_GLEIS_TOKENS } from '../boards/wagenstandGleisTokens.js';
 
 /**
@@ -22,6 +23,7 @@ export const BOARD_VARIANTS = {
 /** Token-Sets je Board. Weitere Boards werden hier ergänzt. */
 export const BOARD_TOKEN_SETS = {
     anschlusstafel: ANSCHLUSSTAFEL_TOKENS,
+    ankunftstafel: ANKUNFTSTAFEL_TOKENS,
     wagenstand_gleis: WAGENSTAND_GLEIS_TOKENS
 };
 

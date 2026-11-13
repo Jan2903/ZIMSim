@@ -147,7 +147,7 @@ export class TrainDisplay {
     setTargetScreen(screenNumber, variantId = null, withBezel = false) {
         displayConfigStore.setTargetScreen(screenNumber === 'all' ? null : screenNumber, variantId);
         if (withBezel !== undefined && (!screenNumber || screenNumber === 'all')) {
-            displayConfigStore.showBezel = withBezel;
+            displayConfigStore.setBezelEnabled(withBezel);
         }
         this._customLayout = null;
 

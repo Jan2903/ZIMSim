@@ -1,5 +1,17 @@
 // js/displays/core/displayConfigStore.svelte.js
-import { generateActiveLayout, getMonitorOrientation, LAYOUT_TYPES, MONITOR_PRESETS, resolvePresetProfile } from './displayLayoutService.js';
+import {
+    CHASSIS_GAP_RANGE,
+    CHASSIS_PROFILES,
+    DISPLAY_PROFILES,
+    createLayout,
+    getChassisGapWidth,
+    getDefaultChassisForDisplay,
+    getDisplayOrientation,
+    isChassisCompatible,
+    LAYOUT_TYPES,
+    MONITOR_PRESETS,
+    resolvePresetProfile
+} from './displayLayoutService.js';
 import { BOARD_VARIANTS, adaptVariantOrientation, getVariantId, isUhdVariant } from './boardTokenService.js';
 
 /**
@@ -36,84 +48,192 @@ function isValidBoardVariant(variantId) {
 }
 
 /**
- * Liest die gespeicherte Darstellungsvariante. Fehlt sie (oder ist sie
- * unbekannt), wird die FullHD-Variante der Monitor-Ausrichtung gewählt.
+ * Sucht das Preset zu einer Display-/Gehäuse-Kombination.
+ * Solange die UI Preset-basiert ist, ist das die Rückabbildung von den zwei
+ * Achsen auf den Eintrag im Hardware-Dropdown.
  *
- * @param {string} monitorId - Aktives Hardware-Profil
+ * @param {string|null} displayId - ID aus DISPLAY_PROFILES
+ * @param {string|null} chassisId - ID aus CHASSIS_PROFILES
+ * @returns {object|undefined} Passendes Preset oder undefined
+ */
+function findPreset(displayId, chassisId) {
+    return MONITOR_PRESETS.find(p => p.displayId === displayId && p.chassisId === chassisId);
+}
+
+/**
+ * Übersetzt die Legacy-Persistenz (`zimsim_monitor_id`) in die zwei Achsen.
+ * Wird nur noch für die einmalige Migration alter Installationen benötigt.
+ *
+ * @param {string|null} monitorId - Gespeicherter Preset-Name
+ * @returns {{displayId: string, chassisId: string}} Aufgelöste Hardware-Achsen
+ */
+function resolveLegacyHardware(monitorId) {
+    const { display, chassis } = resolvePresetProfile(monitorId || 'zim2x32');
+    return { displayId: display.id, chassisId: chassis.id };
+}
+
+/**
+ * Prüft eine gespeicherte Display-/Gehäuse-Kombination auf Gültigkeit.
+ * Unbekannte IDs und Gehäuse, die nicht zur Display-Ausrichtung passen
+ * (z. B. Vitrine an einem Hochformat-Panel), gelten als nicht auflösbar.
+ *
+ * @param {string|null} displayId - Gespeicherte Display-ID
+ * @param {string|null} chassisId - Gespeicherte Gehäuse-ID
+ * @returns {{displayId: string, chassisId: string}|null} Gültige Achsen oder null
+ */
+function resolveHardware(displayId, chassisId) {
+    if (!displayId || !DISPLAY_PROFILES[displayId]) return null;
+    if (!chassisId || !CHASSIS_PROFILES[chassisId]) return null;
+    if (!isChassisCompatible(chassisId, getDisplayOrientation(displayId))) return null;
+    return { displayId, chassisId };
+}
+
+/**
+ * Liest die persistierte Stegdicke (Übersteuerung der Gehäuse-Vorgabe).
+ * Fehlt der Wert oder ist er unbrauchbar, gilt `null` = Profilwert.
+ *
+ * @returns {number|null} Stegdicke in logischen Pixeln oder null
+ */
+function getInitialChassisGap() {
+    const raw = localStorage.getItem('zimsim_chassis_gap');
+    if (raw === null || raw === '') return null;
+    const value = Number.parseInt(raw, 10);
+    if (!Number.isFinite(value)) return null;
+    return Math.min(CHASSIS_GAP_RANGE.max, Math.max(CHASSIS_GAP_RANGE.min, value));
+}
+
+/**
+ * Ermittelt die initiale Hardware aus dem localStorage.
+ *
+ * Migration (P2): Bestehende Installationen haben nur `zimsim_monitor_id`.
+ * Dieser Wert wird einmalig in `zimsim_display_id` + `zimsim_chassis_id`
+ * übersetzt; der Legacy-Key bleibt als Kompatibilitätswert erhalten.
+ *
+ * Migration (P4): Die frühere Checkbox „Gehäusesimulation" steuerte
+ * `zimsim_show_bezel`. Diese Achse ist jetzt die Gehäuse-Auswahl: Ein
+ * gespeichertes `false` wird zu `chassisId = 'none'`, der Schlüssel danach
+ * nur noch als Spiegel gepflegt.
+ *
+ * @returns {{displayId: string, chassisId: string}} Aufgelöste Hardware-Achsen
+ */
+function getInitialHardware() {
+    const stored = resolveHardware(
+        localStorage.getItem('zimsim_display_id'),
+        localStorage.getItem('zimsim_chassis_id')
+    );
+    const hardware = stored || resolveLegacyHardware(localStorage.getItem('zimsim_monitor_id'));
+
+    // Gehäuse-Checkbox (alt) hat Vorrang vor dem gespeicherten Gehäuse: Wer
+    // die Simulation abgeschaltet hatte, soll sie nach dem Update nicht
+    // plötzlich wieder sehen.
+    const chassisId = localStorage.getItem('zimsim_show_bezel') === 'false'
+        ? 'none'
+        : hardware.chassisId;
+
+    // Beide Achsen beim Laden nachziehen, damit alte Tabs/Exports und die
+    // Migration konsistent bleiben.
+    localStorage.setItem('zimsim_display_id', hardware.displayId);
+    localStorage.setItem('zimsim_chassis_id', chassisId);
+
+    const preset = findPreset(hardware.displayId, chassisId);
+    if (preset) {
+        localStorage.setItem('zimsim_monitor_id', preset.id);
+    }
+
+    return { displayId: hardware.displayId, chassisId };
+}
+
+/**
+ * Liest die gespeicherte Darstellungsvariante. Fehlt sie (oder ist sie
+ * unbekannt), wird die FullHD-Variante der Display-Ausrichtung gewählt.
+ *
+ * @param {string} displayId - Aktives Display-Profil
  * @returns {string} Gültige Varianten-ID
  */
-function getInitialBoardVariant(monitorId) {
+function getInitialBoardVariant(displayId) {
     const stored = localStorage.getItem('zimsim_board_variant');
     if (isValidBoardVariant(stored)) {
-        // Ausrichtung folgt immer dem gespeicherten Monitor (Auflösungsklasse
+        // Ausrichtung folgt immer dem gespeicherten Display (Auflösungsklasse
         // bleibt erhalten), auch wenn beide Einstellungen getrennt persistiert
         // wurden und zwischenzeitlich auseinanderlaufen konnten.
-        return adaptVariantOrientation(stored, getMonitorOrientation(monitorId));
+        return adaptVariantOrientation(stored, getDisplayOrientation(displayId));
     }
-    return getVariantId(getMonitorOrientation(monitorId), false);
+    return getVariantId(getDisplayOrientation(displayId), false);
 }
 
 /**
  * Zentraler reaktiver Svelte 5 Store für die Anzeige-Konfiguration.
  * Verwaltet die vollständige Entkopplung von Hardware-Monitor und DB-Anzeigetyp.
  */
-class DisplayConfigStore {
-    // 1. Hardware-Monitor (z.B. 'zim2x32', 'zim3x32', 'zim32_single', 'zimvitrine32', 'zimvitrine65h', 'zimwide', 'zimultrawide')
-    monitorId = $state(localStorage.getItem('zimsim_monitor_id') || 'zim2x32');
+// Einmalig beim Modulstart auflösen (inkl. Migration des Legacy-Keys).
+const initialHardware = getInitialHardware();
 
-    // 2. Fachlicher Anzeigetyp (z.B. 'zuganzeiger', 'anschlusstafel', 'ankunftstafel', 'wagenstand_gleis')
+class DisplayConfigStore {
+    // 1. Display-Achse (nur Glas): 'fhd_1x1_landscape', 'fhd_2x1_landscape', 'fhd_3x1_landscape',
+    // 'fhd_1x1_portrait', 'wide_1x1_landscape', 'ultrawide_1x1_landscape'
+    displayId = $state(initialHardware.displayId);
+
+    // 2. Gehäuse-Achse (nur Rahmen): 'overhead', 'vitrine', 'stele', 'bar', 'none'
+    chassisId = $state(initialHardware.chassisId);
+
+    // 3. Abgeleiteter Preset-Name für ScreenSync und den Legacy-Key
+    // `zimsim_monitor_id`. Kombinationen ohne eigenen Preset-Eintrag (z. B.
+    // Stele + Überkopf) erhalten einen zusammengesetzten Namen; `createLayout`
+    // bildet denselben Namen, damit die Layout-ID stabil bleibt.
+    monitorId = $derived.by(() => {
+        const preset = findPreset(this.displayId, this.chassisId);
+        return preset ? preset.id : `${this.displayId}+${this.chassisId}`;
+    });
+
+    // 4. Fachlicher Anzeigetyp (z.B. 'zuganzeiger', 'anschlusstafel', 'ankunftstafel', 'wagenstand_gleis')
     layoutType = $state(getInitialLayoutType());
 
-    // 3. Gehäuse-Sichtbarkeit
-    showBezel = $state(localStorage.getItem('zimsim_show_bezel') !== 'false');
+    // 5. Gehäuse-Sichtbarkeit: folgt seit P4 aus der Gehäuse-Achse. 'none'
+    // ist ein echtes Gehäuseprofil (ohne Rahmen); Checkbox und Auswahl
+    // steuern damit nicht mehr doppelt.
+    showBezel = $derived(this.chassisId !== 'none');
 
-    // 4. Vollbild / Kiosk Status
+    // 6. Stegdicke zwischen zwei Panels: null = Vorgabe des Gehäuseprofils,
+    // sonst ein fester Wert in logischen Pixeln (chassisOverrides.gapWidth).
+    chassisGap = $state(getInitialChassisGap());
+
+    // 7. Vollbild / Kiosk Status
     isFullscreen = $state(false);
     isKiosk = $state(false);
 
-    // 5. Multi-Screen / Pop-Out Zielmonitor (z.B. '1', '2', '3' oder null für Hauptansicht)
+    // 8. Multi-Screen / Pop-Out Zielmonitor (z.B. '1', '2', '3' oder null für Hauptansicht)
     targetScreen = $state(null);
 
-    // 6. Darstellungsvariante der Hauptansicht ('fhd_landscape', 'uhd_landscape', 'fhd_portrait', 'uhd_portrait')
-    boardVariant = $state(getInitialBoardVariant(this.monitorId));
+    // 9. Darstellungsvariante der Hauptansicht ('fhd_landscape', 'uhd_landscape', 'fhd_portrait', 'uhd_portrait')
+    boardVariant = $state(getInitialBoardVariant(this.displayId));
 
-    // 7. Darstellungsvariante eines Pop-Out-Fensters. Wird nur ausgewertet,
+    // 10. Darstellungsvariante eines Pop-Out-Fensters. Wird nur ausgewertet,
     // solange ein Zielschirm aktiv ist, und nie persistiert, damit ein
     // 4K-Pop-Out die Hauptansicht nicht umstellt.
     popOutVariant = $state(null);
 
-    // 8. Skalierungsmodus ('fit' = an Bildschirmbreite anpassen, 'scroll' = 1:1 Detailansicht)
+    // 11. Skalierungsmodus ('fit' = an Bildschirmbreite anpassen, 'scroll' = 1:1 Detailansicht)
     scaleMode = $state(localStorage.getItem('zimsim_scale_mode') || 'fit');
 
-    // 9. Paginierung für Anschlusstafeln / Voranzeiger
+    // 12. Paginierung für Anschlusstafeln / Voranzeiger
     departurePageIndex = $state(0);
     totalDeparturePages = $state(1);
 
-    /**
-     * Intern aufgelöstes Display-Profil (nur Glas/Geometrie). Die UI wählt
-     * weiterhin ein Preset (`monitorId`); Display und Gehäuse sind aber schon
-     * getrennt verfügbar, damit sie später unabhängig gewählt werden können.
-     */
-    displayId = $derived.by(() => resolvePresetProfile(this.monitorId).display.id);
-
-    /**
-     * Intern aufgelöstes Gehäuse-Profil (nur Rahmen/Optik). Bei deaktiviertem
-     * Gehäuse ist das Profil `none`, unabhängig vom gewählten Preset.
-     */
-    chassisId = $derived.by(() => this.showBezel
-        ? resolvePresetProfile(this.monitorId).chassis.id
-        : 'none');
+    // Zuletzt aktives Gehäuse (nicht `none`). Wird beim Umschalten der
+    // Gehäusesimulation (Strg+B) benötigt, um den vorherigen Rahmen
+    // wiederherzustellen; bewusst nicht persistiert.
+    _lastChassisId = initialHardware.chassisId === 'none' ? null : initialHardware.chassisId;
 
     /**
      * Aktive Varianten-ID: Bei aktivem Pop-Out gilt dessen Variante,
      * ansonsten die in der Hauptansicht gewählte – stets an die Ausrichtung
-     * des aktuellen Hardware-Monitors angepasst (Auflösungsklasse bleibt).
+     * des aktiven Display-Profils angepasst (Auflösungsklasse bleibt).
      */
     activeVariantId = $derived.by(() => {
         if (this.targetScreen && isValidBoardVariant(this.popOutVariant)) {
             return this.popOutVariant;
         }
-        return adaptVariantOrientation(this.boardVariant, getMonitorOrientation(this.monitorId));
+        return adaptVariantOrientation(this.boardVariant, getDisplayOrientation(this.displayId));
     });
 
     /**
@@ -122,11 +242,30 @@ class DisplayConfigStore {
     is4k = $derived.by(() => isUhdVariant(this.activeVariantId));
 
     /**
-     * Berechnet reaktiv das aktuelle Layout-Objekt basierend auf Monitor, Typ, Gehäuse und Pop-Out-Ziel.
+     * Effektive Stegdicke in logischen Pixeln: der eingestellte Wert oder –
+     * solange nichts übersteuert wurde – die Vorgabe des Gehäuseprofils.
+     */
+    chassisGapWidth = $derived.by(() => {
+        return this.chassisGap === null ? getChassisGapWidth(this.chassisId) : this.chassisGap;
+    });
+
+    /**
+     * Berechnet reaktiv das aktuelle Layout-Objekt basierend auf Display,
+     * Gehäuse, Typ und Pop-Out-Ziel. Der Aufruf geht direkt an `createLayout`;
+     * `presetId` bleibt nur für die stabile Layout-ID erhalten.
      */
     currentLayout = $derived.by(() => {
         const withBezel = !this.targetScreen && this.showBezel && !this.isFullscreen && !this.isKiosk;
-        return generateActiveLayout(this.monitorId, this.layoutType, withBezel, this.targetScreen, this.activeVariantId);
+        return createLayout({
+            presetId: this.monitorId,
+            displayId: this.displayId,
+            chassisId: this.chassisId,
+            layoutType: this.layoutType,
+            withBezel,
+            variantId: this.activeVariantId,
+            chassisOverrides: this.chassisGap === null ? null : { gapWidth: this.chassisGap },
+            targetScreen: this.targetScreen
+        });
     });
 
     /**
@@ -166,16 +305,43 @@ class DisplayConfigStore {
     });
 
     /**
-     * Wechselt den Hardware-Monitor. Die Auflösungsklasse (Full HD / 4K) der
-     * Darstellungsvariante bleibt erhalten, die Ausrichtung folgt dem neuen
-     * Monitor (Quer- ↔ Hochformat).
-     * @param {string} id
+     * Übernimmt eine Display-/Gehäuse-Kombination in den State und persistiert
+     * beide Achsen. Der Legacy-Key `zimsim_monitor_id` wird weiter gepflegt,
+     * damit ältere Tabs/Exports den passenden Preset-Namen sehen; der alte
+     * Checkbox-Key `zimsim_show_bezel` bleibt ein Spiegel der Gehäuse-Achse.
+     *
+     * Ein Wechsel zwischen zwei Gehäusen setzt eine übersteuerte Stegdicke auf
+     * den Profilwert zurück (die Stegdicke gehört zum Gehäuse); das Aus- und
+     * Wiedereinschalten über `none` behält sie.
+     *
+     * @param {string} displayId - ID aus DISPLAY_PROFILES
+     * @param {string} chassisId - ID aus CHASSIS_PROFILES
+     * @returns {void}
      */
-    setMonitorId(id) {
-        this.monitorId = id;
-        localStorage.setItem('zimsim_monitor_id', id);
+    applyHardware(displayId, chassisId) {
+        // Ein Wechsel zwischen zwei echten Gehäusen setzt die Stegdicke auf
+        // den Profilwert zurück; der Umweg über „ohne Gehäuse" (Strg+B)
+        // behält den eingestellten Wert, damit er beim Wiedereinschalten
+        // nicht verloren geht.
+        if (chassisId !== this.chassisId && chassisId !== 'none' && this.chassisId !== 'none') {
+            this.setChassisGap(null);
+        }
+        if (chassisId !== 'none') {
+            this._lastChassisId = chassisId;
+        }
 
-        const adapted = adaptVariantOrientation(this.boardVariant, getMonitorOrientation(id));
+        this.displayId = displayId;
+        this.chassisId = chassisId;
+        localStorage.setItem('zimsim_display_id', displayId);
+        localStorage.setItem('zimsim_chassis_id', chassisId);
+        localStorage.setItem('zimsim_show_bezel', String(chassisId !== 'none'));
+
+        const preset = findPreset(displayId, chassisId);
+        if (preset) {
+            localStorage.setItem('zimsim_monitor_id', preset.id);
+        }
+
+        const adapted = adaptVariantOrientation(this.boardVariant, getDisplayOrientation(displayId));
         if (adapted !== this.boardVariant) {
             this.boardVariant = adapted;
             localStorage.setItem('zimsim_board_variant', adapted);
@@ -183,45 +349,92 @@ class DisplayConfigStore {
     }
 
     /**
-     * Setzt Display und Gehäuse unabhängig voneinander.
-     *
-     * Vorbereitung für die spätere Zwei-Achsen-UI (Display-Auswahl +
-     * Gehäuse-Auswahl). Solange die Oberfläche nur Presets anbietet, wird die
-     * Kombination auf das passende Preset abgebildet. `chassisId === 'none'`
-     * entspricht dem abgeschalteten Gehäuse.
+     * Wechselt den Hardware-Monitor über ein Preset (Legacy-Einstieg für
+     * URLs/Kompatibilität). Intern werden beide Achsen gesetzt.
+     * @param {string} id
+     */
+    setMonitorId(id) {
+        const { display, chassis } = resolvePresetProfile(id);
+        this.applyHardware(display.id, chassis.id);
+    }
+
+    /**
+     * Setzt Display und Gehäuse unabhängig voneinander – der Einstieg der
+     * Zwei-Achsen-UI. Die Kombination wird nicht mehr auf ein Preset
+     * abgebildet; nur gültige IDs und zur Display-Ausrichtung passende
+     * Gehäuse werden übernommen.
      *
      * @param {string} displayId - ID aus DISPLAY_PROFILES
-     * @param {string} chassisId - ID aus CHASSIS_PROFILES
+     * @param {string} chassisId - ID aus CHASSIS_PROFILES ('none' = ohne Gehäuse)
      * @returns {boolean} true, wenn die Kombination übernommen wurde
      */
     setDisplayAndChassis(displayId, chassisId) {
-        const preset = chassisId === 'none'
-            ? MONITOR_PRESETS.find(p => p.displayId === displayId)
-            : MONITOR_PRESETS.find(p => p.displayId === displayId && p.chassisId === chassisId);
-        if (!preset) {
-            console.warn(`[DisplayConfig] Keine Hardware für ${displayId} + ${chassisId} hinterlegt.`);
+        const hardware = resolveHardware(displayId, chassisId);
+        if (!hardware) {
+            console.warn(`[DisplayConfig] Ungültige Hardware: ${displayId} + ${chassisId}.`);
             return false;
         }
 
-        this.setMonitorId(preset.id);
-        if (chassisId === 'none' && this.showBezel) {
-            this.showBezel = false;
-            localStorage.setItem('zimsim_show_bezel', 'false');
-        }
+        this.applyHardware(hardware.displayId, hardware.chassisId);
         return true;
     }
 
     /**
+     * Schaltet die Gehäusesimulation ein oder aus, ohne die Display-Achse zu
+     * ändern. „Aus" entspricht dem Gehäuseprofil `none`, „ein" stellt das
+     * zuletzt aktive (oder das natürliche) Gehäuse wieder her.
+     *
+     * @param {boolean} enabled - true = Rahmen/Steg zeichnen
+     * @returns {void}
+     */
+    setBezelEnabled(enabled) {
+        if (enabled === this.showBezel) return;
+        if (!enabled) {
+            this.setDisplayAndChassis(this.displayId, 'none');
+            return;
+        }
+
+        const orientation = getDisplayOrientation(this.displayId);
+        const chassisId = this._lastChassisId && isChassisCompatible(this._lastChassisId, orientation)
+            ? this._lastChassisId
+            : getDefaultChassisForDisplay(this.displayId);
+
+        this.setDisplayAndChassis(this.displayId, chassisId);
+    }
+
+    /**
+     * Setzt die Stegdicke als Übersteuerung des Gehäuseprofils.
+     * `null` (oder ein unbrauchbarer Wert) stellt die Profilvorgabe wieder her.
+     *
+     * @param {number|string|null} value - Stegdicke in logischen Pixeln (0–100)
+     * @returns {void}
+     */
+    setChassisGap(value) {
+        const numeric = value === null || value === '' ? Number.NaN : Number(value);
+        const next = Number.isFinite(numeric)
+            ? Math.min(CHASSIS_GAP_RANGE.max, Math.max(CHASSIS_GAP_RANGE.min, Math.round(numeric)))
+            : null;
+        if (next === this.chassisGap) return;
+
+        this.chassisGap = next;
+        if (next === null) {
+            localStorage.removeItem('zimsim_chassis_gap');
+        } else {
+            localStorage.setItem('zimsim_chassis_gap', String(next));
+        }
+    }
+
+    /**
      * Wechselt die Darstellungsvariante der Hauptansicht.
-     * Unbekannte IDs werden ignoriert; die Ausrichtung wird an den aktuellen
-     * Monitor angepasst (Auflösungsklasse bleibt).
+     * Unbekannte IDs werden ignoriert; die Ausrichtung wird an das aktuelle
+     * Display angepasst (Auflösungsklasse bleibt).
      *
      * @param {string} variantId - 'fhd_landscape' | 'uhd_landscape' | 'fhd_portrait' | 'uhd_portrait'
      * @returns {void}
      */
     setBoardVariant(variantId) {
         if (!isValidBoardVariant(variantId)) return;
-        const adapted = adaptVariantOrientation(variantId, getMonitorOrientation(this.monitorId));
+        const adapted = adaptVariantOrientation(variantId, getDisplayOrientation(this.displayId));
         if (adapted === this.boardVariant) return;
         this.boardVariant = adapted;
         localStorage.setItem('zimsim_board_variant', adapted);
@@ -254,11 +467,11 @@ class DisplayConfigStore {
     }
 
     /**
-     * Schaltet das Gehäuse ein oder aus.
+     * Schaltet die Gehäusesimulation um (Tastenkürzel Strg+B).
+     * Entspricht `setBezelEnabled(!showBezel)`.
      */
     toggleBezel() {
-        this.showBezel = !this.showBezel;
-        localStorage.setItem('zimsim_show_bezel', String(this.showBezel));
+        this.setBezelEnabled(!this.showBezel);
     }
 
     /**

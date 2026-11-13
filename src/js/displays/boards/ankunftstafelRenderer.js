@@ -4,6 +4,7 @@ import { truncateWithEllipsis, drawLineBadge, drawInvertedTimeBox, getVerticalCe
 import { drawAnalogClock, drawDigitalClock } from '../core/sharedRenderers.js';
 import { getSimulatedTime } from '../../core/utils/config.js';
 import { lineColorService } from '../../core/services/lineColorService.svelte.js';
+import { getBoardTokens } from '../core/boardTokenService.js';
 
 /**
  * Renderer für die DB-Ankunftstafel (Nur Ankünfte).
@@ -18,6 +19,15 @@ import { lineColorService } from '../../core/services/lineColorService.svelte.js
  */
 
 export function drawAnkunftBoard(ctx, journeys = [], width = 1920, height = 1080, renderCtx = {}, screenOptions = {}) {
+    // Zeilenzahl aus den Tokens der aktiven Variante (16 FHD / 20 4K im
+    // Hochformat, 7 im Querformat). `screenOptions.maxRows` hat weiterhin
+    // Vorrang für Sonderfälle.
+    const t = getBoardTokens('ankunftstafel', {
+        variantId: screenOptions.variant,
+        width,
+        height
+    });
+
     const isPortrait = height > width; // z.B. Stele 1080×1920
     const HEADER_HEIGHT = isPortrait ? 110 : 80;
     const SUBHEADER_HEIGHT = isPortrait ? 40 : 34;
@@ -36,7 +46,7 @@ export function drawAnkunftBoard(ctx, journeys = [], width = 1920, height = 1080
     // 4. Fahrten für diese Spalte / diesen Bildschirm filtern
     const colIndex = screenOptions.colIndex || 0;
     const maxCols = screenOptions.maxCols || 1;
-    const maxRows = isPortrait ? (screenOptions.maxRows || 20) : (screenOptions.maxRows || 7);
+    const maxRows = screenOptions.maxRows || t.meta.maxRows;
 
     // 4. Fahrten für diese Spalte / diesen Bildschirm filtern (Strikte Filterung: nur Ankünfte)
     const allTrains = (journeys || []).filter(j => !j.infoscreen && j.ankunft);

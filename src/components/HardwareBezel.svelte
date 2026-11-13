@@ -25,7 +25,6 @@
     const family = $derived(layout.family || 'standard');
     const isVitrine = $derived(family === 'vitrine');
     const isStele = $derived(family === 'stele');
-    const isStretched = $derived(family === 'stretched');
 
     // 4K-Gehäuse sind physikalisch doppelt so groß. Die SVG-Geometrie ist in
     // logischen Pixeln definiert; die Ansicht wird entsprechend
