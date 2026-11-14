@@ -230,14 +230,33 @@ export function drawInfoTopText(ctx, backgroundColor, textColor, infoText1, info
 }
 
 /**
+ * Skalierungsfaktoren zwischen logischer Zeichenfläche und physischem Screen.
+ *
+ * Bei gestreckten Panels (P6) zeichnen die Renderer auf 1920er-Logik, während
+ * `screen.w/h` die physische Fläche beschreibt. Alle Screen-Koordinaten in
+ * diesem Modul sind logisch; Pixelzugriffe (`getImageData`) und DOM-Overlays
+ * müssen dagegen physisch positioniert werden. Für normale Screens sind beide
+ * Faktoren 1.
+ *
+ * @param {object} screen - Screen aus dem Layout
+ * @returns {{sx: number, sy: number}} Skalierungsfaktoren
+ */
+export function getScreenScale(screen) {
+    const sx = screen?.logicalWidth ? screen.w / screen.logicalWidth : 1;
+    const sy = screen?.logicalHeight ? screen.h / screen.logicalHeight : 1;
+    return { sx, sy };
+}
+
+/**
  * Liest die Hintergrundfarbe eines Pixels am rechten Rand eines Screens.
  * Wird für die dynamische Breitenerkennung bei Zugnummern benötigt.
  * @returns {number[]} RGBA-Werte als Array [r, g, b, a].
  */
 export function getBackgroundColor(ctx, screen) {
     if (!screen) return [0, 0, 128, 255]; // Fallback: Navy
-    const absX = screen.x + screen.w - 25;
-    const absY = screen.y + 200;
+    const { sx, sy } = getScreenScale(screen);
+    const absX = screen.x + screen.w - (25 * sx);
+    const absY = screen.y + (200 * sy);
     const pixel = ctx.getImageData(absX, absY, 1, 1).data;
     return [pixel[0], pixel[1], pixel[2], pixel[3]];
 }
@@ -245,19 +264,21 @@ export function getBackgroundColor(ctx, screen) {
 /**
  * Ermittelt die maximal verfügbare Breite für die Zugnummer,
  * indem von rechts nach links nach freien Pixeln gescannt wird.
- * @returns {number} Die maximale Breite in Pixeln.
+ * @returns {number} Die maximale Breite in logischen Pixeln.
  */
 export function findMaxTextWidth(ctx, startX, yCenter, height, screen) {
     if (!screen) return startX;
 
     const bgColor = getBackgroundColor(ctx, screen);
+    const { sx, sy } = getScreenScale(screen);
 
-    const halfH = height / 2;
-    const top = Math.floor(Math.max(0, screen.y + yCenter - halfH));
-    const bottom = Math.ceil(Math.min(ctx.canvas.height, screen.y + yCenter + halfH));
+    const halfH = (height / 2) * sy;
+    const absYCenter = screen.y + (yCenter * sy);
+    const top = Math.floor(Math.max(0, absYCenter - halfH));
+    const bottom = Math.ceil(Math.min(ctx.canvas.height, absYCenter + halfH));
     const checkHeight = bottom - top;
 
-    const absStartX = Math.floor(screen.x + startX);
+    const absStartX = Math.floor(screen.x + (startX * sx));
     const scanWidth = absStartX - screen.x;
 
     if (scanWidth <= 0 || checkHeight <= 0) return 0;
@@ -288,7 +309,8 @@ export function findMaxTextWidth(ctx, startX, yCenter, height, screen) {
         }
     }
 
-    return maxWidth;
+    // Der Scan liefert physische Pixel; der Renderer rechnet logisch weiter.
+    return maxWidth / sx;
 }
 
 /**
@@ -499,13 +521,17 @@ export function drawTextInRectangle(ctx, text, x, y, font, textAlign, textHeight
         }
 
         if (shouldScroll && scrollManager && canvas && screen) {
+            // Das Overlay liegt im DOM (physische Pixel), der Badge selbst wird
+            // in logischen Koordinaten gezeichnet. Bei gestreckten Panels wird
+            // der Text per `scaleX` mit der Canvas-Skalierung gestreckt.
+            const { sx, sy } = getScreenScale(screen);
             scrollManager.createOrUpdate(
                 canvas, zugID, 'zugNr_' + Math.round(y), text,
-                `${canvas.offsetLeft + screen.x + boxX}px`,
-                `${canvas.offsetTop + screen.y + boxY}px`,
+                `${canvas.offsetLeft + screen.x + (boxX * sx)}px`,
+                `${canvas.offsetTop + screen.y + (boxY * sy)}px`,
                 `${boxWidth}px`,
                 `${boxHeight}px`,
-                boxTextColor, font
+                boxTextColor, font, 1.0, sx
             );
         } else {
             ctx.font = font;

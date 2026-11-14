@@ -30,7 +30,12 @@ import { BOARD_VARIANTS, adaptVariantOrientation, isUhdVariant } from './boardTo
  * Spalten ein Segment bei Listen-Boards (Anschluss-/Ankunftstafel) zerfällt.
  *
  * `legacyOverrides` dokumentiert bewusst das bisherige Verhalten einzelner
- * Displays, das noch nicht vereinheitlicht ist (siehe TODO in P3).
+ * Displays, das noch nicht vereinheitlicht ist (P3-Entscheidungen: Stele
+ * nutzt weiterhin Querformat-Renderer für Zuganzeiger und Zoom).
+ *
+ * `renderMode: 'stretch'` markiert echte 21:9/32:9-Panels (P6). Dort ist
+ * `scaleFactor` immer 1 und die Screens tragen zusätzlich eine logische
+ * Zeichenfläche (`logicalWidth`/`logicalHeight`).
  */
 export const DISPLAY_PROFILES = {
     fhd_1x1_landscape: {
@@ -106,8 +111,9 @@ export const DISPLAY_PROFILES = {
         segments: [{ w: 2560 }],
         slots: null,
         listColumnsPerSegment: 2,
-        // TODO(P6): echtes Gerät mit gestrecktem Panel. Bis dahin werden die
-        // 1920er-Tokens unverändert auf 2560 px Breite gezeichnet.
+        // Gestrecktes Panel (P6): Canvas bleibt 2560×1080, die Renderer
+        // zeichnen auf 1920er-Logik und `canvasLayerService` streckt sie auf
+        // die Panelbreite.
         renderMode: 'stretch'
     },
     ultrawide_1x1_landscape: {
@@ -123,7 +129,8 @@ export const DISPLAY_PROFILES = {
             { id: 'nebenmonitor_2', type: 'neben_rotierend', segment: 0, offset: 2880, w: 960 }
         ],
         listColumnsPerSegment: 2,
-        // TODO(P6): siehe wide_1x1_landscape.
+        // Gestrecktes Panel (P6), siehe wide_1x1_landscape. Die Slots liegen
+        // physisch bereits in 1920/960 px, daher ist scaleX hier 1.
         renderMode: 'stretch'
     }
 };
@@ -535,8 +542,13 @@ export function createLayout({
     // Die Ausrichtung folgt dem Display-Profil; die Auflösungsklasse kommt
     // aus der gewählten Variante.
     const variant = adaptVariantOrientation(variantId, display.orientation);
-    const is4k = isUhdVariant(variant);
-    const scaleFactor = BOARD_VARIANTS[variant].scale;
+    // Gestreckte Panels (wide/ultrawide, P6) werden in ihrer nativen
+    // Segmentbreite gerendert. Die Board-Tokens bleiben auf der 1920er
+    // Logikfläche; die Canvas-Skalierung übernimmt `canvasLayerService`
+    // pro Screen. Eine zusätzliche 4K-Verdopplung entfällt dort.
+    const stretch = display.renderMode === 'stretch';
+    const is4k = !stretch && isUhdVariant(variant);
+    const scaleFactor = stretch ? 1 : BOARD_VARIANTS[variant].scale;
     const scale = (value) => value * scaleFactor;
 
     const gapWidth = withBezel ? chassis.gapWidth : 0;
@@ -546,7 +558,10 @@ export function createLayout({
     const monitorId = preset ? preset.id : `${display.id}+${baseChassis.id}`;
     const layout = {
         id: `${monitorId}_${variant}_${layoutType}`,
-        family: baseChassis.style,
+        // Optik des Gehäuses (P5). Die Renderer lesen dieses Feld nicht; es
+        // steuert ausschließlich `HardwareBezel.svelte` über die
+        // Chassis-Style-Registry.
+        chassisStyle: baseChassis.style,
         width: scale(geo.contentW),
         height: scale(display.panelH),
         scaleFactor,
@@ -567,25 +582,38 @@ export function createLayout({
         boardType: 'default',
         monitorId,
         layoutType,
+        // 'native' (normale Panels) oder 'stretch' (21:9/32:9, P6).
+        renderMode: display.renderMode || 'native',
         screens: []
     };
 
     const screens = applyLegacyOverrides(display, layoutType, buildScreens(display, layoutType, geo))
         .map(screen => ({ ...screen, variant }));
 
+    // Logische Zeichenfläche je Screen. Die Renderer sind auf 1920×1080
+    // (Haupt-/Listen-/Zoom-Boards) bzw. 960×1080 (Nebenmonitore) ausgelegt;
+    // gestreckte Panels skalieren diese Fläche auf ihre physische Breite.
+    const designWidth = (screen) => {
+        if (screen.type === 'neben' || screen.type === 'neben_rotierend') return 960;
+        return display.orientation === 'portrait' ? 1080 : 1920;
+    };
+    const withDesign = screens.map(screen => (stretch
+        ? { ...screen, logicalWidth: designWidth(screen), logicalHeight: display.panelH }
+        : screen));
+
     // 4K Ultra-HD: Canvas und Gehäuse sind doppelt so groß, deshalb muss auch
     // die Screen-Geometrie verdoppelt werden. Die Renderer zeichnen weiterhin
     // in logischen Pixeln (screen.w / scaleFactor), erhalten also unverändert
     // 1920×1080 bzw. 1080×1920.
     layout.screens = is4k
-        ? screens.map(screen => ({
+        ? withDesign.map(screen => ({
             ...screen,
             x: screen.x * 2,
             y: screen.y * 2,
             w: screen.w * 2,
             h: screen.h * 2
         }))
-        : screens;
+        : withDesign;
 
     return layout;
 }
@@ -639,7 +667,7 @@ export function generateTargetScreenLayout(layoutType = 'zuganzeiger', targetScr
 
     const layout = {
         id: `target_screen_${screenNum}_${variantId}_${layoutType}`,
-        family: 'standard',
+        chassisStyle: 'standard',
         width: sWidth,
         height: sHeight,
         scaleFactor,

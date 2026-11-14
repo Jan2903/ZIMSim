@@ -35,8 +35,12 @@ export class ScrollManager {
      * @param {string} height - CSS-Wert für height.
      * @param {string} color - Textfarbe.
      * @param {string} font - CSS font-Wert.
+     * @param {number} [opacity=1] - Deckkraft des Overlays.
+     * @param {number} [scaleX=1] - Horizontale Streckung (gestreckte Panels, P6).
+     *   Das Overlay bleibt in logischen Koordinaten; `scaleX` bildet sie auf die
+     *   physische Panelbreite ab.
      */
-    createOrUpdate(canvas, zugID, scrollingID, text, left, top, width, height, color, font, opacity = 1.0) {
+    createOrUpdate(canvas, zugID, scrollingID, text, left, top, width, height, color, font, opacity = 1.0, scaleX = 1) {
         // Stelle sicher, dass das Objekt für diesen Zug existiert
         if (!this.scrollDivs[zugID]) {
             this.scrollDivs[zugID] = {};
@@ -63,7 +67,8 @@ export class ScrollManager {
             existingDiv.dataset.height === height &&
             existingDiv.dataset.text === text &&
             existingDiv.dataset.color === color &&
-            existingDiv.dataset.font === font) {
+            existingDiv.dataset.font === font &&
+            existingDiv.dataset.scaleX === String(scaleX)) {
             
             if (existingDiv.dataset.opacity !== String(opacity)) {
                 existingDiv.style.opacity = opacity;
@@ -83,6 +88,11 @@ export class ScrollManager {
         scrollDiv.style.height = height;
         scrollDiv.style.zIndex = '15'; // Wichtig: Zwischen Canvas(10) und Hardware-Bezel(20)
         scrollDiv.style.opacity = opacity;
+        if (scaleX !== 1) {
+            // Nur horizontal strecken (gestreckte 21:9/32:9-Panels).
+            scrollDiv.style.transform = `scaleX(${scaleX})`;
+            scrollDiv.style.transformOrigin = 'left top';
+        }
 
         // Properties hinterlegen, um Repaints auf das Nötigste zu beschränken
         scrollDiv.dataset.left = left;
@@ -93,6 +103,7 @@ export class ScrollManager {
         scrollDiv.dataset.color = color;
         scrollDiv.dataset.font = font;
         scrollDiv.dataset.opacity = opacity;
+        scrollDiv.dataset.scaleX = String(scaleX);
 
         canvas.parentElement.appendChild(scrollDiv);
 

@@ -1,7 +1,7 @@
 // js/displays/boards/zuganzeigerRenderer.js
 import { COLORS, FONTS } from '../../core/constants/theme.js';
 import { INFO } from '../core/constants.js';
-import { drawText, drawWrappedText, drawInfoTopText, drawTextInRectangle, drawInvertedTimeBox, fillTextCentered } from '../core/textUtils.js';
+import { drawText, drawWrappedText, drawInfoTopText, drawTextInRectangle, drawInvertedTimeBox, fillTextCentered, getScreenScale } from '../core/textUtils.js';
 import { drawPictograms } from '../primitives/pictogramRenderer.js';
 import { calculateCoachPositions, getSectorsForCoaches, getPlatformSectors } from '../../features/formation/formationUtils.js';
 import { formatDisplayName, combineTrainNames } from '../../features/journey/trainNumberFormatter.js';
@@ -34,6 +34,10 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
 
     const offX = canvas ? canvas.offsetLeft : 0;
     const offY = canvas ? canvas.offsetTop : 0;
+    // Gestreckte Panels (P6): Renderer zeichnet in 1920er-Logik, das
+    // Scroll-Overlay liegt aber im physischen DOM-Raum.
+    const { sx } = getScreenScale(screen);
+    const logicalW = screen?.logicalWidth || screen.w;
 
     const primary = journeys[0];
     const trainRenderCtx = {
@@ -110,13 +114,14 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
     // Scrollenden Info-Text erstellen/aktualisieren (Offset an Gehäuse-Position des Canvas anpassen)
     scrollManager.createOrUpdate(
         canvas, zugID, "info", infoToScroll,
-        `${offX + screen.x + x + 5}px`,
+        `${offX + screen.x + (x + 5) * sx}px`,
         `${offY + screen.y}px`,
-        `${screen.w - x - 5}px`,
+        `${logicalW - x - 5}px`,
         `100px`,
         COLORS.NAVY,
         FONTS.regular(67),
-        pAlpha
+        pAlpha,
+        sx
     );
 
     // 2. Top-Banner zeichnen
@@ -351,19 +356,19 @@ export function drawTrainInfo(ctx, journeys, width, height, renderCtx) {
                 // Bei Störung: Ein kombinierter Scrolltext weiter oben
                 drawText(ctx, 'von / from ' + fromDestination, 50, 520, FONTS.regular(75), textColor, 'left');
                 scrollManager.createOrUpdate(canvas, zugID, 'ankunft', "Bitte nicht einsteigen Please do not board",
-                    `${offX + screen.x + 50}px`, `${offY + screen.y + 300}px`,
-                    `${screen.w - 50}px`, `128px`, textColor, FONTS.regular(128), pAlpha);
+                    `${offX + screen.x + 50 * sx}px`, `${offY + screen.y + 300}px`,
+                    `${logicalW - 50}px`, `128px`, textColor, FONTS.regular(128), pAlpha, sx);
                 // Den separaten arrival Scrolltext löschen
                 scrollManager.createOrUpdate(canvas, zugID, 'arrival', "", "", "", "", "", "", "", pAlpha);
             } else {
                 // Normales Layout
                 drawText(ctx, 'von / from ' + fromDestination, 50, 670, FONTS.regular(75), textColor, 'left');
                 scrollManager.createOrUpdate(canvas, zugID, 'ankunft', "Bitte nicht einsteigen",
-                    `${offX + screen.x + 50}px`, `${offY + screen.y + 280}px`,
-                    `${screen.w - 50}px`, `120px`, textColor, FONTS.regular(120), pAlpha);
+                    `${offX + screen.x + 50 * sx}px`, `${offY + screen.y + 280}px`,
+                    `${logicalW - 50}px`, `120px`, textColor, FONTS.regular(120), pAlpha, sx);
                 scrollManager.createOrUpdate(canvas, zugID, 'arrival', "Please do not board",
-                    `${offX + screen.x + 50}px`, `${offY + screen.y + 430}px`,
-                    `${screen.w - 50}px`, `120px`, textColor, FONTS.italic(120), pAlpha);
+                    `${offX + screen.x + 50 * sx}px`, `${offY + screen.y + 430}px`,
+                    `${logicalW - 50}px`, `120px`, textColor, FONTS.italic(120), pAlpha, sx);
             }
         } else if (isMerged) {
             let yPos = 360;

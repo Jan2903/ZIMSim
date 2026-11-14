@@ -1,10 +1,16 @@
 <script>
     /**
      * @fileoverview HardwareBezel.svelte
-     * Prozedurales, vektorbasiertes DB-Gehäuse für ZIM-Displays.
-     * Unterstützt Überkopf-Gehäuse (RAL 5022 Nachtblau mit Deckenrohren & Mittelstegen),
-     * Vitrinen mit Aluminium-Standfüßen und Stelen mit massivem Sockel.
+     * Chassis-getriebenes, vektorbasiertes DB-Gehäuse für ZIM-Displays.
+     *
+     * Die Komponente kennt nur noch den gemeinsamen Rahmen (Wrapper, SVG,
+     * Farbverläufe) und wählt die Optik über `layout.chassisStyle` aus der
+     * Registry (`chassisStyleRegistry.js`). Die eigentlichen Bauformen
+     * (Standard/Überkopf, Vitrine, Stele) liegen als eigene SVG-Bausteine in
+     * `components/chassis/` und werden hier nicht mehr unterschieden.
      */
+
+    import { CHASSIS_STYLES, DEFAULT_CHASSIS_STYLE } from './chassis/chassisStyleRegistry.js';
 
     /**
      * @typedef {Object} Props
@@ -22,9 +28,10 @@
         layout = {}
     } = $props();
 
-    const family = $derived(layout.family || 'standard');
-    const isVitrine = $derived(family === 'vitrine');
-    const isStele = $derived(family === 'stele');
+    // Optik des Gehäuses (P5): 'standard' | 'vitrine' | 'stele' | 'stretched'.
+    // Unbekannte Werte fallen auf die Standard-Optik zurück.
+    const chassisStyle = $derived(layout.chassisStyle || DEFAULT_CHASSIS_STYLE);
+    const ChassisView = $derived(CHASSIS_STYLES[chassisStyle] || CHASSIS_STYLES[DEFAULT_CHASSIS_STYLE]);
 
     // 4K-Gehäuse sind physikalisch doppelt so groß. Die SVG-Geometrie ist in
     // logischen Pixeln definiert; die Ansicht wird entsprechend
@@ -35,10 +42,10 @@
     const vbHeight = $derived(height / scaleFactor);
     const padX = $derived(paddingX / scaleFactor);
     const padY = $derived(paddingY / scaleFactor);
-    const displayHeight = $derived((layout.height || (isStele ? 1920 : 1080)) / scaleFactor);
+    const displayHeight = $derived((layout.height || (chassisStyle === 'stele' ? 1920 : 1080)) / scaleFactor);
     const gapWidth = $derived((layout.gapWidth || 50) / scaleFactor);
 
-    // Berechnung der X-Positionen der 50px-Mittelstege relativ zum Gehäuse.
+    // Berechnung der X-Positionen der Mittelstege relativ zum Gehäuse.
     // Die Positionen stammen aus dem Layout (dort bereits 4K-skaliert) und
     // liegen im Canvas-Raum; das Gehäuse ist um paddingX (= casingOffsetX)
     // verschoben. Für die logische SVG-Ansicht werden beide Werte durch den
@@ -93,119 +100,15 @@
             </linearGradient>
         </defs>
 
-        {#if isVitrine}
-            <!-- VITRINEN-BAUFORM: Standfüße nach unten -->
-            <rect x="240" y="{vbHeight - 180}" width="70" height="180" fill="url(#bezel-alu-grad)" stroke="#334155" stroke-width="2" />
-            <rect x="{vbWidth - 310}" y="{vbHeight - 180}" width="70" height="180" fill="url(#bezel-alu-grad)" stroke="#334155" stroke-width="2" />
-            
-            <!-- Vitrinen-Hauptrahmen -->
-            <rect 
-                x="0" 
-                y="0" 
-                width="{vbWidth}" 
-                height="{vbHeight - 100}" 
-                rx="12" 
-                fill="url(#bezel-alu-grad)" 
-                stroke="#334155" 
-                stroke-width="3" 
-            />
-            <!-- Display-Ausschnitt -->
-            <rect 
-                x="{padX}" 
-                y="{padY}" 
-                width="{vbWidth - (padX * 2)}" 
-                height="{displayHeight}" 
-                fill="#030814" 
-            />
-        {:else if isStele}
-            <!-- STELE-BAUFORM (Portrait 9:16 mit massivem Sockel unten) -->
-            <rect 
-                x="120" 
-                y="{vbHeight - 180}" 
-                width="{vbWidth - 240}" 
-                height="180" 
-                fill="#1e293b" 
-                stroke="#334155" 
-                stroke-width="3" 
-            />
-            <rect 
-                x="140" 
-                y="{vbHeight - 30}" 
-                width="{vbWidth - 280}" 
-                height="20" 
-                fill="#0f172a" 
-            />
-            <!-- Stelen-Körper -->
-            <rect 
-                x="0" 
-                y="0" 
-                width="{vbWidth}" 
-                height="{vbHeight - 140}" 
-                rx="14" 
-                fill="url(#bezel-bg-grad)" 
-                stroke="#0e2852" 
-                stroke-width="3" 
-            />
-            <!-- Display-Ausschnitt 1080x1920 -->
-            <rect 
-                x="{padX}" 
-                y="{padY}" 
-                width="{vbWidth - (padX * 2)}" 
-                height="{displayHeight}" 
-                fill="#030814" 
-            />
-        {:else}
-            <!-- STANDARD / ÜBERKOPF / STRETCHED: DB Nachtblau RAL 5022 Gehäuse -->
-            <rect 
-                x="0" 
-                y="0" 
-                width="{vbWidth}" 
-                height="{vbHeight}" 
-                rx="16" 
-                fill="url(#bezel-bg-grad)" 
-                stroke="#0e2852" 
-                stroke-width="2" 
-            />
-
-            <!-- Obere Gehäuseblende mit Fuge -->
-            <rect x="20" y="20" width="{vbWidth - 40}" height="3" fill="rgba(0, 0, 0, 0.8)" />
-            <rect x="20" y="23" width="{vbWidth - 40}" height="1" fill="rgba(255, 255, 255, 0.12)" />
-
-            <!-- Aussparung für die Monitore -->
-            <!-- Bewusst ohne SVG-Filter: Chromium (v.a. Android/GPU) begrenzt
-                 Filter-Puffer und schneidet bei breiten Gehäusen (2+ Monitore,
-                 > 4096 px) den rechten Teil der Fläche ab. Der Einbauschatten
-                 wird stattdessen als Box-Shadow am Bezel-Lip gezeichnet. -->
-            <rect 
-                x="{padX}" 
-                y="{padY}" 
-                width="{vbWidth - (padX * 2)}" 
-                height="{displayHeight}" 
-                fill="#030814" 
-            />
-
-            <!-- Innere Gehäusefasen um das Display -->
-            <rect x="{padX}" y="{padY}" width="{vbWidth - (padX * 2)}" height="6" fill="rgba(0, 0, 0, 0.8)" />
-            <rect x="{padX}" y="{padY}" width="6" height="{displayHeight}" fill="rgba(0, 0, 0, 0.8)" />
-            <rect x="{padX}" y="{padY + displayHeight - 6}" width="{vbWidth - (padX * 2)}" height="6" fill="rgba(0, 0, 0, 0.8)" />
-            <rect x="{padX + vbWidth - (padX * 2) - 6}" y="{padY}" width="6" height="{displayHeight}" fill="rgba(0, 0, 0, 0.8)" />
-
-            <!-- Vertikale Trennstege zwischen Monitoren -->
-            {#each gapXPositions as gapX}
-                {@const gapW = gapWidth}
-                <g class="bezel-post">
-                    <rect x="{gapX}" y="{padY}" width="{gapW}" height="{displayHeight}" fill="url(#metal-accent)" />
-                    <rect x="{gapX}" y="{padY}" width="3" height="{displayHeight}" fill="rgba(0, 0, 0, 0.45)" />
-                    <rect x="{gapX + gapW - 3}" y="{padY}" width="3" height="{displayHeight}" fill="rgba(0, 0, 0, 0.45)" />
-                    <rect x="{gapX + 3}" y="{padY}" width="1" height="{displayHeight}" fill="rgba(255, 255, 255, 0.05)" />
-                    <rect x="{gapX + gapW - 4}" y="{padY}" width="1" height="{displayHeight}" fill="rgba(255, 255, 255, 0.05)" />
-                </g>
-            {/each}
-
-            <!-- Untere Gehäuseblende mit Fuge -->
-            <rect x="20" y="{vbHeight - 23}" width="{vbWidth - 40}" height="1" fill="rgba(255, 255, 255, 0.12)" />
-            <rect x="20" y="{vbHeight - 20}" width="{vbWidth - 40}" height="3" fill="rgba(0, 0, 0, 0.8)" />
-        {/if}
+        <ChassisView 
+            {vbWidth} 
+            {vbHeight} 
+            {padX} 
+            {padY} 
+            {displayHeight} 
+            {gapWidth} 
+            {gapXPositions} 
+        />
     </svg>
 </div>
 

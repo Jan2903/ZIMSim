@@ -145,14 +145,21 @@ export class CanvasLayerService {
             ctx.textBaseline = 'alphabetic';
             ctx.textAlign = 'left';
 
-            // HiDPI / 4K Vektor-Skalierung falls im Layout definiert
+            // Logische Zeichenfläche des Screens:
+            //  - gestreckte Panels (P6) bringen `logicalWidth/Height` mit;
+            //    die 1920er-Tokens werden auf die physische Breite skaliert.
+            //  - sonst wird wie bisher die 4K-Variante per `scaleFactor`
+            //    hochskaliert (Renderer zeichnen weiter in logischen Pixeln).
             const scaleFactor = this._getLayout()?.scaleFactor || 1;
-            if (scaleFactor !== 1) {
-                ctx.scale(scaleFactor, scaleFactor);
-                drawFunction(ctx, screen.w / scaleFactor, screen.h / scaleFactor);
-            } else {
-                drawFunction(ctx, screen.w, screen.h);
+            const logicalW = screen.logicalWidth || (screen.w / scaleFactor);
+            const logicalH = screen.logicalHeight || (screen.h / scaleFactor);
+            const scaleX = screen.w / logicalW;
+            const scaleY = screen.h / logicalH;
+
+            if (scaleX !== 1 || scaleY !== 1) {
+                ctx.scale(scaleX, scaleY);
             }
+            drawFunction(ctx, logicalW, logicalH);
         } finally {
             // Auch bei einem Renderer-Fehler zurücksetzen: sonst bleiben Translate,
             // Clip-Region und ggf. Skalierung aktiv und blockieren alle folgenden
