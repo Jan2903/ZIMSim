@@ -18,6 +18,7 @@
     import FormationRuleEditorModal from '../FormationRuleEditorModal.svelte';
     import ZimIcon from '../ZimIcon.svelte';
     import { createBundle, parseBundle, downloadJsonFile } from '../../js/core/utils/bundleUtils.js';
+    import { lineColorService, COLOR_SCHEMES } from '../../js/core/services/lineColorService.svelte.js';
 
     /**
      * @typedef {Object} Props
@@ -105,7 +106,9 @@
         const data = journeyStore.exportAll();
         const bundle = createBundle('zimsim-full-backup', data, {
             stationName: journeyStore.stationContext.stationName,
-            journeyCount: journeyStore.journeys.length
+            journeyCount: journeyStore.journeys.length,
+            colorScheme: data.colorScheme,
+            regionalAutoColors: data.regionalAutoColors
         });
         downloadJsonFile(bundle, `zimsim_backup_${Date.now()}.json`);
     }
@@ -350,6 +353,13 @@
                     <ZimIcon name="palette" size={16} />
                     <span>Linienfarben & Badges anpassen</span>
                 </button>
+                <div class="line-color-scheme-hint">
+                    Aktives Farbsystem:
+                    <strong>{lineColorService.colorScheme === COLOR_SCHEMES.DB_2026 ? 'DB 2026' : 'Klassisch'}</strong>
+                    {#if lineColorService.colorScheme === COLOR_SCHEMES.DB_2026}
+                        · Regionalverkehr {lineColorService.regionalAutoColors ? 'mit Linienfarben' : 'einheitlich dunkelgrau'}
+                    {/if}
+                </div>
                 <button 
                     type="button" 
                     class="btn-secondary" 
@@ -567,6 +577,19 @@
     .form-range:disabled {
         opacity: 0.45;
         cursor: not-allowed;
+    }
+
+    /* Hinweis auf das aktive Farbsystem unter dem Editor-Button */
+    .line-color-scheme-hint {
+        margin-top: 6px;
+        font-size: 0.76rem;
+        color: var(--text-muted, #94a3b8);
+        text-align: center;
+    }
+
+    .line-color-scheme-hint strong {
+        color: var(--text-main, #f8fafc);
+        font-weight: 600;
     }
 
     @media (max-width: 600px) {

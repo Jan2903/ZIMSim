@@ -1,6 +1,6 @@
 import { Journey } from '../journey.svelte.js';
 import { Platform } from '../../station/platform.svelte.js';
-import { lineColorService } from '../../../core/services/lineColorService.svelte.js';
+import { lineColorService, COLOR_SCHEMES } from '../../../core/services/lineColorService.svelte.js';
 import { formationRuleService } from '../../formation/formationRuleService.svelte.js';
 
 /**
@@ -9,6 +9,8 @@ import { formationRuleService } from '../../formation/formationRuleService.svelt
 export class JourneyStorageService {
     /**
      * Exportiert den Store als JSON-kompatibles Objekt.
+     * Enthält neben den Fahrten auch das aktive Farbsystem, damit ein Backup
+     * den Look vollständig reproduziert.
      * @param {object} store - Der JourneyStore
      * @returns {object}
      */
@@ -26,6 +28,9 @@ export class JourneyStorageService {
             platforms: store.platforms,
             customStations: store.customStations,
             lineColorRules: lineColorService.rules,
+            colorScheme: lineColorService.colorScheme,
+            regionalAutoColors: lineColorService.regionalAutoColors,
+            autoColorsEnabled: lineColorService.autoColorsEnabled,
             formationRules: formationRuleService.rules
         };
 
@@ -85,6 +90,23 @@ export class JourneyStorageService {
 
         if (data.lineColorRules && Array.isArray(data.lineColorRules)) {
             lineColorService.importRules(data.lineColorRules);
+        }
+
+        // Farbsystem aus dem Backup übernehmen. Ältere Backups ohne diese Felder
+        // lassen die aktuelle Wahl unverändert (rückwärtskompatibel).
+        // Die Vergleiche verhindern unnötiges Leeren des Style-Caches bei jedem
+        // ScreenSync-Broadcast.
+        if (
+            (data.colorScheme === COLOR_SCHEMES.DB_2026 || data.colorScheme === COLOR_SCHEMES.CLASSIC) &&
+            data.colorScheme !== lineColorService.colorScheme
+        ) {
+            lineColorService.setColorScheme(data.colorScheme);
+        }
+        if (typeof data.regionalAutoColors === 'boolean' && data.regionalAutoColors !== lineColorService.regionalAutoColors) {
+            lineColorService.setRegionalAutoColors(data.regionalAutoColors);
+        }
+        if (typeof data.autoColorsEnabled === 'boolean' && data.autoColorsEnabled !== lineColorService.autoColorsEnabled) {
+            lineColorService.setAutoColorsEnabled(data.autoColorsEnabled);
         }
 
         if (data.formationRules && Array.isArray(data.formationRules)) {

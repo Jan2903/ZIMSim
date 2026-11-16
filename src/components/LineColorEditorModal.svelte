@@ -1,5 +1,10 @@
 <script>
-    import { lineColorService, DEFAULT_LINE_RULES } from '../js/core/services/lineColorService.svelte.js';
+    import { lineColorService, DEFAULT_LINE_RULES, COLOR_SCHEMES } from '../js/core/services/lineColorService.svelte.js';
+    import {
+        DB_2026_OPERATOR_STYLES,
+        TRANSPORT_CATEGORY,
+        TRANSPORT_CATEGORY_LABELS
+    } from '../js/core/constants/trainColorPalette.js';
     import { journeyStore, trainDisplay } from '../js/core/state/stores.js';
     import { ScreenSyncService } from '../js/core/services/screenSyncService.js';
     import { toastStore } from '../js/core/state/toastStore.svelte.js';
@@ -8,8 +13,24 @@
 
     import { downloadJsonFile, parseBundle } from '../js/core/utils/bundleUtils.js';
     import { isValidPattern } from '../js/core/utils/patternUtils.js';
+    import { contrastRatio, bestTextColor } from '../js/core/utils/colorUtils.js';
 
     let { isOpen = $bindable(false) } = $props();
+
+    /**
+     * Beispielzüge je Betreiber-Schlüssel für die System-Vorschau.
+     * Die Namen müssen durch die Klassifikation laufen, damit die Vorschau
+     * exakt den späteren Renderpfad zeigt (statt die Palette direkt zu zeichnen).
+     * @type {Record<string, string>}
+     */
+    const OPERATOR_SAMPLES = Object.freeze({
+        'db-fernverkehr': 'ICE 543',
+        'flixtrain': 'FLX 10',
+        'tgv': 'TGV 9583',
+        'nightjet': 'NJ 177',
+        'oebb': 'RJ 1',
+        'westbahn': 'WB 123'
+    });
 
     let selectedRuleId = $state(null);
     let previewTestText = $state('');
@@ -37,6 +58,152 @@
         trainDisplay.updateAll();
         ScreenSyncService.broadcastState(journeyStore);
     }
+
+    /**
+     * Wechselt das Farbsystem und zeichnet die Anzeigen sofort neu.
+     * Die Persistenz übernimmt der Service.
+     *
+     * @param {'db2026' | 'classic'} scheme - Ziel-Farbsystem
+     * @returns {void}
+     */
+    function selectScheme(scheme) {
+        if (lineColorService.colorScheme === scheme) return;
+        lineColorService.setColorScheme(scheme);
+        syncDisplay();
+    }
+
+    /**
+     * Schaltet die Traewelling-Linienfarben im Regionalverkehr um.
+     *
+     * @param {boolean} enabled - true, wenn Linienfarben auch im Regionalverkehr gelten
+     * @returns {void}
+     */
+    function toggleRegionalAutoColors(enabled) {
+        lineColorService.setRegionalAutoColors(enabled);
+        syncDisplay();
+    }
+
+    /**
+     * Korrigiert die Schriftfarbe der aktuellen Regel auf schwarz oder weiß,
+     * je nachdem, was auf dem Hintergrund besser lesbar ist.
+     * Die Hintergrundfarbe selbst bleibt unverändert.
+     *
+     * @returns {void}
+     */
+    function applyReadableTextColor() {
+        if (!selectedRule) return;
+        selectedRule.textColor = bestTextColor(selectedRule.backgroundColor);
+        handleFieldChange();
+    }
+
+    /**
+     * Bewertet ein Kontrastverhältnis für die Anzeige im Editor.
+     * Badges gelten als große Schrift (≥ 3:1 nach WCAG AA), normaler Text braucht 4,5:1.
+     *
+     * @param {number | null} ratio - Kontrastverhältnis oder null bei transparenter/unbekannter Fläche
+     * @returns {{ text: string, level: 'ok' | 'large' | 'low' | 'none', title: string }}
+     */
+    function describeContrast(ratio) {
+        if (ratio === null || Number.isNaN(ratio)) {
+            return {
+                text: '—',
+                level: 'none',
+                title: 'Kein Kontrast prüfbar (transparente oder unbekannte Fläche)'
+            };
+        }
+        const text = `${ratio.toFixed(2)}:1`;
+        if (ratio >= 4.5) {
+            return { text, level: 'ok', title: 'Erfüllt WCAG 2.2 AA für normalen Text (4,5:1)' };
+        }
+        if (ratio >= 3) {
+            return { text, level: 'large', title: 'Erfüllt WCAG 2.2 AA nur für große Schrift (3:1)' };
+        }
+        return { text, level: 'low', title: 'Unter 3:1 — auch für große Schrift zu gering' };
+    }
+
+    /**
+     * Löst einen Vorschau-Eintrag über den echten Renderpfad auf und bewertet den Kontrast.
+     *
+     * @param {{ key: string, label: string, kind: string, sample: string, operator?: string }} entry - Roh-Eintrag
+     * @returns {object} Eintrag mit Stil, CSS-Style und Kontrastbewertung
+     */
+    function describePreviewEntry(entry) {
+        const style = lineColorService.resolveStyle(entry.sample, { operator: entry.operator });
+        const filled = style.shape !== 'outline' && style.backgroundColor && style.backgroundColor !== 'transparent';
+        const contrast = filled ? contrastRatio(style.textColor, style.backgroundColor) : null;
+        const contrastInfo = describeContrast(contrast);
+        return {
+            ...entry,
+            // Ohne Treffer greift der generische Fallback (z. B. Stadtverkehr ohne Linienfarbe)
+            kind: style.hasMatchedRule ? entry.kind : 'Fallback',
+            cssStyle: lineColorService.getCssStyle(style, 30),
+            contrastText: contrastInfo.text,
+            contrastLevel: contrastInfo.level,
+            contrastTitle: contrastInfo.title
+        };
+    }
+
+    /**
+     * Baut die System-Vorschau analog zum DB-InfraGO-Schaubild:
+     * erst die Betreiberfarben im Fernverkehr, dann die Verkehrsarten.
+     *
+     * @returns {Array<object>} Aufgelöste Vorschau-Einträge
+     */
+    function buildSystemPreview() {
+        const entries = [];
+        for (const [key, style] of Object.entries(DB_2026_OPERATOR_STYLES)) {
+            entries.push({
+                key,
+                label: style.label,
+                kind: 'Betreiber',
+                sample: OPERATOR_SAMPLES[key] || style.label
+            });
+        }
+        entries.push({
+            key: 'regionalverkehr',
+            label: TRANSPORT_CATEGORY_LABELS[TRANSPORT_CATEGORY.REGIONALVERKEHR],
+            kind: 'Verkehrsart',
+            sample: 'RE 1'
+        });
+        if (lineColorService.regionalAutoColors) {
+            entries.push({
+                key: 'regionalverkehr-linienfarbe',
+                label: `${TRANSPORT_CATEGORY_LABELS[TRANSPORT_CATEGORY.REGIONALVERKEHR]} (Linienfarbe)`,
+                kind: 'Opt-in',
+                sample: 'RB 98',
+                operator: 'ag'
+            });
+        }
+        entries.push({
+            key: 'gelegenheitsverkehr',
+            label: TRANSPORT_CATEGORY_LABELS[TRANSPORT_CATEGORY.GELEGENHEITSVERKEHR],
+            kind: 'Verkehrsart',
+            sample: 'DZ 10'
+        });
+        entries.push({
+            key: 'sbahn',
+            label: 'S-Bahn (Linienfarbe)',
+            kind: 'Linienfarbe',
+            sample: 'S 5'
+        });
+        entries.push({
+            key: 'stadtverkehr',
+            label: TRANSPORT_CATEGORY_LABELS[TRANSPORT_CATEGORY.STADTVERKEHR],
+            kind: 'Linienfarbe',
+            sample: 'U 2'
+        });
+        return entries.map(describePreviewEntry);
+    }
+
+    /** Vorschauzeilen des aktiven Farbsystems (reagiert auf colorScheme und regionalAutoColors). */
+    let systemPreview = $derived(buildSystemPreview());
+
+    /** Kontrast der aktuell bearbeiteten Regel (Normalmodus). */
+    let ruleContrastInfo = $derived(
+        selectedRule
+            ? describeContrast(contrastRatio(selectedRule.textColor, selectedRule.backgroundColor))
+            : null
+    );
 
     function closeModal() {
         isOpen = false;
@@ -172,6 +339,100 @@
         </div>
 
         <div class="modal-body">
+            <!-- Farbsystem-Umschalter (DB-InfraGO-Konzept ab 26.11.2026 vs. klassisch) -->
+            <div class="scheme-banner">
+                <div class="scheme-info">
+                    <div class="scheme-title">
+                        <ZimIcon name="palette" size={16} />
+                        <span>Farbsystem</span>
+                        <span class="badge-status badge-success">
+                            {lineColorService.colorScheme === COLOR_SCHEMES.DB_2026 ? 'DB 2026' : 'Klassisch'}
+                        </span>
+                    </div>
+                    <div class="scheme-desc">
+                        {#if lineColorService.colorScheme === COLOR_SCHEMES.DB_2026}
+                            Farbe kennzeichnet den Betreiber (Fernverkehr) oder die Verkehrsart (Regional- und
+                            Gelegenheitsverkehr); S-Bahnen behalten ihre Linienfarbe. Eigene Regeln behalten Vorrang,
+                            die DB-Standardregeln gelten nur im klassischen System.
+                        {:else}
+                            Bisheriges Verhalten: Linienfarben und feste Regeln (u. a. weiße IC-Pille) ohne
+                            Betreiber- und Verkehrsart-Systematik.
+                        {/if}
+                    </div>
+                </div>
+                <div class="scheme-switch" role="radiogroup" aria-label="Farbsystem">
+                    <button
+                        type="button"
+                        class="scheme-option"
+                        class:active={lineColorService.colorScheme === COLOR_SCHEMES.DB_2026}
+                        role="radio"
+                        aria-checked={lineColorService.colorScheme === COLOR_SCHEMES.DB_2026}
+                        onclick={() => selectScheme(COLOR_SCHEMES.DB_2026)}
+                    >
+                        DB 2026
+                    </button>
+                    <button
+                        type="button"
+                        class="scheme-option"
+                        class:active={lineColorService.colorScheme === COLOR_SCHEMES.CLASSIC}
+                        role="radio"
+                        aria-checked={lineColorService.colorScheme === COLOR_SCHEMES.CLASSIC}
+                        onclick={() => selectScheme(COLOR_SCHEMES.CLASSIC)}
+                    >
+                        Klassisch
+                    </button>
+                </div>
+            </div>
+
+            <!-- Opt-in: Linienfarben im Regionalverkehr (nur im DB-2026-System) -->
+            {#if lineColorService.colorScheme === COLOR_SCHEMES.DB_2026}
+                <div class="scheme-option-row">
+                    <div class="scheme-option-info">
+                        <div class="scheme-option-title">Linienfarben auch im Regionalverkehr</div>
+                        <div class="scheme-option-desc">
+                            Standardmäßig ist der Regionalverkehr einheitlich dunkelgrau. Mit dieser Option gelten
+                            die Traewelling-Linienfarben wie bisher.
+                        </div>
+                    </div>
+                    <label class="switch-toggle" title="Linienfarben im Regionalverkehr ein-/ausschalten">
+                        <input
+                            type="checkbox"
+                            checked={lineColorService.regionalAutoColors}
+                            onchange={(e) => toggleRegionalAutoColors(e.target.checked)}
+                        />
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+            {/if}
+
+            <!-- System-Vorschau analog DB-InfraGO-Schaubild -->
+            <div class="system-preview-card">
+                <div class="system-preview-header">
+                    <span class="sub-heading">System-Vorschau</span>
+                    <span class="system-preview-hint">Kontrast nach WCAG 2.2</span>
+                </div>
+                {#if lineColorService.colorScheme === COLOR_SCHEMES.DB_2026}
+                    <div class="system-preview-grid">
+                        {#each systemPreview as entry (entry.key)}
+                            <div class="system-preview-item">
+                                <div class="system-preview-badge" style={entry.cssStyle}>{entry.sample}</div>
+                                <div class="system-preview-meta">
+                                    <span class="system-preview-label" title={entry.label}>{entry.label}</span>
+                                    <span class="system-preview-kind">{entry.kind}</span>
+                                </div>
+                                <span class="contrast-chip contrast-{entry.contrastLevel}" title={entry.contrastTitle}>
+                                    {entry.contrastText}
+                                </span>
+                            </div>
+                        {/each}
+                    </div>
+                {:else}
+                    <div class="empty-hint">
+                        Die System-Vorschau zeigt das DB-2026-Konzept und ist im klassischen System ausgeblendet.
+                    </div>
+                {/if}
+            </div>
+
             <!-- Auto-Colors Status & Toggle Banner -->
             <div class="auto-colors-banner">
                 <div class="auto-colors-info">
@@ -333,7 +594,24 @@
 
                             <!-- FARBEN NORMALMODUS -->
                             <div class="colors-section">
-                                <span class="section-title">Farben (Normalmodus):</span>
+                                <div class="section-title-row">
+                                    <span class="section-title">Farben (Normalmodus):</span>
+                                    {#if ruleContrastInfo}
+                                        <span class="contrast-chip contrast-{ruleContrastInfo.level}" title={ruleContrastInfo.title}>
+                                            Kontrast {ruleContrastInfo.text}
+                                        </span>
+                                    {/if}
+                                    {#if ruleContrastInfo && (ruleContrastInfo.level === 'low' || ruleContrastInfo.level === 'large')}
+                                        <button
+                                            type="button"
+                                            class="contrast-fix-btn"
+                                            title="Setzt die Schriftfarbe auf schwarz oder weiß – die Marken-/Hintergrundfarbe bleibt unverändert"
+                                            onclick={applyReadableTextColor}
+                                        >
+                                            Schrift korrigieren
+                                        </button>
+                                    {/if}
+                                </div>
                                 <div class="color-pickers-row">
                                     <div class="color-item">
                                         <label for="bg_color_picker">Hintergrund</label>
@@ -836,6 +1114,219 @@ input[type="color"]::-webkit-color-swatch { border: 1px solid var(--border); bor
     background: rgba(234, 179, 8, 0.2);
     color: #facc15;
     border: 1px solid rgba(234, 179, 8, 0.4);
+}
+
+/* Farbsystem-Umschalter (DB 2026 / Klassisch) */
+.scheme-banner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 12px;
+}
+.scheme-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1 1 240px;
+    min-width: 0;
+}
+.scheme-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 0.92rem;
+    color: var(--text-main);
+}
+.scheme-desc {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    line-height: 1.35;
+}
+.scheme-switch {
+    display: inline-flex;
+    gap: 3px;
+    padding: 3px;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+.scheme-option {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+.scheme-option:hover {
+    color: var(--text-main);
+}
+.scheme-option.active {
+    background: #2563eb;
+    color: #ffffff;
+}
+
+/* Regionalverkehr-Opt-in */
+.scheme-option-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 16px;
+    margin-bottom: 12px;
+}
+.scheme-option-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex: 1 1 240px;
+    min-width: 0;
+}
+.scheme-option-title {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-main);
+}
+.scheme-option-desc {
+    font-size: 0.76rem;
+    color: var(--text-muted);
+    line-height: 1.35;
+}
+
+/* System-Vorschau */
+.system-preview-card {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 16px;
+}
+.system-preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+.system-preview-hint {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+.system-preview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 8px;
+}
+.system-preview-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 8px;
+}
+.system-preview-badge {
+    font-family: 'Open Sans Condensed', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 62px;
+    flex-shrink: 0;
+}
+.system-preview-meta {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+.system-preview-label {
+    font-size: 0.74rem;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.system-preview-kind {
+    font-size: 0.66rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+/* Kontrast-Chips (WCAG 2.2) */
+.section-title-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.section-title-row .section-title {
+    margin-bottom: 0;
+}
+.contrast-fix-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border);
+    color: var(--text-main);
+    font-family: inherit;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+.contrast-fix-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+.contrast-chip {
+    font-size: 0.66rem;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.contrast-ok {
+    background: rgba(34, 197, 94, 0.2);
+    color: #4ade80;
+    border-color: rgba(34, 197, 94, 0.4);
+}
+.contrast-large {
+    background: rgba(234, 179, 8, 0.2);
+    color: #facc15;
+    border-color: rgba(234, 179, 8, 0.4);
+}
+.contrast-low {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+    border-color: rgba(239, 68, 68, 0.4);
+}
+.contrast-none {
+    background: rgba(148, 163, 184, 0.15);
+    color: #94a3b8;
+    border-color: rgba(148, 163, 184, 0.3);
 }
 
 /* Toggle Switch */

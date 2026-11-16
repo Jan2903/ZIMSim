@@ -162,6 +162,8 @@
         const lr = lineColorService.rules;
         const lac = lineColorService.autoColorsEnabled;
         const lacl = lineColorService.isAutoColorsLoaded;
+        const lcs = lineColorService.colorScheme;
+        const lra = lineColorService.regionalAutoColors;
 
         trainDisplay.scheduleUpdateAll();
 

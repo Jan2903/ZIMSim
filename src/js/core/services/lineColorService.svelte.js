@@ -1,9 +1,17 @@
 // src/js/core/services/lineColorService.svelte.js
 import { COLORS } from '../constants/theme.js';
+import {
+    DB_2026_CATEGORY_STYLES,
+    DB_2026_OPERATOR_STYLES,
+    DB_2026_SBAHN_FALLBACK,
+    TRANSPORT_CATEGORY
+} from '../constants/trainColorPalette.js';
 import { journeyStore } from '../state/stores.js';
 import { StorageService } from './storageService.js';
 import { createBundle, parseBundle, mergeRuleList } from '../utils/bundleUtils.js';
 import { matchesTextPattern } from '../utils/patternUtils.js';
+import { contrastRatio, ensureReadableTextColor, isVeryLightColor } from '../utils/colorUtils.js';
+import { classifyTransportCategory } from '../utils/trainCategoryUtils.js';
 
 /**
  * @typedef {Object} LineBadgeRule
@@ -110,6 +118,14 @@ export const DEFAULT_LINE_RULES = [
 
 const STORAGE_KEY = 'zimsim_line_badge_rules';
 const AUTO_COLORS_ENABLED_KEY = 'zimsim_auto_line_colors_enabled';
+const COLOR_SCHEME_KEY = 'zimsim_color_scheme';
+const REGIONAL_AUTO_COLORS_KEY = 'zimsim_regional_auto_colors';
+
+/** Verfügbare Farbsysteme: neues DB-InfraGO-Konzept oder klassische Linienfarben. */
+export const COLOR_SCHEMES = Object.freeze({
+    DB_2026: 'db2026',
+    CLASSIC: 'classic'
+});
 
 /**
  * Zentraler reaktiver Svelte 5 Service für Linienfarben und Badge-Formen.
@@ -124,6 +140,12 @@ class LineColorService {
     /** @type {boolean} Ob die Traewelling-Datenbank erfolgreich geladen wurde */
     isAutoColorsLoaded = $state(false);
 
+    /** @type {'db2026' | 'classic'} Aktives Farbsystem (ab 26.11.2026 standardmäßig DB 2026) */
+    colorScheme = $state(COLOR_SCHEMES.DB_2026);
+
+    /** @type {boolean} Opt-in: Linienfarben auch im Regionalverkehr (übersteuert das Konzept) */
+    regionalAutoColors = $state(false);
+
     /** @type {object|null} Rohdaten aus line-colors.json */
     _autoData = null;
 
@@ -133,9 +155,13 @@ class LineColorService {
     /** @type {Map<string, RegExp>} Interner Cache für vorkompilierte Regex-Instanzen */
     _regexCache = new Map();
 
+    /** @type {boolean} Ob der `storage`-Listener bereits registriert wurde */
+    _storageSyncAttached = false;
+
     constructor() {
         this.loadRules();
         this.loadAutoColorsSettings();
+        this.loadColorSchemeSettings();
         this.loadAutoColors();
 
         // Asynchrone Spiegelung & Wiederherstellung aus IndexedDB (ausfallsicher)
@@ -145,6 +171,51 @@ class LineColorService {
                 this.clearCache();
                 // Kein direkter Aufruf des Display-Layers: Das Neuzeichnen übernimmt
                 // der reaktive Effekt in App.svelte, der lineColorService.rules beobachtet.
+            }
+        });
+
+        this.initStorageSync();
+    }
+
+    /**
+     * Übernimmt Farbsystem-Änderungen aus anderen Tabs/Fenstern derselben Origin.
+     * Pop-Outs werden bereits über den BroadcastChannel synchronisiert; das
+     * `storage`-Event deckt zusätzlich weitere Dashboard-Tabs ab.
+     * Das Neuzeichnen übernimmt wie bei den Settern der Effekt in App.svelte.
+     *
+     * @returns {void}
+     */
+    initStorageSync() {
+        if (typeof window === 'undefined' || this._storageSyncAttached) return;
+        this._storageSyncAttached = true;
+
+        window.addEventListener('storage', (event) => {
+            if (!event.key) return;
+
+            if (event.key === COLOR_SCHEME_KEY) {
+                const next = event.newValue;
+                if ((next === COLOR_SCHEMES.DB_2026 || next === COLOR_SCHEMES.CLASSIC) && next !== this.colorScheme) {
+                    this.colorScheme = next;
+                    this.clearCache();
+                }
+                return;
+            }
+
+            if (event.key === REGIONAL_AUTO_COLORS_KEY) {
+                const next = event.newValue === 'true';
+                if (next !== this.regionalAutoColors) {
+                    this.regionalAutoColors = next;
+                    this.clearCache();
+                }
+                return;
+            }
+
+            if (event.key === AUTO_COLORS_ENABLED_KEY) {
+                const next = event.newValue === 'true';
+                if (next !== this.autoColorsEnabled) {
+                    this.autoColorsEnabled = next;
+                    this.clearCache();
+                }
             }
         });
     }
@@ -161,6 +232,63 @@ class LineColorService {
         } catch (e) {
             console.warn('[LineColorService] Fehler beim Laden der Auto-Farben-Einstellung:', e);
         }
+    }
+
+    /**
+     * Lädt Farbsystem und Regionalverkehr-Option aus dem LocalStorage.
+     * Ohne gespeicherte Auswahl ist das neue DB-InfraGO-System (ab 26.11.2026) aktiv.
+     */
+    loadColorSchemeSettings() {
+        try {
+            const scheme = localStorage.getItem(COLOR_SCHEME_KEY);
+            if (scheme === COLOR_SCHEMES.DB_2026 || scheme === COLOR_SCHEMES.CLASSIC) {
+                this.colorScheme = scheme;
+            }
+            const regional = localStorage.getItem(REGIONAL_AUTO_COLORS_KEY);
+            if (regional !== null) {
+                this.regionalAutoColors = regional === 'true';
+            }
+        } catch (e) {
+            console.warn('[LineColorService] Fehler beim Laden der Farbsystem-Einstellung:', e);
+        }
+    }
+
+    /**
+     * Wechselt das Farbsystem (DB 2026 oder klassisch).
+     *
+     * @param {'db2026' | 'classic'} scheme - Ziel-Farbsystem
+     * @returns {void}
+     */
+    setColorScheme(scheme) {
+        if (scheme !== COLOR_SCHEMES.DB_2026 && scheme !== COLOR_SCHEMES.CLASSIC) return;
+        this.colorScheme = scheme;
+        try {
+            localStorage.setItem(COLOR_SCHEME_KEY, scheme);
+        } catch (e) {
+            console.warn('[LineColorService] Fehler beim Speichern der Farbsystem-Einstellung:', e);
+        }
+        this.clearCache();
+        // Kein direkter Aufruf des Display-Layers: Das Neuzeichnen übernimmt
+        // der reaktive Effekt in App.svelte, der colorScheme beobachtet.
+    }
+
+    /**
+     * Schaltet die Traewelling-Linienfarben im Regionalverkehr ein oder aus.
+     * Im DB-2026-System ist der Regionalverkehr standardmäßig einheitlich gefärbt.
+     *
+     * @param {boolean} enabled - true, wenn Linienfarben auch im Regionalverkehr gelten sollen
+     * @returns {void}
+     */
+    setRegionalAutoColors(enabled) {
+        this.regionalAutoColors = Boolean(enabled);
+        try {
+            localStorage.setItem(REGIONAL_AUTO_COLORS_KEY, String(this.regionalAutoColors));
+        } catch (e) {
+            console.warn('[LineColorService] Fehler beim Speichern der Regionalverkehr-Einstellung:', e);
+        }
+        this.clearCache();
+        // Kein direkter Aufruf des Display-Layers: Das Neuzeichnen übernimmt
+        // der reaktive Effekt in App.svelte, der regionalAutoColors beobachtet.
     }
 
     /**
@@ -461,11 +589,30 @@ class LineColorService {
         const opKey = context.operator || '';
         const dsKey = context.stationContext?.ds100 || journeyStore?.stationContext?.ds100 || '';
 
-        const cacheKey = `${name}|${isInverted}|${Boolean(context.isAusfall)}|${opKey}|${dsKey}`;
+        const cacheKey = `${name}|${isInverted}|${Boolean(context.isAusfall)}|${opKey}|${dsKey}|${this.colorScheme}|${this.regionalAutoColors}`;
         if (this._resolveCache.has(cacheKey)) {
             return this._resolveCache.get(cacheKey);
         }
 
+        const result = this.colorScheme === COLOR_SCHEMES.DB_2026
+            ? this._resolveDb2026Style(name, context, isInverted)
+            : this._resolveClassicStyle(name, context, isInverted);
+
+        this._resolveCache.set(cacheKey, result);
+        return result;
+    }
+
+    /**
+     * Klassische Auflösung (Stand vor dem DB-InfraGO-Farbkonzept):
+     * Custom-Regeln → Traewelling-Autofarben → System-Standardregeln → Fallback.
+     *
+     * @private
+     * @param {string} name - Bereinigter Zug-/Linienname
+     * @param {object} context - Kontext-Optionen aus resolveStyle
+     * @param {boolean} isInverted - Ob invertiert (Ausfall/Nebenmonitor) gezeichnet wird
+     * @returns {object} Aufgelöster Badge-Stil
+     */
+    _resolveClassicStyle(name, context, isInverted) {
         // 1. Suche nach passender Regel (Custom-Regeln haben Vorrang vor Automatik)
         let matchedCustomRule = null;
         let matchedDefaultRule = null;
@@ -480,26 +627,168 @@ class LineColorService {
             }
         }
 
-        let result;
-
         if (matchedCustomRule) {
-            result = this._formatRuleResult(matchedCustomRule, context, isInverted);
-        } else {
-            // 2. Traewelling Auto-Linienfarben (z.B. S-Bahnen, MEX, FLX)
-            const autoColor = this.getAutoColor(name, context);
-            if (autoColor) {
-                result = this._formatAutoColorResult(autoColor, context, isInverted);
-            } else if (matchedDefaultRule) {
-                // 3. System-Standardregeln (IC-Pille, FlixTrain, generischer S-Bahn-Fallback)
-                result = this._formatRuleResult(matchedDefaultRule, context, isInverted);
-            } else {
-                // 4. Fallback-Verhalten (Standard ZIM)
-                result = this._formatFallbackResult(context);
+            return this._formatRuleResult(matchedCustomRule, context, isInverted);
+        }
+
+        // 2. Traewelling Auto-Linienfarben (z.B. S-Bahnen, MEX, FLX)
+        const autoColor = this.getAutoColor(name, context);
+        if (autoColor) {
+            return this._formatAutoColorResult(autoColor, context, isInverted);
+        }
+        if (matchedDefaultRule) {
+            // 3. System-Standardregeln (IC-Pille, FlixTrain, generischer S-Bahn-Fallback)
+            return this._formatRuleResult(matchedDefaultRule, context, isInverted);
+        }
+        // 4. Fallback-Verhalten (Standard ZIM)
+        return this._formatFallbackResult(context);
+    }
+
+    /**
+     * Auflösung nach dem DB-InfraGO-Farbkonzept (ab 26.11.2026):
+     * Farbe kennzeichnet den Betreiber (Fernverkehr) oder die Verkehrsart
+     * (Regional-/Gelegenheitsverkehr); S-Bahnen behalten Linienfarben.
+     *
+     * @private
+     * @param {string} name - Bereinigter Zug-/Linienname
+     * @param {object} context - Kontext-Optionen aus resolveStyle
+     * @param {boolean} isInverted - Ob invertiert (Ausfall/Nebenmonitor) gezeichnet wird
+     * @returns {object} Aufgelöster Badge-Stil
+     */
+    _resolveDb2026Style(name, context, isInverted) {
+        // 1. Eigene Regeln behalten Vorrang (System-Standardregeln gelten hier nicht)
+        for (const rule of this.rules) {
+            if (!rule.isDefault && this.matchesRule(name, rule)) {
+                return this._formatRuleResult(rule, context, isInverted);
             }
         }
 
-        this._resolveCache.set(cacheKey, result);
-        return result;
+        const { category, operatorKey } = classifyTransportCategory(name, { operator: context.operator });
+
+        // 2. S-Bahn: Linienfarbe aus der Datenbank, sonst DB-Grün
+        if (category === TRANSPORT_CATEGORY.SBAHN) {
+            const autoColor = this.getAutoColor(name, context);
+            if (autoColor) {
+                return this._formatDb2026ColorResult(autoColor, isInverted);
+            }
+            return this._formatDb2026PaletteStyle(DB_2026_SBAHN_FALLBACK, isInverted);
+        }
+
+        // 3. Fernverkehr: Betreiberfarbe, ohne Betreiber die Verkehrsart-Farbe
+        if (category === TRANSPORT_CATEGORY.FERNVERKEHR) {
+            const operatorStyle = operatorKey ? DB_2026_OPERATOR_STYLES[operatorKey] : null;
+            const style = operatorStyle || DB_2026_CATEGORY_STYLES[TRANSPORT_CATEGORY.FERNVERKEHR];
+            return this._formatDb2026PaletteStyle(style, isInverted);
+        }
+
+        // 4. Regionalverkehr: einheitliche Kategorie-Farbe (optional Linienfarben)
+        if (category === TRANSPORT_CATEGORY.REGIONALVERKEHR) {
+            if (this.regionalAutoColors) {
+                const autoColor = this.getAutoColor(name, context);
+                if (autoColor) {
+                    return this._formatDb2026ColorResult(autoColor, isInverted);
+                }
+            }
+            return this._formatDb2026PaletteStyle(
+                DB_2026_CATEGORY_STYLES[TRANSPORT_CATEGORY.REGIONALVERKEHR],
+                isInverted
+            );
+        }
+
+        // 5. Gelegenheitsverkehr: einheitliche Kategorie-Farbe
+        if (category === TRANSPORT_CATEGORY.GELEGENHEITSVERKEHR) {
+            return this._formatDb2026PaletteStyle(
+                DB_2026_CATEGORY_STYLES[TRANSPORT_CATEGORY.GELEGENHEITSVERKEHR],
+                isInverted
+            );
+        }
+
+        // 6. Stadtverkehr und unbekannte Gattungen: Linienfarben wie bisher, sonst Fallback
+        const autoColor = this.getAutoColor(name, context);
+        if (autoColor) {
+            return this._formatDb2026ColorResult(autoColor, isInverted);
+        }
+        return this._formatFallbackResult(context);
+    }
+
+    /**
+     * Formatiert einen Paletten-Stil (Verkehrsart oder Betreiber) inklusive
+     * Invert-Variante für weiße Hintergründe.
+     *
+     * @private
+     * @param {object} style - Paletteneintrag aus trainColorPalette.js
+     * @param {boolean} isInverted - Ob invertiert gezeichnet wird
+     * @returns {object} Aufgelöster Badge-Stil
+     */
+    _formatDb2026PaletteStyle(style, isInverted) {
+        const inverted = isInverted ? (style.inverted || {}) : {};
+
+        const backgroundColor = inverted.backgroundColor ?? style.backgroundColor;
+        const borderColor = inverted.borderColor ?? style.borderColor ?? 'transparent';
+        const borderWidth = inverted.borderWidth ?? style.borderWidth ?? 0;
+
+        return {
+            backgroundColor,
+            textColor: ensureReadableTextColor(backgroundColor, inverted.textColor ?? style.textColor, 3),
+            borderColor,
+            borderWidth,
+            shape: inverted.shape ?? style.shape ?? 'rectangle',
+            cornerRadius: inverted.cornerRadius ?? style.cornerRadius ?? 0,
+            hasMatchedRule: true,
+            rule: null
+        };
+    }
+
+    /**
+     * Formatiert eine dynamische Linienfarbe (Traewelling) für das DB-2026-System.
+     * Auf weißem Grund werden sehr helle Farben zur Outline, helle Farben erhalten
+     * einen dunklen Rahmen; die Schriftfarbe wird bei Bedarf korrigiert.
+     *
+     * @private
+     * @param {{ bg: string, fg: string, shape?: string, border?: string }} autoColor - Rohfarbe
+     * @param {boolean} isInverted - Ob invertiert gezeichnet wird
+     * @returns {object} Aufgelöster Badge-Stil
+     */
+    _formatDb2026ColorResult(autoColor, isInverted) {
+        const shape = autoColor.shape || 'rounded';
+        const cornerRadius = shape === 'pill' ? 15 : (shape === 'rectangle' ? 0 : 6);
+        let borderColor = autoColor.border && autoColor.border !== 'transparent'
+            ? autoColor.border
+            : 'transparent';
+        let borderWidth = borderColor !== 'transparent' ? 2 : 0;
+
+        if (isInverted) {
+            if (isVeryLightColor(autoColor.bg)) {
+                // Badge würde auf weißem Grund verschwinden → Outline
+                return {
+                    backgroundColor: 'transparent',
+                    textColor: '#000000',
+                    borderColor: '#000000',
+                    borderWidth: 3,
+                    shape: 'outline',
+                    cornerRadius,
+                    hasMatchedRule: true,
+                    rule: null
+                };
+            }
+            const ratioToWhite = contrastRatio(autoColor.bg, '#ffffff');
+            if (ratioToWhite !== null && ratioToWhite < 3) {
+                // Helle Linienfarbe (z. B. Gelb) sichtbar abgrenzen
+                borderColor = '#000000';
+                borderWidth = 2;
+            }
+        }
+
+        return {
+            backgroundColor: autoColor.bg,
+            textColor: ensureReadableTextColor(autoColor.bg, autoColor.fg, 3),
+            borderColor,
+            borderWidth,
+            shape,
+            cornerRadius,
+            hasMatchedRule: true,
+            rule: null
+        };
     }
 
     /**
@@ -707,10 +996,18 @@ class LineColorService {
 
     /**
      * Exportiert alle Regeln im standardisierten ZIMSim-Container.
+     * Die Metadaten halten fest, in welchem Farbsystem die Regeln gepflegt wurden.
      * @returns {string}
      */
     exportRules() {
-        return JSON.stringify(createBundle('zimsim-line-colors', this.rules), null, 2);
+        return JSON.stringify(
+            createBundle('zimsim-line-colors', this.rules, {
+                colorScheme: this.colorScheme,
+                regionalAutoColors: this.regionalAutoColors
+            }),
+            null,
+            2
+        );
     }
 
     /**
