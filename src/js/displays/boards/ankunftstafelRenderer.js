@@ -5,6 +5,7 @@ import { drawAnalogClock, drawDigitalClock } from '../core/sharedRenderers.js';
 import { getSimulatedTime } from '../../core/utils/config.js';
 import { lineColorService } from '../../core/services/lineColorService.svelte.js';
 import { getBoardTokens } from '../core/boardTokenService.js';
+import { drawInlineText, measureInlineText, planeIconToken, stripPlaneChar } from '../core/inlineIcons.js';
 
 /**
  * Renderer für die DB-Ankunftstafel (Nur Ankünfte).
@@ -243,17 +244,16 @@ function drawAnkunftRow(ctx, train, x, y, width, height, isAlt, isPortrait) {
     }
 
     // Flughafen-Piktogramm wenn z.B. BER
-    let hasAirport = originStation.includes('Flughafen') || originStation.includes('BER');
-
     const maxOriginW = isPortrait ? (width - originX - 160) : (width - originX - 300);
-    originStation = truncateWithEllipsis(ctx, originStation, maxOriginW);
 
-    drawText(ctx, originStation, originX, textY, FONTS.bold(fontSize), isAusfall ? '#94a3b8' : COLORS.WHITE, 'left');
-
-    if (hasAirport) {
-        const oWidth = ctx.measureText(originStation).width;
-        drawText(ctx, ' ✈', originX + oWidth + 5, textY, FONTS.bold(fontSize), isAusfall ? '#94a3b8' : COLORS.WHITE, 'left');
-    }
+    // Flughafen-Piktogramm als Vektor-Symbol statt Unicode-✈ (plattformabhängiger
+    // Fallback-Font). Die Breite des Piktogramms wird beim Kürzen freigehalten.
+    originStation = stripPlaneChar(originStation);
+    const planeToken = planeIconToken(originStation, 'suffix');
+    ctx.font = FONTS.bold(fontSize);
+    const planeWidth = planeToken ? measureInlineText(ctx, planeToken) : 0;
+    originStation = truncateWithEllipsis(ctx, originStation, maxOriginW - planeWidth);
+    drawInlineText(ctx, originStation + planeToken, originX, textY, isAusfall ? '#94a3b8' : COLORS.WHITE, 'left');
 
     // 5. Gleis (Rechtsbündig)
     const gleisX = width - (isPortrait ? 40 : 60);

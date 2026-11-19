@@ -1,4 +1,5 @@
 // js/displays/scrollManager.js
+import { buildInlineIconFragment, measureInlineText } from './inlineIcons.js';
 
 /**
  * Verwaltet alle scrollenden Text-Overlays, die als HTML-Elemente über dem Canvas liegen.
@@ -115,7 +116,7 @@ export class ScrollManager {
 
         const tempCtx = document.createElement('canvas').getContext('2d');
         tempCtx.font = font;
-        const textWidth = tempCtx.measureText(text).width;
+        const textWidth = measureInlineText(tempCtx, text);
         const scrollWidth = parseInt(width);
 
         if ((textWidth > scrollWidth) || scrollingID === 'ankunft' || scrollingID === 'arrival') {
@@ -125,11 +126,11 @@ export class ScrollManager {
             for (let i = 0; i < Math.ceil((scrollWidth * 10) / textWidth); i++) {
                 result += text + connect;
             }
-            inner.textContent = result;
-            const totalWidth = tempCtx.measureText(result).width;
+            inner.replaceChildren(buildInlineIconFragment(result, color, font));
+            const totalWidth = measureInlineText(tempCtx, result);
             inner.style.setProperty('--scroll-duration', `${totalWidth / 100}s`);
         } else {
-            inner.textContent = text;
+            inner.replaceChildren(buildInlineIconFragment(text, color, font));
             inner.style.animation = 'none';
             inner.style.paddingLeft = '10px';
         }

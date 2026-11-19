@@ -12,6 +12,7 @@ import { getHaltMessageText, getQualityText, drawScrollingText } from '../core/i
 import { journeyStore } from '../../core/state/stores.js';
 import { displayConfigStore } from '../core/displayConfigStore.svelte.js';
 import { getBoardTokens } from '../core/boardTokenService.js';
+import { drawInlineText, planeIconToken, stripPlaneChar } from '../core/inlineIcons.js';
 
 /**
  * Vollständiger dynamischer Renderer für Voranzeiger und Abfahrtstafeln (Anschlusstafel).
@@ -446,12 +447,12 @@ function drawTrainRow(ctx, train, x, y, width, height, isAlt, t, coupledInfo = {
 
     // B. Unteres Sub-Element: Fahrtziel
     const destY = timeY;
-    let destText = train.displayDestination || '';
-    if (/flughafen|airport/i.test(destText) && !destText.includes('✈')) {
-        destText = `✈ ${destText}`;
-    }
+    // Vektor-Piktogramm statt Unicode-✈ (siehe inlineIcons.js)
+    const destination = stripPlaneChar(train.displayDestination || '');
+    const destText = planeIconToken(destination, 'prefix') + destination;
 
-    drawText(ctx, destText, col2X, destY, FONTS.bold(t.row.dest.fontSize), primaryColor, 'left');
+    ctx.font = FONTS.bold(t.row.dest.fontSize);
+    drawInlineText(ctx, destText, col2X, destY, primaryColor, 'left');
 
     // C. Verbindungs-Klammer ("T" / Flügelzug-Symbol)
     // Wenn dieser Zug mit dem nächsten gekoppelt ist: verbindet destY mit destY der nächsten Zeile

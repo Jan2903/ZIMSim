@@ -9,6 +9,7 @@ import { getHaltMessageText, getQualityText, drawScrollingText } from '../core/i
 import { journeyStore } from '../../core/state/stores.js';
 import { config } from '../../core/utils/config.js';
 import { displayConfigStore } from '../core/displayConfigStore.svelte.js';
+import { drawInlineText, measureInlineText, planeIconToken, stripPlaneChar } from '../core/inlineIcons.js';
 
 /**
  * Dedizierter Renderer für die DB-Anschlusstafel im Zoom-Layout (4 Zeilen Vollbild).
@@ -279,23 +280,22 @@ function drawZoomMiddleColumn(ctx, train, isAusfall, x, upperY, lowerY, availabl
     }
 
     // 2. UNTERE ZEILE: Großer Zielbahnhof
-    let destText = train.displayDestination;
-    const isAirport = destText.includes('Flughafen') || destText.includes('BER');
-    if (isAirport && !destText.includes('✈')) {
-        destText += ' ✈';
-    }
+    const destBase = stripPlaneChar(train.displayDestination || '');
+    // Vektor-Piktogramm statt Unicode-✈ (siehe inlineIcons.js)
+    const iconSuffix = planeIconToken(destBase, 'suffix');
 
     ctx.textAlign = 'left';
     ctx.fillStyle = isAusfall ? COLORS.NAVY : COLORS.WHITE;
 
     let destFontSize = 86;
     ctx.font = FONTS.bold(destFontSize);
-    while (destFontSize > 54 && ctx.measureText(destText).width > availableWidth) {
+    while (destFontSize > 54 && measureInlineText(ctx, `${destBase}${iconSuffix}`) > availableWidth) {
         destFontSize -= 2;
         ctx.font = FONTS.bold(destFontSize);
     }
-    destText = truncateWithEllipsis(ctx, destText, availableWidth);
-    drawText(ctx, destText, x, lowerY, FONTS.bold(destFontSize), ctx.fillStyle, 'left');
+    const iconWidth = iconSuffix ? measureInlineText(ctx, iconSuffix) : 0;
+    const destText = truncateWithEllipsis(ctx, destBase, availableWidth - iconWidth) + iconSuffix;
+    drawInlineText(ctx, destText, x, lowerY, ctx.fillStyle, 'left');
 }
 
 /**

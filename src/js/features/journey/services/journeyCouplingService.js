@@ -346,7 +346,8 @@ export class JourneyCouplingService {
     }
 
     /**
-     * Generiert den Informationstext für Zugteilungen (rein Deutsch, z.B. "Zugteilung in Hamm (Westf) Hbf").
+     * Generiert den Informationstext für Zugteilungen (rein Deutsch, z.B. "Zugteilung {zugteilung} in Hamm (Westf) Hbf").
+     * Das Token {zugteilung} wird beim Rendern als Piktogramm gezeichnet (siehe inlineIcons.js).
      * Bei mehreren Teilungsbahnhöfen: "Zugteilung in A und B" bzw. "Zugteilung in A, B und C".
      *
      * @param {Array<object>} journeys
@@ -366,7 +367,7 @@ export class JourneyCouplingService {
             stationText = `${splitStations.slice(0, -1).join(', ')} und ${splitStations[splitStations.length - 1]}`;
         }
 
-        return `Zugteilung in ${stationText}`;
+        return `Zugteilung {zugteilung} in ${stationText}`;
     }
 
     /**

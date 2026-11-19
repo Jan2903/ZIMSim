@@ -1,5 +1,5 @@
 // js/displays/core/infoTextDisplayUtils.js
-import { drawText } from './textUtils.js';
+import { measureInlineText, drawInlineText, resolveInlineBaseline, getInlineIconExtent } from './inlineIcons.js';
 import { ANSCHLUSSTAFEL_TEXT_TYPES } from '../../features/journey/services/infoTextTypes.js';
 
 /** Fallback-Text für komplett ausgefallene Fahrten. */
@@ -98,25 +98,35 @@ export function drawScrollingText(ctx, text, x, y, maxWidth, font, color, render
     if (!text) return;
 
     ctx.font = font;
-    const textWidth = ctx.measureText(text).width;
+    const textWidth = measureInlineText(ctx, text);
 
     if (textWidth <= maxWidth) {
-        drawText(ctx, text, x, y, font, color, 'left');
+        drawInlineText(ctx, text, x, y, color, 'left');
         return;
     }
 
     const speed = options.speed ?? 1.8;
     const clipHeight = options.clipHeight ?? 60;
     const item = `+++ ${text} `;
-    const itemWidth = ctx.measureText(item).width;
+    const itemWidth = measureInlineText(ctx, item);
     const offset = ((renderCtx?.tickerOffset || 0) * speed) % itemWidth;
+
+    // Symbole ragen unter die Grundlinie (Trennpunkte) bzw. über die
+    // Versalhöhe hinaus. Das Clip-Rechteck wird deshalb nur so weit
+    // vergrößert, wie es die Symbole des Textes verlangen.
+    const baseline = resolveInlineBaseline(ctx, y, item);
+    const extent = getInlineIconExtent(ctx, item);
+    const clipTop = Math.max(clipHeight / 2, y - (baseline - extent.above));
+    const clipBottom = Math.max(clipHeight / 2, baseline + extent.below - y);
 
     ctx.save();
     ctx.beginPath();
-    ctx.rect(x, y - clipHeight / 2, maxWidth, clipHeight);
+    ctx.rect(x, y - clipTop, maxWidth, clipTop + clipBottom);
     ctx.clip();
 
     // Drei Kopien reichen für einen lückenlosen Umlauf
-    drawText(ctx, item + item + item, x - offset, y, font, color, 'left');
+    for (let i = 0; i < 3; i++) {
+        drawInlineText(ctx, item, x - offset + i * itemWidth, y, color, 'left');
+    }
     ctx.restore();
 }
