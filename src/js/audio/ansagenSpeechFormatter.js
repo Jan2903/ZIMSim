@@ -201,9 +201,28 @@ export class AnsagenSpeechFormatter {
     }
 
     /**
+     * Ermittelt die Liniennummer einer S-Bahn, für die eine eigene Linienansage existiert.
+     * Im Audio-ZIP liegen diese als `zuggattungen/hoch/s/s1` bis `zuggattungen/hoch/s/s99`.
+     *
+     * @param {string} gattung - Zuggattung des Zuges (z.B. "S")
+     * @param {string} nummer - Zugnummer/Linie (z.B. "1", "40")
+     * @returns {number|null} Liniennummer 1-99 oder null, wenn keine Linienansage vorgesehen ist
+     */
+    sBahnLine(gattung, nummer) {
+        if (!gattung || gattung.trim().toUpperCase() !== 'S') return null;
+        if (!/^\d+$/.test(nummer || '')) return null;
+
+        const line = parseInt(nummer, 10);
+        if (line < 1 || line > 99) return null;
+        return line;
+    }
+
+    /**
      * Generiert die Ansagenteile für den Zugnamen (Gattung und Nummer).
      * Zuggattungen werden immer "hoch" gesprochen. Bei einbuchstabigen Zuggattungen (z.B. S-Bahnen)
      * wird die Zugnummer "tief" gesprochen, ansonsten "hoch".
+     * S-Bahnen der Linien 1-99 nutzen eine komplette Linienansage
+     * (`zuggattungen/hoch/s/s1` ... `s99`), sodass Gattung und Linie nicht getrennt gesprochen werden.
      *
      * @param {Array} playlist - Das Array, an das die Audio-Objekte angehängt werden.
      * @param {string} trainName - Der Name des Zuges (z.B. "S 1", "RE 5", "ICE 123").
@@ -229,6 +248,17 @@ export class AnsagenSpeechFormatter {
             } else {
                 gattung = trainName; 
             }
+        }
+
+        // S-Bahn: eine aufgezeichnete Ansage pro Linie statt "S" + getrennter Liniennummer.
+        // Fehlt die Datei, spricht der TTS-Fallback des Players den kompletten Text (z.B. "S 1").
+        const sBahnLine = this.sBahnLine(gattung, nummer);
+        if (sBahnLine !== null) {
+            playlist.push({
+                file: `${this.lang}/zuggattungen/hoch/s/s${sBahnLine}`,
+                text: `S ${sBahnLine}`
+            });
+            return;
         }
 
         if (gattung) {
