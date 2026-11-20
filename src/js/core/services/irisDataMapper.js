@@ -295,6 +295,12 @@ export class IrisDataMapper {
     /**
      * Verarbeitet die rohen IRIS-Meldungen, filtert ungültige heraus und trennt sie
      * in den primären Verspätungsgrund, Qualitätsmeldungen (Lauftexte) und eine strukturierte Meldungsliste.
+     *
+     * Es werden ausschließlich codebasierte RIS-Meldungen übernommen, deren Code sich
+     * einem Preset vom Typ 'R' (Verspätungsgrund) oder 'Q' (Qualitätsabweichung) zuordnen lässt.
+     * Freitexte (t='f'), HIM-Meldungen (t='h'), IBIS-Meldungen und unbekannte Codes werden
+     * verworfen, da IRIS dafür keinen verlässlichen Anzeigetext liefert.
+     *
      * @param {Array<Object>} messages 
      * @param {number} simulatedTimeMs 
      * @returns {Object} { delayReason, delayReasonCode, infoTexts, qosMessages, messages }
@@ -334,38 +340,46 @@ export class IrisDataMapper {
         let delayReasonCode = '';
         const infoTexts = [];
         const allMessages = [];
+        const qosMessages = [];
         const seenTexts = new Set();
 
         for (const msg of validMessages) {
+            // Nur Meldungen mit bekanntem RIS-Code übernehmen. Der Code entscheidet
+            // über die Art der Meldung – nicht der IRIS-Typ (t), da z.B. Qualitätscodes
+            // auch als Freitext (t='f') geliefert werden können.
             const preset = RisTextService.isLoaded ? RisTextService.getPresetByCode(msg.c) : null;
-            const isDelayType = (preset && preset.type === 'R') || msg.t === 'd';
-            
-            let messageText = preset?.text || msg.ext || msg.text || '';
-            if (!messageText && msg.cat) {
-                messageText = `Information: ${msg.cat}`;
-            }
+            if (!preset) continue;
+            if (preset.type !== 'R' && preset.type !== 'Q') continue;
 
-            if (!messageText) continue;
+            // Presets ohne hinterlegten Text (z.B. Codes 4, 20, 23, 81) nicht übernehmen
+            if (!preset.text) continue;
 
-            // 1. Für den Details-Inspektor (alle Meldungen)
+            // Code "0" ("Keine Verspätungsbegründung") unterdrücken
+            if (preset.type === 'R' && msg.c === '0') continue;
+
+            const isDelayType = preset.type === 'R';
+            const priority = msg.pr ? parseInt(msg.pr, 10) : (isDelayType ? 1 : 2);
+
+            // Nur akzeptierte, codebasierte Meldungen für den Details-Inspektor und
+            // die Qualitäts-Fingerprints behalten.
             allMessages.push({
-                priority: msg.pr ? parseInt(msg.pr, 10) : (isDelayType ? 1 : 2),
-                text: messageText,
-                type: msg.t || preset?.type || (isDelayType ? 'R' : 'Q')
+                id: msg.id || '',
+                priority,
+                text: preset.text,
+                type: msg.t || preset.type,
+                code: String(msg.c)
             });
+            qosMessages.push(msg);
 
-            // 2. Verspätungsgrund ermitteln
+            // 1. Verspätungsgrund ermitteln
             if (isDelayType) {
-                // Code "0" ("Keine Verspätungsbegründung") unterdrücken
-                if (msg.c === '0') continue;
-
                 if (!delayReason) {
-                    delayReason = messageText;
+                    delayReason = preset.text;
                     delayReasonCode = String(msg.c || '');
                 }
             } else {
-                // 3. Qualitätsabweichungen / Lauftexte für Monitore (Typ Q, Freitexte t='f', HIM t='h', etc.)
-                const cleanText = messageText.replace(/^Information:\s*/i, '').trim();
+                // 2. Qualitätsabweichungen / Lauftexte für Monitore (ausschließlich Typ Q)
+                const cleanText = preset.text.replace(/^Information:\s*/i, '').trim();
                 if (cleanText && !seenTexts.has(cleanText)) {
                     seenTexts.add(cleanText);
                     infoTexts.push({
@@ -383,7 +397,7 @@ export class IrisDataMapper {
             delayReason, 
             delayReasonCode, 
             infoTexts, 
-            qosMessages: validMessages, 
+            qosMessages, 
             messages: allMessages 
         };
     }

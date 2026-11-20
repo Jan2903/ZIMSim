@@ -206,9 +206,11 @@ export class Journey {
 
         // === Meldungen ===
         this.messages = (data.messages || []).map(m => ({
+            id: m.id || '',
             priority: m.priority || m.prioritaet || 'NIEDRIG',
             text: m.text || '',
-            type: m.type || ''
+            type: m.type || '',
+            code: m.code ? String(m.code) : ''
         }));
 
         // === Halteliste (für Details-Ansicht & API-Import) ===
