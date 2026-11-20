@@ -89,21 +89,29 @@ class IrisAnnouncementService {
             let infoAnnouncementEnqueued = false;
 
             // 1. Erst-Ausfall (Priorität 80)
-            if (j.ausfall && !state.cancelled) {
-                state.cancelled = true;
-                state.lastAnnouncedSimTimeMs = simTimeMs;
-                if (autoAnnouncementsEnabled) {
-                    const playlist = ansagenGenerator.generateInformation(j);
-                    if (playlist.length > 0) {
-                        announcementQueueService.enqueue({
-                            journeyId: j.journeyId,
-                            trainName: j.name,
-                            type: ANNOUNCEMENT_TYPE.AUSFALL,
-                            playlist: playlist,
-                            label: `${j.name} Ausfall`,
-                            trainCountdownTimeMs: trainTime
-                        });
-                        infoAnnouncementEnqueued = true;
+            if (j.ausfall) {
+                const couplingGroup = this._getCouplingGroup(j, journeys);
+                const wasCancelled = state.cancelled;
+
+                // Alle ausgefallenen Zugteile markieren, damit ein Zugverband
+                // nur eine gemeinsame Ausfallansage erzeugt.
+                this._markGroupCancelledState(couplingGroup, simTimeMs);
+
+                if (!wasCancelled) {
+                    state.lastAnnouncedSimTimeMs = simTimeMs;
+                    if (autoAnnouncementsEnabled) {
+                        const playlist = ansagenGenerator.generateInformation(j);
+                        if (playlist.length > 0) {
+                            announcementQueueService.enqueue({
+                                journeyId: j.journeyId,
+                                trainName: this._getGroupAnnouncementName(couplingGroup.filter(member => member.ausfall)),
+                                type: ANNOUNCEMENT_TYPE.AUSFALL,
+                                playlist: playlist,
+                                label: `${this._getGroupAnnouncementName(couplingGroup.filter(member => member.ausfall))} Ausfall`,
+                                trainCountdownTimeMs: trainTime
+                            });
+                            infoAnnouncementEnqueued = true;
+                        }
                     }
                 }
                 continue; // Keine weiteren Folgeänderungen bei Ausfall
@@ -371,16 +379,28 @@ class IrisAnnouncementService {
                 const diffScheduledSecs = Math.floor((scheduledMs - simTimeMs) / 1000);
 
                 if (diffScheduledSecs <= 0 && diffScheduledSecs >= -60) {
+                    // Gesamten ausgefallenen Zugverband als angesagt markieren,
+                    // damit nur eine gemeinsame Ausfallansage zur Planzeit entsteht.
+                    const cancellationGroup = this._getCouplingGroup(j, journeys)
+                        .filter(member => member.ausfall);
+
+                    for (const member of cancellationGroup) {
+                        if (!member.announcementState) {
+                            member.announcementState = new JourneyAnnouncementState();
+                        }
+                        member.announcementState.hasPlayedAtScheduledTime = true;
+                    }
                     state.hasPlayedAtScheduledTime = true;
 
                     if (autoAnnouncementsEnabled) {
                         const playlist = ansagenGenerator.generateInformation(j);
+                        const groupName = this._getGroupAnnouncementName(cancellationGroup);
                         announcementQueueService.enqueue({
                             journeyId: j.journeyId,
-                            trainName: j.name,
+                            trainName: groupName,
                             type: ANNOUNCEMENT_TYPE.AUSFALL_PLANZEIT,
                             playlist: playlist,
-                            label: `${j.name} Ausfall (Planzeit)`,
+                            label: `${groupName} Ausfall (Planzeit)`,
                             trainCountdownTimeMs: scheduledMs
                         });
                     }
@@ -404,6 +424,10 @@ class IrisAnnouncementService {
     _checkReminder(journey, simTimeMs, journeys = []) {
         const group = this._getCouplingGroup(journey, journeys);
         if (group.length > 1) {
+            // Vollständig ausgefallene Zugverbände erhalten keine Erinnerung;
+            // die Ausfallansage erfolgt bereits in checkChanges bzw. tick.
+            if (group.every(member => member.ausfall)) return;
+
             const representative = group.find(member => !member.ausfall) || group[0];
             if (representative.id !== journey.id) return;
             if (!group.some(member => ansagenGenerator.hasInformationalContent(member))) return;
@@ -541,6 +565,24 @@ class IrisAnnouncementService {
                 member.announcementState = new JourneyAnnouncementState();
             }
             member.announcementState.hasPlayedEinfahrt = true;
+        }
+    }
+
+    /**
+     * Markiert alle ausgefallenen Mitglieder einer Coupling-Gruppe als ausgefallen.
+     * Dadurch erzeugt ein vollständig ausgefallener Zugverband nur eine gemeinsame
+     * Ausfallansage und nicht eine Ansage pro Zugteil.
+     * @param {Array<object>} group - Coupling-Gruppe
+     * @param {number} simTimeMs - Aktuelle Simulationszeit in Millisekunden
+     */
+    _markGroupCancelledState(group, simTimeMs) {
+        for (const member of group || []) {
+            if (!member.ausfall) continue;
+            if (!member.announcementState) {
+                member.announcementState = new JourneyAnnouncementState();
+            }
+            member.announcementState.cancelled = true;
+            member.announcementState.lastAnnouncedSimTimeMs = simTimeMs;
         }
     }
 

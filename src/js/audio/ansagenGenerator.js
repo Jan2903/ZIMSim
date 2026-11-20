@@ -169,6 +169,25 @@ export class AnsagenGenerator {
     }
 
     /**
+     * Prüft, ob eine Coupling-Gruppe als gemeinsame Informationsansage gesprochen werden kann.
+     * Informationsansagen nennen kein Gleis, daher genügen identische Rolle (Ankunft/Abfahrt)
+     * und identische Planzeit. Ein gemeinsames Gleis ist nicht erforderlich.
+     * @param {Array<object>} group - Coupling-Gruppe
+     * @returns {boolean}
+     */
+    _canAnnounceCoupledInformation(group) {
+        if (!group || group.length === 0) return false;
+
+        const roles = new Set(group.map(j => Boolean(j.ankunft)));
+        if (roles.size > 1) return false;
+
+        const times = new Set(group.map(j => (j.scheduledTime || '').trim()));
+        if (times.size > 1) return false;
+
+        return true;
+    }
+
+    /**
      * Ermittelt den Namen des aktuellen Bahnhofs für Zugteilungs- und
      * Zugvereinigungsansagen.
      * @param {Array<object>} group - Coupling-Gruppe
@@ -200,32 +219,17 @@ export class AnsagenGenerator {
     }
 
     /**
-     * Ermittelt eine für alle Gruppenmitglieder identische Verspätung.
-     * Unterschiedliche Verspätungen werden separat angesagt.
+     * Ermittelt die gemeinsame Verspätung eines Zugverbands für die Ansage.
+     * Gekoppelte Züge verlassen den Bahnhof gemeinsam, daher wird für den gesamten
+     * Verband genau eine Verspätung angesagt. Weichen die Echtzeitdaten der
+     * Mitglieder voneinander ab, wird die größte Verspätung verwendet, damit die
+     * Ansage die tatsächliche Abfahrt nicht unterschätzt.
      * @param {Array<object>} group - Coupling-Gruppe
-     * @returns {number} Gemeinsame Verspätung oder 0
+     * @returns {number} Gemeinsame Verspätung in Minuten (0 = pünktlich)
      */
-    _getCommonDelay(group) {
-        const delays = group.map(j => roundDelayForAnnouncement(j));
-        if (delays.length === 0) return 0;
-        return delays.every(d => d === delays[0]) ? delays[0] : 0;
-    }
-
-    /**
-     * Fügt Verspätungen hinzu, die nur einzelne Gruppenmitglieder betreffen.
-     * @param {Array} playlist - Die Playlist
-     * @param {Array<object>} group - Coupling-Gruppe
-     */
-    _appendPerTrainDelays(playlist, group) {
-        const delays = group.map(j => roundDelayForAnnouncement(j));
-        if (new Set(delays).size <= 1) return;
-
-        group.forEach((member, index) => {
-            const delay = delays[index];
-            if (delay < 5) return;
-            this._train(playlist, member.name);
-            this._appendDelay(playlist, delay);
-        });
+    _getFormationDelay(group) {
+        if (!group || group.length === 0) return 0;
+        return Math.max(...group.map(j => roundDelayForAnnouncement(j)));
     }
 
     /**
@@ -297,21 +301,6 @@ export class AnsagenGenerator {
 
         this._module(playlist, 'ZUGVEREINIGUNG_TUEREN_GESCHLOSSEN');
         return true;
-    }
-
-    /**
-     * Fügt Hinweise für ausgefallene Mitglieder einer Coupling-Gruppe hinzu.
-     * @param {Array} playlist - Die Playlist
-     * @param {Array<object>} cancelledGroup - Ausgefallene Mitglieder
-     */
-    _appendCancelledMembers(playlist, cancelledGroup) {
-        if (!cancelledGroup || cancelledGroup.length === 0) return;
-
-        for (const member of cancelledGroup) {
-            this._train(playlist, member.name);
-            this._module(playlist, 'FAELLT_HEUTE_AUS');
-            this._module(playlist, 'ENTSCHULDIGUNG');
-        }
     }
 
     // --- Fach- und Domainprüfungen ---
@@ -493,10 +482,11 @@ export class AnsagenGenerator {
         }
 
         // Gekoppelte Fahrten: gemeinsame Basis, danach zugspezifische Blöcke.
+        // Ausgefallene Zugteile werden nicht mehr angehängt, sondern separat angesagt.
         if (fullGroup.length > 1 && activeGroup.length > 0 && this._canAnnounceCoupledGroup(activeGroup)) {
             const platformJourney = this._getGroupPlatformJourney(activeGroup) || activeGroup[0];
             const action = activeGroup[0].ankunft ? 'ANKUNFT' : 'ABFAHRT';
-            const commonDelay = this._getCommonDelay(activeGroup);
+            const formationDelay = this._getFormationDelay(activeGroup);
 
             this._appendPlatform(p, platformJourney);
             this._module(p, 'EINFAHRT');
@@ -510,19 +500,12 @@ export class AnsagenGenerator {
                 if (!member.ankunft) {
                     this._appendSectors(p, member, activeGroup);
                     this._generateDeviations(p, member);
-
-                    // Zugspezifische Verspätung nur ansagen, wenn sie von der gemeinsamen abweicht.
-                    const memberDelay = roundDelayForAnnouncement(member);
-                    if (commonDelay < 5 && memberDelay >= 5) {
-                        this._appendDelay(p, memberDelay);
-                    }
                 }
             });
 
-            this.formatter.timeInfo(p, activeGroup[0], action, commonDelay);
+            this.formatter.timeInfo(p, activeGroup[0], action, formationDelay);
             this._appendSplitAnnouncement(p, activeGroup);
             this._appendCombinedFirstClassSectors(p, activeGroup);
-            this._appendCancelledMembers(p, fullGroup.filter(j => j.ausfall));
             this._appendJoiningNotice(p, activeGroup);
 
             if (activeGroup.every(member => this._isPureArrival(member, null)) && ansagenStore.einfahrtBitteNichtEinsteigen) {
@@ -591,7 +574,6 @@ export class AnsagenGenerator {
             this._time(p, activeGroup[0].scheduledTime);
             this._appendSplitAnnouncement(p, activeGroup);
             this._appendCombinedFirstClassSectors(p, activeGroup);
-            this._appendCancelledMembers(p, fullGroup.filter(j => j.ausfall));
 
             return p;
         }
@@ -629,25 +611,20 @@ export class AnsagenGenerator {
 
         const isArrival = Boolean(group[0].ankunft);
         const action = isArrival ? 'ANKUNFT' : 'ABFAHRT';
-        const commonDelay = this._getCommonDelay(group);
+        const formationDelay = this._getFormationDelay(group);
 
         this._appendCoupledRoute(p, group);
-        this.formatter.timeInfo(p, group[0], action, commonDelay);
-
-        if (commonDelay >= 5) {
-            this._appendDelay(p, commonDelay);
-        } else {
-            this._appendPerTrainDelays(p, group);
-        }
+        this.formatter.timeInfo(p, group[0], action, formationDelay);
+        this._appendDelay(p, formationDelay);
 
         const prefixPart1 = isArrival
             ? 'HEUTE_AUF_GLEIS'
-            : (commonDelay >= 5 ? 'UND_VON_GLEIS' : 'HEUTE_VON_GLEIS');
+            : (formationDelay >= 5 ? 'UND_VON_GLEIS' : 'HEUTE_VON_GLEIS');
         this._appendPlatform(p, platformJourney, prefixPart1);
 
         this._module(p, 'ICH_WIEDERHOLE');
         this._appendCoupledRoute(p, group);
-        this.formatter.timeInfo(p, group[0], action, commonDelay);
+        this.formatter.timeInfo(p, group[0], action, formationDelay);
 
         const prefixPart2 = isArrival ? 'HEUTE_AUF_GLEIS' : 'HEUTE_VON_GLEIS';
         this._appendPlatform(p, platformJourney, prefixPart2);
@@ -746,16 +723,43 @@ export class AnsagenGenerator {
     /**
      * Generiert eine allgemeine Informations-Ansage (Verspätung, Haltabweichungen, Ausfall).
      * Enthält keine Gleiswechselansage (siehe generateGleiswechsel) und kein ICH_WIEDERHOLE.
+     * Gekoppelte Fahrten werden als ein Zugverband angesagt. Bei Teilausfall werden
+     * aktive und ausgefallene Zugteile getrennt behandelt; bei Vollausfall entsteht
+     * eine gemeinsame Ausfallansage.
      *
      * @param {object} journey - Das Journey-Objekt
      * @returns {Array} Playlist mit Audio-Objekten
      */
     generateInformation(journey) {
         const fullGroup = this._getAnnouncementGroup(journey);
-        const activeGroup = this._getActiveGroup(fullGroup);
 
-        if (!journey?.ausfall && fullGroup.length > 1 && activeGroup.length > 0 && this._canAnnounceCoupledGroup(activeGroup)) {
-            return this._generateCoupledInformation(activeGroup);
+        if (fullGroup.length > 1) {
+            const cancelledGroup = fullGroup.filter(member => member.ausfall);
+            const activeGroup = fullGroup.filter(member => !member.ausfall);
+
+            // Vollständiger Ausfall: eine gemeinsame Ausfallansage für den Zugverband.
+            if (activeGroup.length === 0) {
+                if (this._canAnnounceCoupledInformation(cancelledGroup)) {
+                    return this._generateCoupledInformation(cancelledGroup);
+                }
+                return this._generateSingleInformation(journey);
+            }
+
+            // Teilausfall: aktive und ausgefallene Zugteile werden getrennt angesagt.
+            if (cancelledGroup.length > 0) {
+                const partition = journey?.ausfall ? cancelledGroup : activeGroup;
+                if (partition.length === 1) {
+                    return this._generateSingleInformation(partition[0]);
+                }
+                if (this._canAnnounceCoupledInformation(partition)) {
+                    return this._generateCoupledInformation(partition);
+                }
+                return this._generateSingleInformation(journey);
+            }
+
+            if (this._canAnnounceCoupledInformation(activeGroup)) {
+                return this._generateCoupledInformation(activeGroup);
+            }
         }
 
         return this._generateSingleInformation(journey);
@@ -776,14 +780,20 @@ export class AnsagenGenerator {
         this._module(p, 'INFORMATION_ZU');
         
         this._appendRoute(p, journey);
-        this._module(p, journey.ankunft ? 'ANKUNFT' : 'ABFAHRT');
-        this._time(p, journey.scheduledTime);
 
         if (journey.ausfall) {
+            this._module(p, journey.ankunft ? 'ANKUNFT' : 'ABFAHRT');
+            this._time(p, journey.scheduledTime);
             this._module(p, 'FAELLT_HEUTE_AUS');
             this._module(p, 'ENTSCHULDIGUNG');
             return p;
         }
+
+        // Erst Haltabweichungen, dann Zeit, Verspätung und Grund.
+        this._generateDeviations(p, journey);
+
+        this._module(p, journey.ankunft ? 'ANKUNFT' : 'ABFAHRT');
+        this._time(p, journey.scheduledTime);
 
         let delay = roundDelayForAnnouncement(journey);
         this._appendDelay(p, delay);
@@ -791,8 +801,6 @@ export class AnsagenGenerator {
         if (delay >= 5 && journey.delayReason) {
             this._appendDelayReason(p, journey);
         }
-        
-        this._generateDeviations(p, journey);
 
         if (delay >= 30) {
             this._module(p, 'ENTSCHULDIGUNG');
@@ -802,21 +810,23 @@ export class AnsagenGenerator {
     }
 
     /**
-     * Generiert eine Informations-Ansage für eine Coupling-Gruppe.
-     * Die Abweichungen werden direkt nach der jeweiligen Zugroute angesagt,
-     * bevor mit "mit" der nächste Zug folgt. Die gemeinsame Zeitansage erfolgt
-     * einmal am Ende für den gesamten Zugverband.
-     * Betrifft die Information nur einen Zug, wird die Einzelansage genutzt.
+     * Generiert eine Informations-Ansage für einen Zugverband (Flügelzüge).
+     * Die Routen aller Mitglieder werden mit "mit" verbunden, dazwischen stehen
+     * jeweils die Haltabweichungen des Zuges. Planzeit, Verspätung und Grund
+     * werden einmal für den gesamten Verband angesagt.
+     * Sind alle Mitglieder ausgefallen, entsteht eine gemeinsame Ausfallansage.
      *
-     * @param {Array<object>} group - Aktive Coupling-Gruppe
+     * @param {Array<object>} group - Aktive oder vollständig ausgefallene Coupling-Gruppe
      * @returns {Array} Playlist mit Audio-Objekten
      */
     _generateCoupledInformation(group) {
-        const affected = group.filter(j => this.hasGeneralInformationalContent(j));
-        if (affected.length === 0) return [];
-        if (affected.length === 1) return this._generateSingleInformation(affected[0]);
+        if (!group || group.length === 0) return [];
 
-        const affectedSet = new Set(affected);
+        const allCancelled = group.every(member => member.ausfall);
+        if (!allCancelled && !group.some(member => this.hasGeneralInformationalContent(member))) {
+            return [];
+        }
+
         const p = [];
         this._gong(p);
         this._module(p, 'INFORMATION_ZU');
@@ -827,30 +837,35 @@ export class AnsagenGenerator {
             }
             this._appendRoute(p, member);
 
-            if (!affectedSet.has(member)) return;
-
-            if (member.ausfall) {
-                this._module(p, 'FAELLT_HEUTE_AUS');
-                this._module(p, 'ENTSCHULDIGUNG');
-                return;
-            }
-
-            const delay = roundDelayForAnnouncement(member);
-            this._appendDelay(p, delay);
-
-            if (delay >= 5 && member.delayReason) {
-                this._appendDelayReason(p, member);
-            }
-
-            this._generateDeviations(p, member);
-
-            if (delay >= 30) {
-                this._module(p, 'ENTSCHULDIGUNG');
+            // Ausgefallene Züge haben keine relevanten zukünftigen Halte mehr.
+            if (!allCancelled && !member.ankunft) {
+                this._generateDeviations(p, member);
             }
         });
 
         this._module(p, group[0].ankunft ? 'ANKUNFT' : 'ABFAHRT');
         this._time(p, group[0].scheduledTime);
+
+        if (allCancelled) {
+            this._module(p, 'FAELLT_HEUTE_AUS');
+            this._module(p, 'ENTSCHULDIGUNG');
+            return p;
+        }
+
+        const delay = this._getFormationDelay(group);
+        this._appendDelay(p, delay);
+
+        // Grund einmal für den gesamten Verband ansagen.
+        const reasonMember = delay >= 5
+            ? group.find(member => member.delayReason)
+            : null;
+        if (reasonMember) {
+            this._appendDelayReason(p, reasonMember);
+        }
+
+        if (delay >= 30) {
+            this._module(p, 'ENTSCHULDIGUNG');
+        }
 
         return p;
     }
