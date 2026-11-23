@@ -9,6 +9,11 @@
     import ZimIcon from '../ZimIcon.svelte';
     import NumericStepper from './audio/NumericStepper.svelte';
     import VoiceVariantSection from './audio/VoiceVariantSection.svelte';
+    import { audioEffectsService, AUDIO_EFFECT_PRESETS } from '../../js/audio/audioEffectsService.svelte.js';
+
+    let currentPresetDescription = $derived(
+        AUDIO_EFFECT_PRESETS[audioEffectsService.preset]?.description || ''
+    );
 
     let audioZipInput;
 
@@ -517,6 +522,271 @@
             </div>
         </div>
     </div>
+
+    <!-- Spalte 3: Akustik & Raum-Effekte (Bahnhofs-Atmosphäre) -->
+    <div class="settings-card">
+        <div class="card-header">
+            <ZimIcon name="volume_high" size={18} />
+            <h3>Akustik & Raum-Effekte</h3>
+        </div>
+        <div class="card-body">
+            <div class="effects-section">
+                <!-- Master Toggle -->
+                <label class="checkbox-label effects-master-toggle">
+                    <input 
+                        type="checkbox" 
+                        checked={audioEffectsService.enabled} 
+                        onchange={(e) => audioEffectsService.setEnabled(e.currentTarget.checked)}
+                    >
+                    <span class="effects-master-title">Raumakustik & Effekte aktivieren</span>
+                </label>
+                <div class="field-hint with-indent">
+                    Simuliert Hall, Lautsprecherfilter und Laufzeitverzögerungen echter Bahnhofsumgebungen.
+                </div>
+
+                <!-- Preset Auswahl -->
+                <div class="form-group" style="margin-top: 14px; margin-bottom: 12px;">
+                    <label class="field-label" for="audio_effect_preset">Akustik-Preset:</label>
+                    <select 
+                        id="audio_effect_preset"
+                        class="form-select effects-select"
+                        value={audioEffectsService.preset}
+                        onchange={(e) => audioEffectsService.selectPreset(e.currentTarget.value)}
+                        disabled={!audioEffectsService.enabled}
+                    >
+                        {#each Object.values(AUDIO_EFFECT_PRESETS) as pr}
+                            <option value={pr.id}>{pr.name}</option>
+                        {/each}
+                    </select>
+                    {#if currentPresetDescription}
+                        <div class="field-hint" style="margin-top: 4px;">{currentPresetDescription}</div>
+                    {/if}
+                </div>
+
+                <!-- Test-Button & Reset-Button -->
+                <div class="effects-actions-row">
+                    <button 
+                        type="button" 
+                        class="btn-primary btn-sm test-sound-btn"
+                        onclick={() => audioEffectsService.playTestSound()}
+                        disabled={!audioEffectsService.enabled}
+                        title="Spielt den Bahnhofs-Gong zur akustischen Beurteilung ab"
+                    >
+                        <ZimIcon name={audioEffectsService.isPlayingTest ? 'stop' : 'play'} size={14} />
+                        <span>{audioEffectsService.isPlayingTest ? 'Stoppen' : 'Akustik testen'}</span>
+                    </button>
+                    {#if audioEffectsService.preset === 'custom'}
+                        <button 
+                            type="button" 
+                            class="btn-secondary btn-sm reset-preset-btn"
+                            onclick={() => audioEffectsService.selectPreset('hall_medium')}
+                            title="Auf das Standard-Preset zurücksetzen"
+                        >
+                            <ZimIcon name="rotate" size={13} />
+                            <span>Standard</span>
+                        </button>
+                    {/if}
+                </div>
+
+                <!-- 1. Hall / Reverb (Convolver) -->
+                <div class="sub-section" style="margin-top: 16px; border-top: 1px solid var(--border); padding-top: 14px;">
+                    <span class="field-label" style="margin-bottom: 10px;">Bahnhofshalle & Raumhall (Reverb):</span>
+
+                    <div class="slider-control">
+                        <div class="slider-header">
+                            <span class="slider-label">Hall-Anteil (Wet/Dry)</span>
+                            <span class="slider-value">{audioEffectsService.reverbWet} %</span>
+                        </div>
+                        <input 
+                            type="range" 
+                            min="0" 
+                            max="100" 
+                            step="1"
+                            value={audioEffectsService.reverbWet}
+                            oninput={(e) => audioEffectsService.setReverbWet(Number(e.currentTarget.value))}
+                            disabled={!audioEffectsService.enabled}
+                        />
+                    </div>
+
+                    <div class="slider-control">
+                        <div class="slider-header">
+                            <span class="slider-label">Nachhallzeit (Decay)</span>
+                            <span class="slider-value">{audioEffectsService.reverbDecay.toFixed(1)} s</span>
+                        </div>
+                        <input 
+                            type="range" 
+                            min="0.4" 
+                            max="5.0" 
+                            step="0.1"
+                            value={audioEffectsService.reverbDecay}
+                            oninput={(e) => audioEffectsService.setReverbDecay(Number(e.currentTarget.value))}
+                            disabled={!audioEffectsService.enabled}
+                        />
+                    </div>
+
+                    <div class="slider-control">
+                        <div class="slider-header">
+                            <span class="slider-label">Vorverzögerung (Pre-Delay)</span>
+                            <span class="slider-value">{audioEffectsService.reverbPreDelay} ms</span>
+                        </div>
+                        <input 
+                            type="range" 
+                            min="0" 
+                            max="100" 
+                            step="5"
+                            value={audioEffectsService.reverbPreDelay}
+                            oninput={(e) => audioEffectsService.setReverbPreDelay(Number(e.currentTarget.value))}
+                            disabled={!audioEffectsService.enabled}
+                        />
+                    </div>
+                </div>
+
+                <!-- 2. Lautsprecher-Filter (ELA / EQ) -->
+                <div class="sub-section" style="margin-top: 14px; border-top: 1px solid var(--border); padding-top: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <label class="checkbox-label" style="font-weight: 600;">
+                            <input 
+                                type="checkbox" 
+                                checked={audioEffectsService.filterEnabled}
+                                onchange={(e) => audioEffectsService.setFilterEnabled(e.currentTarget.checked)}
+                                disabled={!audioEffectsService.enabled}
+                            >
+                            <span>Lautsprecher-Klang (ELA / Horn)</span>
+                        </label>
+                    </div>
+                    <div class="field-hint with-indent" style="margin-bottom: 10px;">
+                        Dämpft Studio-Tiefen und -Höhen für den typischen Klang von Bahnsteig-Tonsäulen.
+                    </div>
+
+                    {#if audioEffectsService.filterEnabled}
+                        <div class="slider-control">
+                            <div class="slider-header">
+                                <span class="slider-label">Bass-Dämpfung (Highpass)</span>
+                                <span class="slider-value">{audioEffectsService.filterLowCut} Hz</span>
+                            </div>
+                            <input 
+                                type="range" 
+                                min="50" 
+                                max="600" 
+                                step="10"
+                                value={audioEffectsService.filterLowCut}
+                                oninput={(e) => audioEffectsService.setFilterLowCut(Number(e.currentTarget.value))}
+                                disabled={!audioEffectsService.enabled}
+                            />
+                        </div>
+
+                        <div class="slider-control">
+                            <div class="slider-header">
+                                <span class="slider-label">Höhen-Dämpfung (Lowpass)</span>
+                                <span class="slider-value">{audioEffectsService.filterHighCut} Hz</span>
+                            </div>
+                            <input 
+                                type="range" 
+                                min="2000" 
+                                max="15000" 
+                                step="200"
+                                value={audioEffectsService.filterHighCut}
+                                oninput={(e) => audioEffectsService.setFilterHighCut(Number(e.currentTarget.value))}
+                                disabled={!audioEffectsService.enabled}
+                            />
+                        </div>
+
+                        <div class="slider-control">
+                            <div class="slider-header">
+                                <span class="slider-label">Mitten-Präsenz (Durchsage-Fokus)</span>
+                                <span class="slider-value">+{audioEffectsService.filterPeakGain.toFixed(1)} dB</span>
+                            </div>
+                            <input 
+                                type="range" 
+                                min="0" 
+                                max="8" 
+                                step="0.5"
+                                value={audioEffectsService.filterPeakGain}
+                                oninput={(e) => audioEffectsService.setFilterPeakGain(Number(e.currentTarget.value))}
+                                disabled={!audioEffectsService.enabled}
+                            />
+                        </div>
+                    {/if}
+                </div>
+
+                <!-- 3. Bahnsteig-Echo (Laufzeitverzögerung) -->
+                <div class="sub-section" style="margin-top: 14px; border-top: 1px solid var(--border); padding-top: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <label class="checkbox-label" style="font-weight: 600;">
+                            <input 
+                                type="checkbox" 
+                                checked={audioEffectsService.delayEnabled}
+                                onchange={(e) => audioEffectsService.setDelayEnabled(e.currentTarget.checked)}
+                                disabled={!audioEffectsService.enabled}
+                            >
+                            <span>Bahnsteig-Echo (Entfernte Lautsprecher)</span>
+                        </label>
+                    </div>
+                    <div class="field-hint with-indent" style="margin-bottom: 10px;">
+                        Laufzeitunterschied zwischen dem Lautsprecher direkt am Hörer und entfernteren Masten.
+                    </div>
+
+                    {#if audioEffectsService.delayEnabled}
+                        <div class="slider-control">
+                            <div class="slider-header">
+                                <span class="slider-label">Echo-Anteil</span>
+                                <span class="slider-value">{audioEffectsService.delayWet} %</span>
+                            </div>
+                            <input 
+                                type="range" 
+                                min="0" 
+                                max="40" 
+                                step="1"
+                                value={audioEffectsService.delayWet}
+                                oninput={(e) => audioEffectsService.setDelayWet(Number(e.currentTarget.value))}
+                                disabled={!audioEffectsService.enabled}
+                            />
+                        </div>
+
+                        <div class="slider-control">
+                            <div class="slider-header">
+                                <span class="slider-label">Laufzeit-Verzögerung</span>
+                                <span class="slider-value">{audioEffectsService.delayTime} ms</span>
+                            </div>
+                            <input 
+                                type="range" 
+                                min="30" 
+                                max="200" 
+                                step="5"
+                                value={audioEffectsService.delayTime}
+                                oninput={(e) => audioEffectsService.setDelayTime(Number(e.currentTarget.value))}
+                                disabled={!audioEffectsService.enabled}
+                            />
+                        </div>
+                    {/if}
+                </div>
+
+                <!-- 4. Master-Lautstärke -->
+                <div class="sub-section" style="margin-top: 14px; border-top: 1px solid var(--border); padding-top: 14px;">
+                    <div class="slider-control">
+                        <div class="slider-header">
+                            <span class="slider-label">Ausgangspegel / Master-Lautstärke</span>
+                            <span class="slider-value">{audioEffectsService.outputGain} %</span>
+                        </div>
+                        <input 
+                            type="range" 
+                            min="50" 
+                            max="150" 
+                            step="5"
+                            value={audioEffectsService.outputGain}
+                            oninput={(e) => audioEffectsService.setOutputGain(Number(e.currentTarget.value))}
+                            disabled={!audioEffectsService.enabled}
+                        />
+                    </div>
+                </div>
+
+                <!-- Hinweis-Box -->
+                <div class="field-hint" style="margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 0.76rem; line-height: 1.4;">
+                    <strong>Hinweis:</strong> Gilt für die Ansagen-Wiedergabe (geladene Audio-Pakete) sowie den WAV-Export. System-TTS (Browser-Sprachausgabe) kann browserbedingt nicht durch Web-Audio-Filter geleitet werden.
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <style>
@@ -866,5 +1136,99 @@
             min-height: 38px;
             padding: 6px 12px;
         }
+    }
+
+    /* Effekte & Akustik (Spalte 3) */
+    .effects-section {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .effects-master-toggle {
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .effects-master-title {
+        color: var(--text-main, #f8fafc);
+    }
+
+    .effects-select {
+        width: 100%;
+        margin-top: 4px;
+        background: var(--bg-input, #0f172a);
+        color: var(--text-main, #f8fafc);
+        border: 1px solid var(--border, #334155);
+        border-radius: var(--radius-sm, 4px);
+        padding: 8px 10px;
+        font-size: 0.85rem;
+    }
+
+    .effects-actions-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 6px;
+    }
+
+    .test-sound-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-weight: 500;
+    }
+
+    .reset-preset-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.78rem;
+    }
+
+    .slider-control {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin-bottom: 12px;
+    }
+
+    .slider-control:last-child {
+        margin-bottom: 0;
+    }
+
+    .slider-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.78rem;
+        color: var(--text-muted, #94a3b8);
+    }
+
+    .slider-label {
+        font-weight: 500;
+    }
+
+    .slider-value {
+        font-weight: 600;
+        font-size: 0.8rem;
+        color: var(--text-main, #f8fafc);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .slider-control input[type="range"] {
+        width: 100%;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+        accent-color: var(--accent, #3b82f6);
+        outline: none;
+        cursor: pointer;
+        margin: 4px 0;
+    }
+
+    .slider-control input[type="range"]:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
     }
 </style>

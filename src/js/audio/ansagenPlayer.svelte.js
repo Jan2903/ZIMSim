@@ -1,5 +1,6 @@
 import { ansagenStore } from './ansagenStore.svelte.js';
 import { audioStorageService } from '../core/services/audioStorageService.js';
+import { audioEffectsService } from './audioEffectsService.svelte.js';
 import { wavExporter } from './wavExporter.js';
 
 export class AnsagenPlayer {
@@ -12,6 +13,7 @@ export class AnsagenPlayer {
     progressText = $derived(this.totalFiles > 0 ? `${this.currentIndex + 1} / ${this.totalFiles}` : '');
 
     _audioContext = null;
+    _effectsChain = null;
     _sourceNodes = [];
     _timeouts = [];
     _playId = 0;
@@ -113,6 +115,11 @@ export class AnsagenPlayer {
         }
 
         this._initAudioContext();
+        if (this._effectsChain) {
+            this._effectsChain.dispose();
+            this._effectsChain = null;
+        }
+        this._effectsChain = audioEffectsService.buildEffectsChain(this._audioContext, this._audioContext.destination);
         
         // Start Look-ahead Scheduler
         this._schedulePlayback(this.playlist, currentPlayId);
@@ -141,7 +148,7 @@ export class AnsagenPlayer {
                     // Buffer loaded, schedule it
                     const source = this._audioContext.createBufferSource();
                     source.buffer = buffer;
-                    source.connect(this._audioContext.destination);
+                    source.connect(this._effectsChain ? this._effectsChain.inputNode : this._audioContext.destination);
                     
                     // If we fell behind, play immediately
                     if (startTime < this._audioContext.currentTime) {
@@ -214,11 +221,18 @@ export class AnsagenPlayer {
                 i++;
             } else {
                 // We reached the end of the currently scheduled playlist.
-                // Check if all scheduled audio has finished playing.
-                if (this._audioContext.currentTime >= startTime) {
+                // Check if all scheduled audio has finished playing (incl. optional reverb tail).
+                const extraTail = (audioEffectsService.enabled && audioEffectsService.reverbWet > 0)
+                    ? audioEffectsService.reverbDecay + 0.3
+                    : 0;
+                if (this._audioContext.currentTime >= startTime + extraTail) {
                     this.isPlaying = false;
                     this._sourceNodes = [];
                     this._timeouts = [];
+                    if (this._effectsChain) {
+                        this._effectsChain.dispose();
+                        this._effectsChain = null;
+                    }
                     this._notifyEnded();
                     break;
                 } else {
@@ -280,6 +294,11 @@ export class AnsagenPlayer {
         this.currentIndex = -1;
         this.currentText = '';
         this.currentFile = '';
+        
+        if (this._effectsChain) {
+            this._effectsChain.dispose();
+            this._effectsChain = null;
+        }
         
         this._sourceNodes.forEach(node => {
             try {

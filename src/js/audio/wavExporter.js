@@ -1,5 +1,6 @@
 import { ansagenStore } from './ansagenStore.svelte.js';
 import { audioStorageService } from '../core/services/audioStorageService.js';
+import { audioEffectsService } from './audioEffectsService.svelte.js';
 
 export class WavExporter {
     async exportWav(playlist, audioContext) {
@@ -29,24 +30,35 @@ export class WavExporter {
 
         // 2. Create Offline Context
         const sampleRate = buffersToRender[0].sampleRate;
+        const extraTail = (audioEffectsService.enabled && audioEffectsService.reverbWet > 0)
+            ? audioEffectsService.reverbDecay + 0.5
+            : 0;
+        const totalRenderDuration = totalDuration + extraTail;
+        const numChannels = (buffersToRender[0].numberOfChannels === 1 && audioEffectsService.enabled)
+            ? 2
+            : buffersToRender[0].numberOfChannels;
+
         const offlineCtx = new OfflineAudioContext(
-            buffersToRender[0].numberOfChannels,
-            sampleRate * totalDuration,
+            numChannels,
+            Math.ceil(sampleRate * totalRenderDuration),
             sampleRate
         );
+
+        const effectsChain = audioEffectsService.buildEffectsChain(offlineCtx, offlineCtx.destination);
 
         // 3. Schedule all buffers on offline context
         let currentTime = 0;
         for (const buffer of buffersToRender) {
             const source = offlineCtx.createBufferSource();
             source.buffer = buffer;
-            source.connect(offlineCtx.destination);
+            source.connect(effectsChain.inputNode);
             source.start(currentTime);
             currentTime += buffer.duration;
         }
 
         // 4. Render
         const renderedBuffer = await offlineCtx.startRendering();
+        effectsChain.dispose();
 
         // 5. Convert to WAV and trigger download
         const wavBlob = this._audioBufferToWav(renderedBuffer);
