@@ -53,11 +53,11 @@
     }
 
     /**
-     * Öffnet den Tab 'Anzeige & System' in den Einstellungen.
+     * Öffnet den Tab 'Anzeige' in den Einstellungen.
      * @returns {void}
      */
     function openDisplaySettings() {
-        selectTab('system');
+        selectTab('display');
         const el = document.querySelector('.settings-container');
         if (el) {
             el.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -295,6 +295,9 @@
         outline: none;
         transition: border-color 0.2s ease;
         max-width: 220px;
+        /* Überschreibt die globale Formular-Regel (min-width: 140px), damit die
+           Mobil-Breiten unten tatsächlich greifen und nichts überläuft. */
+        min-width: 0;
         min-height: 44px;
     }
 
@@ -435,9 +438,16 @@
         .display-toolbar {
             padding: 5px 10px;
             gap: 6px;
+            row-gap: 6px;
+            /* Schmale Geräte: Gruppen brechen in eine zweite Zeile um,
+               statt den Fit-Button zu überdecken. */
+            flex-wrap: wrap;
+            align-items: flex-start;
         }
         .display-toolbar-direct-controls {
             gap: 6px;
+            row-gap: 6px;
+            flex-wrap: wrap;
         }
         .toolbar-select {
             max-width: 140px;
@@ -447,8 +457,13 @@
         .wr-select {
             max-width: 110px;
         }
-        .label-text {
+        /* Icon + Text der Gruppe sind auf dem Smartphone redundant:
+           Die Select-Werte benennen die Funktion bereits selbst. */
+        .toolbar-label {
             display: none;
+        }
+        .paging-counter-text {
+            min-width: 44px;
         }
         .display-toolbar-btn {
             min-height: 44px;

@@ -2,7 +2,7 @@
 <script>
     import { onMount, tick } from 'svelte';
     import ZimIcon from './ZimIcon.svelte';
-    import { selectTab } from '../js/core/state/uiState.svelte.js';
+    import { selectTab, uiState } from '../js/core/state/uiState.svelte.js';
     import { downloadDisplayScreenshot } from '../js/core/utils/screenshot.js';
     import { watchReducedTransparency } from '../js/core/utils/systemPreferences.js';
     import { displayConfigStore } from '../js/displays/core/displayConfigStore.svelte.js';
@@ -166,11 +166,11 @@
     }
 
     /**
-     * Öffnet die Einstellungen im Tab "Anzeige & System" und scrollt dorthin.
+     * Öffnet die Einstellungen im zuletzt aktiven Tab und scrollt dorthin.
      * @returns {void}
      */
     function openSettings() {
-        selectTab('system');
+        selectTab(uiState.activeTab);
         document.querySelector('.settings-container')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
@@ -485,6 +485,35 @@
             min-width: 44px;
             padding: 8px;
             justify-content: center;
+        }
+    }
+
+    /* Schmale Smartphones: Badges ausblenden, damit Marke + Aktionen nicht überlaufen.
+       Der Titel kürzt notfalls mit Ellipsis, statt die Seite horizontal zu verbreitern. */
+    @media (max-width: 480px) {
+        .header-brand {
+            min-width: 0;
+        }
+        .header-badge {
+            display: none;
+        }
+        .header-title {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .header-actions {
+            flex-shrink: 0;
+        }
+    }
+
+    @media (max-width: 400px) {
+        .header-badge-beta {
+            display: none;
+        }
+        .header-title {
+            font-size: 0.95rem;
         }
     }
 </style>
