@@ -14,7 +14,8 @@
     import SettingsStationTime from './settings/SettingsStationTime.svelte';
     import SettingsLiveData from './settings/SettingsLiveData.svelte';
     import SettingsAudio from './settings/SettingsAudio.svelte';
-    import SettingsDisplaySystem from './settings/SettingsDisplaySystem.svelte';
+    import SettingsDisplay from './settings/SettingsDisplay.svelte';
+    import SettingsSystem from './settings/SettingsSystem.svelte';
     
     /** @typedef {Object} Props
      * @property {object} [modalsComp] - Referenz auf die Modals-Komponente für Dialog-Aufrufe
@@ -26,6 +27,27 @@
 
     // Reduce Transparency State für CSS-Fallback
     let reduceTransparency = $state(false);
+
+    // Ausrichtung der Tab-Leiste: ab 1100 px vertikale Spalte, darunter horizontal.
+    // Wird per matchMedia gepflegt, damit aria-orientation zur Darstellung passt.
+    let isVerticalNav = $state(false);
+
+    // Referenz auf die Inhaltsfläche für das Nachscrollen beim Tab-Wechsel
+    let contentEl = $state(null);
+
+    /**
+     * Aktiviert einen Tab und holt dessen Inhalt in den sichtbaren Bereich, wenn die
+     * Inhaltsfläche durch vorheriges Scrollen oberhalb des Viewports liegt.
+     * @param {string} tab - Tab-ID
+     * @returns {void}
+     */
+    function handleTabSelect(tab) {
+        selectTab(tab);
+        if (!contentEl) return;
+        if (contentEl.getBoundingClientRect().top < 0) {
+            contentEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
 
     /**
      * Tastaturnavigation der Tab-Leiste (Pfeiltasten, Home/End).
@@ -48,7 +70,7 @@
             idx = TAB_ORDER.length - 1;
         }
         const next = TAB_ORDER[idx];
-        selectTab(next);
+        handleTabSelect(next);
         const el = document.getElementById(`tab-${next}`);
         if (el) el.focus();
     }
@@ -99,6 +121,17 @@
     }
 
     onMount(() => {
+        // Ausrichtung der Navigationsleiste an den Desktop-Breakpoint koppeln
+        const mediaQuery = window.matchMedia('(min-width: 1100px)');
+        const updateOrientation = () => {
+            isVerticalNav = mediaQuery.matches;
+        };
+        updateOrientation();
+        mediaQuery.addEventListener('change', updateOrientation);
+        return () => mediaQuery.removeEventListener('change', updateOrientation);
+    });
+
+    onMount(() => {
         // Systemeinstellung "Transparenz reduzieren" beobachten (CSS-Media-Query)
         return watchReducedTransparency((value) => {
             reduceTransparency = value;
@@ -107,15 +140,15 @@
 </script>
 
 <div class="settings-container" class:reduce-transparency={reduceTransparency}>
-    <!-- Einheitliche 5-Tab Hauptnavigation (Desktop & Mobile) -->
+    <!-- Einheitliche 6-Tab Hauptnavigation (Desktop & Mobile) -->
     <div class="dashboard-nav-wrapper">
-        <div class="dashboard-tabs" role="tablist" aria-label="Einstellungs-Bereiche">
+        <div class="dashboard-tabs" role="tablist" aria-label="Einstellungs-Bereiche" aria-orientation={isVerticalNav ? 'vertical' : 'horizontal'}>
             <!-- Tab 1: Fahrten -->
             <button 
                 type="button" 
                 class="tab-btn" 
                 class:active={uiState.activeTab === 'fahrten'}
-                onclick={() => selectTab('fahrten')}
+                onclick={() => handleTabSelect('fahrten')}
                 onkeydown={onTablistKeydown}
                 role="tab"
                 id="tab-fahrten"
@@ -124,7 +157,8 @@
                 tabindex={uiState.activeTab === 'fahrten' ? 0 : -1}
             >
                 <ZimIcon name="train" size={16} />
-                <span>Fahrten ({journeyStore.journeys.length})</span>
+                <span class="tab-label-full">Fahrten ({journeyStore.journeys.length})</span>
+                <span class="tab-label-short">Fahrten</span>
             </button>
 
             <!-- Tab 2: Bahnhof & Zeit -->
@@ -132,7 +166,7 @@
                 type="button" 
                 class="tab-btn" 
                 class:active={uiState.activeTab === 'station'}
-                onclick={() => selectTab('station')}
+                onclick={() => handleTabSelect('station')}
                 onkeydown={onTablistKeydown}
                 role="tab"
                 id="tab-station"
@@ -141,7 +175,8 @@
                 tabindex={uiState.activeTab === 'station' ? 0 : -1}
             >
                 <ZimIcon name="station" size={16} />
-                <span>Bahnhof & Zeit</span>
+                <span class="tab-label-full">Bahnhof & Zeit</span>
+                <span class="tab-label-short">Bahnhof</span>
             </button>
 
             <!-- Tab 3: Live-Daten -->
@@ -149,7 +184,7 @@
                 type="button" 
                 class="tab-btn" 
                 class:active={uiState.activeTab === 'livedata'}
-                onclick={() => selectTab('livedata')}
+                onclick={() => handleTabSelect('livedata')}
                 onkeydown={onTablistKeydown}
                 role="tab"
                 id="tab-livedata"
@@ -158,7 +193,8 @@
                 tabindex={uiState.activeTab === 'livedata' ? 0 : -1}
             >
                 <ZimIcon name="api" size={16} />
-                <span>Live-Daten</span>
+                <span class="tab-label-full">Live-Daten</span>
+                <span class="tab-label-short">Live</span>
             </button>
 
             <!-- Tab 4: Ansagen & Audio -->
@@ -166,7 +202,7 @@
                 type="button" 
                 class="tab-btn" 
                 class:active={uiState.activeTab === 'audio'}
-                onclick={() => selectTab('audio')}
+                onclick={() => handleTabSelect('audio')}
                 onkeydown={onTablistKeydown}
                 role="tab"
                 id="tab-audio"
@@ -175,15 +211,34 @@
                 tabindex={uiState.activeTab === 'audio' ? 0 : -1}
             >
                 <ZimIcon name="volume_high" size={16} />
-                <span>Ansagen</span>
+                <span class="tab-label-full">Ansagen</span>
+                <span class="tab-label-short">Ansagen</span>
             </button>
 
-            <!-- Tab 5: Anzeige & System -->
+            <!-- Tab 5: Anzeige -->
+            <button 
+                type="button" 
+                class="tab-btn" 
+                class:active={uiState.activeTab === 'display'}
+                onclick={() => handleTabSelect('display')}
+                onkeydown={onTablistKeydown}
+                role="tab"
+                id="tab-display"
+                aria-controls="panel-display"
+                aria-selected={uiState.activeTab === 'display'}
+                tabindex={uiState.activeTab === 'display' ? 0 : -1}
+            >
+                <ZimIcon name="board" size={16} />
+                <span class="tab-label-full">Anzeige</span>
+                <span class="tab-label-short">Anzeige</span>
+            </button>
+
+            <!-- Tab 6: System -->
             <button 
                 type="button" 
                 class="tab-btn" 
                 class:active={uiState.activeTab === 'system'}
-                onclick={() => selectTab('system')}
+                onclick={() => handleTabSelect('system')}
                 onkeydown={onTablistKeydown}
                 role="tab"
                 id="tab-system"
@@ -192,7 +247,8 @@
                 tabindex={uiState.activeTab === 'system' ? 0 : -1}
             >
                 <ZimIcon name="settings" size={16} />
-                <span>Anzeige & System</span>
+                <span class="tab-label-full">System</span>
+                <span class="tab-label-short">System</span>
             </button>
         </div>
     </div>
@@ -228,7 +284,7 @@
     <!-- Tab-Inhalte: Panels werden beim ersten Öffnen gemountet und danach persistent im DOM
          gehalten (inaktive Panels über das hidden-Attribut ausgeblendet). Der Wechsel ist dadurch
          ein reiner Attributwechsel ohne DOM-Neuaufbau - der Inhalt ist sofort sichtbar. -->
-    <div class="dashboard-content">
+    <div class="dashboard-content" bind:this={contentEl}>
         <!-- Tab 1: Fahrten (Züge) -->
         {#if uiState.mountedTabs.includes('fahrten')}
             <div
@@ -299,7 +355,23 @@
             </div>
         {/if}
 
-        <!-- Tab 5: Anzeige & System -->
+        <!-- Tab 5: Anzeige -->
+        {#if uiState.mountedTabs.includes('display')}
+            <div
+                class="tab-pane"
+                class:entering={uiState.enteringTabs.includes('display')}
+                id="panel-display"
+                role="tabpanel"
+                aria-labelledby="tab-display"
+                tabindex="0"
+                hidden={uiState.activeTab !== 'display'}
+                onanimationend={(e) => onPaneAnimationEnd('display', e)}
+            >
+                <SettingsDisplay />
+            </div>
+        {/if}
+
+        <!-- Tab 6: System -->
         {#if uiState.mountedTabs.includes('system')}
             <div
                 class="tab-pane"
@@ -311,7 +383,7 @@
                 hidden={uiState.activeTab !== 'system'}
                 onanimationend={(e) => onPaneAnimationEnd('system', e)}
             >
-                <SettingsDisplaySystem {modalsComp} />
+                <SettingsSystem {modalsComp} />
             </div>
         {/if}
     </div>
@@ -324,6 +396,11 @@
         padding: 0 20px;
         box-sizing: border-box;
         font-family: system-ui, -apple-system, sans-serif;
+        /* Ab 1100 px: feste Navigationsspalte links, Inhalt rechts */
+        display: grid;
+        grid-template-columns: 220px minmax(0, 1fr);
+        column-gap: 24px;
+        align-items: start;
     }
 
     .settings-container.reduce-transparency .dashboard-tabs {
@@ -331,39 +408,48 @@
         -webkit-backdrop-filter: none;
     }
 
+    /* Navigationsspalte bleibt beim Scrollen der Einstellungen sichtbar,
+       endet aber mit dem Settings-Bereich (kein Overlap mit dem Footer). */
     .dashboard-nav-wrapper {
-        margin-bottom: 20px;
+        position: sticky;
+        top: 12px;
+        align-self: start;
+        max-height: calc(100vh - 24px);
+        overflow-y: auto;
     }
 
     .dashboard-tabs {
         display: flex;
+        flex-direction: column;
         background: var(--bg-card);
         border: 1px solid var(--border);
         border-radius: var(--radius-md);
-        padding: 4px;
-        gap: 6px;
-        overflow-x: auto;
+        padding: 6px;
+        gap: 2px;
         box-shadow: var(--shadow-card);
         backdrop-filter: blur(8px);
         -webkit-backdrop-filter: blur(8px);
     }
 
     .tab-btn {
-        flex: 1;
-        min-width: 140px;
+        flex: initial;
+        width: 100%;
+        min-width: 0;
         min-height: 44px;
-        padding: 10px 16px;
+        padding: 10px 12px;
         background: transparent;
         color: var(--text-muted);
         border: none;
+        border-left: 3px solid transparent;
         border-radius: var(--radius-sm);
         cursor: pointer;
         display: inline-flex;
         align-items: center;
-        justify-content: center;
-        gap: 8px;
+        justify-content: flex-start;
+        gap: 10px;
         font-size: 0.88rem;
         font-weight: 500;
+        text-align: left;
         transition: all 0.2s ease;
         white-space: nowrap;
         user-select: none;
@@ -374,11 +460,12 @@
         background: rgba(255, 255, 255, 0.05);
     }
 
+    /* Aktiver Eintrag: Accent-Balken links + getönter Hintergrund */
     .tab-btn.active {
-        background: var(--accent);
-        color: #ffffff;
+        background: rgba(226, 0, 26, 0.14);
+        color: var(--text-main);
+        border-left-color: var(--accent);
         font-weight: 600;
-        box-shadow: 0 2px 8px rgba(226, 0, 26, 0.35);
     }
 
     .tab-btn:focus-visible {
@@ -386,8 +473,15 @@
         outline-offset: var(--focus-ring-offset);
     }
 
+    /* Kurzlabel wird nur in der kompakten Mobil-Leiste eingeblendet */
+    .tab-label-short {
+        display: none;
+    }
+
     .dashboard-content {
         width: 100%;
+        min-width: 0;
+        scroll-margin-top: 12px;
     }
 
     .tab-pane {
@@ -421,23 +515,77 @@
         display: none;
     }
 
+    /* 768–1099 px: horizontale Leiste mit Icon + vollem Label */
+    @media (max-width: 1099px) {
+        .settings-container {
+            display: block;
+        }
+        .dashboard-nav-wrapper {
+            position: sticky;
+            top: 0;
+            z-index: var(--z-sticky-nav);
+            max-height: none;
+            overflow: visible;
+            margin-bottom: 20px;
+            padding-block: 6px;
+            background: var(--bg-page);
+        }
+        .dashboard-tabs {
+            flex-direction: row;
+            gap: 4px;
+            padding: 4px;
+            overflow: visible;
+        }
+        .tab-btn {
+            flex: 1;
+            width: auto;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px 6px;
+            font-size: 0.78rem;
+            border-left: none;
+            border-top: 2px solid transparent;
+        }
+        .tab-btn.active {
+            border-top-color: var(--accent);
+        }
+    }
+
+    /* < 768 px: kompakte Leiste, Icon über Kurzlabel, 6 gleich breite Spalten */
     @media (max-width: 768px) {
         .settings-container {
             padding: 0 10px;
             margin: 12px auto 30px auto;
         }
         .dashboard-nav-wrapper {
-            position: relative;
+            /* Full-bleed, damit beim Scrollen nichts an den Rändern vorbeischeint */
+            margin-inline: -10px;
+            padding-inline: 10px;
+            padding-block: 6px;
+            margin-bottom: 12px;
         }
         .dashboard-tabs {
-            justify-content: flex-start;
-            scrollbar-width: thin;
+            display: grid;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            gap: 2px;
         }
         .tab-btn {
-            min-width: 110px;
-            font-size: 0.8rem;
-            padding: 8px 12px;
-            min-height: 44px;
+            flex-direction: column;
+            justify-content: center;
+            gap: 3px;
+            padding: 6px 2px;
+            min-height: 52px;
+            font-size: 0.62rem;
+            line-height: 1.1;
+        }
+        .tab-label-full {
+            display: none;
+        }
+        .tab-label-short {
+            display: inline;
+        }
+        .dashboard-content {
+            scroll-margin-top: 76px;
         }
     }
 

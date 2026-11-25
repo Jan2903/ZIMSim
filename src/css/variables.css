@@ -25,6 +25,7 @@
     /* Z-Index-Skala (statt verstreuter Magic Numbers) */
     --z-canvas: 10;
     --z-bezel-lip: 15;
+    --z-sticky-nav: 50;
     --z-dropdown: 1000;
     --z-modal: 9000;
     --z-player: 9999;
